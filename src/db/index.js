@@ -3,9 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const DB_PATH = path.join(__dirname, '../../data/nudj.db');
+const DB_DIR = path.join(__dirname, '../../data');
+const DB_PATH = path.join(DB_DIR, 'nudj.db');
 let db = null;
 let SQL = null;
+
+// Ensure data directory exists
+if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+}
 
 // SQL schema definitions
 const SCHEMA = `
