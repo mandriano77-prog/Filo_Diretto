@@ -337,7 +337,7 @@ router.get('/passes/:id/download', async (req, res) => {
       });
 
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
+      res.setHeader('Content-Disposition', `inline; filename="${passInstance.serial_number}.pkpass"`);
       return res.sendFile(pkpassPath);
     }
 
@@ -364,7 +364,7 @@ router.get('/passes/:id/download', async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
+    res.setHeader('Content-Disposition', `inline; filename="${passInstance.serial_number}.pkpass"`);
     res.send(pkpassBuffer);
   } catch (error) {
     console.error('Error downloading pass:', error);
@@ -591,7 +591,7 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
     // Check if cached file exists
     if (fs.existsSync(pkpassPath)) {
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
+      res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
       return res.sendFile(pkpassPath);
     }
 
@@ -600,7 +600,7 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
     fs.writeFileSync(pkpassPath, pkpassBuffer);
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
+    res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
     res.send(pkpassBuffer);
   } catch (error) {
     console.error('Error getting pass:', error);
