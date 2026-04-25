@@ -4,6 +4,8 @@ const path = require('path');
 const sharp = require('sharp');
 const archiver = require('archiver');
 const forge = require('node-forge');
+const { execSync } = require('child_process');
+const os = require('os');
 const { Transform } = require('stream');
 
 /**
@@ -304,70 +306,72 @@ function generateManifest(files) {
 }
 
 /**
- * Sign the manifest using PKCS7 (mock mode if no certificates)
+ * Strip Bag Attributes and other non-PEM content from certificate/key files.
+ * Keychain exports include metadata that can confuse some parsers.
+ */
+function cleanPem(pemString) {
+  const matches = pemString.match(/-----BEGIN [^-]+-----[\s\S]+?-----END [^-]+-----/g);
+  return matches ? matches.join('\n') : pemString;
+}
+
+/**
+ * Sign the manifest using openssl smime (Apple-compatible PKCS7 detached signature).
+ * Falls back to node-forge if openssl is not available.
  */
 function signManifest(manifestJson, certPath, keyPath, wwdrPath) {
   // Check if certificate files exist
   const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
   if (!hasCerts) {
-    console.warn('⚠️ MOCK MODE: pass not signed (install Apple certificate to enable)');
-    // Return a fake signature
+    console.warn('â ï¸ MOCK MODE: pass not signed (install Apple certificate to enable)');
     return Buffer.from('UNSIGNED_MOCK_SIGNATURE');
   }
 
   try {
-    // Read certificate and key
-    const certPem = fs.readFileSync(certPath, 'utf8');
-    const keyPem = fs.readFileSync(keyPath, 'utf8');
-    let wwdrPem = null;
+    // Create temp directory for clean certs and manifest
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pkpass-'));
+    const manifestPath = path.join(tmpDir, 'manifest.json');
+    const signaturePath = path.join(tmpDir, 'signature');
+    const cleanCertPath = path.join(tmpDir, 'cert.pem');
+    const cleanKeyPath = path.join(tmpDir, 'key.pem');
+    const cleanWwdrPath = path.join(tmpDir, 'wwdr.pem');
+
+    // Write manifest
+    fs.writeFileSync(manifestPath, manifestJson, 'utf8');
+
+    // Clean and write certificates (strip Bag Attributes from Keychain exports)
+    fs.writeFileSync(cleanCertPath, cleanPem(fs.readFileSync(certPath, 'utf8')));
+    fs.writeFileSync(cleanKeyPath, cleanPem(fs.readFileSync(keyPath, 'utf8')));
+
+    // Build openssl command
+    let opensslCmd = `openssl smime -sign -binary -in "${manifestPath}" -out "${signaturePath}" -outform DER -signer "${cleanCertPath}" -inkey "${cleanKeyPath}"`;
 
     if (wwdrPath && fs.existsSync(wwdrPath)) {
-      wwdrPem = fs.readFileSync(wwdrPath, 'utf8');
+      fs.writeFileSync(cleanWwdrPath, cleanPem(fs.readFileSync(wwdrPath, 'utf8')));
+      opensslCmd += ` -certfile "${cleanWwdrPath}"`;
     }
 
-    // Convert PEM to forge objects
-    const cert = forge.pki.certificateFromPem(certPem);
-    const privateKey = forge.pki.privateKeyFromPem(keyPem);
+    // Execute openssl
+    execSync(opensslCmd, { stdio: 'pipe' });
 
-    // Create PKCS7 signed data
-    const p7 = forge.pkcs7.createSignedData();
-    p7.content = forge.util.createBuffer(manifestJson, 'utf8');
+    // Read the signature
+    const signature = fs.readFileSync(signaturePath);
+    console.log(`â Pass signed with openssl (${signature.length} bytes)`);
 
-    // Add signers
-    p7.addCertificate(cert);
-    if (wwdrPem) {
-      const wwdrCert = forge.pki.certificateFromPem(wwdrPem);
-      p7.addCertificate(wwdrCert);
-    }
+    // Cleanup temp files
+    try {
+      fs.unlinkSync(manifestPath);
+      fs.unlinkSync(signaturePath);
+      fs.unlinkSync(cleanCertPath);
+      fs.unlinkSync(cleanKeyPath);
+      if (fs.existsSync(cleanWwdrPath)) fs.unlinkSync(cleanWwdrPath);
+      fs.rmdirSync(tmpDir);
+    } catch (e) { /* ignore cleanup errors */ }
 
-    // Sign
-    p7.addSigner({
-      key: privateKey,
-      certificate: cert,
-      digestAlgorithm: forge.pki.oids.sha256,
-      authenticatedAttributes: [
-        {
-          type: forge.pki.oids.contentType,
-          value: forge.pki.oids.data
-        },
-        {
-          type: forge.pki.oids.messageDigest
-        },
-        {
-          type: forge.pki.oids.signingTime,
-          value: new Date()
-        }
-      ]
-    });
-
-        // Actually sign the data (detached for Apple Wallet)
-        p7.sign({ detached: true });
-    // Get DER encoded signature
-    const signature = forge.asn1.toDer(p7.toAsn1()).bytes();
-    return Buffer.from(signature, 'binary');
+    return signature;
   } catch (error) {
-    console.warn('⚠️ MOCK MODE: pass not signed (certificate error):', error.message);
+    console.error('openssl signing failed:', error.message);
+    console.warn('â ï¸ MOCK MODE: pass not signed (openssl error)');
     return Buffer.from('UNSIGNED_MOCK_SIGNATURE');
   }
 }
