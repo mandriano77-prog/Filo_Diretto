@@ -422,10 +422,10 @@ async function createPkpass(template, instance, brand, options = {}) {
   const signature = signManifest(manifestJson, certPath, keyPath, wwdrPath);
   files['signature'] = signature;
 
-  // Create ZIP archive
+  // Create ZIP archive (STORED, no compression - required by Apple Wallet)
   return new Promise((resolve, reject) => {
     const buffers = [];
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = archiver('zip', { store: true });
 
     archive.on('data', (chunk) => {
       buffers.push(chunk);
