@@ -732,4 +732,25 @@ router.get('/landing/:pass_id', async (req, res) => {
   }
 });
 
+
+// DEBUG endpoint
+router.get('/debug/certs', async (req, res) => {
+  const certPath = path.join(__dirname, '../../certs/signerCert.pem');
+  const keyPath = path.join(__dirname, '../../certs/signerKey.pem');
+  const wwdrPath = path.join(__dirname, '../../certs/wwdr.pem');
+  const { execSync } = require('child_process');
+  const result = {
+    dirname: __dirname,
+    cwd: process.cwd(),
+    certExists: fs.existsSync(certPath),
+    keyExists: fs.existsSync(keyPath),
+    wwdrExists: fs.existsSync(wwdrPath),
+    opensslVersion: 'unknown',
+    certsDir: []
+  };
+  try { result.opensslVersion = execSync('openssl version', {encoding:'utf8'}).trim(); } catch(e) { result.opensslVersion = 'ERROR: '+e.message.substring(0,200); }
+  try { const d = path.join(__dirname, '../../certs'); if(fs.existsSync(d)) result.certsDir = fs.readdirSync(d); } catch(e) {}
+  res.json(result);
+});
+
 module.exports = router;
