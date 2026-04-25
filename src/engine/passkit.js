@@ -361,6 +361,8 @@ function signManifest(manifestJson, certPath, keyPath, wwdrPath) {
       ]
     });
 
+        // Actually sign the data (detached for Apple Wallet)
+        p7.sign({ detached: true });
     // Get DER encoded signature
     const signature = forge.asn1.toDer(p7.toAsn1()).bytes();
     return Buffer.from(signature, 'binary');
