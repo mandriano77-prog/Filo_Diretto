@@ -694,6 +694,29 @@
                 <div id="templates" class="section">
                     <div class="section-title">Template Disponibili</div>
                     <div id="templatesGrid" class="loading">Caricamento...</div>
+
+                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                        <div class="section-title">Crea Nuovo Template</div>
+                        <div class="form-group">
+                            <label class="form-label">Nome Template</label>
+                            <input type="text" id="templateName" placeholder="es. Tessera Fedelt&#224;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo Pass</label>
+                            <select id="templatePassType">
+                                <option value="generic">Generic</option>
+                                <option value="storeCard">Store Card</option>
+                                <option value="eventTicket">Event Ticket</option>
+                                <option value="coupon">Coupon</option>
+                                <option value="boardingPass">Boarding Pass</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Campi (uno per riga: chiave=etichetta=valore)</label>
+                            <textarea id="templateFields" rows="4" placeholder="nome=Nome=&#10;livello=Livello=Socio&#10;punti=Punti=0&#10;scadenza=Scadenza=31/12/2026" style="width:100%;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;padding:12px;color:var(--text-primary);font-family:monospace;resize:vertical;"></textarea>
+                        </div>
+                        <button class="button" onclick="createTemplate()">Crea Template</button>
+                    </div>
                 </div>
 
                 <!-- Setup Brand Section -->
@@ -711,7 +734,25 @@
                         <label class="form-label">Colore Primario (hex)</label>
                         <input type="text" id="brandColor" value="#00D4AA" placeholder="#00D4AA">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Colore Sfondo Pass (hex)</label>
+                        <input type="text" id="brandBgColor" value="#1B2A4A" placeholder="#1B2A4A">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Colore Testo Pass (hex)</label>
+                        <input type="text" id="brandFgColor" value="#FFFFFF" placeholder="#FFFFFF">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Logo Text (testo mostrato nel pass)</label>
+                        <input type="text" id="brandLogoText" placeholder="es. Coffee Shop">
+                    </div>
                     <button class="button" onclick="createBrand()">Crea Brand</button>
+
+                    <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                        <div class="section-title" style="color: #FF6B6B;">Zona Pericolosa</div>
+                        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px;">Elimina la brand corrente e tutti i dati associati (template, pass, eventi).</p>
+                        <button class="button" style="background: #FF6B6B;" onclick="deleteBrandAction()">Elimina Brand Corrente</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -790,27 +831,31 @@
             const name = document.getElementById('brandName').value;
             const slug = document.getElementById('brandSlug').value;
             const color = document.getElementById('brandColor').value;
+            const bgColor = document.getElementById('brandBgColor').value;
+            const fgColor = document.getElementById('brandFgColor').value;
+            const logoText = document.getElementById('brandLogoText').value;
 
             if (!name || !slug) {
-                alert('Compila tutti i campi');
+                alert('Compila Nome e Slug');
                 return;
             }
 
             try {
+                const config = { primaryColor: color };
+                if (bgColor) config.backgroundColor = bgColor;
+                if (fgColor) config.foregroundColor = fgColor;
+                if (logoText) config.logoText = logoText;
+
                 const res = await fetch(`${API_BASE}/brands`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        slug,
-                        config: { primaryColor: color }
-                    })
+                    body: JSON.stringify({ name, slug, config })
                 });
 
                 if (!res.ok) throw new Error('Failed to create brand');
 
                 const brand = await res.json();
-                alert('Brand creata con successo!');
+                showToast('Brand creata con successo!');
 
                 // Reload brands
                 document.getElementById('brandSelector').innerHTML = '<option value="">Seleziona Brand</option>';
@@ -819,10 +864,106 @@
                 // Clear form
                 document.getElementById('brandName').value = '';
                 document.getElementById('brandSlug').value = '';
-                document.getElementById('brandColor').value = '#00D4AA';
             } catch (error) {
                 console.error('Error creating brand:', error);
                 alert('Errore nella creazione della brand');
+            }
+        }
+
+        async function deleteBrandAction() {
+            if (!currentBrandId) {
+                alert('Seleziona prima una brand');
+                return;
+            }
+            if (!confirm('Sei sicuro? Questa azione elimina la brand e TUTTI i dati associati (template, pass, eventi). Non si può annullare.')) {
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/brands/${currentBrandId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                showToast('Brand eliminata');
+                currentBrandId = null;
+                document.getElementById('brandSelector').innerHTML = '<option value="">Seleziona Brand</option>';
+                await loadBrands();
+            } catch (error) {
+                console.error('Error deleting brand:', error);
+                alert('Errore nell\'eliminazione della brand');
+            }
+        }
+
+        async function createTemplate() {
+            if (!currentBrandId) {
+                alert('Seleziona prima una brand');
+                return;
+            }
+            const name = document.getElementById('templateName').value;
+            const passType = document.getElementById('templatePassType').value;
+            const fieldsText = document.getElementById('templateFields').value;
+
+            if (!name) {
+                alert('Inserisci il nome del template');
+                return;
+            }
+
+            // Parse fields from textarea
+            const fields = fieldsText.split('\n').filter(l => l.trim()).map(line => {
+                const parts = line.split('=');
+                return {
+                    key: (parts[0] || '').trim(),
+                    label: (parts[1] || parts[0] || '').trim(),
+                    value: (parts[2] || '').trim()
+                };
+            }).filter(f => f.key);
+
+            try {
+                const res = await fetch(`${API_BASE}/templates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        brand_id: currentBrandId,
+                        name,
+                        pass_type: passType,
+                        fields,
+                        style: {},
+                        config: {}
+                    })
+                });
+
+                if (!res.ok) throw new Error('Failed to create template');
+                showToast('Template creato con successo!');
+                document.getElementById('templateName').value = '';
+                document.getElementById('templateFields').value = '';
+                await loadTemplates();
+            } catch (error) {
+                console.error('Error creating template:', error);
+                alert('Errore nella creazione del template');
+            }
+        }
+
+        async function deleteTemplateAction(templateId, templateName) {
+            if (!confirm(`Eliminare il template "${templateName}" e tutti i pass associati?`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/templates/${templateId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                showToast('Template eliminato');
+                await loadTemplates();
+            } catch (error) {
+                console.error('Error deleting template:', error);
+                alert('Errore nell\'eliminazione del template');
+            }
+        }
+
+        async function deletePassAction(passId) {
+            if (!confirm('Eliminare questo pass?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/passes/${passId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                showToast('Pass eliminato');
+                await loadRecentPasses();
+                await loadMembers();
+            } catch (error) {
+                console.error('Error deleting pass:', error);
+                alert('Errore nell\'eliminazione del pass');
             }
         }
 
@@ -882,7 +1023,8 @@
                 const gridHtml = templates.map(t => `
                     <div class="template-card">
                         <div class="template-name">${t.name}</div>
-                        <div class="template-type">${t.pass_type}</div>
+                        <div class="template-type">${t.pass_type} &middot; ${(t.fields || []).length} campi</div>
+                        <button class="action-btn" style="margin-top:8px;color:#FF6B6B;" onclick="deleteTemplateAction('${t.id}', '${t.name.replace(/'/g, "\\'")}')">Elimina</button>
                     </div>
                 `).join('');
 
@@ -1020,6 +1162,7 @@
                                             <button class="action-btn" onclick="showQRModal('${p.landing_url}')">QR</button>
                                             <button class="action-btn" onclick="copyLink('${p.landing_url}')">â§</button>
                                         </div>
+                                            <button class="action-btn" style="color:#FF6B6B;" onclick="deletePassAction('${p.id}')">&#10005;</button>
                                     </td>
                                 </tr>
                             `).join('')}

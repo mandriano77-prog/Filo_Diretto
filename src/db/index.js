@@ -550,6 +550,79 @@ async function getSerialsForDevice(deviceLibraryId) {
   return result.rows.map(row => row.serial_number);
 }
 
+/**
+ * Update a brand
+ */
+async function updateBrand(id, data) {
+  const current = await getBrand(id);
+  if (!current) return null;
+
+  const newName = data.name || current.name;
+  const newSlug = data.slug || current.slug;
+  let newConfig = current.config || {};
+  if (data.config) {
+    newConfig = { ...newConfig, ...data.config };
+  }
+
+  try {
+    await pool.query(
+      'UPDATE brands SET name = $1, slug = $2, config = $3, updated_at = NOW() WHERE id = $4',
+      [newName, newSlug, JSON.stringify(newConfig), id]
+    );
+    return getBrand(id);
+  } catch (error) {
+    throw new Error(`Failed to update brand: ${error.message}`);
+  }
+}
+
+/**
+ * Delete a brand (and cascade)
+ */
+async function deleteBrand(id) {
+  try {
+    // Delete in order due to foreign keys
+    await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE brand_id = $1)', [id]);
+    await pool.query('DELETE FROM events WHERE brand_id = $1', [id]);
+    await pool.query('DELETE FROM pass_instances WHERE brand_id = $1', [id]);
+    await pool.query('DELETE FROM pass_templates WHERE brand_id = $1', [id]);
+    await pool.query('DELETE FROM brands WHERE id = $1', [id]);
+    return { success: true };
+  } catch (error) {
+    throw new Error(`Failed to delete brand: ${error.message}`);
+  }
+}
+
+/**
+ * Delete a template
+ */
+async function deleteTemplate(id) {
+  try {
+    await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE template_id = $1)', [id]);
+    await pool.query('DELETE FROM events WHERE pass_id IN (SELECT id FROM pass_instances WHERE template_id = $1)', [id]);
+    await pool.query('DELETE FROM pass_instances WHERE template_id = $1', [id]);
+    await pool.query('DELETE FROM pass_templates WHERE id = $1', [id]);
+    return { success: true };
+  } catch (error) {
+    throw new Error(`Failed to delete template: ${error.message}`);
+  }
+}
+
+/**
+ * Delete a pass instance
+ */
+async function deletePass(id) {
+  try {
+    const pass = await getPassInstance(id);
+    if (!pass) return null;
+    await pool.query('DELETE FROM device_registrations WHERE serial_number = $1', [pass.serial_number]);
+    await pool.query('DELETE FROM events WHERE pass_id = $1', [id]);
+    await pool.query('DELETE FROM pass_instances WHERE id = $1', [id]);
+    return { success: true };
+  } catch (error) {
+    throw new Error(`Failed to delete pass: ${error.message}`);
+  }
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -565,7 +638,10 @@ module.exports = {
   getDevicesForPass,
   getBrand,
   getTemplate,
-  // New list functions
+  updateBrand,
+  deleteBrand,
+  deleteTemplate,
+  deletePass,
   listBrands,
   listTemplates,
   listPasses,

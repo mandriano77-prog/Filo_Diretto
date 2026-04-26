@@ -15,6 +15,10 @@ const {
   getDevicesForPass,
   getBrand,
   getTemplate,
+  updateBrand,
+  deleteBrand,
+  deleteTemplate,
+  deletePass,
   listBrands,
   listTemplates,
   listPasses,
@@ -102,35 +106,39 @@ router.get('/brands/:id', async (req, res) => {
   }
 });
 
-// Update brand config
+/**
+ * PUT /api/v1/brands/:id - Update brand (name, config)
+ */
 router.put('/brands/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, config } = req.body;
-    
-    // Get current brand
-    const current = await db.query('SELECT * FROM brands WHERE id = $1', [id]);
-    if (current.rows.length === 0) {
+    const { name, slug, config } = req.body;
+    const updated = await updateBrand(req.params.id, { name, slug, config });
+
+    if (!updated) {
       return res.status(404).json({ error: 'Brand not found' });
     }
-    
-    // Merge config if provided
-    let newConfig = current.rows[0].config || {};
-    if (config) {
-      newConfig = { ...newConfig, ...config };
-    }
-    
-    const updateName = name || current.rows[0].name;
-    
-    await db.query(
-      'UPDATE brands SET name = $1, config = $2, updated_at = NOW() WHERE id = $3',
-      [updateName, JSON.stringify(newConfig), id]
-    );
-    
-    const updated = await db.query('SELECT * FROM brands WHERE id = $1', [id]);
-    res.json(updated.rows[0]);
+
+    res.json(updated);
   } catch (err) {
     console.error('Error updating brand:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/brands/:id - Delete a brand and all related data
+ */
+router.delete('/brands/:id', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    await deleteBrand(req.params.id);
+    res.json({ success: true, message: `Brand "${brand.name}" deleted` });
+  } catch (err) {
+    console.error('Error deleting brand:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -207,6 +215,24 @@ router.get('/templates/:id', async (req, res) => {
   } catch (error) {
     console.error('Error getting template:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/templates/:id - Delete a template and related passes
+ */
+router.delete('/templates/:id', async (req, res) => {
+  try {
+    const template = await getTemplate(req.params.id);
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    await deleteTemplate(req.params.id);
+    res.json({ success: true, message: `Template "${template.name}" deleted` });
+  } catch (err) {
+    console.error('Error deleting template:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -409,6 +435,31 @@ router.put('/passes/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating pass:', error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/passes/:id - Delete a pass instance
+ */
+router.delete('/passes/:id', async (req, res) => {
+  try {
+    const pass = await getPassInstance(req.params.id);
+    if (!pass) {
+      return res.status(404).json({ error: 'Pass not found' });
+    }
+
+    // Remove cached pkpass file
+    const cacheDir = ensureCacheDir();
+    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
+    if (fs.existsSync(pkpassPath)) {
+      fs.unlinkSync(pkpassPath);
+    }
+
+    await deletePass(req.params.id);
+    res.json({ success: true, message: 'Pass deleted' });
+  } catch (err) {
+    console.error('Error deleting pass:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
