@@ -15,7 +15,12 @@ const {
   getDevicesForPass,
   getBrand,
   getTemplate,
-  getDb
+  listBrands,
+  listTemplates,
+  listPasses,
+  listEvents,
+  unregisterDevice,
+  getSerialsForDevice
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 
@@ -47,13 +52,13 @@ router.post('/brands', async (req, res) => {
       });
     }
 
-    const brand = createBrand({
+    const brand = await createBrand({
       name,
       slug,
       config: config || {}
     });
 
-    logEvent({
+    await logEvent({
       brand_id: brand.id,
       event_type: 'brand_created',
       metadata: { name }
@@ -71,22 +76,7 @@ router.post('/brands', async (req, res) => {
  */
 router.get('/brands', async (req, res) => {
   try {
-    const db = await getDb();
-    const results = db.exec('SELECT * FROM brands');
-
-    if (!results || !results[0]) {
-      return res.json([]);
-    }
-
-    const brands = results[0].values.map(row => ({
-      id: row[0],
-      name: row[1],
-      slug: row[2],
-      config: JSON.parse(row[3]),
-      created_at: row[4],
-      updated_at: row[5]
-    }));
-
+    const brands = await listBrands();
     res.json(brands);
   } catch (error) {
     console.error('Error listing brands:', error);
@@ -99,7 +89,7 @@ router.get('/brands', async (req, res) => {
  */
 router.get('/brands/:id', async (req, res) => {
   try {
-    const brand = getBrand(req.params.id);
+    const brand = await getBrand(req.params.id);
 
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
@@ -129,12 +119,12 @@ router.post('/templates', async (req, res) => {
       });
     }
 
-    const brand = getBrand(brand_id);
+    const brand = await getBrand(brand_id);
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    const template = createTemplate({
+    const template = await createTemplate({
       brand_id,
       name,
       pass_type: pass_type || 'generic',
@@ -143,7 +133,7 @@ router.post('/templates', async (req, res) => {
       config: config || {}
     });
 
-    logEvent({
+    await logEvent({
       brand_id,
       event_type: 'template_created',
       metadata: { template_id: template.id, name }
@@ -161,35 +151,7 @@ router.post('/templates', async (req, res) => {
  */
 router.get('/templates', async (req, res) => {
   try {
-    const db = await getDb();
-    const brandId = req.query.brand_id;
-
-    let query = 'SELECT * FROM pass_templates';
-    const params = [];
-
-    if (brandId) {
-      query += ' WHERE brand_id = ?';
-      params.push(brandId);
-    }
-
-    const results = db.exec(query, params);
-
-    if (!results || !results[0]) {
-      return res.json([]);
-    }
-
-    const templates = results[0].values.map(row => ({
-      id: row[0],
-      brand_id: row[1],
-      name: row[2],
-      pass_type: row[3],
-      style: JSON.parse(row[4]),
-      fields: JSON.parse(row[5]),
-      config: JSON.parse(row[6]),
-      created_at: row[7],
-      updated_at: row[8]
-    }));
-
+    const templates = await listTemplates(req.query.brand_id);
     res.json(templates);
   } catch (error) {
     console.error('Error listing templates:', error);
@@ -202,7 +164,7 @@ router.get('/templates', async (req, res) => {
  */
 router.get('/templates/:id', async (req, res) => {
   try {
-    const template = getTemplate(req.params.id);
+    const template = await getTemplate(req.params.id);
 
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
@@ -232,18 +194,18 @@ router.post('/passes', async (req, res) => {
       });
     }
 
-    const template = getTemplate(template_id);
+    const template = await getTemplate(template_id);
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    const brand = getBrand(template.brand_id);
+    const brand = await getBrand(template.brand_id);
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
     // Create pass instance
-    const passInstance = createPassInstance({
+    const passInstance = await createPassInstance({
       template_id,
       brand_id: brand.id,
       customer_data: customer_data || {},
@@ -261,7 +223,7 @@ router.post('/passes', async (req, res) => {
     const pkpassPath = path.join(cacheDir, `${passInstance.id}.pkpass`);
     fs.writeFileSync(pkpassPath, pkpassBuffer);
 
-    logEvent({
+    await logEvent({
       pass_id: passInstance.id,
       brand_id: brand.id,
       event_type: 'pass_created',
@@ -292,7 +254,7 @@ router.post('/passes', async (req, res) => {
  */
 router.get('/passes/:id', async (req, res) => {
   try {
-    const passInstance = getPassInstance(req.params.id);
+    const passInstance = await getPassInstance(req.params.id);
 
     if (!passInstance) {
       return res.status(404).json({ error: 'Pass not found' });
@@ -318,7 +280,7 @@ router.get('/passes/:id', async (req, res) => {
  */
 router.get('/passes/:id/download', async (req, res) => {
   try {
-    const passInstance = getPassInstance(req.params.id);
+    const passInstance = await getPassInstance(req.params.id);
 
     if (!passInstance) {
       return res.status(404).json({ error: 'Pass not found' });
@@ -329,7 +291,7 @@ router.get('/passes/:id/download', async (req, res) => {
 
     // Check if cached file exists
     if (fs.existsSync(pkpassPath)) {
-      logEvent({
+      await logEvent({
         pass_id: req.params.id,
         brand_id: passInstance.brand_id,
         event_type: 'pass_downloaded',
@@ -337,13 +299,13 @@ router.get('/passes/:id/download', async (req, res) => {
       });
 
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `inline; filename="${passInstance.serial_number}.pkpass"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
       return res.sendFile(pkpassPath);
     }
 
     // Otherwise generate it
-    const template = getTemplate(passInstance.template_id);
-    const brand = getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    const brand = await getBrand(passInstance.brand_id);
 
     if (!template || !brand) {
       return res.status(404).json({ error: 'Template or brand not found' });
@@ -356,7 +318,7 @@ router.get('/passes/:id/download', async (req, res) => {
 
     fs.writeFileSync(pkpassPath, pkpassBuffer);
 
-    logEvent({
+    await logEvent({
       pass_id: req.params.id,
       brand_id: passInstance.brand_id,
       event_type: 'pass_downloaded',
@@ -364,7 +326,7 @@ router.get('/passes/:id/download', async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `inline; filename="${passInstance.serial_number}.pkpass"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
     res.send(pkpassBuffer);
   } catch (error) {
     console.error('Error downloading pass:', error);
@@ -379,12 +341,12 @@ router.put('/passes/:id', async (req, res) => {
   try {
     const { field_values, customer_data, status } = req.body;
 
-    const passInstance = getPassInstance(req.params.id);
+    const passInstance = await getPassInstance(req.params.id);
     if (!passInstance) {
       return res.status(404).json({ error: 'Pass not found' });
     }
 
-    const updated = updatePassInstance(req.params.id, {
+    const updated = await updatePassInstance(req.params.id, {
       field_values: field_values || passInstance.field_values,
       customer_data: customer_data || passInstance.customer_data,
       status: status || passInstance.status
@@ -397,7 +359,7 @@ router.put('/passes/:id', async (req, res) => {
       fs.unlinkSync(pkpassPath);
     }
 
-    logEvent({
+    await logEvent({
       pass_id: req.params.id,
       brand_id: passInstance.brand_id,
       event_type: 'pass_updated',
@@ -422,51 +384,16 @@ router.put('/passes/:id', async (req, res) => {
  */
 router.get('/passes', async (req, res) => {
   try {
-    const db = await getDb();
-    const brandId = req.query.brand_id;
-    const status = req.query.status;
-
-    let query = 'SELECT * FROM pass_instances ORDER BY created_at DESC';
-    const params = [];
-    const conditions = [];
-
-    if (brandId) {
-      conditions.push('brand_id = ?');
-      params.push(brandId);
-    }
-    if (status) {
-      conditions.push('status = ?');
-      params.push(status);
-    }
-
-    if (conditions.length > 0) {
-      query = query.replace('SELECT * FROM pass_instances', `SELECT * FROM pass_instances WHERE ${conditions.join(' AND ')}`);
-    }
-
-    const results = db.exec(query, params);
-
-    if (!results || !results[0]) {
-      return res.json([]);
-    }
-
+    const passes = await listPasses(req.query.brand_id, req.query.status);
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const passes = results[0].values.map(row => ({
-      id: row[0],
-      serial_number: row[1],
-      template_id: row[2],
-      brand_id: row[3],
-      customer_data: JSON.parse(row[4]),
-      field_values: JSON.parse(row[5]),
-      status: row[6],
-      device_token: row[7],
-      auth_token: row[8],
-      last_updated: row[9],
-      created_at: row[10],
-      download_url: `${baseUrl}/api/v1/passes/${row[0]}/download`,
-      landing_url: `${baseUrl}/landing/?id=${row[0]}`
+
+    const passesWithUrls = passes.map(pass => ({
+      ...pass,
+      download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`,
+      landing_url: `${baseUrl}/landing/?id=${pass.id}`
     }));
 
-    res.json(passes);
+    res.json(passesWithUrls);
   } catch (error) {
     console.error('Error listing passes:', error);
     res.status(500).json({ error: error.message });
@@ -490,15 +417,16 @@ router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber',
       return res.status(400).json({ error: 'Push token is required' });
     }
 
-    registerDevice({
+    await registerDevice({
       device_library_id: deviceLibraryId,
       push_token: pushToken,
       serial_number: serialNumber
     });
 
-    logEvent({
+    await logEvent({
       event_type: 'device_registered',
       device_id: deviceLibraryId,
+      brand_id: 'system',
       metadata: { serial_number: serialNumber }
     });
 
@@ -515,17 +443,14 @@ router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber',
  */
 router.delete('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber', async (req, res) => {
   try {
-    const db = await getDb();
     const { deviceLibraryId, serialNumber } = req.params;
 
-    db.run(
-      'DELETE FROM device_registrations WHERE device_library_id = ? AND serial_number = ?',
-      [deviceLibraryId, serialNumber]
-    );
+    await unregisterDevice(deviceLibraryId, serialNumber);
 
-    logEvent({
+    await logEvent({
       event_type: 'device_unregistered',
       device_id: deviceLibraryId,
+      brand_id: 'system',
       metadata: { serial_number: serialNumber }
     });
 
@@ -542,20 +467,7 @@ router.delete('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber
  */
 router.get('/devices/:deviceLibraryId/registrations/:passTypeId', async (req, res) => {
   try {
-    const db = await getDb();
-    const { deviceLibraryId } = req.params;
-
-    const results = db.exec(
-      'SELECT serial_number FROM device_registrations WHERE device_library_id = ?',
-      [deviceLibraryId]
-    );
-
-    if (!results || !results[0]) {
-      return res.json({ serialNumbers: [] });
-    }
-
-    const serialNumbers = results[0].values.map(row => row[0]);
-
+    const serialNumbers = await getSerialsForDevice(req.params.deviceLibraryId);
     res.json({ serialNumbers });
   } catch (error) {
     console.error('Error getting device registrations:', error);
@@ -571,14 +483,14 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
   try {
     const { serialNumber } = req.params;
 
-    const passInstance = getPassBySerial(serialNumber);
+    const passInstance = await getPassBySerial(serialNumber);
 
     if (!passInstance) {
       return res.status(404).json({ error: 'Pass not found' });
     }
 
-    const template = getTemplate(passInstance.template_id);
-    const brand = getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    const brand = await getBrand(passInstance.brand_id);
 
     if (!template || !brand) {
       return res.status(404).json({ error: 'Template or brand not found' });
@@ -591,7 +503,7 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
     // Check if cached file exists
     if (fs.existsSync(pkpassPath)) {
       res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
       return res.sendFile(pkpassPath);
     }
 
@@ -600,7 +512,7 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
     fs.writeFileSync(pkpassPath, pkpassBuffer);
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
     res.send(pkpassBuffer);
   } catch (error) {
     console.error('Error getting pass:', error);
@@ -619,12 +531,12 @@ router.get('/analytics/:brand_id', async (req, res) => {
   try {
     const { brand_id } = req.params;
 
-    const brand = getBrand(brand_id);
+    const brand = await getBrand(brand_id);
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    const analytics = getAnalytics(brand_id);
+    const analytics = await getAnalytics(brand_id);
 
     res.json({
       brand_id,
@@ -641,29 +553,7 @@ router.get('/analytics/:brand_id', async (req, res) => {
  */
 router.get('/events/:brand_id', async (req, res) => {
   try {
-    const { brand_id } = req.params;
-    const limit = req.query.limit || 50;
-
-    const db = await getDb();
-    const results = db.exec(
-      'SELECT * FROM events WHERE brand_id = ? ORDER BY created_at DESC LIMIT ?',
-      [brand_id, parseInt(limit)]
-    );
-
-    if (!results || !results[0]) {
-      return res.json([]);
-    }
-
-    const events = results[0].values.map(row => ({
-      id: row[0],
-      pass_id: row[1],
-      brand_id: row[2],
-      event_type: row[3],
-      device_id: row[4],
-      metadata: JSON.parse(row[5]),
-      created_at: row[6]
-    }));
-
+    const events = await listEvents(req.params.brand_id, req.query.limit || 50);
     res.json(events);
   } catch (error) {
     console.error('Error getting events:', error);
@@ -680,14 +570,14 @@ router.get('/events/:brand_id', async (req, res) => {
  */
 router.get('/landing/:pass_id', async (req, res) => {
   try {
-    const passInstance = getPassInstance(req.params.pass_id);
+    const passInstance = await getPassInstance(req.params.pass_id);
 
     if (!passInstance) {
       return res.status(404).json({ error: 'Pass not found' });
     }
 
-    const template = getTemplate(passInstance.template_id);
-    const brand = getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    const brand = await getBrand(passInstance.brand_id);
 
     if (!template || !brand) {
       return res.status(404).json({ error: 'Template or brand not found' });
@@ -695,7 +585,7 @@ router.get('/landing/:pass_id', async (req, res) => {
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-    logEvent({
+    await logEvent({
       pass_id: req.params.pass_id,
       brand_id: passInstance.brand_id,
       event_type: 'landing_page_viewed',
@@ -730,27 +620,6 @@ router.get('/landing/:pass_id', async (req, res) => {
     console.error('Error getting landing page data:', error);
     res.status(500).json({ error: error.message });
   }
-});
-
-
-// DEBUG endpoint
-router.get('/debug/certs', async (req, res) => {
-  const certPath = path.join(__dirname, '../../certs/signerCert.pem');
-  const keyPath = path.join(__dirname, '../../certs/signerKey.pem');
-  const wwdrPath = path.join(__dirname, '../../certs/wwdr.pem');
-  const { execSync } = require('child_process');
-  const result = {
-    dirname: __dirname,
-    cwd: process.cwd(),
-    certExists: fs.existsSync(certPath),
-    keyExists: fs.existsSync(keyPath),
-    wwdrExists: fs.existsSync(wwdrPath),
-    opensslVersion: 'unknown',
-    certsDir: []
-  };
-  try { result.opensslVersion = execSync('openssl version', {encoding:'utf8'}).trim(); } catch(e) { result.opensslVersion = 'ERROR: '+e.message.substring(0,200); }
-  try { const d = path.join(__dirname, '../../certs'); if(fs.existsSync(d)) result.certsDir = fs.readdirSync(d); } catch(e) {}
-  res.json(result);
 });
 
 module.exports = router;
