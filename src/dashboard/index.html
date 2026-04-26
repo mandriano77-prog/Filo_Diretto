@@ -758,6 +758,22 @@
         </div>
     </div>
 
+    <!-- Back-of-Pass Edit Modal -->
+    <div id="backEditModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" onclick="closeBackEditModal()">&times;</button>
+            <div class="modal-header">✏️ Retro Pass — <span id="backEditMemberName"></span></div>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                Modifica i contenuti che appaiono sul retro della tessera Apple Wallet.
+            </p>
+            <div id="backFieldsContainer"></div>
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button class="button" onclick="saveBackFields()">Salva Retro</button>
+                <button class="button secondary" onclick="closeBackEditModal()">Annulla</button>
+            </div>
+        </div>
+    </div>
+
     <!-- QR Modal -->
     <div id="qrModal" class="modal">
         <div class="modal-content">
@@ -1249,6 +1265,7 @@
                                 </div>
                                 <div class="member-actions">
                                     <button class="points-btn" onclick="openPointsModal('${p.id}', '${name}', ${punti})">+ Punti</button>
+                                    <button class="member-action-btn" onclick="openBackEditModal('${p.id}', '${name.replace(/'/g, "\\'")}')">Retro</button>
                                     <button class="member-action-btn" onclick="showQRModal('${p.landing_url}')">QR</button>
                                     <button class="member-action-btn" onclick="copyLink('${p.landing_url}')">Link</button>
                                 </div>
@@ -1338,6 +1355,94 @@
             } catch (error) {
                 console.error('Error updating points:', error);
                 alert('Errore nell\'aggiornamento dei punti');
+            }
+        }
+
+        // ===== Back-of-Pass Editing =====
+        let backEditPassId = null;
+        let backEditCurrentFields = {};
+
+        async function openBackEditModal(passId, memberName) {
+            backEditPassId = passId;
+            document.getElementById('backEditMemberName').textContent = memberName;
+
+            try {
+                // Fetch pass data
+                const passRes = await fetch(`${API_BASE}/passes/${passId}`);
+                const pass = await passRes.json();
+
+                // Fetch template to get back field definitions
+                const tplRes = await fetch(`${API_BASE}/templates/${pass.template_id}`);
+                const template = await tplRes.json();
+
+                backEditCurrentFields = pass.field_values || {};
+
+                // Find back fields from template
+                const backFields = (template.fields || []).filter(f => f.type === 'back');
+
+                const container = document.getElementById('backFieldsContainer');
+
+                if (backFields.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: 8px; color: var(--text-secondary); text-align: center;">
+                            Nessun campo retro definito nel template.<br>
+                            <small>Aggiungi campi con tipo "back" nel template per abilitare il retro.</small>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = backFields.map(field => {
+                        const currentValue = backEditCurrentFields[field.key] || field.value || '';
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${field.label}</label>
+                                <textarea
+                                    class="back-field-input"
+                                    data-key="${field.key}"
+                                    rows="4"
+                                    placeholder="Scrivi qui il contenuto per ${field.label}..."
+                                    style="resize: vertical; min-height: 80px;"
+                                >${currentValue}</textarea>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                document.getElementById('backEditModal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading back fields:', error);
+                alert('Errore nel caricamento dei campi retro');
+            }
+        }
+
+        function closeBackEditModal() {
+            document.getElementById('backEditModal').classList.remove('active');
+            backEditPassId = null;
+        }
+
+        async function saveBackFields() {
+            if (!backEditPassId) return;
+
+            // Collect updated back field values
+            const updatedFields = { ...backEditCurrentFields };
+            document.querySelectorAll('.back-field-input').forEach(textarea => {
+                updatedFields[textarea.dataset.key] = textarea.value;
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/passes/${backEditPassId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ field_values: updatedFields })
+                });
+
+                if (!res.ok) throw new Error('Update failed');
+
+                showToast('Retro pass aggiornato!');
+                closeBackEditModal();
+                await loadMembers();
+            } catch (error) {
+                console.error('Error saving back fields:', error);
+                alert('Errore nel salvataggio del retro');
             }
         }
 
