@@ -1,27 +1,23 @@
-const initSqlJs = require('sql.js');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
-const DB_DIR = path.join(__dirname, '../../data');
-const DB_PATH = path.join(DB_DIR, 'nudj.db');
-let db = null;
-let SQL = null;
+// Use DATABASE_URL from Railway (or local dev)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
+    ? { rejectUnauthorized: false }
+    : false
+});
 
-// Ensure data directory exists
-if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-}
-
-// SQL schema definitions
+// SQL schema definitions (PostgreSQL syntax)
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS brands (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
-  config TEXT DEFAULT '{}',
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  config JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS pass_templates (
@@ -29,11 +25,11 @@ CREATE TABLE IF NOT EXISTS pass_templates (
   brand_id TEXT NOT NULL REFERENCES brands(id),
   name TEXT NOT NULL,
   pass_type TEXT NOT NULL DEFAULT 'generic',
-  style TEXT NOT NULL DEFAULT '{}',
-  fields TEXT NOT NULL DEFAULT '[]',
-  config TEXT DEFAULT '{}',
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  style JSONB NOT NULL DEFAULT '{}',
+  fields JSONB NOT NULL DEFAULT '[]',
+  config JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS pass_instances (
@@ -41,97 +37,60 @@ CREATE TABLE IF NOT EXISTS pass_instances (
   serial_number TEXT UNIQUE NOT NULL,
   template_id TEXT NOT NULL REFERENCES pass_templates(id),
   brand_id TEXT NOT NULL REFERENCES brands(id),
-  customer_data TEXT DEFAULT '{}',
-  field_values TEXT DEFAULT '{}',
+  customer_data JSONB DEFAULT '{}',
+  field_values JSONB DEFAULT '{}',
   status TEXT DEFAULT 'active',
   device_token TEXT,
   auth_token TEXT NOT NULL,
-  last_updated TEXT DEFAULT (datetime('now')),
-  created_at TEXT DEFAULT (datetime('now'))
+  last_updated TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   pass_id TEXT REFERENCES pass_instances(id),
   brand_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   device_id TEXT,
-  metadata TEXT DEFAULT '{}',
-  created_at TEXT DEFAULT (datetime('now'))
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS device_registrations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   device_library_id TEXT NOT NULL,
   push_token TEXT NOT NULL,
   serial_number TEXT NOT NULL REFERENCES pass_instances(serial_number),
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(device_library_id, serial_number)
 );
 `;
 
 /**
- * Initialize and return the sql.js database
+ * Initialize database - create tables if they don't exist
  */
 async function getDb() {
-  if (db && SQL) {
-    return db;
-  }
-
-  SQL = await initSqlJs();
-
-  // Try to load existing database file
   try {
-    if (fs.existsSync(DB_PATH)) {
-      const buffer = fs.readFileSync(DB_PATH);
-      db = new SQL.Database(buffer);
-      console.log('✓ Loaded existing database');
-    } else {
-      db = new SQL.Database();
-      console.log('✓ Created new database');
-    }
-  } catch (error) {
-    db = new SQL.Database();
-    console.log('⚠ Created new database (load failed):', error.message);
-  }
-
-  // Execute schema to create tables (IF NOT EXISTS)
-  try {
-    db.run(SCHEMA);
-    console.log('✓ Database schema initialized');
+    await pool.query(SCHEMA);
+    console.log('â Database schema initialized (PostgreSQL)');
   } catch (error) {
     console.error('Error initializing schema:', error);
     throw error;
   }
-
-  return db;
+  return pool;
 }
 
 /**
- * Save in-memory database to disk
+ * saveDb - no-op for PostgreSQL (data is persisted automatically)
  */
 function saveDb() {
-  if (!db || !SQL) {
-    throw new Error('Database not initialized');
-  }
-
-  try {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
-    console.log(`✓ Database saved to ${DB_PATH}`);
-  } catch (error) {
-    console.error('Error saving database:', error);
-    throw error;
-  }
+  // No-op: PostgreSQL persists automatically
 }
 
 /**
  * Create a new brand
  */
-function createBrand(data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function createBrand(data) {
   const id = data.id || uuidv4();
   const { name, slug, config = {} } = data;
 
@@ -139,15 +98,14 @@ function createBrand(data) {
     throw new Error('Brand name and slug are required');
   }
 
-  const configStr = typeof config === 'string' ? config : JSON.stringify(config);
+  const configObj = typeof config === 'string' ? JSON.parse(config) : config;
 
   try {
-    db.run(
-      `INSERT INTO brands (id, name, slug, config) VALUES (?, ?, ?, ?)`,
-      [id, name, slug, configStr]
+    await pool.query(
+      `INSERT INTO brands (id, name, slug, config) VALUES ($1, $2, $3, $4)`,
+      [id, name, slug, JSON.stringify(configObj)]
     );
-    saveDb();
-    return { id, name, slug, config: JSON.parse(configStr) };
+    return { id, name, slug, config: configObj };
   } catch (error) {
     throw new Error(`Failed to create brand: ${error.message}`);
   }
@@ -156,9 +114,7 @@ function createBrand(data) {
 /**
  * Create a new pass template
  */
-function createTemplate(data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function createTemplate(data) {
   const id = data.id || uuidv4();
   const { brand_id, name, pass_type = 'generic', style = {}, fields = [], config = {} } = data;
 
@@ -166,24 +122,20 @@ function createTemplate(data) {
     throw new Error('Brand ID and template name are required');
   }
 
-  const styleStr = typeof style === 'string' ? style : JSON.stringify(style);
-  const fieldsStr = typeof fields === 'string' ? fields : JSON.stringify(fields);
-  const configStr = typeof config === 'string' ? config : JSON.stringify(config);
+  const styleObj = typeof style === 'string' ? JSON.parse(style) : style;
+  const fieldsObj = typeof fields === 'string' ? JSON.parse(fields) : fields;
+  const configObj = typeof config === 'string' ? JSON.parse(config) : config;
 
   try {
-    db.run(
-      `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, brand_id, name, pass_type, styleStr, fieldsStr, configStr]
+    await pool.query(
+      `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj)]
     );
-    saveDb();
     return {
-      id,
-      brand_id,
-      name,
-      pass_type,
-      style: JSON.parse(styleStr),
-      fields: JSON.parse(fieldsStr),
-      config: JSON.parse(configStr)
+      id, brand_id, name, pass_type,
+      style: styleObj,
+      fields: fieldsObj,
+      config: configObj
     };
   } catch (error) {
     throw new Error(`Failed to create template: ${error.message}`);
@@ -193,9 +145,7 @@ function createTemplate(data) {
 /**
  * Create a new pass instance
  */
-function createPassInstance(data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function createPassInstance(data) {
   const id = data.id || uuidv4();
   const serial_number = data.serial_number || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const { template_id, brand_id, customer_data = {}, field_values = {}, device_token = null } = data;
@@ -205,25 +155,20 @@ function createPassInstance(data) {
     throw new Error('Template ID and Brand ID are required');
   }
 
-  const customerStr = typeof customer_data === 'string' ? customer_data : JSON.stringify(customer_data);
-  const fieldStr = typeof field_values === 'string' ? field_values : JSON.stringify(field_values);
+  const customerObj = typeof customer_data === 'string' ? JSON.parse(customer_data) : customer_data;
+  const fieldObj = typeof field_values === 'string' ? JSON.parse(field_values) : field_values;
 
   try {
-    db.run(
+    await pool.query(
       `INSERT INTO pass_instances (id, serial_number, template_id, brand_id, customer_data, field_values, device_token, auth_token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, serial_number, template_id, brand_id, customerStr, fieldStr, device_token, auth_token]
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, serial_number, template_id, brand_id, JSON.stringify(customerObj), JSON.stringify(fieldObj), device_token, auth_token]
     );
-    saveDb();
     return {
-      id,
-      serial_number,
-      template_id,
-      brand_id,
-      customer_data: JSON.parse(customerStr),
-      field_values: JSON.parse(fieldStr),
-      device_token,
-      auth_token,
+      id, serial_number, template_id, brand_id,
+      customer_data: customerObj,
+      field_values: fieldObj,
+      device_token, auth_token,
       status: 'active'
     };
   } catch (error) {
@@ -234,30 +179,25 @@ function createPassInstance(data) {
 /**
  * Get a pass instance by ID
  */
-function getPassInstance(id) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getPassInstance(id) {
   try {
-    const results = db.exec(
-      `SELECT * FROM pass_instances WHERE id = ?`,
-      [id]
+    const result = await pool.query(
+      `SELECT * FROM pass_instances WHERE id = $1`, [id]
     );
-
-    if (!results || !results[0]) return null;
-
-    const row = results[0].values[0];
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
     return {
-      id: row[0],
-      serial_number: row[1],
-      template_id: row[2],
-      brand_id: row[3],
-      customer_data: JSON.parse(row[4]),
-      field_values: JSON.parse(row[5]),
-      status: row[6],
-      device_token: row[7],
-      auth_token: row[8],
-      last_updated: row[9],
-      created_at: row[10]
+      id: row.id,
+      serial_number: row.serial_number,
+      template_id: row.template_id,
+      brand_id: row.brand_id,
+      customer_data: row.customer_data,
+      field_values: row.field_values,
+      status: row.status,
+      device_token: row.device_token,
+      auth_token: row.auth_token,
+      last_updated: row.last_updated,
+      created_at: row.created_at
     };
   } catch (error) {
     throw new Error(`Failed to get pass instance: ${error.message}`);
@@ -267,30 +207,25 @@ function getPassInstance(id) {
 /**
  * Get a pass instance by serial number
  */
-function getPassBySerial(serial) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getPassBySerial(serial) {
   try {
-    const results = db.exec(
-      `SELECT * FROM pass_instances WHERE serial_number = ?`,
-      [serial]
+    const result = await pool.query(
+      `SELECT * FROM pass_instances WHERE serial_number = $1`, [serial]
     );
-
-    if (!results || !results[0]) return null;
-
-    const row = results[0].values[0];
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
     return {
-      id: row[0],
-      serial_number: row[1],
-      template_id: row[2],
-      brand_id: row[3],
-      customer_data: JSON.parse(row[4]),
-      field_values: JSON.parse(row[5]),
-      status: row[6],
-      device_token: row[7],
-      auth_token: row[8],
-      last_updated: row[9],
-      created_at: row[10]
+      id: row.id,
+      serial_number: row.serial_number,
+      template_id: row.template_id,
+      brand_id: row.brand_id,
+      customer_data: row.customer_data,
+      field_values: row.field_values,
+      status: row.status,
+      device_token: row.device_token,
+      auth_token: row.auth_token,
+      last_updated: row.last_updated,
+      created_at: row.created_at
     };
   } catch (error) {
     throw new Error(`Failed to get pass by serial: ${error.message}`);
@@ -300,42 +235,45 @@ function getPassBySerial(serial) {
 /**
  * Update a pass instance
  */
-function updatePassInstance(id, data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function updatePassInstance(id, data) {
   const updates = [];
   const values = [];
+  let paramCount = 0;
 
   if (data.status) {
-    updates.push('status = ?');
+    paramCount++;
+    updates.push(`status = $${paramCount}`);
     values.push(data.status);
   }
   if (data.device_token !== undefined) {
-    updates.push('device_token = ?');
+    paramCount++;
+    updates.push(`device_token = $${paramCount}`);
     values.push(data.device_token);
   }
   if (data.customer_data) {
-    const customerStr = typeof data.customer_data === 'string' ? data.customer_data : JSON.stringify(data.customer_data);
-    updates.push('customer_data = ?');
-    values.push(customerStr);
+    paramCount++;
+    const customerObj = typeof data.customer_data === 'string' ? data.customer_data : JSON.stringify(data.customer_data);
+    updates.push(`customer_data = $${paramCount}`);
+    values.push(customerObj);
   }
   if (data.field_values) {
-    const fieldStr = typeof data.field_values === 'string' ? data.field_values : JSON.stringify(data.field_values);
-    updates.push('field_values = ?');
-    values.push(fieldStr);
+    paramCount++;
+    const fieldObj = typeof data.field_values === 'string' ? data.field_values : JSON.stringify(data.field_values);
+    updates.push(`field_values = $${paramCount}`);
+    values.push(fieldObj);
   }
 
   if (updates.length === 0) return getPassInstance(id);
 
-  updates.push('last_updated = datetime("now")');
+  updates.push('last_updated = NOW()');
+  paramCount++;
   values.push(id);
 
   try {
-    db.run(
-      `UPDATE pass_instances SET ${updates.join(', ')} WHERE id = ?`,
+    await pool.query(
+      `UPDATE pass_instances SET ${updates.join(', ')} WHERE id = $${paramCount}`,
       values
     );
-    saveDb();
     return getPassInstance(id);
   } catch (error) {
     throw new Error(`Failed to update pass instance: ${error.message}`);
@@ -345,23 +283,20 @@ function updatePassInstance(id, data) {
 /**
  * Log an event
  */
-function logEvent(data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function logEvent(data) {
   const { pass_id, brand_id, event_type, device_id = null, metadata = {} } = data;
 
   if (!brand_id || !event_type) {
     throw new Error('Brand ID and event type are required');
   }
 
-  const metadataStr = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
+  const metadataObj = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
 
   try {
-    db.run(
-      `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES (?, ?, ?, ?, ?)`,
-      [pass_id || null, brand_id, event_type, device_id, metadataStr]
+    await pool.query(
+      `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES ($1, $2, $3, $4, $5)`,
+      [pass_id || null, brand_id, event_type, device_id, metadataObj]
     );
-    saveDb();
     return { success: true };
   } catch (error) {
     throw new Error(`Failed to log event: ${error.message}`);
@@ -371,46 +306,33 @@ function logEvent(data) {
 /**
  * Get analytics for a brand
  */
-function getAnalytics(brandId) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getAnalytics(brandId) {
   try {
     // Total passes
-    const passResults = db.exec(
-      `SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = ?`,
-      [brandId]
+    const passResult = await pool.query(
+      `SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1`, [brandId]
     );
-    const totalPasses = passResults[0]?.values[0]?.[0] || 0;
+    const totalPasses = parseInt(passResult.rows[0].count) || 0;
 
     // Passes by status
-    const statusResults = db.exec(
-      `SELECT status, COUNT(*) as count FROM pass_instances WHERE brand_id = ? GROUP BY status`,
-      [brandId]
+    const statusResult = await pool.query(
+      `SELECT status, COUNT(*) as count FROM pass_instances WHERE brand_id = $1 GROUP BY status`, [brandId]
     );
     const byStatus = {};
-    if (statusResults[0]) {
-      statusResults[0].values.forEach(row => {
-        byStatus[row[0]] = row[1];
-      });
-    }
+    statusResult.rows.forEach(row => {
+      byStatus[row.status] = parseInt(row.count);
+    });
 
     // Event counts by type
-    const eventResults = db.exec(
-      `SELECT event_type, COUNT(*) as count FROM events WHERE brand_id = ? GROUP BY event_type`,
-      [brandId]
+    const eventResult = await pool.query(
+      `SELECT event_type, COUNT(*) as count FROM events WHERE brand_id = $1 GROUP BY event_type`, [brandId]
     );
     const events = {};
-    if (eventResults[0]) {
-      eventResults[0].values.forEach(row => {
-        events[row[0]] = row[1];
-      });
-    }
+    eventResult.rows.forEach(row => {
+      events[row.event_type] = parseInt(row.count);
+    });
 
-    return {
-      totalPasses,
-      byStatus,
-      events
-    };
+    return { totalPasses, byStatus, events };
   } catch (error) {
     throw new Error(`Failed to get analytics: ${error.message}`);
   }
@@ -419,9 +341,7 @@ function getAnalytics(brandId) {
 /**
  * Register a device for push notifications
  */
-function registerDevice(data) {
-  if (!db) throw new Error('Database not initialized');
-
+async function registerDevice(data) {
   const { device_library_id, push_token, serial_number } = data;
 
   if (!device_library_id || !push_token || !serial_number) {
@@ -429,12 +349,12 @@ function registerDevice(data) {
   }
 
   try {
-    db.run(
-      `INSERT OR IGNORE INTO device_registrations (device_library_id, push_token, serial_number)
-       VALUES (?, ?, ?)`,
+    await pool.query(
+      `INSERT INTO device_registrations (device_library_id, push_token, serial_number)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (device_library_id, serial_number) DO NOTHING`,
       [device_library_id, push_token, serial_number]
     );
-    saveDb();
     return { success: true };
   } catch (error) {
     throw new Error(`Failed to register device: ${error.message}`);
@@ -444,21 +364,13 @@ function registerDevice(data) {
 /**
  * Get all devices registered for a pass
  */
-function getDevicesForPass(serial) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getDevicesForPass(serial) {
   try {
-    const results = db.exec(
-      `SELECT device_library_id, push_token FROM device_registrations WHERE serial_number = ?`,
+    const result = await pool.query(
+      `SELECT device_library_id, push_token FROM device_registrations WHERE serial_number = $1`,
       [serial]
     );
-
-    if (!results || !results[0]) return [];
-
-    return results[0].values.map(row => ({
-      device_library_id: row[0],
-      push_token: row[1]
-    }));
+    return result.rows;
   } catch (error) {
     throw new Error(`Failed to get devices for pass: ${error.message}`);
   }
@@ -467,25 +379,20 @@ function getDevicesForPass(serial) {
 /**
  * Get a brand by ID
  */
-function getBrand(id) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getBrand(id) {
   try {
-    const results = db.exec(
-      `SELECT * FROM brands WHERE id = ?`,
-      [id]
+    const result = await pool.query(
+      `SELECT * FROM brands WHERE id = $1`, [id]
     );
-
-    if (!results || !results[0]) return null;
-
-    const row = results[0].values[0];
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
     return {
-      id: row[0],
-      name: row[1],
-      slug: row[2],
-      config: JSON.parse(row[3]),
-      created_at: row[4],
-      updated_at: row[5]
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      config: row.config,
+      created_at: row.created_at,
+      updated_at: row.updated_at
     };
   } catch (error) {
     throw new Error(`Failed to get brand: ${error.message}`);
@@ -495,32 +402,152 @@ function getBrand(id) {
 /**
  * Get a template by ID
  */
-function getTemplate(id) {
-  if (!db) throw new Error('Database not initialized');
-
+async function getTemplate(id) {
   try {
-    const results = db.exec(
-      `SELECT * FROM pass_templates WHERE id = ?`,
-      [id]
+    const result = await pool.query(
+      `SELECT * FROM pass_templates WHERE id = $1`, [id]
     );
-
-    if (!results || !results[0]) return null;
-
-    const row = results[0].values[0];
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
     return {
-      id: row[0],
-      brand_id: row[1],
-      name: row[2],
-      pass_type: row[3],
-      style: JSON.parse(row[4]),
-      fields: JSON.parse(row[5]),
-      config: JSON.parse(row[6]),
-      created_at: row[7],
-      updated_at: row[8]
+      id: row.id,
+      brand_id: row.brand_id,
+      name: row.name,
+      pass_type: row.pass_type,
+      style: row.style,
+      fields: row.fields,
+      config: row.config,
+      created_at: row.created_at,
+      updated_at: row.updated_at
     };
   } catch (error) {
     throw new Error(`Failed to get template: ${error.message}`);
   }
+}
+
+// ============================================================================
+// LIST FUNCTIONS (previously done via db.exec() in routes.js)
+// ============================================================================
+
+/**
+ * List all brands
+ */
+async function listBrands() {
+  const result = await pool.query('SELECT * FROM brands ORDER BY created_at DESC');
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    config: row.config,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }));
+}
+
+/**
+ * List templates (optionally filtered by brand_id)
+ */
+async function listTemplates(brandId) {
+  let query = 'SELECT * FROM pass_templates';
+  const params = [];
+  if (brandId) {
+    query += ' WHERE brand_id = $1';
+    params.push(brandId);
+  }
+  query += ' ORDER BY created_at DESC';
+  const result = await pool.query(query, params);
+  return result.rows.map(row => ({
+    id: row.id,
+    brand_id: row.brand_id,
+    name: row.name,
+    pass_type: row.pass_type,
+    style: row.style,
+    fields: row.fields,
+    config: row.config,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }));
+}
+
+/**
+ * List passes (optionally filtered by brand_id and/or status)
+ */
+async function listPasses(brandId, status) {
+  let query = 'SELECT * FROM pass_instances';
+  const conditions = [];
+  const params = [];
+  let paramCount = 0;
+
+  if (brandId) {
+    paramCount++;
+    conditions.push(`brand_id = $${paramCount}`);
+    params.push(brandId);
+  }
+  if (status) {
+    paramCount++;
+    conditions.push(`status = $${paramCount}`);
+    params.push(status);
+  }
+
+  if (conditions.length > 0) {
+    query += ` WHERE ${conditions.join(' AND ')}`;
+  }
+  query += ' ORDER BY created_at DESC';
+
+  const result = await pool.query(query, params);
+  return result.rows.map(row => ({
+    id: row.id,
+    serial_number: row.serial_number,
+    template_id: row.template_id,
+    brand_id: row.brand_id,
+    customer_data: row.customer_data,
+    field_values: row.field_values,
+    status: row.status,
+    device_token: row.device_token,
+    auth_token: row.auth_token,
+    last_updated: row.last_updated,
+    created_at: row.created_at
+  }));
+}
+
+/**
+ * List events for a brand
+ */
+async function listEvents(brandId, limit = 50) {
+  const result = await pool.query(
+    'SELECT * FROM events WHERE brand_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [brandId, parseInt(limit)]
+  );
+  return result.rows.map(row => ({
+    id: row.id,
+    pass_id: row.pass_id,
+    brand_id: row.brand_id,
+    event_type: row.event_type,
+    device_id: row.device_id,
+    metadata: row.metadata,
+    created_at: row.created_at
+  }));
+}
+
+/**
+ * Delete device registration
+ */
+async function unregisterDevice(deviceLibraryId, serialNumber) {
+  await pool.query(
+    'DELETE FROM device_registrations WHERE device_library_id = $1 AND serial_number = $2',
+    [deviceLibraryId, serialNumber]
+  );
+}
+
+/**
+ * Get serial numbers for a device
+ */
+async function getSerialsForDevice(deviceLibraryId) {
+  const result = await pool.query(
+    'SELECT serial_number FROM device_registrations WHERE device_library_id = $1',
+    [deviceLibraryId]
+  );
+  return result.rows.map(row => row.serial_number);
 }
 
 module.exports = {
@@ -537,5 +564,13 @@ module.exports = {
   registerDevice,
   getDevicesForPass,
   getBrand,
-  getTemplate
+  getTemplate,
+  // New list functions
+  listBrands,
+  listTemplates,
+  listPasses,
+  listEvents,
+  unregisterDevice,
+  getSerialsForDevice,
+  pool
 };
