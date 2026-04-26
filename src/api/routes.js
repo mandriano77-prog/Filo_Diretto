@@ -62,6 +62,7 @@ const {
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
+const sharp = require('sharp');
 
 const router = express.Router();
 
@@ -147,6 +148,28 @@ router.get('/brands/:id', async (req, res) => {
 router.put('/brands/:id', async (req, res) => {
   try {
     const { name, slug, config } = req.body;
+
+    // If logos uploaded, resize to Apple Wallet required sizes
+    if (config?.logos?.logo) {
+      const rawBuf = Buffer.from(config.logos.logo, 'base64');
+
+      // logo.png = 160x50, logo@2x.png = 320x100
+      const logo1x = await sharp(rawBuf).resize(160, 50, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+      const logo2x = await sharp(rawBuf).resize(320, 100, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+
+      // icon.png = 29x29, icon@2x.png = 58x58
+      const icon1x = await sharp(rawBuf).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+      const icon2x = await sharp(rawBuf).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+
+      config.logos = {
+        'logo': logo1x.toString('base64'),
+        'logo@2x': logo2x.toString('base64'),
+        'icon': icon1x.toString('base64'),
+        'icon@2x': icon2x.toString('base64')
+      };
+      console.log('✓ Logo resized for Apple Wallet');
+    }
+
     const updated = await updateBrand(req.params.id, { name, slug, config });
 
     if (!updated) {

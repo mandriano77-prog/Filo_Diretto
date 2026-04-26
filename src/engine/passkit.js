@@ -267,11 +267,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     foregroundColor,
     backgroundColor,
     labelColor,
-    // Truncate logoText to avoid overlap with headerFields on small screens
-    logoText: (() => {
-      const raw = brand.config?.logoText || brand.name;
-      return raw.length > 18 ? raw.substring(0, 18).trim() : raw;
-    })(),
+    // logoText omitted — brand identity comes from the logo image only
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api/v1`,
     [structureKey]: passStructure,

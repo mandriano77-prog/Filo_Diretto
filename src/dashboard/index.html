@@ -256,7 +256,12 @@
                     <div class="form-group"><label class="form-label">Colore Etichette</label>
                         <div class="color-input-wrap"><input type="color" id="bsLblPick" value="#CCFF00" onchange="document.getElementById('bsLbl').value=this.value"><input type="text" id="bsLbl" placeholder="#CCFF00"></div>
                     </div>
-                    <div class="form-group"><label class="form-label">Logo Text</label><input type="text" id="bsLogoText" placeholder="Testo mostrato nel pass"></div>
+                    <div class="form-group">
+                        <label class="form-label">Logo (apparira nel pass Apple Wallet)</label>
+                        <div id="logoPreview" style="margin-bottom:10px;"></div>
+                        <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" onchange="previewLogo(this)" style="font-size:13px;">
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG consigliato, sfondo trasparente. Verra ridimensionato a 160x50 e 320x100.</p>
+                    </div>
                     <button class="btn" onclick="saveBrandSettings()">Salva Modifiche</button>
                 </div>
                 <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
@@ -474,16 +479,40 @@ async function deleteBrandAction() {
     toast('Brand eliminata'); brandId = null; document.getElementById('brandSelector').innerHTML = ''; await loadBrands();
 }
 
+let pendingLogoBase64 = null;
+
+function previewLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        pendingLogoBase64 = e.target.result.split(',')[1]; // strip data:...;base64,
+        document.getElementById('logoPreview').innerHTML = `<img src="${e.target.result}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
 async function saveBrandSettings() {
     if (!brandId) return;
     const config = {};
     const bg = document.getElementById('bsBg').value; if (bg) config.backgroundColor = bg;
     const fg = document.getElementById('bsFg').value; if (fg) config.foregroundColor = fg;
     const lbl = document.getElementById('bsLbl').value; if (lbl) config.labelColor = lbl;
-    const lt = document.getElementById('bsLogoText').value; if (lt) config.logoText = lt;
+
+    // If logo was uploaded, include it in config
+    if (pendingLogoBase64) {
+        config.logos = {
+            'logo': pendingLogoBase64,
+            'logo@2x': pendingLogoBase64,
+            'icon': pendingLogoBase64,
+            'icon@2x': pendingLogoBase64
+        };
+    }
+
     const name = document.getElementById('bsName').value;
     await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || undefined, config}) });
-    toast('Brand aggiornata!');
+    toast('Brand aggiornata! Rigenera i pass per vedere il nuovo logo.');
+    pendingLogoBase64 = null;
 }
 
 async function loadBrandSettings() {
@@ -498,7 +527,13 @@ async function loadBrandSettings() {
     document.getElementById('bsFgPick').value = c.foregroundColor || '#FFFFFF';
     document.getElementById('bsLbl').value = c.labelColor || '';
     document.getElementById('bsLblPick').value = c.labelColor || '#CCFF00';
-    document.getElementById('bsLogoText').value = c.logoText || '';
+    // Show current logo if exists
+    const preview = document.getElementById('logoPreview');
+    if (c.logos && c.logos['logo']) {
+        preview.innerHTML = `<img src="data:image/png;base64,${c.logos['logo']}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Logo attuale</span>`;
+    } else {
+        preview.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessun logo caricato (verra usata l\'iniziale)</span>';
+    }
 }
 
 // ==================== OVERVIEW ====================
