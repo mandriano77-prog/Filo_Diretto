@@ -262,7 +262,13 @@
                         <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" onchange="previewLogo(this)" style="font-size:13px;">
                         <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG consigliato, sfondo trasparente. Verra ridimensionato a 160x50 e 320x100.</p>
                     </div>
-                    <button class="btn" onclick="saveBrandSettings()">Salva Modifiche</button>
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                        <div class="sec-title" style="font-size:15px;">Geofencing — Notifiche di prossimita</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Quando il cliente e vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
+                        <div id="locationsContainer"></div>
+                        <button class="btn small sec" onclick="addLocationRow()" style="margin-top:8px;">+ Aggiungi punto vendita</button>
+                    </div>
+                    <button class="btn" onclick="saveBrandSettings()" style="margin-top:20px;">Salva Modifiche</button>
                 </div>
                 <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
                     <div class="sec-title" style="color:var(--red);">Zona Pericolosa</div>
@@ -480,6 +486,33 @@ async function deleteBrandAction() {
 }
 
 let pendingLogoBase64 = null;
+let locationRows = [];
+
+function addLocationRow(lat, lng, text) {
+    const idx = locationRows.length;
+    locationRows.push({latitude: lat || '', longitude: lng || '', relevantText: text || ''});
+    renderLocations();
+}
+
+function removeLocationRow(idx) {
+    locationRows.splice(idx, 1);
+    renderLocations();
+}
+
+function renderLocations() {
+    const c = document.getElementById('locationsContainer');
+    if (!c) return;
+    c.innerHTML = locationRows.map((loc, i) => `
+        <div class="card" style="padding:12px;margin-bottom:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" step="any" placeholder="Latitudine" value="${loc.latitude}" onchange="locationRows[${i}].latitude=this.value" style="flex:1;min-width:0;">
+                <input type="number" step="any" placeholder="Longitudine" value="${loc.longitude}" onchange="locationRows[${i}].longitude=this.value" style="flex:1;min-width:0;">
+                <button class="btn small" style="background:var(--red);padding:4px 8px;" onclick="removeLocationRow(${i})">✕</button>
+            </div>
+            <input type="text" placeholder="Messaggio lock screen (es. Sei vicino! Vieni a giocare)" value="${loc.relevantText}" onchange="locationRows[${i}].relevantText=this.value" style="margin-top:6px;width:100%;">
+        </div>
+    `).join('') || '<p style="font-size:12px;color:var(--text2);">Nessun punto vendita configurato.</p>';
+}
 
 function previewLogo(input) {
     if (!input.files || !input.files[0]) return;
@@ -498,6 +531,14 @@ async function saveBrandSettings() {
     const bg = document.getElementById('bsBg').value; if (bg) config.backgroundColor = bg;
     const fg = document.getElementById('bsFg').value; if (fg) config.foregroundColor = fg;
     const lbl = document.getElementById('bsLbl').value; if (lbl) config.labelColor = lbl;
+
+    // Save geofencing locations
+    const validLocations = locationRows.filter(l => l.latitude && l.longitude);
+    if (validLocations.length > 0) {
+        config.locations = validLocations;
+    } else {
+        config.locations = [];
+    }
 
     // If logo was uploaded, include it in config
     if (pendingLogoBase64) {
@@ -527,6 +568,10 @@ async function loadBrandSettings() {
     document.getElementById('bsFgPick').value = c.foregroundColor || '#FFFFFF';
     document.getElementById('bsLbl').value = c.labelColor || '';
     document.getElementById('bsLblPick').value = c.labelColor || '#CCFF00';
+    // Load geofencing locations
+    locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || ''}));
+    renderLocations();
+
     // Show current logo if exists
     const preview = document.getElementById('logoPreview');
     if (c.logos && c.logos['logo']) {

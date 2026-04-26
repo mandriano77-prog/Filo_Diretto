@@ -285,6 +285,29 @@ function generatePassJson(template, instance, brand, options = {}) {
     ]
   };
 
+  // Geofencing locations — triggers lock screen notification when nearby
+  if (brandConfig.locations && Array.isArray(brandConfig.locations) && brandConfig.locations.length > 0) {
+    passJson.locations = brandConfig.locations.map(loc => {
+      const entry = {
+        latitude: parseFloat(loc.latitude),
+        longitude: parseFloat(loc.longitude)
+      };
+      if (loc.relevantText) entry.relevantText = loc.relevantText;
+      if (loc.altitude) entry.altitude = parseFloat(loc.altitude);
+      return entry;
+    });
+  }
+
+  // Relevant date — triggers lock screen notification at this time
+  if (brandConfig.relevantDate) {
+    passJson.relevantDate = brandConfig.relevantDate;
+  }
+
+  // Max distance for geofencing (default Apple uses ~100m)
+  if (brandConfig.maxDistance) {
+    passJson.maxDistance = parseInt(brandConfig.maxDistance);
+  }
+
   return passJson;
 }
 
