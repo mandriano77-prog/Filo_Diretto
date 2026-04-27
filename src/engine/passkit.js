@@ -201,7 +201,14 @@ function generatePassJson(template, instance, brand, options = {}) {
     value: '... ↗'
   });
 
-  // SECONDARY (below strip): data fields from template (PUNTI, LIVELLO, etc.)
+  // SECONDARY (row 1, below strip): NOME
+  secondaryFields.push({
+    key: 'member_name',
+    label: 'NOME',
+    value: instance.field_values?.nome || instance.field_values?.name || ''
+  });
+
+  // AUXILIARY (row 2): PUNTI, LIVELLO from template + NOVITÀ E PROMOZIONI on the right
   if (template.fields && Array.isArray(template.fields)) {
     template.fields.forEach((field) => {
       const fieldObj = {
@@ -211,30 +218,21 @@ function generatePassJson(template, instance, brand, options = {}) {
       };
       if (field.dateStyle) fieldObj.dateStyle = field.dateStyle;
 
-      if (field.type === 'secondary') secondaryFields.push(fieldObj);
+      if (field.type === 'secondary') auxiliaryFields.push(fieldObj); // PUNTI, LIVELLO → auxiliary row
       else if (field.type === 'auxiliary') auxiliaryFields.push(fieldObj);
       else if (field.type === 'back') backFields.push(fieldObj);
-      // header/primary types ignored — we control header above
     });
   }
 
-  // AUXILIARY (below secondary): NOVITA (push title) + NOME
   // Push announcement — changeMessage drives the iOS "Carta aggiornata" notification
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
-    auxiliaryFields.unshift({
+    auxiliaryFields.push({
       key: 'announcement',
-      label: 'NOVITA',
+      label: 'NOVITÀ E PROMOZIONI',
       value: brandConfig.pushAnnouncement.title || 'Aggiornamento',
       changeMessage: '%@'
     });
   }
-
-  // NOME always last in auxiliary row
-  auxiliaryFields.push({
-    key: 'member_name',
-    label: 'NOME',
-    value: instance.field_values?.nome || instance.field_values?.name || ''
-  });
 
   // ── BACK FIELDS (order: Novita → Links → Regolamento → Contatti) ──
 
@@ -243,7 +241,7 @@ function generatePassJson(template, instance, brand, options = {}) {
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     orderedBackFields.push({
       key: 'announcement_full',
-      label: brandConfig.pushAnnouncement.title || 'NOVITA',
+      label: brandConfig.pushAnnouncement.title || 'NOVITÀ E PROMOZIONI',
       value: brandConfig.pushAnnouncement.message
     });
   }
