@@ -197,8 +197,8 @@ function generatePassJson(template, instance, brand, options = {}) {
   // HEADER (top-right): hint to tap ··· for more details
   headerFields.push({
     key: 'info_hint',
-    label: '',
-    value: 'Clicca i tre puntini per i dettagli'
+    label: 'CLICCA I TRE PUNTINI',
+    value: 'per i dettagli'
   });
 
   // No primaryFields — they overlay the strip image on eventTicket
