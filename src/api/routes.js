@@ -18,6 +18,7 @@ const {
   getTemplate,
   updateBrand,
   deleteBrand,
+  updateTemplate,
   deleteTemplate,
   deletePass,
   listBrands,
@@ -276,6 +277,22 @@ router.get('/templates/:id', async (req, res) => {
   } catch (error) {
     console.error('Error getting template:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/v1/templates/:id - Update a template
+ */
+router.put('/templates/:id', async (req, res) => {
+  try {
+    const updated = await updateTemplate(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error('Error updating template:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

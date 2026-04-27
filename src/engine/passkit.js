@@ -209,7 +209,10 @@ function generatePassJson(template, instance, brand, options = {}) {
       if (field.type) {
         // Explicit type placement
         switch (field.type) {
-          case 'header': headerFields.push(fieldObj); break;
+          case 'header':
+            fieldObj.label = ''; // Header: just the value, no label above
+            headerFields.push(fieldObj);
+            break;
           case 'primary': primaryFields.push(fieldObj); break;
           case 'secondary': secondaryFields.push(fieldObj); break;
           case 'auxiliary': auxiliaryFields.push(fieldObj); break;

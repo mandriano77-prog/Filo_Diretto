@@ -1403,6 +1403,29 @@ async function deleteBrand(id) {
 /**
  * Delete a template
  */
+async function updateTemplate(id, data) {
+  try {
+    const setClauses = [];
+    const values = [];
+    let idx = 1;
+    if (data.name !== undefined) { setClauses.push(`name = $${idx++}`); values.push(data.name); }
+    if (data.pass_type !== undefined) { setClauses.push(`pass_type = $${idx++}`); values.push(data.pass_type); }
+    if (data.style !== undefined) { setClauses.push(`style = $${idx++}`); values.push(JSON.stringify(data.style)); }
+    if (data.fields !== undefined) { setClauses.push(`fields = $${idx++}`); values.push(JSON.stringify(data.fields)); }
+    if (data.config !== undefined) { setClauses.push(`config = $${idx++}`); values.push(JSON.stringify(data.config)); }
+    setClauses.push(`updated_at = NOW()`);
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE pass_templates SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return null;
+    return result.rows[0];
+  } catch (error) {
+    throw new Error(`Failed to update template: ${error.message}`);
+  }
+}
+
 async function deleteTemplate(id) {
   try {
     await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE template_id = $1)', [id]);
@@ -1450,6 +1473,7 @@ module.exports = {
   getTemplate,
   updateBrand,
   deleteBrand,
+  updateTemplate,
   deleteTemplate,
   deletePass,
   listBrands,
