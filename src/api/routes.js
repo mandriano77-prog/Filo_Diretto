@@ -196,6 +196,30 @@ router.put('/brands/:id', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/brands/:id/strip - Upload strip image (dedicated endpoint)
+ */
+router.post('/brands/:id/strip', async (req, res) => {
+  try {
+    const { strip } = req.body; // base64 string
+    if (!strip) return res.status(400).json({ error: 'Missing strip base64 data' });
+
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+
+    const existingConfig = brand.config || {};
+    const logos = { ...(existingConfig.logos || {}), strip };
+    const config = { ...existingConfig, logos };
+
+    const updated = await updateBrand(req.params.id, { config });
+    console.log('✓ Strip image saved for brand', req.params.id, '- base64 length:', strip.length);
+    res.json({ success: true, stripLength: strip.length });
+  } catch (err) {
+    console.error('Error uploading strip:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * DELETE /api/v1/brands/:id - Delete a brand and all related data
  */
 router.delete('/brands/:id', async (req, res) => {

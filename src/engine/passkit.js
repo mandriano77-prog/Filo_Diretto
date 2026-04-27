@@ -201,14 +201,13 @@ function generatePassJson(template, instance, brand, options = {}) {
     value: '... ↗'
   });
 
-  // SECONDARY (row 1, below strip): NOME
+  // SECONDARY: NOME + PUNTI + LIVELLO (storeCard renders sec+aux on ONE row on iOS)
   secondaryFields.push({
     key: 'member_name',
     label: 'NOME',
     value: instance.field_values?.nome || instance.field_values?.name || ''
   });
 
-  // AUXILIARY (row 2): PUNTI, LIVELLO from template + NOVITÀ E PROMOZIONI on the right
   if (template.fields && Array.isArray(template.fields)) {
     template.fields.forEach((field) => {
       const fieldObj = {
@@ -218,17 +217,18 @@ function generatePassJson(template, instance, brand, options = {}) {
       };
       if (field.dateStyle) fieldObj.dateStyle = field.dateStyle;
 
-      if (field.type === 'secondary') auxiliaryFields.push(fieldObj); // PUNTI, LIVELLO → auxiliary row
+      if (field.type === 'secondary') secondaryFields.push(fieldObj); // PUNTI, LIVELLO
       else if (field.type === 'auxiliary') auxiliaryFields.push(fieldObj);
       else if (field.type === 'back') backFields.push(fieldObj);
     });
   }
 
+  // AUXILIARY: PROMO (short label, fits without truncation)
   // Push announcement — changeMessage drives the iOS "Carta aggiornata" notification
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     auxiliaryFields.push({
       key: 'announcement',
-      label: 'NOVITÀ E PROMOZIONI',
+      label: 'PROMO',
       value: brandConfig.pushAnnouncement.title || 'Aggiornamento',
       changeMessage: '%@'
     });
