@@ -228,11 +228,11 @@ function generatePassJson(template, instance, brand, options = {}) {
   // AUXILIARY: NOVITÀ — short teaser only (auxiliaryFields have tiny text on eventTicket)
   // Full message goes ONLY in backFields. changeMessage triggers iOS "Carta aggiornata" notification.
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
-    const shortTitle = (brandConfig.pushAnnouncement.title || 'NOVITÀ').substring(0, 40);
+    const shortTitle = (brandConfig.pushAnnouncement.title || 'NOVITÀ').substring(0, 40).toUpperCase();
     auxiliaryFields.push({
       key: 'announcement',
-      label: 'NOVITÀ',
-      value: shortTitle + ' →',
+      label: shortTitle,
+      value: 'Guarda il retro ↱',
       changeMessage: '%@'
     });
   }
