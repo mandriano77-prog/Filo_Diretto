@@ -243,19 +243,12 @@ function generatePassJson(template, instance, brand, options = {}) {
       changeMessage: '%@'
     });
 
-    // BACK: full message + date
+    // BACK: full message only (no date — cleaner layout)
     backFields.unshift({
       key: 'announcement_full',
       label: brandConfig.pushAnnouncement.title || 'NOVITA',
       value: brandConfig.pushAnnouncement.message
     });
-    if (brandConfig.pushAnnouncement.date) {
-      backFields.splice(1, 0, {
-        key: 'announcement_date',
-        label: 'ULTIMO AGGIORNAMENTO',
-        value: brandConfig.pushAnnouncement.date
-      });
-    }
   }
 
   // Hint: tap "..." for details — alone in auxiliaryFields, clean
