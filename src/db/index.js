@@ -141,6 +141,22 @@ CREATE TABLE IF NOT EXISTS members (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS scheduled_push (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id),
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  target TEXT DEFAULT 'all',
+  schedule_type TEXT NOT NULL DEFAULT 'once',
+  schedule_time TEXT NOT NULL DEFAULT '09:00',
+  schedule_days TEXT DEFAULT '',
+  next_run_at TIMESTAMPTZ,
+  last_run_at TIMESTAMPTZ,
+  active BOOLEAN DEFAULT true,
+  update_pass BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS push_log (
   id SERIAL PRIMARY KEY,
   brand_id TEXT NOT NULL,
@@ -1544,6 +1560,54 @@ async function deletePass(id) {
   }
 }
 
+// ==================== SCHEDULED PUSH ====================
+
+async function createScheduledPush(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, title, message, target = 'all', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
+  if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
+  await pool.query(
+    `INSERT INTO scheduled_push (id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
+  );
+  return { id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
+}
+
+async function listScheduledPush(brand_id) {
+  const result = await pool.query('SELECT * FROM scheduled_push WHERE brand_id = $1 ORDER BY created_at DESC', [brand_id]);
+  return result.rows;
+}
+
+async function getScheduledPush(id) {
+  const result = await pool.query('SELECT * FROM scheduled_push WHERE id = $1', [id]);
+  return result.rows[0] || null;
+}
+
+async function updateScheduledPush(id, data) {
+  const fields = [];
+  const values = [id];
+  let idx = 2;
+  for (const key of ['title', 'message', 'target', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
+    if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
+  }
+  if (fields.length === 0) return getScheduledPush(id);
+  await pool.query(`UPDATE scheduled_push SET ${fields.join(', ')} WHERE id = $1`, values);
+  return getScheduledPush(id);
+}
+
+async function deleteScheduledPush(id) {
+  await pool.query('DELETE FROM scheduled_push WHERE id = $1', [id]);
+  return { success: true };
+}
+
+async function getDueScheduledPush() {
+  const result = await pool.query(
+    `SELECT * FROM scheduled_push WHERE active = true AND next_run_at <= NOW() ORDER BY next_run_at ASC`
+  );
+  return result.rows;
+}
+
 // ==================== MEMBERS ====================
 
 async function createMember(data) {
@@ -1673,5 +1737,12 @@ module.exports = {
   updateMember,
   deleteMember,
   bulkCreateMembers,
+  // Scheduled Push
+  createScheduledPush,
+  listScheduledPush,
+  getScheduledPush,
+  updateScheduledPush,
+  deleteScheduledPush,
+  getDueScheduledPush,
   pool
 };

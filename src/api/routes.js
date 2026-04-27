@@ -70,6 +70,13 @@ const {
   updateMember,
   deleteMember,
   bulkCreateMembers,
+  // Scheduled Push
+  createScheduledPush,
+  listScheduledPush,
+  getScheduledPush,
+  updateScheduledPush,
+  deleteScheduledPush,
+  getDueScheduledPush,
   pool
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
@@ -1653,6 +1660,59 @@ router.delete('/push/clear/:brand_id', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error clearing push history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== SCHEDULED PUSH ====================
+
+/**
+ * GET /api/v1/push/scheduled?brand_id= - List scheduled notifications
+ */
+router.get('/push/scheduled', async (req, res) => {
+  try {
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
+    const items = await listScheduledPush(brand_id);
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/push/scheduled - Create a scheduled notification
+ */
+router.post('/push/scheduled', async (req, res) => {
+  try {
+    const item = await createScheduledPush(req.body);
+    res.status(201).json(item);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/v1/push/scheduled/:id - Update (toggle active, change schedule)
+ */
+router.put('/push/scheduled/:id', async (req, res) => {
+  try {
+    const item = await updateScheduledPush(req.params.id, req.body);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.json(item);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/push/scheduled/:id - Delete a scheduled notification
+ */
+router.delete('/push/scheduled/:id', async (req, res) => {
+  try {
+    await deleteScheduledPush(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

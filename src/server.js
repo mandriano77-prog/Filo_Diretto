@@ -7,6 +7,7 @@ const fs = require('fs');
 const { getDb } = require('./db');
 const apiRoutes = require('./api/routes');
 const debugSignRoutes = require('./api/debug-sign');
+const { startScheduler } = require('./engine/scheduler');
 
 // Load certificates: prefer FILE-BASED certs (from repo), fallback to env vars
 function loadCerts() {
@@ -74,6 +75,12 @@ getDb().then(db => {
     console.log('  Health: http://localhost:' + PORT + '/health');
     console.log('  API:    http://localhost:' + PORT + '/api/v1');
     console.log('  Debug:  http://localhost:' + PORT + '/debug/sign-test');
+
+    // Start push notification scheduler
+    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : `http://localhost:${PORT}`;
+    startScheduler(baseUrl);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
