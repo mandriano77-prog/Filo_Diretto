@@ -223,12 +223,12 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // AUXILIARY: PROMO (short label, fits without truncation)
+  // AUXILIARY (row 2, alone = full width, label fits)
   // Push announcement — changeMessage drives the iOS "Carta aggiornata" notification
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     auxiliaryFields.push({
       key: 'announcement',
-      label: 'PROMO',
+      label: 'NOVITÀ E PROMOZIONI',
       value: brandConfig.pushAnnouncement.title || 'Aggiornamento',
       changeMessage: '%@'
     });
