@@ -169,6 +169,27 @@ async function getDb() {
         AND config::text LIKE '%hangarpadel.it/prenota%'
     `);
 
+    // Update Instagram link
+    await pool.query(`
+      UPDATE brands
+      SET config = jsonb_set(
+        config,
+        '{links}',
+        (
+          SELECT jsonb_agg(
+            CASE
+              WHEN elem->>'label' = 'Seguici su Instagram'
+              THEN jsonb_set(elem, '{url}', '"https://www.instagram.com/hirostar_hangar/"')
+              ELSE elem
+            END
+          )
+          FROM jsonb_array_elements(config->'links') AS elem
+        )
+      )
+      WHERE config->'links' IS NOT NULL
+        AND config::text LIKE '%instagram.com/hangarpadel%'
+    `);
+
     // Switch template to eventTicket
     await pool.query(`
       UPDATE pass_templates SET pass_type = 'eventTicket'
