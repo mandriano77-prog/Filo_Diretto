@@ -269,6 +269,12 @@
                         <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" onchange="previewLogo(this)" style="font-size:13px;">
                         <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG consigliato, sfondo trasparente. Verra ridimensionato a 160x50 e 320x100.</p>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Strip Image (banner grande nel pass)</label>
+                        <div id="stripPreview" style="margin-bottom:10px;"></div>
+                        <input type="file" id="stripUpload" accept="image/png,image/jpeg" onchange="previewStrip(this)" style="font-size:13px;">
+                        <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG 750×246 px (2x). Appare come immagine grande sotto il logo nella storeCard.</p>
+                    </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                         <div class="sec-title" style="font-size:15px;">Geofencing — Notifiche di prossimita</div>
                         <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Quando il cliente e vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
@@ -531,8 +537,20 @@ function previewLogo(input) {
     const file = input.files[0];
     const reader = new FileReader();
     reader.onload = function(e) {
-        pendingLogoBase64 = e.target.result.split(',')[1]; // strip data:...;base64,
+        pendingLogoBase64 = e.target.result.split(',')[1];
         document.getElementById('logoPreview').innerHTML = `<img src="${e.target.result}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+let pendingStripBase64 = null;
+function previewStrip(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        pendingStripBase64 = e.target.result.split(',')[1];
+        document.getElementById('stripPreview').innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:80px;border-radius:6px;background:#222;padding:4px;">`;
     };
     reader.readAsDataURL(file);
 }
@@ -559,18 +577,23 @@ async function saveBrandSettings() {
 
     // If logo was uploaded, include it in config
     if (pendingLogoBase64) {
-        config.logos = {
-            'logo': pendingLogoBase64,
-            'logo@2x': pendingLogoBase64,
-            'icon': pendingLogoBase64,
-            'icon@2x': pendingLogoBase64
-        };
+        config.logos = config.logos || {};
+        config.logos.logo = pendingLogoBase64;
+        config.logos['logo@2x'] = pendingLogoBase64;
+        config.logos.icon = pendingLogoBase64;
+        config.logos['icon@2x'] = pendingLogoBase64;
+    }
+    // If strip was uploaded, include it in config
+    if (pendingStripBase64) {
+        config.logos = config.logos || {};
+        config.logos.strip = pendingStripBase64;
     }
 
     const name = document.getElementById('bsName').value;
     await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || undefined, config}) });
-    toast('Brand aggiornata! Rigenera i pass per vedere il nuovo logo.');
+    toast('Brand aggiornata! Rigenera i pass per vedere le modifiche.');
     pendingLogoBase64 = null;
+    pendingStripBase64 = null;
 }
 
 async function loadBrandSettings() {
@@ -603,6 +626,14 @@ async function loadBrandSettings() {
         preview.innerHTML = `<img src="data:image/png;base64,${c.logos['logo']}" style="max-height:50px;border-radius:6px;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Logo attuale</span>`;
     } else {
         preview.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessun logo caricato (verra usata l\'iniziale)</span>';
+    }
+
+    // Show current strip if exists
+    const stripPrev = document.getElementById('stripPreview');
+    if (c.logos && c.logos.strip) {
+        stripPrev.innerHTML = `<img src="data:image/png;base64,${c.logos.strip}" style="max-width:100%;max-height:80px;border-radius:6px;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Strip attuale</span>`;
+    } else {
+        stripPrev.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessuna strip caricata (verra generata automaticamente)</span>';
     }
 }
 

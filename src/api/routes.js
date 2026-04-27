@@ -153,28 +153,36 @@ router.put('/brands/:id', async (req, res) => {
   try {
     const { name, slug, config } = req.body;
 
-    // If logos uploaded, resize to Apple Wallet required sizes
+    // Merge with existing brand config to preserve logos/strip/links etc.
+    const existingBrand = await getBrand(req.params.id);
+    if (!existingBrand) return res.status(404).json({ error: 'Brand not found' });
+    const existingConfig = existingBrand.config || {};
+    const mergedLogos = { ...(existingConfig.logos || {}) };
+
+    // If logo uploaded, resize to Apple Wallet required sizes
     if (config?.logos?.logo) {
       const rawBuf = Buffer.from(config.logos.logo, 'base64');
-
-      // logo.png = 160x50, logo@2x.png = 320x100
       const logo1x = await sharp(rawBuf).resize(160, 50, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
       const logo2x = await sharp(rawBuf).resize(320, 100, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-
-      // icon.png = 29x29, icon@2x.png = 58x58
       const icon1x = await sharp(rawBuf).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
       const icon2x = await sharp(rawBuf).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-
-      config.logos = {
-        'logo': logo1x.toString('base64'),
-        'logo@2x': logo2x.toString('base64'),
-        'icon': icon1x.toString('base64'),
-        'icon@2x': icon2x.toString('base64')
-      };
+      mergedLogos.logo = logo1x.toString('base64');
+      mergedLogos['logo@2x'] = logo2x.toString('base64');
+      mergedLogos.icon = icon1x.toString('base64');
+      mergedLogos['icon@2x'] = icon2x.toString('base64');
       console.log('✓ Logo resized for Apple Wallet');
     }
 
-    const updated = await updateBrand(req.params.id, { name, slug, config });
+    // If strip uploaded, store raw base64 (passkit.js resizes it)
+    if (config?.logos?.strip) {
+      mergedLogos.strip = config.logos.strip;
+      console.log('✓ Strip image uploaded');
+    }
+
+    // Merge config: new values override, but preserve existing keys not in request
+    const mergedConfig = { ...existingConfig, ...config, logos: mergedLogos };
+
+    const updated = await updateBrand(req.params.id, { name, slug, config: mergedConfig });
 
     if (!updated) {
       return res.status(404).json({ error: 'Brand not found' });
