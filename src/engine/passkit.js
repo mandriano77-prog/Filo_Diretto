@@ -187,107 +187,88 @@ function generatePassJson(template, instance, brand, options = {}) {
   const lblHex = brandConfig.labelColor || null;
   const labelColor = lblHex ? `rgb(${parseColor(lblHex).r}, ${parseColor(lblHex).g}, ${parseColor(lblHex).b})` : (template.style?.labelColor || 'rgb(184, 196, 216)');
 
-  // Build field arrays based on template
+  // ── Build field arrays ──────────────────────────────────────────
+  // Layout (storeCard): Header → Strip → Secondary → Auxiliary → Back
   const headerFields = [];
-  const primaryFields = [];
   const secondaryFields = [];
   const auxiliaryFields = [];
   const backFields = [];
 
+  // HEADER (top-right): "Altre info ... ↗" — invites user to flip the card
+  headerFields.push({
+    key: 'info_hint',
+    label: 'ALTRE INFO',
+    value: '... ↗'
+  });
+
+  // SECONDARY (below strip): data fields from template (PUNTI, LIVELLO, etc.)
   if (template.fields && Array.isArray(template.fields)) {
-    template.fields.forEach((field, index) => {
+    template.fields.forEach((field) => {
       const fieldObj = {
         key: field.key,
         label: (field.label || field.key).toUpperCase(),
         value: instance.field_values?.[field.key] || field.value || ''
       };
+      if (field.dateStyle) fieldObj.dateStyle = field.dateStyle;
 
-      if (field.dateStyle) {
-        fieldObj.dateStyle = field.dateStyle;
-      }
-
-      if (field.type) {
-        // Explicit type placement
-        switch (field.type) {
-          case 'header':
-            fieldObj.label = ''; // Header: just the value, no label above
-            headerFields.push(fieldObj);
-            break;
-          case 'primary': primaryFields.push(fieldObj); break;
-          case 'secondary': secondaryFields.push(fieldObj); break;
-          case 'auxiliary': auxiliaryFields.push(fieldObj); break;
-          case 'back': backFields.push(fieldObj); break;
-        }
-      } else {
-        // Auto-distribute: first field = header (top-right, no label),
-        // second = primary (center), third = secondary, rest = back
-        if (index === 0) {
-          fieldObj.label = ''; // Header: just the value, no label above
-          headerFields.push(fieldObj);
-        }
-        else if (index === 1) primaryFields.push(fieldObj);
-        else if (index === 2) secondaryFields.push(fieldObj);
-        else backFields.push(fieldObj); // Extra fields go to back
-      }
+      if (field.type === 'secondary') secondaryFields.push(fieldObj);
+      else if (field.type === 'auxiliary') auxiliaryFields.push(fieldObj);
+      else if (field.type === 'back') backFields.push(fieldObj);
+      // header/primary types ignored — we control header above
     });
   }
 
-  // Push announcement — TITLE on front in auxiliaryFields (below PUNTI, left-aligned),
-  // full message on back. changeMessage drives the iOS notification.
+  // AUXILIARY (below secondary): NOVITA (push title) + NOME
+  // Push announcement — changeMessage drives the iOS "Carta aggiornata" notification
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
-    // FRONT: push title in auxiliaryFields (under secondary row, left)
-    auxiliaryFields.push({
+    auxiliaryFields.unshift({
       key: 'announcement',
       label: 'NOVITA',
       value: brandConfig.pushAnnouncement.title || 'Aggiornamento',
       changeMessage: '%@'
     });
+  }
 
-    // BACK: full message
-    backFields.unshift({
+  // NOME always last in auxiliary row
+  auxiliaryFields.push({
+    key: 'member_name',
+    label: 'NOME',
+    value: instance.field_values?.nome || instance.field_values?.name || ''
+  });
+
+  // ── BACK FIELDS (order: Novita → Links → Regolamento → Contatti) ──
+
+  // 1. NOVITA — full push message
+  const orderedBackFields = [];
+  if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
+    orderedBackFields.push({
       key: 'announcement_full',
       label: brandConfig.pushAnnouncement.title || 'NOVITA',
       value: brandConfig.pushAnnouncement.message
     });
   }
 
-  // Hint on back (not front — keep front clean)
-  backFields.push({
-    key: 'hint',
-    label: '',
-    value: 'Tocca ... in alto a destra per scoprire i dettagli del tuo pass.'
+  // 2. LINKS — clickable URLs (blue tappable links in Apple Wallet)
+  const links = brandConfig.links || [];
+  links.forEach((link, i) => {
+    orderedBackFields.push({
+      key: `link_${i}`,
+      label: (link.label || '').toUpperCase(),
+      value: link.url || '',
+      attributedValue: link.url ? `<a href="${link.url}">${link.label || link.url}</a>` : ''
+    });
   });
 
-  // Determine the pass structure type
+  // 3. Template back fields (regolamento, contatti, etc.)
+  backFields.forEach(f => orderedBackFields.push(f));
+
+  // ── Pass structure ────────────────────────────────────────────
+  const structureKey = template.pass_type || 'storeCard';
   const passStructure = {};
-  const structureKey = template.pass_type || 'generic';
-
-  if (headerFields.length > 0) {
-    passStructure.headerFields = headerFields;
-  }
-  if (primaryFields.length > 0) {
-    passStructure.primaryFields = primaryFields;
-  }
-  if (secondaryFields.length > 0) {
-    passStructure.secondaryFields = secondaryFields;
-  }
-  if (auxiliaryFields.length > 0) {
-    passStructure.auxiliaryFields = auxiliaryFields;
-  }
-  if (backFields.length > 0) {
-    passStructure.backFields = backFields;
-  }
-
-  // If no fields defined, add a simple placeholder
-  if (Object.keys(passStructure).length === 0) {
-    passStructure.primaryFields = [
-      {
-        key: 'offer',
-        label: 'OFFERTA',
-        value: brand.name
-      }
-    ];
-  }
+  if (headerFields.length > 0) passStructure.headerFields = headerFields;
+  if (secondaryFields.length > 0) passStructure.secondaryFields = secondaryFields;
+  if (auxiliaryFields.length > 0) passStructure.auxiliaryFields = auxiliaryFields;
+  if (orderedBackFields.length > 0) passStructure.backFields = orderedBackFields;
 
   const passJson = {
     formatVersion: 1,
@@ -299,11 +280,24 @@ function generatePassJson(template, instance, brand, options = {}) {
     foregroundColor,
     backgroundColor,
     labelColor,
-    // logoText omitted — brand identity comes from the logo image only
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api`,
-    [structureKey]: passStructure
-    // No barcode/QR — pass is used for notifications and loyalty, not scanning
+    [structureKey]: passStructure,
+    // Barcode — Code 128 with serial number (scannable with barcode gun)
+    barcodes: [
+      {
+        message: instance.serial_number,
+        format: 'PKBarcodeFormatCode128',
+        messageEncoding: 'iso-8859-1',
+        altText: `N° ${instance.serial_number.substring(0, 13)}`
+      }
+    ],
+    barcode: {
+      message: instance.serial_number,
+      format: 'PKBarcodeFormatCode128',
+      messageEncoding: 'iso-8859-1',
+      altText: `N° ${instance.serial_number.substring(0, 13)}`
+    }
   };
 
   // Geofencing locations — triggers lock screen notification when nearby
@@ -546,7 +540,17 @@ async function createPkpass(template, instance, brand, options = {}) {
     logoBuffers = logos;
   }
 
-  const strips = await generateStrip(brand.name, bgColor, fgColor);
+  // Strip images — custom from brand config or generated fallback
+  let stripBuffers;
+  if (brand.config?.logos?.strip) {
+    const rawStrip = Buffer.from(brand.config.logos.strip, 'base64');
+    const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
+    const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();
+    stripBuffers = { strip: strip1x, strip2x: strip2x };
+    console.log('✓ Using custom strip image');
+  } else {
+    stripBuffers = await generateStrip(brand.name, bgColor, fgColor);
+  }
 
   // Build file map
   const files = {
@@ -557,10 +561,10 @@ async function createPkpass(template, instance, brand, options = {}) {
     'logo@2x.png': logoBuffers.logo2x || logoBuffers.logo
   };
 
-  // Add strip images for coupon/storeCard
+  // Strip images always included for storeCard/coupon
   if (template.pass_type === 'coupon' || template.pass_type === 'storeCard') {
-    files['strip.png'] = strips.strip;
-    files['strip@2x.png'] = strips.strip2x;
+    files['strip.png'] = stripBuffers.strip;
+    files['strip@2x.png'] = stripBuffers.strip2x;
   }
 
   // Generate manifest
