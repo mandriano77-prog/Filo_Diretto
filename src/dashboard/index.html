@@ -372,6 +372,29 @@
                         <p style="font-size:11px;color:var(--text2);margin-top:4px;">PNG 750×246 px (2x). Appare come immagine grande sotto il logo nella storeCard.</p>
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                        <div class="sec-title" style="font-size:15px;">Strip Generator</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Crea una strip promo direttamente qui. Bande bianche, sfondo nero, testo lime Pilat Extended.</p>
+                        <div class="form-group">
+                            <label class="form-label">Riga 1</label>
+                            <input type="text" id="stripLine1" placeholder="es. 1° MAGGIO" oninput="updateStripPreview()" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Riga 2</label>
+                            <input type="text" id="stripLine2" placeholder="es. CAMPO GRATUITO" oninput="updateStripPreview()" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Riga 3 (opzionale)</label>
+                            <input type="text" id="stripLine3" placeholder="" oninput="updateStripPreview()" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);">
+                        </div>
+                        <div style="margin:12px 0;border-radius:8px;overflow:hidden;background:#000;text-align:center;">
+                            <canvas id="stripCanvas" width="750" height="246" style="width:100%;max-width:750px;height:auto;"></canvas>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn" onclick="applyGeneratedStrip()" style="background:var(--teal);color:#000;">Applica al Pass</button>
+                            <button class="btn small sec" onclick="downloadGeneratedStrip()">Scarica PNG</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                         <div class="sec-title" style="font-size:15px;">Link sul retro del pass</div>
                         <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Link cliccabili che appaiono sul retro del pass. Il cliente li tocca per aprire il browser.</p>
                         <div id="linksContainer"></div>
@@ -705,6 +728,98 @@ async function uploadStripNow() {
         toast('Errore di rete: ' + err.message);
     }
     document.getElementById('btnUploadStrip').textContent = 'Carica Strip';
+}
+
+// ── Strip Generator ──────────────────────────────────────────
+let pilatFont = null;
+(async function loadPilatFont() {
+    try {
+        const font = new FontFace('PilatExtended', 'url(/assets/PilatExtended-Regular.ttf)');
+        pilatFont = await font.load();
+        document.fonts.add(pilatFont);
+        console.log('✓ PilatExtended font loaded');
+        updateStripPreview();
+    } catch(e) { console.warn('Font load failed, using fallback:', e); }
+})();
+
+function updateStripPreview() {
+    const canvas = document.getElementById('stripCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = 750, H = 246;
+
+    // Black background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, W, H);
+
+    // White bands
+    const bandH = 10;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, W, bandH);
+    ctx.fillRect(0, H - bandH, W, bandH);
+
+    // Collect lines
+    const lines = [];
+    const l1 = (document.getElementById('stripLine1')?.value || '').trim();
+    const l2 = (document.getElementById('stripLine2')?.value || '').trim();
+    const l3 = (document.getElementById('stripLine3')?.value || '').trim();
+    if (l1) lines.push(l1);
+    if (l2) lines.push(l2);
+    if (l3) lines.push(l3);
+    if (lines.length === 0) return;
+
+    // Find optimal font size
+    const fontFamily = pilatFont ? 'PilatExtended' : 'Helvetica, Arial, sans-serif';
+    const gap = 10;
+    const usableH = H - bandH * 2;
+    let fontSize = 70;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    while (fontSize > 16) {
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+        const totalH = lines.length * fontSize + (lines.length - 1) * gap;
+        if (maxLineW < W * 0.92 && totalH < usableH * 0.88) break;
+        fontSize -= 2;
+    }
+
+    ctx.font = `${fontSize}px ${fontFamily}`;
+    ctx.fillStyle = '#D4E600';
+
+    const totalTextH = lines.length * fontSize + (lines.length - 1) * gap;
+    const startY = H / 2 - totalTextH / 2 + fontSize / 2;
+
+    lines.forEach((line, i) => {
+        const y = startY + i * (fontSize + gap);
+        ctx.fillText(line, W / 2, y);
+    });
+}
+
+function applyGeneratedStrip() {
+    const canvas = document.getElementById('stripCanvas');
+    if (!canvas || !brandId) { toast('Scrivi almeno una riga di testo'); return; }
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.split(',')[1];
+
+    fetch(`${API}/brands/${brandId}/strip`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ strip: base64 })
+    }).then(r => r.json()).then(data => {
+        if (data.success) toast('Strip applicata! Rigenera il pass per vederla.');
+        else toast('Errore: ' + (data.error || 'sconosciuto'));
+    }).catch(err => toast('Errore: ' + err.message));
+}
+
+function downloadGeneratedStrip() {
+    const canvas = document.getElementById('stripCanvas');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = 'strip_promo.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
 }
 
 async function saveBrandSettings() {
