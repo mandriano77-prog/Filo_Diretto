@@ -556,83 +556,65 @@ router.post('/brands/:id/ai-strip', async (req, res) => {
 
     console.log('🎨 AI Strip generation — brand:', brand.name, 'prompt:', prompt, 'style:', style);
 
-    // Use Replicate's official model endpoint (creates prediction and waits)
-    // Try the sync endpoint first (returns output directly for fast models)
-    const modelUrl = 'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions';
+    // Use replicate npm package for reliable API calls
+    const Replicate = require('replicate');
+    const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
 
-    const requestBody = {
+    console.log('🎨 Calling Replicate flux-schnell...');
+
+    const output = await replicate.run('black-forest-labs/flux-schnell', {
       input: {
         prompt: fullPrompt,
         num_outputs: 1,
         aspect_ratio: '3:1',
         output_format: 'png'
       }
-    };
-
-    console.log('🎨 Calling Replicate:', modelUrl);
-
-    const replicateRes = await fetch(modelUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${REPLICATE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'wait'
-      },
-      body: JSON.stringify(requestBody)
     });
 
-    const responseText = await replicateRes.text();
-    console.log('🎨 Replicate response status:', replicateRes.status);
+    console.log('🎨 Replicate output type:', typeof output, Array.isArray(output) ? 'array len ' + output.length : '');
 
-    let prediction;
-    try {
-      prediction = JSON.parse(responseText);
-    } catch(e) {
-      console.error('Replicate non-JSON response:', responseText.substring(0, 500));
-      return res.status(502).json({ error: 'AI service returned invalid response' });
-    }
+    // Output is an array of ReadableStream or URLs
+    let imageUrl;
+    let imgBuffer;
 
-    if (!replicateRes.ok) {
-      console.error('Replicate API error:', JSON.stringify(prediction));
-      return res.status(502).json({ error: 'AI generation failed', details: prediction.detail || prediction.title || JSON.stringify(prediction) });
-    }
-
-    console.log('🎨 Prediction:', prediction.id, 'status:', prediction.status);
-
-    // If 'Prefer: wait' worked, output is already available
-    // Otherwise poll for completion
-    let result = prediction;
-    if (result.status !== 'succeeded' && result.urls && result.urls.get) {
-      let attempts = 0;
-      while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
-        await new Promise(r => setTimeout(r, 2000));
-        const pollRes = await fetch(result.urls.get, {
-          headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` }
-        });
-        result = await pollRes.json();
-        attempts++;
-        console.log('🎨 Poll attempt', attempts, '— status:', result.status);
+    if (Array.isArray(output) && output.length > 0) {
+      const item = output[0];
+      if (typeof item === 'string') {
+        // It's a URL string
+        imageUrl = item;
+        const imgRes = await fetch(imageUrl);
+        imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+      } else if (item instanceof ReadableStream || (item && typeof item.read === 'function')) {
+        // It's a stream — read it
+        const chunks = [];
+        for await (const chunk of item) {
+          chunks.push(chunk);
+        }
+        imgBuffer = Buffer.concat(chunks);
+      } else if (Buffer.isBuffer(item)) {
+        imgBuffer = item;
+      } else {
+        // Try to fetch if it has a url property
+        console.log('🎨 Unknown output format:', typeof item, JSON.stringify(item).substring(0, 200));
+        return res.status(502).json({ error: 'Unexpected AI output format' });
       }
+    } else if (typeof output === 'string') {
+      imageUrl = output;
+      const imgRes = await fetch(imageUrl);
+      imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    } else {
+      console.error('🎨 Unexpected output:', typeof output, JSON.stringify(output).substring(0, 500));
+      return res.status(502).json({ error: 'Unexpected AI output' });
     }
 
-    if (result.status !== 'succeeded' || !result.output || result.output.length === 0) {
-      console.error('AI generation failed:', result.status, result.error, JSON.stringify(result));
-      return res.status(502).json({ error: 'AI generation failed', status: result.status, details: result.error });
+    if (!imgBuffer || imgBuffer.length === 0) {
+      return res.status(502).json({ error: 'Empty image returned from AI' });
     }
 
-    const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-    console.log('✓ AI Strip generated:', imageUrl);
-
-    // Download the image and convert to base64
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) {
-      console.error('Failed to download generated image:', imgRes.status);
-      return res.status(502).json({ error: 'Failed to download generated image' });
-    }
-    const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    console.log('✓ AI Strip generated — image size:', imgBuffer.length, 'bytes');
     const base64 = `data:image/png;base64,${imgBuffer.toString('base64')}`;
 
-    res.json({ success: true, image_url: imageUrl, base64, prompt: fullPrompt });
+    res.json({ success: true, image_url: imageUrl || 'stream', base64, prompt: fullPrompt });
   } catch (err) {
     console.error('Error generating AI strip:', err);
     res.status(500).json({ error: err.message });
