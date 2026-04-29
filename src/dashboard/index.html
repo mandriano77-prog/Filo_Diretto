@@ -1312,7 +1312,7 @@ async function generateAiStrip() {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.error || 'Errore generazione AI');
+            throw new Error(err.details || err.error || 'Errore generazione AI');
         }
 
         const data = await res.json();

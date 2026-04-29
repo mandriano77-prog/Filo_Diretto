@@ -556,49 +556,68 @@ router.post('/brands/:id/ai-strip', async (req, res) => {
 
     console.log('🎨 AI Strip generation — brand:', brand.name, 'prompt:', prompt, 'style:', style);
 
-    // Call Replicate API (Flux Schnell for speed, or Flux Dev for quality)
-    const replicateRes = await fetch('https://api.replicate.com/v1/predictions', {
+    // Use Replicate's official model endpoint (creates prediction and waits)
+    // Try the sync endpoint first (returns output directly for fast models)
+    const modelUrl = 'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions';
+
+    const requestBody = {
+      input: {
+        prompt: fullPrompt,
+        num_outputs: 1,
+        aspect_ratio: '3:1',
+        output_format: 'png'
+      }
+    };
+
+    console.log('🎨 Calling Replicate:', modelUrl);
+
+    const replicateRes = await fetch(modelUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${REPLICATE_API_TOKEN}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Prefer': 'wait'
       },
-      body: JSON.stringify({
-        model: 'black-forest-labs/flux-schnell',
-        input: {
-          prompt: fullPrompt,
-          num_outputs: 1,
-          aspect_ratio: '3:1',
-          output_format: 'png',
-          output_quality: 90
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
-    if (!replicateRes.ok) {
-      const err = await replicateRes.json();
-      console.error('Replicate API error:', err);
-      return res.status(502).json({ error: 'AI generation failed', details: err.detail || err });
+    const responseText = await replicateRes.text();
+    console.log('🎨 Replicate response status:', replicateRes.status);
+
+    let prediction;
+    try {
+      prediction = JSON.parse(responseText);
+    } catch(e) {
+      console.error('Replicate non-JSON response:', responseText.substring(0, 500));
+      return res.status(502).json({ error: 'AI service returned invalid response' });
     }
 
-    const prediction = await replicateRes.json();
-    console.log('🎨 Prediction created:', prediction.id, 'status:', prediction.status);
+    if (!replicateRes.ok) {
+      console.error('Replicate API error:', JSON.stringify(prediction));
+      return res.status(502).json({ error: 'AI generation failed', details: prediction.detail || prediction.title || JSON.stringify(prediction) });
+    }
 
-    // Poll for completion (Flux Schnell is fast, usually <10s)
+    console.log('🎨 Prediction:', prediction.id, 'status:', prediction.status);
+
+    // If 'Prefer: wait' worked, output is already available
+    // Otherwise poll for completion
     let result = prediction;
-    let attempts = 0;
-    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
-      await new Promise(r => setTimeout(r, 2000));
-      const pollRes = await fetch(result.urls.get, {
-        headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` }
-      });
-      result = await pollRes.json();
-      attempts++;
+    if (result.status !== 'succeeded' && result.urls && result.urls.get) {
+      let attempts = 0;
+      while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes = await fetch(result.urls.get, {
+          headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` }
+        });
+        result = await pollRes.json();
+        attempts++;
+        console.log('🎨 Poll attempt', attempts, '— status:', result.status);
+      }
     }
 
     if (result.status !== 'succeeded' || !result.output || result.output.length === 0) {
-      console.error('AI generation failed:', result.status, result.error);
-      return res.status(502).json({ error: 'AI generation failed', status: result.status });
+      console.error('AI generation failed:', result.status, result.error, JSON.stringify(result));
+      return res.status(502).json({ error: 'AI generation failed', status: result.status, details: result.error });
     }
 
     const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
@@ -606,6 +625,10 @@ router.post('/brands/:id/ai-strip', async (req, res) => {
 
     // Download the image and convert to base64
     const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) {
+      console.error('Failed to download generated image:', imgRes.status);
+      return res.status(502).json({ error: 'Failed to download generated image' });
+    }
     const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
     const base64 = `data:image/png;base64,${imgBuffer.toString('base64')}`;
 
