@@ -461,30 +461,32 @@
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                         <div class="sec-title" style="font-size:15px;">Geofencing — Notifiche di prossimità</div>
-                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Quando il cliente è vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Quando il cliente è vicino al punto vendita, il pass appare sulla lock screen con il tuo messaggio.</p>
 
-                        <!-- Search address -->
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label class="form-label">Cerca indirizzo</label>
-                            <div style="display:flex;gap:8px;">
-                                <input type="text" id="geoSearchInput" placeholder="es. Via Roma 1, Milano" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchGeoAddress();}">
-                                <button class="btn small" onclick="searchGeoAddress()">Cerca</button>
-                            </div>
+                        <!-- Search + Add row -->
+                        <div style="display:flex;gap:8px;margin-bottom:10px;">
+                            <input type="text" id="geoSearchInput" placeholder="Cerca indirizzo... (es. Via Roma 1, Milano)" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchGeoAddress();}">
+                            <button class="btn small" onclick="searchGeoAddress()">Cerca</button>
                         </div>
 
                         <!-- Map -->
-                        <div id="geoMap" style="height:300px;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;z-index:1;"></div>
+                        <div id="geoMap" style="height:320px;border-radius:12px;border:1px solid var(--border);margin-bottom:10px;z-index:1;"></div>
 
-                        <!-- Radius slider -->
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label class="form-label">Raggio di attivazione: <strong id="radiusLabel">500m</strong></label>
-                            <input type="range" id="geoRadius" min="100" max="5000" step="50" value="500" oninput="updateGeoRadius(this.value)" style="width:100%;accent-color:var(--teal);">
-                            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);"><span>100m</span><span>1km</span><span>2.5km</span><span>5km</span></div>
+                        <!-- Radius + Add button -->
+                        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+                            <div style="flex:1;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                    <label style="font-size:12px;color:var(--text2);">Raggio</label>
+                                    <strong id="radiusLabel" style="font-size:13px;color:var(--teal);">500m</strong>
+                                </div>
+                                <input type="range" id="geoRadius" min="100" max="5000" step="50" value="500" oninput="updateGeoRadius(this.value)" style="width:100%;accent-color:var(--teal);">
+                                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:2px;"><span>100m</span><span>1km</span><span>2.5km</span><span>5km</span></div>
+                            </div>
+                            <button class="btn" onclick="addLocationFromMap()" style="white-space:nowrap;padding:10px 20px;" id="geoAddBtn">+ Aggiungi punto</button>
                         </div>
 
-                        <!-- Locations list -->
-                        <div id="locationsContainer"></div>
-                        <button class="btn small sec" onclick="addLocationFromMap()" style="margin-top:8px;">+ Aggiungi punto dalla mappa</button>
+                        <!-- Saved locations list -->
+                        <div id="locationsContainer" style="margin-top:16px;"></div>
                     </div>
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                         <div class="sec-title" style="font-size:15px;">Promemoria Lock Screen</div>
@@ -949,9 +951,10 @@ let geoCircles = [];
 let geoTempMarker = null;
 let geoTempCircle = null;
 let geoCurrentRadius = 500;
+let geoSearchLabel = '';
 
 function initGeoMap() {
-    if (geoMap) { geoMap.invalidateSize(); return; }
+    if (geoMap) { geoMap.invalidateSize(); refreshMapMarkers(); return; }
     const mapEl = document.getElementById('geoMap');
     if (!mapEl) return;
     geoMap = L.map('geoMap', { zoomControl: true }).setView([45.4642, 9.1900], 13);
@@ -961,17 +964,20 @@ function initGeoMap() {
     geoMap.on('click', function(e) {
         setTempMarker(e.latlng.lat, e.latlng.lng);
     });
-    setTimeout(() => geoMap.invalidateSize(), 200);
+    setTimeout(() => { geoMap.invalidateSize(); refreshMapMarkers(); }, 200);
 }
 
 function setTempMarker(lat, lng) {
     if (geoTempMarker) geoMap.removeLayer(geoTempMarker);
     if (geoTempCircle) geoMap.removeLayer(geoTempCircle);
     geoTempMarker = L.marker([lat, lng], {
-        icon: L.divIcon({ className: '', html: '<div style="width:16px;height:16px;background:#CCFF00;border:2px solid #000;border-radius:50%;box-shadow:0 0 8px #CCFF0088;"></div>', iconSize: [16, 16], iconAnchor: [8, 8] })
+        icon: L.divIcon({ className: '', html: '<div style="width:18px;height:18px;background:#CCFF00;border:3px solid #000;border-radius:50%;box-shadow:0 0 12px #CCFF0088;"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
     }).addTo(geoMap);
-    geoTempCircle = L.circle([lat, lng], { radius: geoCurrentRadius, color: '#CCFF00', fillColor: '#CCFF00', fillOpacity: 0.12, weight: 2 }).addTo(geoMap);
-    geoMap.setView([lat, lng], Math.max(geoMap.getZoom(), 14));
+    geoTempCircle = L.circle([lat, lng], { radius: geoCurrentRadius, color: '#CCFF00', fillColor: '#CCFF00', fillOpacity: 0.15, weight: 2, dashArray: '6 4' }).addTo(geoMap);
+    geoMap.setView([lat, lng], Math.max(geoMap.getZoom(), 15));
+    // Show add button hint
+    const btn = document.getElementById('geoAddBtn');
+    if (btn) btn.style.animation = 'none'; // reset
 }
 
 function updateGeoRadius(val) {
@@ -979,9 +985,6 @@ function updateGeoRadius(val) {
     const label = geoCurrentRadius >= 1000 ? (geoCurrentRadius / 1000).toFixed(1) + 'km' : geoCurrentRadius + 'm';
     document.getElementById('radiusLabel').textContent = label;
     if (geoTempCircle) geoTempCircle.setRadius(geoCurrentRadius);
-    geoCircles.forEach((c, i) => {
-        if (c) c.setRadius(locationRows[i]?.radius || geoCurrentRadius);
-    });
 }
 
 async function searchGeoAddress() {
@@ -993,6 +996,7 @@ async function searchGeoAddress() {
         if (data.length === 0) return toast('Indirizzo non trovato', 'error');
         const lat = parseFloat(data[0].lat);
         const lng = parseFloat(data[0].lon);
+        geoSearchLabel = data[0].display_name.split(',').slice(0, 2).join(',').trim();
         setTempMarker(lat, lng);
         geoMap.setView([lat, lng], 16);
     } catch(e) { toast('Errore ricerca indirizzo', 'error'); }
@@ -1001,14 +1005,24 @@ async function searchGeoAddress() {
 function addLocationFromMap() {
     if (!geoTempMarker) return toast('Clicca sulla mappa o cerca un indirizzo prima', 'error');
     const ll = geoTempMarker.getLatLng();
-    locationRows.push({ latitude: ll.lat.toFixed(6), longitude: ll.lng.toFixed(6), relevantText: '', radius: geoCurrentRadius });
+    locationRows.push({
+        latitude: ll.lat.toFixed(6),
+        longitude: ll.lng.toFixed(6),
+        relevantText: '',
+        radius: geoCurrentRadius,
+        label: geoSearchLabel || ''
+    });
+    // Clear temp
     if (geoTempMarker) { geoMap.removeLayer(geoTempMarker); geoTempMarker = null; }
     if (geoTempCircle) { geoMap.removeLayer(geoTempCircle); geoTempCircle = null; }
+    geoSearchLabel = '';
+    document.getElementById('geoSearchInput').value = '';
     renderLocations();
+    toast('Punto aggiunto! Scrivi il messaggio lock screen qui sotto.');
 }
 
 function addLocationRow(lat, lng, text, radius) {
-    locationRows.push({ latitude: lat || '', longitude: lng || '', relevantText: text || '', radius: radius || 500 });
+    locationRows.push({ latitude: lat || '', longitude: lng || '', relevantText: text || '', radius: radius || 500, label: '' });
     renderLocations();
 }
 
@@ -1017,54 +1031,70 @@ function removeLocationRow(idx) {
     renderLocations();
 }
 
-function renderLocations() {
-    const c = document.getElementById('locationsContainer');
-    if (!c) return;
-
-    // Clear old markers/circles
+function refreshMapMarkers() {
+    // Clear all saved markers
     geoMarkers.forEach(m => { if (m && geoMap) geoMap.removeLayer(m); });
     geoCircles.forEach(c => { if (c && geoMap) geoMap.removeLayer(c); });
     geoMarkers = [];
     geoCircles = [];
 
-    c.innerHTML = locationRows.map((loc, i) => `
-        <div class="card" style="padding:14px;margin-bottom:10px;border:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <span style="font-size:12px;color:var(--text2);">📍 Lat: <strong style="color:var(--text1);">${loc.latitude}</strong></span>
-                    <span style="font-size:12px;color:var(--text2);">Lng: <strong style="color:var(--text1);">${loc.longitude}</strong></span>
-                    <span style="font-size:12px;background:var(--teal);color:#000;padding:2px 8px;border-radius:10px;font-weight:600;">${loc.radius >= 1000 ? (loc.radius / 1000).toFixed(1) + 'km' : (loc.radius || 500) + 'm'}</span>
-                </div>
-                <div style="display:flex;gap:6px;">
-                    <button class="btn small" style="background:var(--teal);padding:4px 8px;" onclick="zoomToLocation(${i})">📍</button>
-                    <button class="btn small" style="background:var(--red);padding:4px 8px;" onclick="removeLocationRow(${i})">✕</button>
-                </div>
-            </div>
-            <div>
-                <label style="font-size:12px;color:var(--teal);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Messaggio lock screen</label>
-                <input type="text" placeholder="es. Sei vicino a ${loc.relevantText ? '' : 'Hirostar'}! Vieni a giocare una partita 🎾" value="${loc.relevantText}" onchange="locationRows[${i}].relevantText=this.value" style="width:100%;font-size:14px;padding:10px 12px;">
-            </div>
-        </div>
-    `).join('') || '<p style="font-size:12px;color:var(--text2);">Nessun punto vendita configurato. Cerca un indirizzo o clicca sulla mappa.</p>';
-
-    // Draw markers and circles on map
-    if (geoMap) {
-        const bounds = [];
-        locationRows.forEach((loc, i) => {
-            if (!loc.latitude || !loc.longitude) return;
-            const lat = parseFloat(loc.latitude);
-            const lng = parseFloat(loc.longitude);
-            const r = loc.radius || 500;
-            const marker = L.marker([lat, lng], {
-                icon: L.divIcon({ className: '', html: '<div style="width:14px;height:14px;background:#00D4AA;border:2px solid #000;border-radius:50;box-shadow:0 0 6px #00D4AA88;"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
-            }).addTo(geoMap);
-            const circle = L.circle([lat, lng], { radius: r, color: '#00D4AA', fillColor: '#00D4AA', fillOpacity: 0.1, weight: 1.5 }).addTo(geoMap);
-            geoMarkers.push(marker);
-            geoCircles.push(circle);
-            bounds.push([lat, lng]);
-        });
-        if (bounds.length > 0) geoMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    if (!geoMap) return;
+    const bounds = [];
+    locationRows.forEach((loc, i) => {
+        if (!loc.latitude || !loc.longitude) return;
+        const lat = parseFloat(loc.latitude);
+        const lng = parseFloat(loc.longitude);
+        const r = loc.radius || 500;
+        const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: '',
+                html: `<div style="width:12px;height:12px;background:#00D4AA;border:2px solid #111;border-radius:50%;box-shadow:0 0 6px #00D4AA66;"></div>`,
+                iconSize: [12, 12], iconAnchor: [6, 6]
+            })
+        }).addTo(geoMap).bindTooltip(`#${i + 1} ${loc.label || ''}`, { direction: 'top', offset: [0, -8] });
+        const circle = L.circle([lat, lng], {
+            radius: r, color: '#00D4AA', fillColor: '#00D4AA', fillOpacity: 0.08, weight: 1.5
+        }).addTo(geoMap);
+        geoMarkers.push(marker);
+        geoCircles.push(circle);
+        bounds.push([lat, lng]);
+    });
+    if (bounds.length > 0 && !geoTempMarker) {
+        geoMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     }
+}
+
+function renderLocations() {
+    const c = document.getElementById('locationsContainer');
+    if (!c) return;
+
+    if (locationRows.length === 0) {
+        c.innerHTML = '<p style="font-size:13px;color:var(--text2);text-align:center;padding:12px 0;">Nessun punto vendita. Cerca un indirizzo o clicca sulla mappa, poi premi <strong style="color:var(--teal);">+ Aggiungi punto</strong>.</p>';
+    } else {
+        c.innerHTML = '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Punti vendita salvati (' + locationRows.length + ')</div>' +
+        locationRows.map((loc, i) => {
+            const radiusLabel = loc.radius >= 1000 ? (loc.radius / 1000).toFixed(1) + 'km' : (loc.radius || 500) + 'm';
+            return `<div class="card" style="padding:12px;margin-bottom:8px;border-left:3px solid #00D4AA;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <span style="background:#00D4AA22;color:var(--teal);font-weight:700;font-size:12px;padding:2px 8px;border-radius:6px;">#${i + 1}</span>
+                        ${loc.label ? `<span style="font-size:12px;color:var(--text1);">${loc.label}</span>` : `<span style="font-size:11px;color:var(--text2);">${loc.latitude}, ${loc.longitude}</span>`}
+                        <span style="font-size:11px;background:#333;color:var(--teal);padding:1px 6px;border-radius:8px;">${radiusLabel}</span>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn small" style="background:transparent;border:1px solid var(--border);padding:3px 6px;font-size:11px;" onclick="zoomToLocation(${i})">Mostra</button>
+                        <button class="btn small" style="background:var(--red);padding:3px 6px;font-size:11px;" onclick="removeLocationRow(${i})">✕</button>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--teal);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Messaggio lock screen</label>
+                    <input type="text" placeholder="es. Sei vicino! Vieni a giocare una partita" value="${loc.relevantText}" onchange="locationRows[${i}].relevantText=this.value" style="width:100%;font-size:13px;padding:8px 10px;">
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    refreshMapMarkers();
 }
 
 function zoomToLocation(idx) {
@@ -1302,7 +1332,7 @@ async function loadBrandSettings() {
     document.getElementById('bsContatti').value = bc.contatti || '';
 
     // Load geofencing locations + init map
-    locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || '', radius: l.radius || 500}));
+    locationRows = (c.locations || []).map(l => ({latitude: l.latitude || '', longitude: l.longitude || '', relevantText: l.relevantText || '', radius: l.radius || 500, label: l.label || ''}));
     setTimeout(() => { initGeoMap(); renderLocations(); }, 300);
 
     // Load relevant date
