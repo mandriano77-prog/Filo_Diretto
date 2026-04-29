@@ -176,8 +176,10 @@ router.get('/brands/:id/logo', async (req, res) => {
 
     // 1. Check for static file: public/assets/{slug}-logo.png
     if (brand.slug) {
-      const staticPath = path.join(__dirname, '..', '..', 'public', 'assets', `${brand.slug}-logo.png`);
+      const staticPath = path.resolve(__dirname, '..', '..', 'public', 'assets', `${brand.slug}-logo.png`);
+      console.log('Looking for static logo at:', staticPath, 'exists:', fs.existsSync(staticPath));
       if (fs.existsSync(staticPath)) {
+        res.set('Content-Type', 'image/png');
         res.set('Cache-Control', 'public, max-age=86400');
         return res.sendFile(staticPath);
       }
