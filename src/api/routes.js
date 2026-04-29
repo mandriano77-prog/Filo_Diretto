@@ -1149,6 +1149,46 @@ router.post('/passes/signup', async (req, res) => {
 });
 
 // ============================================================================
+// EMAIL DIAGNOSTICS (temporary — remove after debugging)
+// ============================================================================
+
+/**
+ * GET /api/v1/email/status - Check if Resend is configured
+ */
+router.get('/email/status', (req, res) => {
+  res.json({
+    resend_api_key_set: !!process.env.RESEND_API_KEY,
+    resend_api_key_prefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 8) + '...' : null,
+    from_email: process.env.FROM_EMAIL || 'noreply@nudj.studio',
+    from_name: process.env.FROM_NAME || 'Nudj',
+    node_env: process.env.NODE_ENV || 'not set'
+  });
+});
+
+/**
+ * POST /api/v1/email/test - Send a test welcome email
+ * Body: { "to": "your@email.com" }
+ */
+router.post('/email/test', async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Provide "to" email address' });
+
+  try {
+    const result = await sendWelcomeEmail({
+      to,
+      name: 'Test User',
+      brandName: 'Hirostar Hangar Padel',
+      brandColor: '#1a472a',
+      points: 10,
+      landingUrl: 'https://nudj.studio'
+    });
+    res.json({ success: true, result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
+// ============================================================================
 // REWARDS
 // ============================================================================
 
