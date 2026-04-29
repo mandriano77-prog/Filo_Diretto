@@ -8,6 +8,9 @@
     "dev": "node --watch src/server.js",
     "db:init": "node src/db/init.js"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "adm-zip": "^0.5.17",
     "archiver": "^7.0.0",
