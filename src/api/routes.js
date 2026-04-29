@@ -247,7 +247,7 @@ router.post('/users', authMiddleware, adminOnly, async (req, res) => {
       const brand = await getBrand(brand_id);
       if (brand) brandName = brand.name;
     }
-    const dashboardUrl = `https://${process.env.CUSTOM_DOMAIN || 'www.nudj.studio'}/dashboard/`;
+    const dashboardUrl = `https://${(process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio')}/dashboard/`;
     sendUserInviteEmail({
       to: email,
       name,
@@ -310,7 +310,7 @@ router.use(authMiddleware);
 router.use(brandFilter);
 
 // Custom domain for short landing URLs (fallback to request host)
-const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'www.nudj.studio';
+const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
 
 // Helper to ensure cache directory exists
 function ensureCacheDir() {
@@ -1344,7 +1344,7 @@ router.post('/passes/signup', async (req, res) => {
     });
 
     // Generate .pkpass file
-    const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'www.nudj.studio';
+    const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const pkpassBuffer = await createPkpass(template, passInstance, brand, { baseUrl });
 
