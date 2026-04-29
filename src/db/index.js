@@ -169,6 +169,18 @@ CREATE TABLE IF NOT EXISTS push_log (
   sent_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'manager',
+  brand_id TEXT REFERENCES brands(id),
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 /**
@@ -402,6 +414,9 @@ async function getDb() {
         }
       }
     } catch(e) { console.log('Rewards population note:', e.message); }
+
+    // --- Seed default admin user ---
+    await seedAdminUser();
 
   } catch (error) {
     console.error('Error initializing schema:', error);
@@ -1840,6 +1855,82 @@ async function deleteMember(id) {
   return { success: true };
 }
 
+// ─── Users ──────────────────────────────────────────────
+const bcrypt = require('bcryptjs');
+
+async function createUser({ email, password, name, role, brand_id }) {
+  const id = uuidv4();
+  const password_hash = await bcrypt.hash(password, 10);
+  const res = await pool.query(
+    `INSERT INTO users (id, email, password_hash, name, role, brand_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, email, name, role, brand_id, active, created_at`,
+    [id, email.toLowerCase().trim(), password_hash, name, role || 'manager', brand_id || null]
+  );
+  return res.rows[0];
+}
+
+async function getUserByEmail(email) {
+  const res = await pool.query(`SELECT * FROM users WHERE email = $1 AND active = true`, [email.toLowerCase().trim()]);
+  return res.rows[0] || null;
+}
+
+async function getUser(id) {
+  const res = await pool.query(`SELECT id, email, name, role, brand_id, active, created_at FROM users WHERE id = $1`, [id]);
+  return res.rows[0] || null;
+}
+
+async function listUsers() {
+  const res = await pool.query(`SELECT u.id, u.email, u.name, u.role, u.brand_id, b.name as brand_name, u.active, u.created_at FROM users u LEFT JOIN brands b ON u.brand_id = b.id ORDER BY u.created_at`);
+  return res.rows;
+}
+
+async function updateUser(id, data) {
+  const fields = [];
+  const values = [];
+  let idx = 1;
+  for (const key of ['email', 'name', 'role', 'brand_id', 'active']) {
+    if (data[key] !== undefined) {
+      fields.push(`${key} = $${idx}`);
+      values.push(key === 'email' ? data[key].toLowerCase().trim() : data[key]);
+      idx++;
+    }
+  }
+  if (data.password) {
+    fields.push(`password_hash = $${idx}`);
+    values.push(await bcrypt.hash(data.password, 10));
+    idx++;
+  }
+  if (fields.length === 0) return getUser(id);
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+  await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+  return getUser(id);
+}
+
+async function deleteUser(id) {
+  await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+  return { success: true };
+}
+
+async function verifyPassword(plaintext, hash) {
+  return bcrypt.compare(plaintext, hash);
+}
+
+async function seedAdminUser() {
+  try {
+    const existing = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
+    if (existing.rows.length === 0) {
+      await createUser({
+        email: 'admin@nudj.studio',
+        password: 'Nudj2026!',
+        name: 'Admin',
+        role: 'admin',
+        brand_id: null
+      });
+      console.log('✓ Seeded default admin user: admin@nudj.studio / Nudj2026!');
+    }
+  } catch(e) { console.log('Admin seed note:', e.message); }
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -1918,5 +2009,14 @@ module.exports = {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  // Users
+  createUser,
+  getUserByEmail,
+  getUser,
+  listUsers,
+  updateUser,
+  deleteUser,
+  verifyPassword,
+  seedAdminUser,
   pool
 };

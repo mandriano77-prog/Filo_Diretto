@@ -79,14 +79,218 @@ const {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  // Users
+  createUser,
+  getUserByEmail,
+  getUser,
+  listUsers,
+  updateUser,
+  deleteUser,
+  verifyPassword,
   pool
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
 const sharp = require('sharp');
 const XLSX = require('xlsx');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+
+// JWT secret — use env var in production
+const JWT_SECRET = process.env.JWT_SECRET || 'nudj-secret-change-me-in-prod';
+const JWT_EXPIRES = '7d';
+
+// ============================================================================
+// AUTH MIDDLEWARE
+// ============================================================================
+
+/**
+ * Auth middleware — verifies JWT token from Authorization header or cookie
+ * Attaches req.user = { id, email, name, role, brand_id }
+ * Non-auth routes (landing, pass download, Apple Wallet callbacks) skip this
+ */
+function authMiddleware(req, res, next) {
+  // Skip auth for public routes (login, signup, pass download, Apple Wallet callbacks, seed endpoints)
+  const publicPrefixes = [
+    '/auth/login',
+    '/signup',              // landing page signup
+    '/brands/',             // brand slug lookup (used by landing page)
+    '/landing/',            // landing page API (brand by slug, pass info)
+    '/passes/signup',       // public signup endpoint
+    '/rewards/seed', '/challenges/seed', '/rewards/check', '/rewards/fix-brand'
+  ];
+  // Apple Wallet device registration paths & pass downloads
+  if (req.path.match(/\/devices\//) || req.path.match(/\/passes\/.*\/pkpass/) || req.path.match(/\/passes\/.*\/download/)) return next();
+  if (publicPrefixes.some(p => req.path.startsWith(p))) return next();
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token mancante. Effettua il login.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Token non valido o scaduto.' });
+  }
+}
+
+/**
+ * Admin-only middleware — must be called after authMiddleware
+ */
+function adminOnly(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Accesso riservato agli amministratori.' });
+  }
+  next();
+}
+
+/**
+ * Brand filter middleware — if user is manager, force brand_id filter
+ * Modifies req.query.brand_id and req.body.brand_id
+ */
+function brandFilter(req, res, next) {
+  if (req.user && req.user.role === 'manager' && req.user.brand_id) {
+    req.query.brand_id = req.user.brand_id;
+    if (req.body) req.body.brand_id = req.user.brand_id;
+  }
+  next();
+}
+
+// ============================================================================
+// AUTH ENDPOINTS (public, no auth required)
+// ============================================================================
+
+/**
+ * POST /api/v1/auth/login
+ */
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e password sono obbligatorie.' });
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Credenziali non valide.' });
+    }
+
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Credenziali non valide.' });
+    }
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      brand_id: user.brand_id
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+    res.json({
+      token,
+      user: payload
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/auth/me — get current user from token
+ */
+router.get('/auth/me', authMiddleware, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// ============================================================================
+// USER MANAGEMENT (admin only)
+// ============================================================================
+
+/**
+ * GET /api/v1/users — list all users (admin only)
+ */
+router.get('/users', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const users = await listUsers();
+    res.json(users);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/v1/users — create user (admin only)
+ */
+router.post('/users', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { email, password, name, role, brand_id } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password e nome sono obbligatori.' });
+    }
+    if (role && !['admin', 'manager'].includes(role)) {
+      return res.status(400).json({ error: 'Ruolo non valido. Usa admin o manager.' });
+    }
+    const user = await createUser({ email, password, name, role: role || 'manager', brand_id });
+    res.status(201).json(user);
+  } catch (e) {
+    if (e.message.includes('duplicate') || e.message.includes('unique')) {
+      return res.status(409).json({ error: 'Email già registrata.' });
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * PUT /api/v1/users/:id — update user (admin only)
+ */
+router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const user = await updateUser(req.params.id, req.body);
+    if (!user) return res.status(404).json({ error: 'Utente non trovato.' });
+    res.json(user);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * DELETE /api/v1/users/:id — delete user (admin only)
+ */
+router.delete('/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    await deleteUser(req.params.id);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * PUT /api/v1/auth/change-password — change own password
+ */
+router.put('/auth/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Password attuale e nuova sono obbligatorie.' });
+    }
+    const user = await getUserByEmail(req.user.email);
+    const valid = await verifyPassword(current_password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Password attuale non corretta.' });
+
+    await updateUser(req.user.id, { password: new_password });
+    res.json({ success: true, message: 'Password aggiornata.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Apply auth + brand filter to all routes below
+router.use(authMiddleware);
+router.use(brandFilter);
 
 // Custom domain for short landing URLs (fallback to request host)
 const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || 'nudj.studio';
@@ -141,7 +345,11 @@ router.post('/brands', async (req, res) => {
  */
 router.get('/brands', async (req, res) => {
   try {
-    const brands = await listBrands();
+    let brands = await listBrands();
+    // Filter for manager users — only show their assigned brand
+    if (req.user && req.user.role === 'manager' && req.user.brand_id) {
+      brands = brands.filter(b => b.id === req.user.brand_id);
+    }
     res.json(brands);
   } catch (error) {
     console.error('Error listing brands:', error);
