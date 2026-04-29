@@ -734,7 +734,7 @@ function showDashboard() {
     // Show/hide admin-only elements
     const isAdmin = currentUser.role === 'admin';
     document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = isAdmin ? '' : 'none';
+        el.style.display = isAdmin ? 'block' : 'none';
     });
 
     // Hide brand selector for managers (they only see their brand)
