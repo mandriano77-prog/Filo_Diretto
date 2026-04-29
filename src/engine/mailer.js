@@ -11,6 +11,7 @@ const FROM_NAME = process.env.FROM_NAME || 'Nudj';
  * Send welcome email after signup
  */
 async function sendWelcomeEmail({ to, name, brandName, brandColor, points, landingUrl }) {
+  console.log('📧 sendWelcomeEmail called — to:', to, 'RESEND_API_KEY set:', !!process.env.RESEND_API_KEY);
   if (!resend) {
     console.log('⚠️ RESEND_API_KEY not set — skipping welcome email to', to);
     return null;
@@ -102,10 +103,10 @@ async function sendWelcomeEmail({ to, name, brandName, brandColor, points, landi
       subject: `Benvenuto nel club ${brandName}! 🎾`,
       html
     });
-    console.log('✓ Welcome email sent to', to, result);
+    console.log('✓ Welcome email sent to', to, JSON.stringify(result));
     return result;
   } catch (error) {
-    console.error('✗ Failed to send welcome email:', error);
+    console.error('✗ Failed to send welcome email:', error?.message || error, JSON.stringify(error));
     return null;
   }
 }
