@@ -1377,7 +1377,7 @@ router.get('/landing/brand/:slug', async (req, res) => {
  */
 router.post('/passes/signup', async (req, res) => {
   try {
-    const { brand_id, name, email, phone } = req.body;
+    const { brand_id, name, email, phone, playtomic_email } = req.body;
     if (!brand_id || !name || !email) {
       return res.status(400).json({ error: 'brand_id, name e email sono obbligatori' });
     }
@@ -1418,9 +1418,13 @@ router.post('/passes/signup', async (req, res) => {
         });
       }
       member = { id: memberId, first_name, last_name, email, phone };
+      // Update playtomic_email if provided during signup
+      if (playtomic_email) {
+        await updateMember(memberId, { playtomic_email });
+      }
     } else {
       // Create new member
-      member = await createMember({ brand_id, first_name, last_name, email, phone });
+      member = await createMember({ brand_id, first_name, last_name, email, phone, playtomic_email: playtomic_email || null });
     }
 
     // Get first tier for this brand (lowest sort_order / min_points)
@@ -2438,10 +2442,10 @@ router.get('/members/export', async (req, res) => {
     const { brand_id } = req.query;
     if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
     const members = await listMembers(brand_id);
-    const header = 'Nome,Cognome,Email,Telefono,Note,Pass,Punti,Data Iscrizione\n';
+    const header = 'Nome,Cognome,Email,Telefono,Email Playtomic,Note,Pass,Punti,Data Iscrizione\n';
     const rows = members.map(m => {
       const date = new Date(m.created_at).toLocaleDateString('it-IT');
-      return `"${(m.first_name||'').replace(/"/g,'""')}","${(m.last_name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
+      return `"${(m.first_name||'').replace(/"/g,'""')}","${(m.last_name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${m.playtomic_email||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
     }).join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=membri.csv');
@@ -2497,6 +2501,7 @@ router.post('/members/import', async (req, res) => {
     const EMAIL_KEYS = ['email', 'e-mail', 'mail', 'indirizzo email'];
     const PHONE_KEYS = ['telefono', 'phone', 'tel', 'cellulare', 'mobile', 'cell'];
     const NOTES_KEYS = ['note', 'notes', 'commento', 'commenti', 'osservazioni'];
+    const PLAYTOMIC_KEYS = ['playtomic_email', 'email playtomic', 'playtomic', 'email_playtomic'];
 
     function findKey(obj, candidates) {
       for (const c of candidates) { if (obj[c] !== undefined && obj[c] !== '') return obj[c]; }
@@ -2520,7 +2525,8 @@ router.post('/members/import', async (req, res) => {
         last_name: lastName || null,
         email: findKey(r, EMAIL_KEYS) || null,
         phone: findKey(r, PHONE_KEYS) || null,
-        notes: findKey(r, NOTES_KEYS) || null
+        notes: findKey(r, NOTES_KEYS) || null,
+        playtomic_email: findKey(r, PLAYTOMIC_KEYS) || null
       };
     }).filter(m => m.first_name); // Skip rows without name
 

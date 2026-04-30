@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS members (
   last_name TEXT,
   email TEXT,
   phone TEXT,
+  playtomic_email TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -292,6 +293,12 @@ async function getDb() {
         console.log('✓ Migrated members name → first_name + last_name');
       }
     } catch(e) { console.log('Members migration note:', e.message); }
+
+    // Add playtomic_email column to members if not exists
+    try {
+      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_email TEXT`);
+      console.log('✓ playtomic_email column ensured on members');
+    } catch(e) { console.log('playtomic_email migration note:', e.message); }
 
     // --- Seed default tiers for brands that have none ---
     try {
@@ -1800,13 +1807,13 @@ async function getDueScheduledPush() {
 
 async function createMember(data) {
   const id = data.id || uuidv4();
-  const { brand_id, first_name, last_name = null, email = null, phone = null, notes = null } = data;
+  const { brand_id, first_name, last_name = null, email = null, phone = null, notes = null, playtomic_email = null } = data;
   if (!brand_id || !first_name) throw new Error('Brand ID and first_name are required');
   await pool.query(
-    `INSERT INTO members (id, brand_id, first_name, last_name, email, phone, notes) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, brand_id, first_name, last_name, email, phone, notes]
+    `INSERT INTO members (id, brand_id, first_name, last_name, email, phone, notes, playtomic_email) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [id, brand_id, first_name, last_name, email, phone, notes, playtomic_email]
   );
-  return { id, brand_id, first_name, last_name, email, phone, notes, created_at: new Date() };
+  return { id, brand_id, first_name, last_name, email, phone, notes, playtomic_email, created_at: new Date() };
 }
 
 async function getMember(id) {
@@ -1826,10 +1833,10 @@ async function listMembers(brand_id) {
 }
 
 async function updateMember(id, data) {
-  const { first_name, last_name, email, phone, notes } = data;
+  const { first_name, last_name, email, phone, notes, playtomic_email } = data;
   await pool.query(
-    `UPDATE members SET first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), phone = COALESCE($5, phone), notes = COALESCE($6, notes), updated_at = NOW() WHERE id = $1`,
-    [id, first_name, last_name, email, phone, notes]
+    `UPDATE members SET first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), phone = COALESCE($5, phone), notes = COALESCE($6, notes), playtomic_email = COALESCE($7, playtomic_email), updated_at = NOW() WHERE id = $1`,
+    [id, first_name, last_name, email, phone, notes, playtomic_email]
   );
   return getMember(id);
 }
@@ -1839,7 +1846,7 @@ async function bulkCreateMembers(brand_id, members) {
   for (const m of members) {
     try {
       if (!m.first_name) { results.skipped++; continue; }
-      await createMember({ brand_id, first_name: m.first_name, last_name: m.last_name || null, email: m.email || null, phone: m.phone || null, notes: m.notes || null });
+      await createMember({ brand_id, first_name: m.first_name, last_name: m.last_name || null, email: m.email || null, phone: m.phone || null, notes: m.notes || null, playtomic_email: m.playtomic_email || null });
       results.created++;
     } catch (e) {
       results.errors.push(`${m.first_name} ${m.last_name || ''}: ${e.message}`);
