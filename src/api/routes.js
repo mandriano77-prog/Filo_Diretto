@@ -1452,7 +1452,7 @@ router.post('/passes/signup', async (req, res) => {
 
     // Handle referral code if provided
     if (referral_code) {
-      const referrer = await getMemberByReferralCode(brand_id, referral_code);
+      const referrer = await getMemberByReferralCode(referral_code);
       if (referrer) {
         referrer_id = referrer.id;
       }
@@ -1481,7 +1481,7 @@ router.post('/passes/signup', async (req, res) => {
       // Create new member
       member = await createMember({ brand_id, first_name, last_name, email, phone, playtomic_email: playtomic_email || null, referred_by: referrer_id });
 
-      // Increment referrer's referral count if applicable
+      // Increment referrer's referral count and evaluate referral missions
       if (referrer_id) {
         await incrementReferralCount(referrer_id);
         await logAnalyticsEvent({
@@ -1489,6 +1489,11 @@ router.post('/passes/signup', async (req, res) => {
           brand_id: brand_id,
           metadata: { referred_member_id: member.id, referrer_id: referrer_id, referral_code: referral_code }
         });
+        // Trigger referral challenge evaluation for the referrer
+        try {
+          const { evaluateChallenges } = require('../engine/challenges');
+          await evaluateChallenges(brand_id);
+        } catch(e) { console.error('Referral challenge eval error:', e.message); }
       }
     }
 

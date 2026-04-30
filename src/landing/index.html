@@ -554,12 +554,16 @@
             const phoneNumber = form.phone_number.value.replace(/\s+/g, '');
             const userName = form.name.value;
             const playtomicEmail = form.playtomic_email ? form.playtomic_email.value.trim() : '';
+            // Referral code from URL (?ref=XXXX)
+            const urlParams = new URLSearchParams(window.location.search);
+            const referralCode = urlParams.get('ref') || null;
             const body = {
                 brand_id: form.brand_id.value,
                 name: userName,
                 email: form.email.value,
                 phone: phonePrefix + phoneNumber,
-                playtomic_email: playtomicEmail || null
+                playtomic_email: playtomicEmail || null,
+                referral_code: referralCode
             };
 
             try {
