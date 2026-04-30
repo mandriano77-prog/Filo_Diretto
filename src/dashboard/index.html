@@ -120,24 +120,26 @@
 <div class="layout" id="mainLayout" style="display:none;">
     <div class="sidebar">
         <div class="logo" id="sidebarBrandName">&#9670; Nudj</div>
-        <div class="nav-label">Dashboard</div>
+        <div class="nav-label">Core</div>
         <div class="nav-item active" onclick="nav('overview')">Overview</div>
         <div class="nav-item" onclick="nav('members')">Membri</div>
         <div class="nav-item" onclick="nav('create-pass')">Crea Pass</div>
-        <div class="nav-label">Loyalty</div>
+        <div class="nav-label">Loop</div>
         <div class="nav-item" onclick="nav('tiers')">Livelli</div>
-        <div class="nav-item" onclick="nav('challenges')">Missioni</div>
         <div class="nav-item" onclick="nav('rewards')">Premi</div>
         <div class="nav-item" onclick="nav('vip-cards')">Carte VIP</div>
-        <div class="nav-label">Comunicazione</div>
-        <div class="nav-item" onclick="nav('push')">Push Notification</div>
-        <div class="nav-label">Insights</div>
+        <div class="nav-label">Sparq</div>
+        <div class="nav-item" onclick="nav('challenges')">Missioni</div>
+        <div class="nav-label">Trigga</div>
+        <div class="nav-item" onclick="nav('push')">Push & Automazioni</div>
+        <div class="nav-label">Pulse</div>
         <div class="nav-item" onclick="nav('analytics')">Analytics</div>
+        <div class="nav-label">Bridge</div>
+        <div class="nav-item" onclick="nav('api-integration')">Integrazioni</div>
         <div class="nav-label">Setup</div>
         <div class="nav-item" onclick="nav('templates')">Template</div>
         <div class="nav-item" onclick="nav('brand-settings')">Brand</div>
         <div class="nav-item" onclick="nav('pass-settings')">Pass</div>
-        <div class="nav-item" onclick="nav('api-integration')">🔌 API</div>
         <div class="nav-item admin-only" onclick="nav('users')">Utenti</div>
 
         <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
@@ -270,7 +272,7 @@
             <!-- TIERS -->
             <div id="tiers" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Sistema Livelli</div>
+                    <div class="sec-title" style="margin-bottom:0">Loop — Livelli</div>
                     <button class="btn" onclick="openTierModal()">+ Nuovo Livello</button>
                 </div>
                 <div id="tiersList"></div>
@@ -279,7 +281,7 @@
             <!-- CHALLENGES -->
             <div id="challenges" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Missioni</div>
+                    <div class="sec-title" style="margin-bottom:0">Sparq — Missioni</div>
                     <div style="display:flex;gap:8px;">
                         <button class="btn sec small" onclick="triggerChallengeEval()" id="evalChallengesBtn" title="Ricalcola il progresso di tutte le missioni Playtomic" style="display:none;">🔄 Ricalcola</button>
                         <button class="btn" id="btnNewPlaytomic" onclick="openChallengeModal('playtomic')" style="display:none;">+ Playtomic</button>
@@ -300,7 +302,7 @@
             <!-- REWARDS -->
             <div id="rewards" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Catalogo Premi</div>
+                    <div class="sec-title" style="margin-bottom:0">Loop — Catalogo Premi</div>
                     <button class="btn" onclick="openRewardModal()">+ Nuovo Premio</button>
                 </div>
                 <div id="rewardsList"></div>
@@ -309,7 +311,7 @@
             <!-- VIP CARDS -->
             <div id="vip-cards" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Carte VIP</div>
+                    <div class="sec-title" style="margin-bottom:0">Loop — Carte VIP</div>
                     <button class="btn" onclick="openVipModal()">+ Nuova Carta</button>
                 </div>
                 <div id="vipCardsList"></div>
@@ -317,7 +319,7 @@
 
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
-                <div class="sec-title">Notifiche Push — Invia o Programma</div>
+                <div class="sec-title">Trigga — Push & Automazioni</div>
                 <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Scrivi titolo e messaggio, scegli quando inviare: subito, una volta, ogni giorno o ogni settimana.</p>
                 <div class="push-card">
                     <div class="form-group">
@@ -410,7 +412,7 @@
 
             <!-- ANALYTICS -->
             <div id="analytics" class="section">
-                <div class="sec-title">Analytics</div>
+                <div class="sec-title">Pulse — Analytics</div>
                 <div id="analyticsLoading" style="color:var(--text2);">Caricamento analytics...</div>
                 <div id="analyticsStats" class="stats-grid" style="display:none;"></div>
                 <div id="analyticsCharts" style="display:none;">
@@ -624,7 +626,7 @@
 
             <!-- API INTEGRATION -->
             <div id="api-integration" class="section">
-                <div class="sec-title">🔌 API Integration</div>
+                <div class="sec-title">Bridge — Integrazioni</div>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:24px;">Collega servizi esterni per automatizzare il programma fedeltà.</p>
 
                 <!-- Empty state for brands without integrations -->
