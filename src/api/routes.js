@@ -1666,14 +1666,25 @@ router.get('/cleanup/non-padel', async (req, res) => {
       const rewardsDeleted = await pool.query('DELETE FROM rewards WHERE brand_id = $1 RETURNING id, title', [brand.id]);
       const challengesDeleted = await pool.query('DELETE FROM challenges WHERE brand_id = $1 RETURNING id, title', [brand.id]);
 
+      // Remove strip image if it was copied from another brand
+      const brandData = await getBrand(brand.id);
+      let stripRemoved = false;
+      if (brandData?.config?.logos?.strip) {
+        const cfg = { ...brandData.config };
+        delete cfg.logos.strip;
+        await pool.query('UPDATE brands SET config = $1 WHERE id = $2', [JSON.stringify(cfg), brand.id]);
+        stripRemoved = true;
+      }
+
       cleaned.push({
         brand: brand.name,
         brand_id: brand.id,
         tiers_removed: tiersDeleted.rows.length,
         rewards_removed: rewardsDeleted.rows.length,
-        challenges_removed: challengesDeleted.rows.length
+        challenges_removed: challengesDeleted.rows.length,
+        strip_removed: stripRemoved
       });
-      console.log(`[Cleanup] Brand ${brand.name}: removed ${tiersDeleted.rows.length} tiers, ${rewardsDeleted.rows.length} rewards, ${challengesDeleted.rows.length} challenges`);
+      console.log(`[Cleanup] Brand ${brand.name}: removed ${tiersDeleted.rows.length} tiers, ${rewardsDeleted.rows.length} rewards, ${challengesDeleted.rows.length} challenges, strip: ${stripRemoved}`);
     }
 
     res.json({ message: 'Cleanup completed', cleaned });
