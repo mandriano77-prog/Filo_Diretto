@@ -239,8 +239,9 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
   const firstName = memberName.split(/\s+/)[0];
 
   // Build points detail rows
+  const hasDetails = pointsDetails && pointsDetails.length > 0;
   const rows = (pointsDetails || []).map(d => {
-    const icon = d.reason === 'challenge' ? '🏆' : d.reason === 'manual' ? '✋' : d.reason === 'signup' ? '🎉' : '📌';
+    const icon = d.reason === 'challenge' ? '&#127942;' : d.reason === 'manual' ? '&#9997;' : d.reason === 'signup' ? '&#127881;' : '&#128204;';
     const date = new Date(d.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
     return `<tr>
       <td style="padding:10px 12px;border-bottom:1px solid #222;font-size:13px;color:#ccc;">${icon} ${d.details || d.reason}</td>
@@ -249,7 +250,7 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
     </tr>`;
   }).join('');
 
-  const detailsSection = pointsDetails && pointsDetails.length > 0 ? `
+  const detailsSection = hasDetails ? `
     <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
       <thead><tr style="background:#1a1a1a;">
         <th style="padding:10px 12px;text-align:left;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.5px;">Attivita</th>
@@ -257,7 +258,16 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
         <th style="padding:10px 12px;text-align:right;font-size:11px;color:#666;text-transform:uppercase;">Data</th>
       </tr></thead>
       <tbody>${rows}</tbody>
-    </table>` : `<p style="color:#666;font-size:13px;text-align:center;padding:20px 0;">Nessuna attivita in questo periodo. Gioca e completa missioni per guadagnare punti!</p>`;
+    </table>` : '';
+
+  // Message varies based on whether they earned points
+  const bodyMessage = periodPoints > 0
+    ? `Questa ${periodLabel.toLowerCase().startsWith('settimana') ? 'settimana' : 'volta'} hai guadagnato <strong style="color:${accent};">${periodPoints} punti</strong>. Ecco il dettaglio.`
+    : `Questa ${periodLabel.toLowerCase().startsWith('settimana') ? 'settimana' : 'volta'} non hai guadagnato punti, ma la tua posizione nel club resta attiva!`;
+
+  const ctaMessage = periodPoints > 0
+    ? 'Ottimo lavoro! Continua cosi per sbloccare nuovi premi.'
+    : 'Torna a giocare e completa missioni per accumulare punti e salire di livello!';
 
   const html = `<!DOCTYPE html>
 <html>
@@ -268,7 +278,7 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
   <!-- Header -->
   <div style="text-align:center;padding:40px 24px;background:${bg};border-radius:16px 16px 0 0;">
     <h1 style="color:#fff;font-size:24px;margin:0 0 8px;font-weight:700;">${brandName}</h1>
-    <p style="color:${accent};font-size:14px;margin:0;font-weight:600;">Riepilogo Punti ${periodLabel}</p>
+    <p style="color:${accent};font-size:14px;margin:0;font-weight:600;">Il tuo recap ${periodLabel.toLowerCase()}</p>
   </div>
 
   <!-- Body -->
@@ -277,21 +287,25 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
       Ciao <strong style="color:#fff;">${firstName}</strong>,
     </p>
     <p style="color:#bbb;font-size:14px;line-height:1.6;margin:0 0 24px;">
-      Ecco il tuo riepilogo punti ${periodLabel.toLowerCase()}.
+      ${bodyMessage}
     </p>
 
-    <!-- Summary card -->
-    <div style="background:linear-gradient(135deg,${bg},#1a1a2e);border:1px solid ${accent}33;border-radius:12px;padding:28px;margin:0 0 24px;text-align:center;">
-      <p style="margin:0;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Punti guadagnati</p>
-      <p style="margin:8px 0;font-size:48px;font-weight:800;color:${accent};line-height:1;">${periodPoints > 0 ? '+' : ''}${periodPoints}</p>
-      <p style="margin:0;color:#888;font-size:13px;">Totale attuale: <strong style="color:#fff;">${totalPoints} punti</strong>${tierName ? ` — Livello <span style="color:${accent};">${tierName}</span>` : ''}</p>
+    <!-- Summary card: period points -->
+    <div style="background:linear-gradient(135deg,${bg},#1a1a2e);border:1px solid ${accent}33;border-radius:12px;padding:28px;margin:0 0 16px;text-align:center;">
+      <p style="margin:0;color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Punti del periodo</p>
+      <p style="margin:8px 0;font-size:48px;font-weight:800;color:${periodPoints > 0 ? accent : '#555'};line-height:1;">${periodPoints > 0 ? '+' : ''}${periodPoints}</p>
+    </div>
+
+    <!-- Position card: total + tier -->
+    <div style="background:#222;border:1px solid #333;border-radius:12px;padding:20px;margin:0 0 24px;text-align:center;">
+      <p style="margin:0;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;">La tua posizione</p>
+      <p style="margin:8px 0 4px;font-size:32px;font-weight:700;color:#fff;line-height:1;">${totalPoints}</p>
+      <p style="margin:0;color:#888;font-size:13px;">punti totali${tierName ? ` &mdash; Livello <strong style="color:${accent};">${tierName}</strong>` : ''}</p>
     </div>
 
     ${detailsSection}
 
-    <p style="margin:20px 0 0;font-size:13px;color:#666;text-align:center;">
-      ${periodPoints > 0 ? 'Ottimo lavoro! Continua cosi per sbloccare nuovi premi.' : 'Torna a giocare per accumulare punti e salire di livello!'}
-    </p>
+    <p style="margin:20px 0 0;font-size:13px;color:#666;text-align:center;">${ctaMessage}</p>
   </div>
 
   <!-- Footer -->
@@ -305,8 +319,8 @@ async function sendRecapEmail({ to, brandName, brandColor, memberName, periodLab
 </html>`;
 
   const subject = periodPoints > 0
-    ? `${brandName} — Hai guadagnato ${periodPoints} punti ${periodLabel.toLowerCase()}!`
-    : `${brandName} — Il tuo riepilogo ${periodLabel.toLowerCase()}`;
+    ? `${brandName} — +${periodPoints} punti ${periodLabel.toLowerCase()}!`
+    : `${brandName} — Il tuo recap ${periodLabel.toLowerCase()}`;
 
   try {
     const result = await resend.emails.send({

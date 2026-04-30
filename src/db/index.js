@@ -2443,6 +2443,17 @@ async function getPointsLogForPeriod(brand_id, startDate, endDate) {
   return res.rows;
 }
 
+async function getAllMembersWithEmail(brand_id) {
+  const res = await pool.query(
+    `SELECT m.id, m.first_name, m.last_name, m.email
+     FROM members m
+     WHERE m.brand_id = $1 AND m.email IS NOT NULL AND m.email != ''
+     ORDER BY m.last_name ASC NULLS LAST, m.first_name ASC`,
+    [brand_id]
+  );
+  return res.rows;
+}
+
 async function getMembersWithPointsInPeriod(brand_id, startDate, endDate) {
   const res = await pool.query(
     `SELECT m.id, m.first_name, m.last_name, m.email,
@@ -2672,6 +2683,7 @@ module.exports = {
   // Points Log
   logPoints,
   getPointsLogForPeriod,
+  getAllMembersWithEmail,
   getMembersWithPointsInPeriod,
   getMemberTotalPoints,
   // Email Log

@@ -2,7 +2,8 @@
  * Email Recap Engine
  *
  * Sends weekly (every Monday 9:00) and monthly (1st of month 9:00) recap emails
- * to all members who earned points in the period.
+ * to ALL members with an email address — not just those who earned points.
+ * Members who earned 0 points in the period still receive their position recap.
  *
  * Each brand can enable/disable recaps via config.email_recap_weekly / email_recap_monthly.
  * Default: both enabled (if RESEND_API_KEY is set).
@@ -16,11 +17,9 @@ const { sendRecapEmail } = require('./mailer');
 function getLastWeekBounds() {
   const now = new Date();
   const day = now.getDay(); // 0=Sun
-  // Last Monday
   const lastMonday = new Date(now);
   lastMonday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) - 7);
   lastMonday.setHours(0, 0, 0, 0);
-  // Last Sunday
   const lastSunday = new Date(lastMonday);
   lastSunday.setDate(lastMonday.getDate() + 6);
   lastSunday.setHours(23, 59, 59, 999);
@@ -49,7 +48,6 @@ async function getMemberTier(brand_id, totalPoints) {
   try {
     const tiers = await db.listTiers(brand_id);
     if (!tiers || tiers.length === 0) return null;
-    // Sort by min_points DESC and find first that member qualifies for
     const sorted = tiers.sort((a, b) => (b.min_points || 0) - (a.min_points || 0));
     for (const tier of sorted) {
       if (totalPoints >= (tier.min_points || 0)) return tier.name;
@@ -70,26 +68,35 @@ async function sendBrandRecap(brand, periodType) {
 
   const brandColor = brand.config?.backgroundColor || '#000000';
 
-  // Get all members with points in the period
-  const membersWithPoints = await db.getMembersWithPointsInPeriod(brand.id, bounds.start, bounds.end);
+  // Get ALL members with an email (not just those with points)
+  const allMembers = await db.getAllMembersWithEmail(brand.id);
 
-  if (membersWithPoints.length === 0) {
-    console.log(`[EmailRecap] ${brand.name}: no members with points in ${periodType} period, skipping`);
+  if (allMembers.length === 0) {
+    console.log(`[EmailRecap] ${brand.name}: no members with email, skipping`);
     return { sent: 0, brand: brand.name };
+  }
+
+  // Get all points in the period (one query, then filter per member)
+  const pointsLog = await db.getPointsLogForPeriod(brand.id, bounds.start, bounds.end);
+
+  // Build a map: member_id -> { periodPoints, details[] }
+  const pointsMap = {};
+  for (const p of pointsLog) {
+    if (!pointsMap[p.member_id]) pointsMap[p.member_id] = { total: 0, details: [] };
+    pointsMap[p.member_id].total += parseInt(p.points) || 0;
+    pointsMap[p.member_id].details.push(p);
   }
 
   let sent = 0;
   let errors = 0;
 
-  for (const member of membersWithPoints) {
-    if (!member.email) continue;
-
+  for (const member of allMembers) {
     try {
-      // Get detailed points log for this member
-      const pointsLog = await db.getPointsLogForPeriod(brand.id, bounds.start, bounds.end);
-      const memberPoints = pointsLog.filter(p => p.member_id === member.id);
+      const memberData = pointsMap[member.id] || { total: 0, details: [] };
+      const periodPoints = memberData.total;
+      const memberPointsDetails = memberData.details;
 
-      // Get total current points
+      // Get total current points from pass
       const totalPoints = await db.getMemberTotalPoints(member.id);
 
       // Get tier
@@ -101,15 +108,14 @@ async function sendBrandRecap(brand, periodType) {
         brandColor,
         memberName: [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Membro',
         periodLabel,
-        periodPoints: parseInt(member.period_points) || 0,
-        pointsDetails: memberPoints,
+        periodPoints,
+        pointsDetails: memberPointsDetails,
         totalPoints,
         tierName
       });
 
       if (result && !result.skipped && !result.error) {
         sent++;
-        // Log the email
         try {
           await db.logEmail({
             brand_id: brand.id,
@@ -120,6 +126,7 @@ async function sendBrandRecap(brand, periodType) {
           });
         } catch(e) {}
       } else {
+        if (result?.error) console.error(`[EmailRecap] Resend error for ${member.email}: ${result.error}`);
         errors++;
       }
 
@@ -131,8 +138,8 @@ async function sendBrandRecap(brand, periodType) {
     }
   }
 
-  console.log(`[EmailRecap] ${brand.name} ${periodType}: ${sent} sent, ${errors} errors (${membersWithPoints.length} members with points)`);
-  return { sent, errors, brand: brand.name, period: periodType };
+  console.log(`[EmailRecap] ${brand.name} ${periodType}: ${sent} sent, ${errors} errors (${allMembers.length} total members)`);
+  return { sent, errors, brand: brand.name, period: periodType, totalMembers: allMembers.length };
 }
 
 // ─── Main Recap Runner ─────────────────────────────────
@@ -147,7 +154,6 @@ async function runRecap(periodType) {
     for (const brand of brands) {
       const config = brand.config || {};
 
-      // Check if this recap type is enabled for the brand
       if (periodType === 'weekly' && config.email_recap_weekly === false) {
         console.log(`[EmailRecap] ${brand.name}: weekly recap disabled, skipping`);
         continue;
@@ -178,7 +184,6 @@ async function runRecap(periodType) {
 // ─── Cron Scheduling ───────────────────────────────────
 
 function startRecapCrons() {
-  // Check every hour if it's time to send recaps
   setInterval(() => {
     const now = new Date();
     const hour = now.getHours();
@@ -196,7 +201,7 @@ function startRecapCrons() {
       console.log('[EmailRecap] Triggering monthly recap (1st of month 9:00)');
       runRecap('monthly').catch(e => console.error('[EmailRecap] Monthly cron error:', e.message));
     }
-  }, 60 * 60 * 1000); // Check every hour
+  }, 60 * 60 * 1000);
 
   console.log('[EmailRecap] Recap crons started (weekly: Mon 9:00, monthly: 1st 9:00)');
 }
