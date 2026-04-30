@@ -79,6 +79,8 @@ const {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  // Playtomic Sync
+  listSyncLogs,
   // Users
   createUser,
   getUserByEmail,
@@ -91,6 +93,7 @@ const {
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
 const { sendPushUpdate } = require('../engine/apns');
+const { runFullSync } = require('../engine/playtomic');
 const sharp = require('sharp');
 const XLSX = require('xlsx');
 const jwt = require('jsonwebtoken');
@@ -2583,6 +2586,33 @@ router.delete('/members/:id', async (req, res) => {
   try {
     await deleteMember(req.params.id);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PLAYTOMIC SYNC ====================
+
+/**
+ * POST /api/v1/brands/:id/playtomic/sync - Trigger manual Playtomic sync
+ */
+router.post('/brands/:id/playtomic/sync', async (req, res) => {
+  try {
+    const result = await runFullSync(req.params.id);
+    res.json(result);
+  } catch (error) {
+    console.error('Playtomic sync error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/brands/:id/playtomic/logs - Get sync history
+ */
+router.get('/brands/:id/playtomic/logs', async (req, res) => {
+  try {
+    const logs = await listSyncLogs(req.params.id, parseInt(req.query.limit) || 50);
+    res.json(logs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

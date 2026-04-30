@@ -140,9 +140,25 @@ CREATE TABLE IF NOT EXISTS members (
   email TEXT,
   phone TEXT,
   playtomic_email TEXT,
+  playtomic_player_id TEXT,
+  playtomic_accepts_marketing BOOLEAN DEFAULT false,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS playtomic_sync_log (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id),
+  booking_id TEXT NOT NULL,
+  member_id TEXT REFERENCES members(id),
+  participant_email TEXT,
+  points_awarded INT DEFAULT 0,
+  booking_date TIMESTAMPTZ,
+  sport_id TEXT,
+  resource_name TEXT,
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(brand_id, booking_id, member_id)
 );
 
 CREATE TABLE IF NOT EXISTS scheduled_push (
@@ -294,11 +310,33 @@ async function getDb() {
       }
     } catch(e) { console.log('Members migration note:', e.message); }
 
-    // Add playtomic_email column to members if not exists
+    // Add playtomic columns to members if not exists
     try {
       await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_email TEXT`);
-      console.log('✓ playtomic_email column ensured on members');
-    } catch(e) { console.log('playtomic_email migration note:', e.message); }
+      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_player_id TEXT`);
+      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_accepts_marketing BOOLEAN DEFAULT false`);
+      console.log('✓ playtomic columns ensured on members');
+    } catch(e) { console.log('playtomic migration note:', e.message); }
+
+    // Create playtomic_sync_log table if not exists
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS playtomic_sync_log (
+          id TEXT PRIMARY KEY,
+          brand_id TEXT NOT NULL REFERENCES brands(id),
+          booking_id TEXT NOT NULL,
+          member_id TEXT REFERENCES members(id),
+          participant_email TEXT,
+          points_awarded INT DEFAULT 0,
+          booking_date TIMESTAMPTZ,
+          sport_id TEXT,
+          resource_name TEXT,
+          synced_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(brand_id, booking_id, member_id)
+        )
+      `);
+      console.log('✓ playtomic_sync_log table ensured');
+    } catch(e) { console.log('playtomic_sync_log migration note:', e.message); }
 
     // --- Seed default tiers for brands that have none ---
     try {
@@ -1862,6 +1900,56 @@ async function deleteMember(id) {
   return { success: true };
 }
 
+// ─── Playtomic Sync Log ─────────────────────────────────
+
+async function addSyncLogEntry({ brand_id, booking_id, member_id, participant_email, points_awarded, booking_date, sport_id, resource_name }) {
+  const id = uuidv4();
+  try {
+    await pool.query(
+      `INSERT INTO playtomic_sync_log (id, brand_id, booking_id, member_id, participant_email, points_awarded, booking_date, sport_id, resource_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (brand_id, booking_id, member_id) DO NOTHING`,
+      [id, brand_id, booking_id, member_id, participant_email, points_awarded || 0, booking_date, sport_id, resource_name]
+    );
+    return { id, inserted: true };
+  } catch(e) {
+    return { id: null, inserted: false, error: e.message };
+  }
+}
+
+async function isBookingSynced(brand_id, booking_id, member_id) {
+  const res = await pool.query(
+    `SELECT id FROM playtomic_sync_log WHERE brand_id = $1 AND booking_id = $2 AND member_id = $3`,
+    [brand_id, booking_id, member_id]
+  );
+  return res.rows.length > 0;
+}
+
+async function listSyncLogs(brand_id, limit = 50) {
+  const res = await pool.query(
+    `SELECT s.*, m.first_name, m.last_name FROM playtomic_sync_log s
+     LEFT JOIN members m ON s.member_id = m.id
+     WHERE s.brand_id = $1 ORDER BY s.synced_at DESC LIMIT $2`,
+    [brand_id, limit]
+  );
+  return res.rows;
+}
+
+async function getMembersByPlaytomicEmail(brand_id) {
+  const res = await pool.query(
+    `SELECT * FROM members WHERE brand_id = $1 AND (playtomic_email IS NOT NULL OR playtomic_player_id IS NOT NULL)`,
+    [brand_id]
+  );
+  return res.rows;
+}
+
+async function updateMemberPlaytomic(member_id, { playtomic_player_id, playtomic_accepts_marketing }) {
+  await pool.query(
+    `UPDATE members SET playtomic_player_id = COALESCE($2, playtomic_player_id), playtomic_accepts_marketing = COALESCE($3, playtomic_accepts_marketing), updated_at = NOW() WHERE id = $1`,
+    [member_id, playtomic_player_id, playtomic_accepts_marketing]
+  );
+}
+
 // ─── Users ──────────────────────────────────────────────
 const bcrypt = require('bcryptjs');
 
@@ -2016,6 +2104,12 @@ module.exports = {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
+  // Playtomic Sync
+  addSyncLogEntry,
+  isBookingSynced,
+  listSyncLogs,
+  getMembersByPlaytomicEmail,
+  updateMemberPlaytomic,
   // Users
   createUser,
   getUserByEmail,

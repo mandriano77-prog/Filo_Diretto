@@ -8,6 +8,7 @@ const { getDb } = require('./db');
 const apiRoutes = require('./api/routes');
 const debugSignRoutes = require('./api/debug-sign');
 const { startScheduler } = require('./engine/scheduler');
+const { runPlaytomicCron } = require('./engine/playtomic');
 
 // Load certificates: prefer FILE-BASED certs (from repo), fallback to env vars
 function loadCerts() {
@@ -106,6 +107,12 @@ getDb().then(db => {
       ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
       : `http://localhost:${PORT}`;
     startScheduler(baseUrl);
+
+    // Playtomic sync cron — every 2 hours
+    console.log('🎾 Playtomic sync cron started (every 2h)');
+    setInterval(() => runPlaytomicCron(), 2 * 60 * 60 * 1000);
+    // Run first sync 30s after boot (give DB time to settle)
+    setTimeout(() => runPlaytomicCron(), 30 * 1000);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

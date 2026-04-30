@@ -532,6 +532,38 @@
                     </div>
                     <button class="btn" onclick="saveBrandSettings()" style="margin-top:20px;">Salva Modifiche</button>
                 </div>
+
+                <!-- Playtomic Integration -->
+                <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+                    <div class="sec-title" style="font-size:16px;">🎾 Integrazione Playtomic</div>
+                    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Collega il tuo account business Playtomic per assegnare punti automaticamente ad ogni prenotazione completata.</p>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Client ID</label><input type="text" id="ptClientId" placeholder="Il tuo client_id Playtomic"></div>
+                        <div class="form-group"><label class="form-label">Secret</label><input type="password" id="ptSecret" placeholder="La tua password Playtomic"></div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">Tenant ID (Venue)</label><input type="text" id="ptTenantId" placeholder="ID del tuo club"></div>
+                        <div class="form-group"><label class="form-label">Punti per prenotazione</label><input type="number" id="ptPointsPerBooking" min="1" max="100" value="1"></div>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" id="ptSyncEnabled" style="width:18px;height:18px;accent-color:var(--teal);">
+                            <span style="font-size:13px;">Abilita sync automatico (ogni 2 ore)</span>
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:16px;">
+                        <button class="btn" onclick="savePlaytomicConfig()">Salva Config Playtomic</button>
+                        <button class="btn sec" onclick="triggerPlaytomicSync()" id="ptSyncBtn">🔄 Sync Ora</button>
+                    </div>
+
+                    <!-- Sync Log -->
+                    <div style="margin-top:20px;">
+                        <div class="sec-title" style="font-size:14px;">Storico Sync</div>
+                        <div id="ptSyncLog" style="font-size:12px;color:var(--text2);">Nessun sync ancora effettuato.</div>
+                    </div>
+                </div>
+
                 <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
                     <div class="sec-title" style="color:var(--red);">Zona Pericolosa</div>
                     <p style="color:var(--text2);margin-bottom:14px;font-size:13px;">Elimina la brand corrente e tutti i dati associati.</p>
@@ -1465,6 +1497,80 @@ async function loadBrandSettings() {
         stripPrev.innerHTML = `<img src="data:image/png;base64,${c.logos.strip}" style="max-width:100%;max-height:80px;border-radius:6px;background:#222;padding:4px;"><span style="font-size:11px;color:var(--teal);margin-left:8px;">Strip attuale</span>`;
     } else {
         stripPrev.innerHTML = '<span style="font-size:12px;color:var(--text2);">Nessuna strip caricata (verra generata automaticamente)</span>';
+    }
+
+    // Load Playtomic config
+    const pt = c.playtomic || {};
+    document.getElementById('ptClientId').value = pt.client_id || '';
+    document.getElementById('ptSecret').value = pt.secret || '';
+    document.getElementById('ptTenantId').value = pt.tenant_id || '';
+    document.getElementById('ptPointsPerBooking').value = pt.points_per_booking || 1;
+    document.getElementById('ptSyncEnabled').checked = pt.sync_enabled || false;
+
+    // Load sync logs
+    loadPlaytomicLogs();
+}
+
+async function savePlaytomicConfig() {
+    if (!brandId) return;
+    const res = await fetch(`${API}/brands/${brandId}`);
+    const brand = await res.json();
+    const config = brand.config || {};
+    config.playtomic = {
+        client_id: document.getElementById('ptClientId').value.trim(),
+        secret: document.getElementById('ptSecret').value.trim(),
+        tenant_id: document.getElementById('ptTenantId').value.trim(),
+        points_per_booking: parseInt(document.getElementById('ptPointsPerBooking').value) || 1,
+        sync_enabled: document.getElementById('ptSyncEnabled').checked
+    };
+    await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({config}) });
+    toast('Configurazione Playtomic salvata!');
+}
+
+async function triggerPlaytomicSync() {
+    if (!brandId) return;
+    const btn = document.getElementById('ptSyncBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sync in corso...';
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/playtomic/sync`, { method: 'POST' });
+        const data = await res.json();
+        if (data.error) {
+            toast(data.error, 'error');
+        } else {
+            toast(`Sync completato! ${data.bookings?.processed || 0} prenotazioni, ${data.bookings?.points_awarded || 0} punti assegnati`);
+            loadPlaytomicLogs();
+            loadMembers(); // Refresh member list to show updated points
+        }
+    } catch(e) {
+        toast('Errore sync: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Sync Ora';
+    }
+}
+
+async function loadPlaytomicLogs() {
+    if (!brandId) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/playtomic/logs?limit=20`);
+        const logs = await res.json();
+        const container = document.getElementById('ptSyncLog');
+        if (!logs || logs.length === 0) {
+            container.innerHTML = '<span style="color:var(--text2);">Nessun sync ancora effettuato.</span>';
+            return;
+        }
+        container.innerHTML = logs.map(l => {
+            const date = new Date(l.synced_at).toLocaleString('it-IT');
+            const bookingDate = l.booking_date ? new Date(l.booking_date).toLocaleDateString('it-IT') : '';
+            const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.participant_email || '?';
+            return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+                <span>${name} — ${l.sport_id || ''} ${l.resource_name ? '(' + l.resource_name + ')' : ''}</span>
+                <span style="white-space:nowrap;"><strong style="color:var(--teal);">+${l.points_awarded} pt</strong> · ${bookingDate} · <small>${date}</small></span>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        console.error('Failed to load Playtomic logs:', e);
     }
 }
 
