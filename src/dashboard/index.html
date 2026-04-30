@@ -1647,43 +1647,139 @@ async function triggerPlaytomicSync() {
     const btn = document.getElementById('ptSyncBtn');
     btn.disabled = true;
     btn.textContent = 'Sync in corso...';
+    const container = document.getElementById('ptSyncLog');
+    container.innerHTML = '<div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto 12px;"></div><span>Connessione a Playtomic in corso...</span></div>';
+
     try {
         const res = await fetch(`${API}/brands/${brandId}/playtomic/sync`, { method: 'POST' });
         const data = await res.json();
         if (data.error) {
             toast(data.error, 'error');
+            container.innerHTML = `<div style="color:#ff6b6b;padding:12px;">Errore: ${data.error}</div>`;
         } else {
-            toast(`Sync completato! ${data.bookings?.processed || 0} prenotazioni, ${data.bookings?.points_awarded || 0} punti assegnati`);
-            loadPlaytomicLogs();
-            loadMembers(); // Refresh member list to show updated points
+            toast('Sync completato!');
+            renderSyncReport(data);
+            loadMembers();
+            loadChallenges();
         }
     } catch(e) {
         toast('Errore sync: ' + e.message, 'error');
+        container.innerHTML = `<div style="color:#ff6b6b;padding:12px;">Errore di connessione: ${e.message}</div>`;
     } finally {
         btn.disabled = false;
         btn.textContent = '🔄 Sync Ora';
     }
 }
 
-async function loadPlaytomicLogs() {
+function renderSyncReport(data) {
+    const container = document.getElementById('ptSyncLog');
+    const syncTime = data.synced_at ? new Date(data.synced_at).toLocaleString('it-IT') : new Date().toLocaleString('it-IT');
+    const p = data.players || {};
+    const b = data.bookings || {};
+    const c = data.challenges || {};
+    const completions = c.completions || [];
+
+    let html = `
+        <div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong style="font-size:14px;">Report Sync — ${syncTime}</strong>
+                <span class="badge active">Completato</span>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+            <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:22px;font-weight:700;color:var(--teal);">${p.total_players || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Giocatori Playtomic</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:22px;font-weight:700;color:var(--teal);">${p.matched || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Nuovi match email</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:22px;font-weight:700;color:var(--teal);">${b.processed || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Prenotazioni trovate</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center;">
+                <div style="font-size:22px;font-weight:700;color:${(c.completed||0) > 0 ? '#FFD700' : 'var(--teal)'};">${c.completed || 0}</div>
+                <div style="font-size:11px;color:var(--text2);">Missioni completate</div>
+            </div>
+        </div>`;
+
+    // Completions detail
+    if (completions.length > 0) {
+        html += `<div style="margin-bottom:12px;">
+            <strong style="font-size:13px;">🏆 Missioni completate in questo sync:</strong>
+            <div style="margin-top:8px;">`;
+        completions.forEach(comp => {
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(255,215,0,0.08);border-radius:6px;margin-bottom:4px;">
+                <span><strong>${comp.member}</strong> — ${comp.challenge}</span>
+                <span style="color:var(--teal);font-weight:700;">+${comp.points} pt</span>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // Evaluated missions count
+    if ((c.evaluated || 0) > 0) {
+        html += `<div style="font-size:11px;color:var(--text2);padding-top:8px;border-top:1px solid var(--border);">
+            ${c.evaluated} combinazioni membro×missione valutate · ${c.completed || 0} completate
+        </div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Append log history below
+    loadPlaytomicLogs(true);
+}
+
+async function loadPlaytomicLogs(appendMode = false) {
     if (!brandId) return;
     try {
-        const res = await fetch(`${API}/brands/${brandId}/playtomic/logs?limit=20`);
+        const res = await fetch(`${API}/brands/${brandId}/playtomic/logs?limit=50`);
         const logs = await res.json();
         const container = document.getElementById('ptSyncLog');
+
         if (!logs || logs.length === 0) {
-            container.innerHTML = '<span style="color:var(--text2);">Nessun sync ancora effettuato.</span>';
+            if (!appendMode) container.innerHTML = '<span style="color:var(--text2);">Nessun sync ancora effettuato.</span>';
             return;
         }
-        container.innerHTML = logs.map(l => {
-            const date = new Date(l.synced_at).toLocaleString('it-IT');
-            const bookingDate = l.booking_date ? new Date(l.booking_date).toLocaleDateString('it-IT') : '';
-            const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.participant_email || '?';
-            return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
-                <span>${name} — ${l.sport_id || ''} ${l.resource_name ? '(' + l.resource_name + ')' : ''}</span>
-                <span style="white-space:nowrap;"><strong style="color:var(--teal);">+${l.points_awarded} pt</strong> · ${bookingDate} · <small>${date}</small></span>
-            </div>`;
-        }).join('');
+
+        // Group logs by date
+        const grouped = {};
+        logs.forEach(l => {
+            const day = l.booking_date ? new Date(l.booking_date).toLocaleDateString('it-IT') : 'Senza data';
+            if (!grouped[day]) grouped[day] = [];
+            grouped[day].push(l);
+        });
+
+        let logHtml = `<div style="${appendMode ? 'margin-top:20px;padding-top:16px;border-top:2px solid var(--border);' : ''}">
+            <strong style="font-size:13px;">📋 Storico prenotazioni sincronizzate</strong>
+            <div style="margin-top:10px;">`;
+
+        Object.keys(grouped).forEach(day => {
+            const dayLogs = grouped[day];
+            logHtml += `<div style="margin-bottom:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:4px;text-transform:uppercase;">${day} — ${dayLogs.length} prenotazion${dayLogs.length === 1 ? 'e' : 'i'}</div>`;
+            dayLogs.forEach(l => {
+                const syncDate = new Date(l.synced_at).toLocaleString('it-IT');
+                const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.participant_email || '—';
+                const sport = l.sport_id || '';
+                const court = l.resource_name ? `(${l.resource_name})` : '';
+                logHtml += `<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:12px;border-left:2px solid var(--border);margin-left:4px;">
+                    <span>${name} ${sport} ${court}</span>
+                    <span style="color:var(--text2);white-space:nowrap;"><small>sync ${syncDate}</small></span>
+                </div>`;
+            });
+            logHtml += `</div>`;
+        });
+        logHtml += `</div></div>`;
+
+        if (appendMode) {
+            container.innerHTML += logHtml;
+        } else {
+            container.innerHTML = logHtml;
+        }
     } catch(e) {
         console.error('Failed to load Playtomic logs:', e);
     }
