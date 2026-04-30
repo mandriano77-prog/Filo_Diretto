@@ -1153,20 +1153,14 @@ router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber',
       if (pass) {
         const brandData = await getBrand(pass.brand_id);
 
-        // Check if brand has welcome push configured
-        if (brandData && brandData.config && brandData.config.welcome_push_message) {
-          try {
-            await sendPushUpdate({
-              deviceLibraryId: deviceLibraryId,
-              pushToken: pushToken,
-              serialNumber: serialNumber,
-              passId: pass.id,
-              message: brandData.config.welcome_push_message
-            });
-          } catch (pushError) {
-            console.error('Error sending welcome push:', pushError);
-            // Don't fail the registration if push fails
-          }
+        // Send welcome push — APNs empty push triggers Wallet to fetch updated pass
+        // The welcome_push_message is stored in brand config for reference
+        // but APNs for Wallet passes only needs an empty push to trigger the update
+        try {
+          const pushResult = await sendPushUpdate(pushToken);
+          console.log(`[WelcomePush] Sent to device ${deviceLibraryId}: ${JSON.stringify(pushResult)}`);
+        } catch (pushError) {
+          console.error('[WelcomePush] Error:', pushError.message);
         }
       }
     }
@@ -2813,11 +2807,13 @@ router.post('/members', async (req, res) => {
 
     // Try to also create a pass + welcome points (like self-service signup)
     try {
+      console.log(`[Backoffice] Creating pass for member ${member.id} (${first_name} ${last_name})`);
       const brand = await getBrand(brand_id);
       const templates = await listTemplates(brand_id);
       const template = templates[0];
 
       if (brand && template) {
+        console.log(`[Backoffice] Brand: ${brand.name}, Template: ${template.id}`);
         const tiers = await listTiers(brand_id);
         const firstTier = tiers.length > 0 ? tiers[0].name : '';
         const fullName = [first_name, last_name].filter(Boolean).join(' ');
@@ -2843,6 +2839,8 @@ router.post('/members', async (req, res) => {
           metadata: { source: 'backoffice', email, welcome_points: 10 }
         });
 
+        console.log(`[Backoffice] Pass created: ${passInstance.id} with punti=10 for member ${member.id}`);
+
         // Log welcome points
         try {
           await logPoints({
@@ -2853,7 +2851,8 @@ router.post('/members', async (req, res) => {
             reason: 'signup',
             details: 'Punti di benvenuto'
           });
-        } catch(e) { console.log('[PointsLog] Error logging welcome points:', e.message); }
+          console.log(`[Backoffice] Welcome points logged for member ${member.id}`);
+        } catch(e) { console.error('[Backoffice] Error logging welcome points:', e.message); }
 
         // Send welcome email if member has email
         if (email) {
