@@ -620,6 +620,27 @@ async function getDb() {
       }
     } catch(e) { console.log('Rewards population note:', e.message); }
 
+    // --- Seed default scratch card for brands without one ---
+    try {
+      const brandsNoScratch = await pool.query(`
+        SELECT b.id, b.name FROM brands b
+        WHERE NOT EXISTS (SELECT 1 FROM instant_win_campaigns c WHERE c.brand_id = b.id)
+      `);
+      for (const row of brandsNoScratch.rows) {
+        const prizes = [
+          { name: 'Super Bonus!', description: '+50 punti', points: 50, icon: '🎉', weight: 20 },
+          { name: 'Bonus', description: '+20 punti', points: 20, icon: '⭐', weight: 40 },
+          { name: 'Mini Bonus', description: '+10 punti', points: 10, icon: '🎁', weight: 40 }
+        ];
+        await pool.query(
+          `INSERT INTO instant_win_campaigns (id, brand_id, title, description, type, win_probability, prizes, max_plays_per_member)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [uuidv4(), row.id, 'Gratta e Vinci', 'Gratta la card per scoprire se hai vinto punti bonus!', 'scratch', 30, JSON.stringify(prizes), 1]
+        );
+        console.log(`✓ Default scratch card created for brand ${row.name}`);
+      }
+    } catch(e) { console.log('Scratch card seed note:', e.message); }
+
     // --- Seed default admin user ---
     await seedAdminUser();
 

@@ -377,6 +377,28 @@ router.post('/brands', async (req, res) => {
       metadata: { name }
     });
 
+    // Auto-create default scratch card campaign
+    try {
+      await createInstantWinCampaign({
+        brand_id: brand.id,
+        title: 'Gratta e Vinci',
+        description: 'Gratta la card per scoprire se hai vinto punti bonus!',
+        win_probability: 30,
+        prizes: [
+          { name: 'Super Bonus!', description: '+50 punti', points: 50, icon: '🎉', weight: 20 },
+          { name: 'Bonus', description: '+20 punti', points: 20, icon: '⭐', weight: 40 },
+          { name: 'Mini Bonus', description: '+10 punti', points: 10, icon: '🎁', weight: 40 }
+        ],
+        max_plays_per_member: 1,
+        start_date: null,
+        end_date: null,
+        style: {}
+      });
+      console.log(`✓ Default scratch card created for brand ${brand.id}`);
+    } catch (scratchErr) {
+      console.warn('Could not create default scratch card:', scratchErr.message);
+    }
+
     res.status(201).json(brand);
   } catch (error) {
     console.error('Error creating brand:', error);
