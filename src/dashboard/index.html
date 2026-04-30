@@ -2871,7 +2871,8 @@ function showQR(url) {
 async function loadUsers() {
     if (!currentUser || currentUser.role !== 'admin') return;
     try {
-        const res = await fetch(`${API}/users`);
+        const usersUrl = brandId ? `${API}/users?brand_id=${brandId}` : `${API}/users`;
+        const res = await fetch(usersUrl);
         const users = await res.json();
         const tbody = document.querySelector('#usersTable tbody');
         tbody.innerHTML = '';

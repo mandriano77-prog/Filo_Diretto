@@ -230,7 +230,7 @@ router.get('/auth/me', authMiddleware, (req, res) => {
  */
 router.get('/users', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const users = await listUsers();
+    const users = await listUsers(req.query.brand_id || null);
     res.json(users);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

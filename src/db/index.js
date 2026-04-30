@@ -2215,8 +2215,16 @@ async function getUser(id) {
   return res.rows[0] || null;
 }
 
-async function listUsers() {
-  const res = await pool.query(`SELECT u.id, u.email, u.name, u.role, u.brand_id, b.name as brand_name, u.active, u.created_at FROM users u LEFT JOIN brands b ON u.brand_id = b.id ORDER BY u.created_at`);
+async function listUsers(brand_id = null) {
+  let query = `SELECT u.id, u.email, u.name, u.role, u.brand_id, b.name as brand_name, u.active, u.created_at FROM users u LEFT JOIN brands b ON u.brand_id = b.id`;
+  const params = [];
+  if (brand_id) {
+    // Show users assigned to this brand + admins (no brand_id)
+    query += ` WHERE (u.brand_id = $1 OR u.brand_id IS NULL)`;
+    params.push(brand_id);
+  }
+  query += ` ORDER BY u.created_at`;
+  const res = await pool.query(query, params);
   return res.rows;
 }
 
