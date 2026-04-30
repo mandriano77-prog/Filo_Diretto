@@ -622,11 +622,14 @@ async function getDb() {
 
     // --- Seed default scratch card for brands without one ---
     try {
-      const brandsNoScratch = await pool.query(`
-        SELECT b.id, b.name FROM brands b
-        WHERE NOT EXISTS (SELECT 1 FROM instant_win_campaigns c WHERE c.brand_id = b.id)
-      `);
-      for (const row of brandsNoScratch.rows) {
+      const allBrands = await pool.query('SELECT id, name FROM brands');
+      console.log(`[ScratchSeed] Found ${allBrands.rows.length} brands total`);
+      for (const row of allBrands.rows) {
+        const existing = await pool.query('SELECT COUNT(*) as cnt FROM instant_win_campaigns WHERE brand_id = $1', [row.id]);
+        if (parseInt(existing.rows[0].cnt) > 0) {
+          console.log(`[ScratchSeed] ${row.name} already has ${existing.rows[0].cnt} campaigns, skipping`);
+          continue;
+        }
         const prizes = [
           { name: 'Super Bonus!', description: '+50 punti', points: 50, icon: '🎉', weight: 20 },
           { name: 'Bonus', description: '+20 punti', points: 20, icon: '⭐', weight: 40 },
@@ -637,9 +640,9 @@ async function getDb() {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [uuidv4(), row.id, 'Gratta e Vinci', 'Gratta la card per scoprire se hai vinto punti bonus!', 'scratch', 30, JSON.stringify(prizes), 1]
         );
-        console.log(`✓ Default scratch card created for brand ${row.name}`);
+        console.log(`✓ Default scratch card created for brand ${row.name} (${row.id})`);
       }
-    } catch(e) { console.log('Scratch card seed note:', e.message); }
+    } catch(e) { console.error('Scratch card seed ERROR:', e.message, e.stack); }
 
     // --- Seed default admin user ---
     await seedAdminUser();
