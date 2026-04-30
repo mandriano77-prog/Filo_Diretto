@@ -385,17 +385,8 @@
                 <div class="sec-title" style="margin-top:24px;">Storico Notifiche</div>
                 <div id="pushHistory"></div>
 
-                <!-- WELCOME PUSH + EMAIL RECAP CONFIG -->
+                <!-- EMAIL RECAP CONFIG -->
                 <div class="card" style="padding:20px;margin-top:24px;">
-                    <div style="font-size:15px;font-weight:600;margin-bottom:12px;">Messaggio di Benvenuto</div>
-                    <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Push notification inviata automaticamente quando un nuovo membro registra la card.</p>
-                    <div class="form-group">
-                        <label class="form-label">Messaggio welcome push</label>
-                        <input type="text" id="pushWelcomeMsg" placeholder="es. Benvenuto! Hai 10 punti di partenza." style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);">
-                    </div>
-                </div>
-
-                <div class="card" style="padding:20px;margin-top:12px;">
                     <div style="font-size:15px;font-weight:600;margin-bottom:12px;">Email Recap Automatiche</div>
                     <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Riepilogo punti inviato via email ai membri che hanno guadagnato punti nel periodo.</p>
                     <div style="display:flex;flex-direction:column;gap:10px;">
@@ -3488,15 +3479,13 @@ async function triggerRecap(type) {
     } catch(e) { toast('Errore: ' + e.message); }
 }
 
-// ─── Push Config (welcome push + email recap) ────────
+// ─── Push Config (email recap) ────────
 async function loadPushConfig() {
     if (!brandId) return;
     try {
         const res = await fetch(`${API}/brands/${brandId}`);
         const brand = await res.json();
         const c = brand.config || {};
-        const wEl = document.getElementById('pushWelcomeMsg');
-        if (wEl) wEl.value = c.welcome_push_message || '';
         const rwEl = document.getElementById('pushRecapWeekly');
         if (rwEl) rwEl.checked = c.email_recap_weekly !== false;
         const rmEl = document.getElementById('pushRecapMonthly');
@@ -3507,8 +3496,6 @@ async function loadPushConfig() {
 async function savePushConfig() {
     if (!brandId) return;
     const config = {};
-    const wEl = document.getElementById('pushWelcomeMsg');
-    config.welcome_push_message = wEl ? wEl.value.trim() || null : null;
     const rwEl = document.getElementById('pushRecapWeekly');
     config.email_recap_weekly = rwEl ? rwEl.checked : true;
     const rmEl = document.getElementById('pushRecapMonthly');
@@ -3519,7 +3506,7 @@ async function savePushConfig() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ config })
         });
-        toast('Configurazione push salvata!');
+        toast('Configurazione salvata!');
     } catch(e) { toast('Errore salvataggio: ' + e.message); }
 }
 

@@ -1181,25 +1181,6 @@ router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber',
       metadata: { serial_number: serialNumber, device_library_id: deviceLibraryId }
     });
 
-    // Get the pass and brand details
-    const passData = await getPassBySerial(serialNumber);
-    if (passData) {
-      const pass = await getPassInstance(passData.id);
-      if (pass) {
-        const brandData = await getBrand(pass.brand_id);
-
-        // Send welcome push — APNs empty push triggers Wallet to fetch updated pass
-        // The welcome_push_message is stored in brand config for reference
-        // but APNs for Wallet passes only needs an empty push to trigger the update
-        try {
-          const pushResult = await sendPushUpdate(pushToken);
-          console.log(`[WelcomePush] Sent to device ${deviceLibraryId}: ${JSON.stringify(pushResult)}`);
-        } catch (pushError) {
-          console.error('[WelcomePush] Error:', pushError.message);
-        }
-      }
-    }
-
     await logEvent({
       event_type: 'device_registered',
       device_id: deviceLibraryId,
