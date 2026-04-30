@@ -11,7 +11,6 @@
  * Token expires: 1 hour
  */
 
-const fetch = require('node-fetch');
 const db = require('../db');
 
 const PLAYTOMIC_BASE = 'https://thirdparty.playtomic.io';
