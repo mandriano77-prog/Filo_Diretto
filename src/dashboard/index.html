@@ -3689,7 +3689,6 @@ async function loadScratchCards() {
                     </div>
                     <div style="display:flex;gap:4px;flex-shrink:0;">
                         <button class="btn small" onclick="sendScratchEmailBlast('${c.id}')" title="Invia email a tutti i membri">📧</button>
-                        <button class="btn small" onclick="sendScratchPush('${c.id}')" title="Invia push a tutti">📲</button>
                         <button class="btn small sec" onclick="copyScratchLink('${c.id}')" title="Copia link membro">🔗</button>
                         <button class="btn small sec" onclick="editScratchCard('${c.id}')">✏️</button>
                         <button class="btn small sec" onclick="deleteScratchCard('${c.id}')" style="color:#ff6b6b;">🗑</button>
@@ -3740,24 +3739,6 @@ function doCopyScratchLink() {
     }).catch(() => prompt('Copia questo link:', url));
 }
 
-async function sendScratchPush(campaignId) {
-    if (!confirm('Inviare una push a tutti i membri? Il link scratch card è già sul retro del pass di ogni membro.')) return;
-    try {
-        const res = await fetch(`${API}/push/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify({
-                brand_id: brandId,
-                title: '🎰 Gratta e Vinci!',
-                message: 'Hai una scratch card da grattare! Apri il pass e tocca la "i" per giocare.',
-                update_pass: true
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) { toast('Errore: ' + (data.error || 'Invio fallito')); return; }
-        toast(`Push inviata a ${data.sent || 0} dispositivi`);
-    } catch(e) { toast('Errore: ' + e.message); }
-}
 
 async function sendScratchEmailBlast(campaignId) {
     if (!confirm('Inviare una email con scratch card personalizzata a tutti i membri con email?')) return;
