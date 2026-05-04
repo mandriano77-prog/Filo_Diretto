@@ -3785,18 +3785,39 @@ router.post('/decay/run', authMiddleware, async (req, res) => {
 });
 
 // ─── Leads (public submit + admin view) ─────────────────────
-// PUBLIC — no auth, CORS enabled for ads.nudj.it
-router.options('/leads', (req, res) => {
+const leadsCors = (req, res, next) => {
   res.set({
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   });
-  res.sendStatus(204);
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+};
+
+// CORS preflight for all /leads routes
+router.options('/leads', leadsCors);
+router.options('/leads/login', leadsCors);
+
+// Login for ads admin panel — uses same users table
+router.post('/leads/login', leadsCors, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const user = await getUserByEmail(email);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+  } catch (err) {
+    console.error('Leads login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
-router.post('/leads', async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
+// PUBLIC — submit lead
+router.post('/leads', leadsCors, async (req, res) => {
   try {
     const { first, last, email, company, interest, message, source } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -3816,8 +3837,8 @@ router.post('/leads', async (req, res) => {
   }
 });
 
-// Admin — list leads
-router.get('/leads', authMiddleware, async (req, res) => {
+// Admin — list leads (auth required)
+router.get('/leads', leadsCors, authMiddleware, async (req, res) => {
   try {
     const { source, limit, offset } = req.query;
     const leads = await listLeads({ source, limit: parseInt(limit) || 100, offset: parseInt(offset) || 0 });
