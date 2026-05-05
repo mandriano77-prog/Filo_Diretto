@@ -211,8 +211,6 @@ CREATE TABLE IF NOT EXISTS instant_win_campaigns (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_iw_campaigns_brand ON instant_win_campaigns(brand_id);
-CREATE INDEX IF NOT EXISTS idx_iw_campaigns_status ON instant_win_campaigns(status);
 
 CREATE TABLE IF NOT EXISTS instant_win_plays (
   id TEXT PRIMARY KEY,
@@ -223,9 +221,6 @@ CREATE TABLE IF NOT EXISTS instant_win_plays (
   prize_name TEXT,
   played_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_iw_plays_campaign ON instant_win_plays(campaign_id);
-CREATE INDEX IF NOT EXISTS idx_iw_plays_serial ON instant_win_plays(serial_number);
-CREATE INDEX IF NOT EXISTS idx_iw_plays_brand ON instant_win_plays(brand_id);
 `;
 
 // ─── Init ──────────────────────────────────────────────
@@ -284,12 +279,41 @@ async function getDb() {
     await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS device_id TEXT`).catch(()=>{});
     await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'`).catch(()=>{});
 
+    // instant_win_campaigns — columns added after initial schema
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft'`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS game_type TEXT NOT NULL DEFAULT 'scratch'`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS prize_name TEXT NOT NULL DEFAULT ''`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS prize_description TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS win_probability NUMERIC NOT NULL DEFAULT 0.1`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS max_plays_per_user INTEGER DEFAULT 1`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS total_budget INTEGER`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS total_wins INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS strip_base64 TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS push_message TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS config JSONB DEFAULT '{}'`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`).catch(()=>{});
+
+    // instant_win_plays — columns added after initial schema
+    await pool.query(`ALTER TABLE instant_win_plays ADD COLUMN IF NOT EXISTS serial_number TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_plays ADD COLUMN IF NOT EXISTS brand_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_plays ADD COLUMN IF NOT EXISTS result TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_plays ADD COLUMN IF NOT EXISTS prize_name TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE instant_win_plays ADD COLUMN IF NOT EXISTS played_at TIMESTAMPTZ DEFAULT NOW()`).catch(()=>{});
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand ON pass_instances(brand_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_campaign ON pass_instances(campaign_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_brand ON events(brand_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id)`);
+    // Instant Win indexes (after ALTER TABLEs ensure columns exist)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_iw_campaigns_brand ON instant_win_campaigns(brand_id)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_iw_campaigns_status ON instant_win_campaigns(status)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_iw_plays_campaign ON instant_win_plays(campaign_id)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_iw_plays_serial ON instant_win_plays(serial_number)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_iw_plays_brand ON instant_win_plays(brand_id)`).catch(()=>{});
 
     // Seed admin
     await seedAdminUser();
