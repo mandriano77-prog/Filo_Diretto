@@ -913,10 +913,6 @@
     <div class="modal-content" style="text-align:center;">
         <button class="modal-close" onclick="closeModal('qrModal')">&times;</button>
         <div class="modal-header">QR Code Campagna</div>
-        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">
-            <button class="btn small" id="qrModeDirect" onclick="switchQrMode('direct')" style="font-size:12px;">Download Diretto</button>
-            <button class="btn small sec" id="qrModeLanding" onclick="switchQrMode('landing')" style="font-size:12px;">Landing Page</button>
-        </div>
         <div id="qrModeLabel" style="font-size:11px;color:var(--text2);margin-bottom:8px;">Scansione → il pass si scarica subito</div>
         <div style="padding:20px;background:#FFFFFF;border-radius:8px;margin:16px 0;display:inline-block;"><div id="qrCanvas"></div></div>
         <input type="text" id="qrUrl" readonly style="margin-bottom:10px;">
@@ -1130,8 +1126,7 @@ async function loadCampaigns() {
                 </div>
                 <div class="card-actions">
                     <button class="btn small sec" onclick="showCampaignQR('${c.id}')">QR</button>
-                    <button class="btn small sec" onclick="copyCampaignLink('${c.id}')" title="Link landing page">Landing</button>
-                    <button class="btn small purple" onclick="copyCampaignDirect('${c.id}')" title="Link diretto — salva pass senza landing (per social/digital ads)">Diretto</button>
+                    <button class="btn small purple" onclick="copyCampaignDirect('${c.id}')" title="Link diretto — salva pass senza landing">Link</button>
                     <button class="btn small" onclick="editCampaign('${c.id}')">Modifica</button>
                     <button class="btn small ${c.active ? 'purple' : 'sec'}" onclick="toggleCampaign('${c.id}', ${!c.active})">${c.active ? 'Pausa' : 'Attiva'}</button>
                     <button class="btn small danger" onclick="deleteCampaign('${c.id}')">Elimina</button>
@@ -1272,28 +1267,12 @@ let currentQrMode = 'direct';
 
 async function showCampaignQR(id) {
     currentQrCampaignId = id;
-    currentQrMode = 'direct';
     await renderQR();
-    document.getElementById('qrModeDirect').className = 'btn small';
-    document.getElementById('qrModeLanding').className = 'btn small sec';
-    document.getElementById('qrModeLabel').textContent = 'Scansione → il pass si scarica subito';
     document.getElementById('qrModal').classList.add('active');
 }
 
-async function switchQrMode(mode) {
-    currentQrMode = mode;
-    document.getElementById('qrModeDirect').className = mode === 'direct' ? 'btn small' : 'btn small sec';
-    document.getElementById('qrModeLanding').className = mode === 'landing' ? 'btn small' : 'btn small sec';
-    document.getElementById('qrModeLabel').textContent = mode === 'direct'
-        ? 'Scansione → il pass si scarica subito'
-        : 'Scansione → apre landing page con info brand';
-    await renderQR();
-}
-
 async function renderQR() {
-    const url = currentQrMode === 'direct'
-        ? await getCampaignDirectUrl(currentQrCampaignId)
-        : await getCampaignLandingUrl(currentQrCampaignId);
+    const url = await getCampaignDirectUrl(currentQrCampaignId);
     document.getElementById('qrUrl').value = url;
     const canvas = document.getElementById('qrCanvas');
     canvas.innerHTML = '';
