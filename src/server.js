@@ -65,12 +65,35 @@ app.get('/debug/wallet-check', async (req, res) => {
     const passCount = await pool.query('SELECT COUNT(*) as count FROM pass_instances');
     const recentEvents = await pool.query("SELECT event_type, metadata, created_at FROM events WHERE event_type IN ('pass_installed','pass_removed','pass_created') ORDER BY created_at DESC LIMIT 20");
     const devices = await pool.query('SELECT device_library_id, push_token, serial_number FROM device_registrations LIMIT 10');
+    // Check what baseUrl would be used for new passes
+    const effectiveBaseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'https://localhost:3000');
+
+    // Check auth tokens in recent passes
+    const recentPasses = await pool.query('SELECT id, serial_number, auth_token, created_at FROM pass_instances ORDER BY created_at DESC LIMIT 5');
+
     res.json({
       status: 'ok',
-      webServiceURL_in_pass: `https://${process.env.CUSTOM_DOMAIN || 'localhost:3000'}/api`,
-      apple_calls: `https://${process.env.CUSTOM_DOMAIN || 'localhost:3000'}/api/v1/devices/{did}/registrations/{ptid}/{sn}`,
+      env: {
+        CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN || '(not set)',
+        RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN || '(not set)',
+        PASS_TYPE_IDENTIFIER: process.env.PASS_TYPE_IDENTIFIER || '(not set, fallback: pass.com.nudj)',
+        TEAM_IDENTIFIER: process.env.TEAM_IDENTIFIER ? 'set' : '(not set)'
+      },
+      effective_baseUrl: effectiveBaseUrl,
+      webServiceURL_in_new_passes: `${effectiveBaseUrl}/api`,
+      apple_will_call: `${effectiveBaseUrl}/api/v1/devices/{did}/registrations/{ptid}/{sn}`,
       registered_devices: parseInt(deviceCount.rows[0].count),
       total_passes: parseInt(passCount.rows[0].count),
+      recent_passes: recentPasses.rows.map(p => ({
+        id: p.id,
+        serial: p.serial_number?.substring(0, 12) + '...',
+        auth_token: p.auth_token ? p.auth_token.substring(0, 8) + '...' : 'NULL',
+        created: p.created_at
+      })),
       devices: devices.rows.map(d => ({ device: d.device_library_id?.substring(0,12)+'...', token: d.push_token?.substring(0,12)+'...', serial: d.serial_number?.substring(0,12)+'...' })),
       recent_events: recentEvents.rows
     });
@@ -169,10 +192,12 @@ app.get('/save/:slug/:campaignId?', async (req, res) => {
     await logEvent({ pass_id: passInstance.id, brand_id: brand.id, event_type: 'pass_created', metadata: { source: 'direct_save', campaign_id: campaignId, utm } });
     if (campaignId) await incrementCampaignDownloads(campaignId);
 
-    // Generate and serve .pkpass
+    // Generate and serve .pkpass — MUST be HTTPS for Apple Wallet webServiceURL
     const baseUrl = process.env.CUSTOM_DOMAIN
       ? `https://${process.env.CUSTOM_DOMAIN}`
-      : `${req.protocol}://${req.get('host')}`;
+      : (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : `https://${req.get('host')}`);
 
     const pkpassBuffer = await createPkpass(template, passInstance, brand, {
       baseUrl,

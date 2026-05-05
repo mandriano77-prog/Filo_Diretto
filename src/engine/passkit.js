@@ -287,17 +287,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     orderedBackFields.push(field);
   });
 
-  // 2b. SCRATCH CARD — auto-link if brand has an active campaign
-  const memberId = instance.customer_data?.member_id || instance.field_values?.member_id || instance.member_id;
-  if (memberId && brandConfig.scratchCardId) {
-    const scratchUrl = `${baseUrl}/scratch/${brandConfig.scratchCardId}?m=${memberId}`;
-    orderedBackFields.push({
-      key: 'scratch_card',
-      label: '🎰 GRATTA E VINCI',
-      value: scratchUrl,
-      attributedValue: `<a href="${scratchUrl}">Gratta la tua card e scopri se hai vinto!</a>`
-    });
-  }
+  // 2b. (scratch card removed — Wallet Ads non usa instant win)
 
   // 3. REGOLAMENTO — from brand backContent OR template fields
   const backContent = brandConfig.backContent || {};
