@@ -131,6 +131,11 @@
         .color-input-wrap input[type="color"] { width: 40px; height: 34px; border: none; border-radius: 6px; cursor: pointer; padding: 0; }
         .color-input-wrap input[type="text"] { flex: 1; }
         .login-error { color: var(--red); font-size: 12px; margin-bottom: 12px; display: none; }
+        /* Viewer role: hide all create/edit/delete buttons */
+        body.role-viewer .btn:not(.sec):not([onclick*="nav("]):not([onclick*="wzGoStep"]):not([onclick*="wzCopy"]):not([onclick*="wzNewPass"]) { display: none !important; }
+        body.role-viewer .btn.danger { display: none !important; }
+        body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
+        body.role-viewer .viewer-badge { display: inline-block; background: var(--purple); color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-left: 8px; }
         .user-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
         .user-badge:hover { color: var(--teal); }
         .user-badge .role-tag { background: var(--purple); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; }
@@ -1010,7 +1015,7 @@
         <div class="form-group"><label class="form-label">Email</label><input type="email" id="userEmail" placeholder="email@example.com"></div>
         <div class="form-group"><label class="form-label">Password</label><input type="password" id="userPassword" placeholder="Min 6 caratteri"></div>
         <div class="form-group"><label class="form-label">Ruolo</label>
-            <select id="userRole"><option value="manager">Manager</option><option value="admin">Admin</option></select>
+            <select id="userRole"><option value="viewer">Viewer (solo lettura)</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
         </div>
         <div class="form-group"><label class="form-label">Brand (per manager)</label>
             <select id="userBrand"><option value="">-- Tutti --</option></select>
@@ -1038,7 +1043,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== NAV ====================
 function updateNavState() {
-    // All nav items always clickable — no brand-required gating
+    const role = currentUser?.role || 'admin';
+    const isViewer = role === 'viewer';
+    const isAdmin = role === 'admin';
+
+    // Hide/show nav items based on role
+    document.querySelectorAll('.nav-item').forEach(n => {
+        const section = n.getAttribute('onclick')?.match(/nav\('(.+?)'\)/)?.[1];
+        // Viewers cannot access: users, brand-identity (edit), pass-wizard (create)
+        if (isViewer && ['users'].includes(section)) {
+            n.style.display = 'none';
+        } else {
+            n.style.display = '';
+        }
+    });
+
+    // Hide all action buttons for viewer role
+    document.querySelectorAll('[data-role-min]').forEach(el => {
+        const minRole = el.getAttribute('data-role-min');
+        if (minRole === 'manager' && isViewer) el.style.display = 'none';
+        else if (minRole === 'admin' && !isAdmin) el.style.display = 'none';
+        else el.style.display = '';
+    });
+
+    // Global CSS class for viewer mode
+    document.body.classList.toggle('role-viewer', isViewer);
+    document.body.classList.toggle('role-manager', role === 'manager');
+    document.body.classList.toggle('role-admin', isAdmin);
 }
 
 function nav(id) {
@@ -3187,7 +3218,7 @@ async function loadUsers() {
         <tr>
             <td>${esc(u.name)}</td>
             <td>${esc(u.email)}</td>
-            <td><span class="badge ${u.role==='admin'?'active':'inactive'}">${u.role}</span></td>
+            <td><span class="badge ${u.role==='admin'?'active':'inactive'}">${{admin:'Admin',manager:'Manager',viewer:'Viewer'}[u.role]||u.role}</span></td>
             <td>${u.brand_id ? esc(u.brand_id).substring(0,8)+'...' : 'Tutti'}</td>
             <td><span class="badge active">Attivo</span></td>
             <td><button class="btn small danger" onclick="deleteUser('${u.id}')">Elimina</button></td>

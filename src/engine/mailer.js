@@ -139,7 +139,8 @@ async function sendUserInviteEmail({ to, name, password, role, brandName, dashbo
   const firstName = name.split(/\s+/)[0];
   const fromEmail = getFromEmail();
   const fromName = getFromName();
-  const roleLabel = role === 'admin' ? 'Amministratore' : 'Manager';
+  const roleLabels = { admin: 'Amministratore', manager: 'Manager', viewer: 'Viewer (solo lettura)' };
+  const roleLabel = roleLabels[role] || 'Manager';
   const brandLine = brandName ? `per <strong style="color:#fff;">${brandName}</strong>` : 'con accesso a tutti i brand';
 
   const html = `
@@ -154,7 +155,7 @@ async function sendUserInviteEmail({ to, name, password, role, brandName, dashbo
 
     <!-- Header -->
     <div style="text-align:center; padding:40px 24px; background:#1E1A36; border-radius:16px 16px 0 0;">
-      <h1 style="color:#00D4AA; font-size:24px; margin:0 0 8px; font-weight:700;">&#9670; Nudj</h1>
+      <h1 style="color:#E8192C; font-size:24px; margin:0 0 8px; font-weight:700;">Ads2Wallet</h1>
       <p style="color:#B0A8C1; font-size:14px; margin:0;">Dashboard Access</p>
     </div>
 
@@ -166,7 +167,7 @@ async function sendUserInviteEmail({ to, name, password, role, brandName, dashbo
       </p>
 
       <p style="color:#bbb; font-size:14px; line-height:1.6; margin:0 0 24px;">
-        Ti è stato creato un accesso alla dashboard Nudj come <strong style="color:#00D4AA;">${roleLabel}</strong> ${brandLine}.
+        Ti è stato creato un accesso alla dashboard Ads2Wallet come <strong style="color:#00D4AA;">${roleLabel}</strong> ${brandLine}.
       </p>
 
       <!-- Credentials box -->
