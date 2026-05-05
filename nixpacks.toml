@@ -1,0 +1,5 @@
+[phases.setup]
+aptPkgs = ["ffmpeg", "poppler-utils"]
+
+[start]
+cmd = "node src/server.js"

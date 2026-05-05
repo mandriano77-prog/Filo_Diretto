@@ -193,45 +193,67 @@ function generatePassJson(template, instance, brand, options = {}) {
   const auxiliaryFields = [];
   const backFields = [];
 
-  // HEADER (top-right): hint to tap ··· for more details
-  headerFields.push({
-    key: 'info_hint',
-    label: 'CLICK SUI PUNTINI',
-    value: 'per i dettagli'
-  });
-
-  // No primaryFields — they overlay the strip image on eventTicket
+  // No primaryFields — they overlay the strip image on storeCard
   const primaryFields = [];
 
-  // SECONDARY: NOME + PUNTI + LIVELLO
-  secondaryFields.push({
-    key: 'member_name',
-    label: 'NOME',
-    value: instance.field_values?.nome || instance.field_values?.name || ''
-  });
-  if (template.fields && Array.isArray(template.fields)) {
-    template.fields.forEach((field) => {
+  // FIELDS from template — supports both legacy array and new object format
+  const tplFields = template.fields || {};
+  let hasTemplateHeader = false;
+  if (Array.isArray(tplFields)) {
+    // Legacy array format: [{key, label, value, type}]
+    tplFields.forEach((field) => {
       const fieldObj = {
         key: field.key,
         label: (field.label || field.key).toUpperCase(),
         value: instance.field_values?.[field.key] || field.value || ''
       };
       if (field.dateStyle) fieldObj.dateStyle = field.dateStyle;
-
       if (field.type === 'secondary') secondaryFields.push(fieldObj);
       else if (field.type === 'auxiliary') auxiliaryFields.push(fieldObj);
       else if (field.type === 'back') backFields.push(fieldObj);
     });
+  } else {
+    // New object format: {headerFields, secondaryFields, auxiliaryFields, links, regolamento, contatti}
+    if (tplFields.headerFields) {
+      tplFields.headerFields.forEach(f => {
+        if (f.label || f.value) { hasTemplateHeader = true; headerFields.push({ key: f.key || 'header_info', label: (f.label || '').toUpperCase(), value: f.value || '' }); }
+      });
+    }
+    if (tplFields.secondaryFields) {
+      tplFields.secondaryFields.forEach(f => {
+        if (f.label || f.value) secondaryFields.push({ key: f.key || 'sec_info', label: (f.label || '').toUpperCase(), value: instance.field_values?.[f.key] || f.value || '' });
+      });
+    }
+    if (tplFields.auxiliaryFields) {
+      tplFields.auxiliaryFields.forEach(f => {
+        if (f.label || f.value) auxiliaryFields.push({ key: f.key || 'aux_info', label: (f.label || '').toUpperCase(), value: instance.field_values?.[f.key] || f.value || '' });
+      });
+    }
   }
 
-  // AUXILIARY: Promo teaser on pass front (no changeMessage = no iOS pill)
+  // HEADER fallback: hint to tap ··· for more details (only if template has no custom header)
+  if (!hasTemplateHeader) {
+    headerFields.push({
+      key: 'info_hint',
+      label: 'CLICK SUI PUNTINI',
+      value: 'per i dettagli'
+    });
+  }
+
+  // AUXILIARY: Promo teaser on pass front — changeMessage triggers lock screen notification
+  // IMPORTANT: only FRONT fields (header/primary/secondary/auxiliary) trigger lock screen
+  // notifications. Back fields update silently. The value MUST change each push.
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     const promoTitle = (brandConfig.pushAnnouncement.title || 'NOVITÀ').substring(0, 30).toUpperCase();
-    const promoText = brandConfig.pushAnnouncement.message.substring(0, 35) + ' ↗';
+    const pushTs = brandConfig.pushAnnouncement.ts || Date.now();
+    // Invisible zero-width spaces make value unique without visible artifacts
+    const zwsp = '​'.repeat((pushTs % 10) + 1);
+    const promoText = brandConfig.pushAnnouncement.message.substring(0, 30);
     auxiliaryFields.push({
       key: 'announcement',
       label: promoTitle,
-      value: promoText
+      value: promoText + zwsp,
+      changeMessage: '%@'
     });
   }
 
@@ -243,20 +265,26 @@ function generatePassJson(template, instance, brand, options = {}) {
     orderedBackFields.push({
       key: 'announcement_full',
       label: brandConfig.pushAnnouncement.title || 'NOVITÀ E PROMOZIONI',
-      value: brandConfig.pushAnnouncement.message,
-      changeMessage: '%@'
+      value: brandConfig.pushAnnouncement.message
     });
   }
 
-  // 2. LINKS — clickable URLs (blue tappable links in Apple Wallet)
-  const links = brandConfig.links || [];
+  // 2. LINKS — from brand config OR template fields (template takes priority if present)
+  const tplLinks = (!Array.isArray(tplFields) && tplFields.links) ? tplFields.links : null;
+  const links = tplLinks || brandConfig.links || [];
   links.forEach((link, i) => {
-    orderedBackFields.push({
+    if (!link.label && !link.url) return;
+    // attributedValue renders the clickable link in iOS.
+    // Label is left empty so only the tappable link text shows — no duplication.
+    const field = {
       key: `link_${i}`,
-      label: (link.label || '').toUpperCase(),
-      value: link.url || '',
-      attributedValue: link.url ? `<a href="${link.url}">${link.label || link.url}</a>` : ''
-    });
+      label: '',
+      value: link.label || link.url || ''
+    };
+    if (link.url) {
+      field.attributedValue = `<a href="${link.url}">${link.label || link.url}</a>`;
+    }
+    orderedBackFields.push(field);
   });
 
   // 2b. SCRATCH CARD — auto-link if brand has an active campaign
@@ -271,22 +299,26 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // 3. REGOLAMENTO — from brand backContent (overrides template back fields)
+  // 3. REGOLAMENTO — from brand backContent OR template fields
   const backContent = brandConfig.backContent || {};
-  if (backContent.regolamento) {
+  const tplRegolamento = (!Array.isArray(tplFields) && tplFields.regolamento) || '';
+  const regolamento = backContent.regolamento || tplRegolamento;
+  if (regolamento) {
     orderedBackFields.push({
       key: 'regolamento',
       label: 'REGOLAMENTO',
-      value: backContent.regolamento
+      value: regolamento
     });
   }
 
-  // 4. CONTATTI — from brand backContent
-  if (backContent.contatti) {
+  // 4. CONTATTI — from brand backContent OR template fields
+  const tplContatti = (!Array.isArray(tplFields) && tplFields.contatti) || '';
+  const contatti = backContent.contatti || tplContatti;
+  if (contatti) {
     orderedBackFields.push({
       key: 'contatti',
       label: 'CONTATTI',
-      value: backContent.contatti
+      value: contatti
     });
   }
 
@@ -620,15 +652,33 @@ async function createPkpass(template, instance, brand, options = {}) {
     logoBuffers = logos;
   }
 
-  // Strip images — custom from brand config → default asset file → generated fallback
+  // Template-level images override brand-level (template.style.images)
+  const tplImages = template.style?.images || {};
+
+  // Logo from template overrides brand logo
+  if (tplImages.logo) {
+    const rawLogo = Buffer.from(tplImages.logo, 'base64');
+    const logo1x = await sharp(rawLogo).resize(160, 50, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    const logo2x = await sharp(rawLogo).resize(320, 100, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    logoBuffers = { logo: logo1x, logo2x: logo2x };
+    console.log('✓ Using template-level logo');
+  }
+
+  // Strip images — template → brand → default file → generated
   let stripBuffers;
   const defaultStripPath = path.join(__dirname, '..', '..', 'public', 'assets', 'default-strip.png');
-  if (brand.config?.logos?.strip) {
+  if (tplImages.strip) {
+    const rawStrip = Buffer.from(tplImages.strip, 'base64');
+    const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
+    const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();
+    stripBuffers = { strip: strip1x, strip2x: strip2x };
+    console.log('✓ Using template-level strip image');
+  } else if (brand.config?.logos?.strip) {
     const rawStrip = Buffer.from(brand.config.logos.strip, 'base64');
     const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
     const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();
     stripBuffers = { strip: strip1x, strip2x: strip2x };
-    console.log('✓ Using custom strip image (from DB)');
+    console.log('✓ Using custom strip image (from brand)');
   } else if (fs.existsSync(defaultStripPath)) {
     const rawStrip = fs.readFileSync(defaultStripPath);
     const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
@@ -637,6 +687,28 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using default strip image (from file)');
   } else {
     stripBuffers = await generateStrip(brand.name, bgColor, fgColor);
+  }
+
+  // Thumbnail — for generic and eventTicket
+  let thumbnailBuffers = null;
+  if (tplImages.thumbnail) {
+    const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
+    thumbnailBuffers = {
+      thumb: await sharp(rawThumb).resize(90, 90, { fit: 'cover' }).png().toBuffer(),
+      thumb2x: await sharp(rawThumb).resize(180, 180, { fit: 'cover' }).png().toBuffer()
+    };
+    console.log('✓ Using template-level thumbnail');
+  }
+
+  // Background — for eventTicket
+  let backgroundBuffers = null;
+  if (tplImages.background) {
+    const rawBg = Buffer.from(tplImages.background, 'base64');
+    backgroundBuffers = {
+      bg: await sharp(rawBg).resize(180, 220, { fit: 'cover' }).png().toBuffer(),
+      bg2x: await sharp(rawBg).resize(360, 440, { fit: 'cover' }).png().toBuffer()
+    };
+    console.log('✓ Using template-level background');
   }
 
   // Build file map
@@ -648,10 +720,23 @@ async function createPkpass(template, instance, brand, options = {}) {
     'logo@2x.png': logoBuffers.logo2x || logoBuffers.logo
   };
 
-  // Strip images always included for storeCard/coupon/eventTicket
-  if (template.pass_type === 'coupon' || template.pass_type === 'storeCard' || template.pass_type === 'eventTicket') {
+  // Strip images for storeCard/coupon/eventTicket (unless eventTicket uses background+thumbnail instead)
+  const passType = template.pass_type || 'storeCard';
+  if (passType === 'coupon' || passType === 'storeCard' || (passType === 'eventTicket' && !backgroundBuffers)) {
     files['strip.png'] = stripBuffers.strip;
     files['strip@2x.png'] = stripBuffers.strip2x;
+  }
+
+  // Thumbnail for generic/eventTicket
+  if (thumbnailBuffers && (passType === 'generic' || passType === 'eventTicket')) {
+    files['thumbnail.png'] = thumbnailBuffers.thumb;
+    files['thumbnail@2x.png'] = thumbnailBuffers.thumb2x;
+  }
+
+  // Background for eventTicket
+  if (backgroundBuffers && passType === 'eventTicket') {
+    files['background.png'] = backgroundBuffers.bg;
+    files['background@2x.png'] = backgroundBuffers.bg2x;
   }
 
   // Generate manifest

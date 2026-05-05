@@ -1,5 +1,5 @@
 {
-  "name": "nudj-mvp",
+  "name": "walletads-mvp",
   "version": "0.1.0",
   "description": "Nudj CRM 4.0 — Apple Wallet pass engine MVP",
   "main": "src/server.js",
@@ -24,7 +24,7 @@
     "replicate": "^1.4.0",
     "resend": "^6.12.2",
     "sharp": "^0.34.5",
-    "uuid": "^9.0.0",
+    "uuid": "^9.0.1",
     "xlsx": "^0.18.5"
   }
 }

@@ -9,7 +9,7 @@ const pool = new Pool({
     : false
 });
 
-// SQL schema definitions (PostgreSQL syntax)
+// ─── Schema ──────────────────────────────────────────────
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS brands (
   id TEXT PRIMARY KEY,
@@ -24,10 +24,30 @@ CREATE TABLE IF NOT EXISTS pass_templates (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL REFERENCES brands(id),
   name TEXT NOT NULL,
-  pass_type TEXT NOT NULL DEFAULT 'generic',
+  pass_type TEXT NOT NULL DEFAULT 'coupon',
   style JSONB NOT NULL DEFAULT '{}',
   fields JSONB NOT NULL DEFAULT '[]',
   config JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS campaigns (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id),
+  name TEXT NOT NULL,
+  description TEXT,
+  template_id TEXT REFERENCES pass_templates(id),
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  utm_content TEXT,
+  utm_term TEXT,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  active BOOLEAN DEFAULT true,
+  total_downloads INTEGER DEFAULT 0,
+  total_installs INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -37,11 +57,14 @@ CREATE TABLE IF NOT EXISTS pass_instances (
   serial_number TEXT UNIQUE NOT NULL,
   template_id TEXT NOT NULL REFERENCES pass_templates(id),
   brand_id TEXT NOT NULL REFERENCES brands(id),
-  customer_data JSONB DEFAULT '{}',
+  campaign_id TEXT REFERENCES campaigns(id),
   field_values JSONB DEFAULT '{}',
+  utm JSONB DEFAULT '{}',
   status TEXT DEFAULT 'active',
   device_token TEXT,
   auth_token TEXT NOT NULL,
+  user_agent TEXT,
+  referrer_url TEXT,
   last_updated TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -65,108 +88,12 @@ CREATE TABLE IF NOT EXISTS device_registrations (
   UNIQUE(device_library_id, serial_number)
 );
 
-CREATE TABLE IF NOT EXISTS rewards (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  title TEXT NOT NULL,
-  description TEXT,
-  cost INTEGER NOT NULL DEFAULT 0,
-  icon TEXT DEFAULT '🎁',
-  active BOOLEAN DEFAULT true,
-  max_claims INTEGER,
-  total_claimed INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS challenges (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  title TEXT NOT NULL,
-  description TEXT,
-  points INTEGER NOT NULL DEFAULT 0,
-  icon TEXT DEFAULT '⭐',
-  type TEXT DEFAULT 'action',
-  recurring BOOLEAN DEFAULT false,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS tiers (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  name TEXT NOT NULL,
-  min_points INTEGER NOT NULL DEFAULT 0,
-  color TEXT DEFAULT '#888888',
-  perks JSONB DEFAULT '[]',
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE tiers ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
-ALTER TABLE tiers ADD COLUMN IF NOT EXISTS rewards_list JSONB DEFAULT '[]';
-
-CREATE TABLE IF NOT EXISTS vip_cards (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  name TEXT NOT NULL,
-  description TEXT,
-  color TEXT DEFAULT 'from-blue-400 to-blue-600',
-  assigned INTEGER DEFAULT 0,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS reward_claims (
-  id TEXT PRIMARY KEY,
-  reward_id TEXT NOT NULL REFERENCES rewards(id),
-  pass_id TEXT NOT NULL REFERENCES pass_instances(id),
-  brand_id TEXT NOT NULL,
-  claimed_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS challenge_completions (
-  id TEXT PRIMARY KEY,
-  challenge_id TEXT NOT NULL REFERENCES challenges(id),
-  pass_id TEXT NOT NULL REFERENCES pass_instances(id),
-  brand_id TEXT NOT NULL,
-  completed_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS members (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  first_name TEXT NOT NULL,
-  last_name TEXT,
-  email TEXT,
-  phone TEXT,
-  playtomic_email TEXT,
-  playtomic_player_id TEXT,
-  playtomic_accepts_marketing BOOLEAN DEFAULT false,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS playtomic_sync_log (
-  id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
-  booking_id TEXT NOT NULL,
-  member_id TEXT REFERENCES members(id),
-  participant_email TEXT,
-  points_awarded INT DEFAULT 0,
-  booking_date TIMESTAMPTZ,
-  sport_id TEXT,
-  resource_name TEXT,
-  synced_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(brand_id, booking_id, member_id)
-);
-
 CREATE TABLE IF NOT EXISTS scheduled_push (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL REFERENCES brands(id),
   title TEXT NOT NULL,
   message TEXT NOT NULL,
-  target TEXT DEFAULT 'all',
+  campaign_id TEXT REFERENCES campaigns(id),
   schedule_type TEXT NOT NULL DEFAULT 'once',
   schedule_time TEXT NOT NULL DEFAULT '09:00',
   schedule_days TEXT DEFAULT '',
@@ -182,7 +109,7 @@ CREATE TABLE IF NOT EXISTS push_log (
   brand_id TEXT NOT NULL,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
-  target TEXT DEFAULT 'all',
+  campaign_id TEXT,
   sent_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -199,2031 +126,542 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS instant_win_campaigns (
+CREATE TABLE IF NOT EXISTS strip_promos (
   id TEXT PRIMARY KEY,
-  brand_id TEXT NOT NULL REFERENCES brands(id),
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  description TEXT,
-  type TEXT DEFAULT 'scratch',
-  win_probability NUMERIC(5,2) NOT NULL DEFAULT 10.00,
-  prizes JSONB NOT NULL DEFAULT '[]',
-  max_plays_per_member INTEGER DEFAULT 1,
-  total_plays INTEGER DEFAULT 0,
-  total_wins INTEGER DEFAULT 0,
-  start_date TIMESTAMPTZ,
-  end_date TIMESTAMPTZ,
+  strip_base64 TEXT NOT NULL,
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  push_message TEXT,
+  push_frequency TEXT DEFAULT 'none',
+  last_push_sent TIMESTAMPTZ,
   active BOOLEAN DEFAULT true,
-  style JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS instant_win_plays (
+CREATE TABLE IF NOT EXISTS creative_assets (
   id TEXT PRIMARY KEY,
-  campaign_id TEXT NOT NULL REFERENCES instant_win_campaigns(id),
-  member_id TEXT NOT NULL REFERENCES members(id),
-  brand_id TEXT NOT NULL,
-  won BOOLEAN DEFAULT false,
-  prize JSONB,
-  played_at TIMESTAMPTZ DEFAULT NOW()
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
+  segment TEXT NOT NULL CHECK (segment IN ('social', 'display', 'ctv_dooh')),
+  format_key TEXT NOT NULL,
+  format_label TEXT NOT NULL,
+  width INTEGER NOT NULL,
+  height INTEGER NOT NULL,
+  title TEXT,
+  headline TEXT,
+  cta_text TEXT,
+  ai_prompt TEXT,
+  ai_model TEXT,
+  source TEXT NOT NULL DEFAULT 'upload' CHECK (source IN ('upload', 'ai', 'template')),
+  image_base64 TEXT,
+  image_url TEXT,
+  qr_embedded BOOLEAN DEFAULT false,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS ad_events (
+  id SERIAL PRIMARY KEY,
+  brand_id TEXT NOT NULL,
+  campaign_id TEXT,
+  creative_id TEXT,
+  event_type TEXT NOT NULL CHECK (event_type IN ('impression', 'click', 'install')),
+  ip TEXT,
+  user_agent TEXT,
+  referer TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ad_events_campaign ON ad_events(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_ad_events_brand ON ad_events(brand_id);
+CREATE INDEX IF NOT EXISTS idx_ad_events_type ON ad_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_ad_events_created ON ad_events(created_at);
+
+CREATE TABLE IF NOT EXISTS media (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL DEFAULT 'generic',
+  title VARCHAR(200),
+  image_base64 TEXT NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_media_brand ON media(brand_id);
 `;
 
-/**
- * Initialize database - create tables if they don't exist
- */
+// ─── Init ──────────────────────────────────────────────
 async function getDb() {
   try {
     await pool.query(SCHEMA);
-    console.log('â Database schema initialized (PostgreSQL)');
-    // --- One-shot migrations ---
-    // Update "Prenota un campo" link to Playtomic URL
-    await pool.query(`
-      UPDATE brands
-      SET config = jsonb_set(
-        config,
-        '{links}',
-        (
-          SELECT jsonb_agg(
-            CASE
-              WHEN elem->>'label' = 'Prenota un campo'
-              THEN jsonb_set(elem, '{url}', '"https://playtomic.com/clubs/hangar-padel-club-origgio-va"')
-              ELSE elem
-            END
-          )
-          FROM jsonb_array_elements(config->'links') AS elem
-        )
-      )
-      WHERE config->'links' IS NOT NULL
-        AND config::text LIKE '%hangarpadel.it/prenota%'
-    `);
+    console.log('✓ Database schema initialized (PostgreSQL — Wallet Ads)');
 
-    // Update Instagram link
-    await pool.query(`
-      UPDATE brands
-      SET config = jsonb_set(
-        config,
-        '{links}',
-        (
-          SELECT jsonb_agg(
-            CASE
-              WHEN elem->>'label' = 'Seguici su Instagram'
-              THEN jsonb_set(elem, '{url}', '"https://www.instagram.com/hirostar_hangar/"')
-              ELSE elem
-            END
-          )
-          FROM jsonb_array_elements(config->'links') AS elem
-        )
-      )
-      WHERE config->'links' IS NOT NULL
-        AND config::text LIKE '%instagram.com/hangarpadel%'
-    `);
+    // Migrations
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS field_values JSONB DEFAULT '{}'`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS utm JSONB DEFAULT '{}'`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS device_token TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS user_agent TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS referrer_url TEXT`).catch(()=>{});
+    // Campaigns columns added after initial schema
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS description TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS template_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS utm_source TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS utm_medium TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS utm_campaign TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS utm_content TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS utm_term TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS total_downloads INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS total_installs INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
+    await pool.query(`ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`).catch(()=>{});
 
-    // Switch template to eventTicket
-    await pool.query(`
-      UPDATE pass_templates SET pass_type = 'eventTicket'
-      WHERE pass_type = 'storeCard'
-    `);
+    // pass_instances — columns added after initial schema
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS auth_token TEXT DEFAULT gen_random_uuid()::text`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT NOW()`).catch(()=>{});
 
-    // Load default strip image into DB for all brands (overwrite old ugly strips)
-    const stripPath = require('path').join(__dirname, '..', '..', 'public', 'assets', 'default-strip.png');
-    if (require('fs').existsSync(stripPath)) {
-      const stripB64 = require('fs').readFileSync(stripPath).toString('base64');
-      await pool.query(`
-        UPDATE brands
-        SET config = jsonb_set(
-          jsonb_set(COALESCE(config, '{}'), '{logos}', COALESCE(config->'logos', '{}'))
-          , '{logos,strip}', $1::jsonb)
-      `, [JSON.stringify(stripB64)]);
-      console.log('✓ Default strip image loaded into DB for all brands');
-    }
+    // push_log — columns added after initial schema
+    await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS sent_count INTEGER DEFAULT 0`).catch(()=>{});
 
-    // Load default icon images into DB for all brands (H mark)
-    const iconPath = require('path').join(__dirname, '..', '..', 'public', 'assets', 'default-icon.png');
-    const icon2xPath = require('path').join(__dirname, '..', '..', 'public', 'assets', 'default-icon@2x.png');
-    if (require('fs').existsSync(iconPath)) {
-      const iconB64 = require('fs').readFileSync(iconPath).toString('base64');
-      const icon2xB64 = require('fs').existsSync(icon2xPath)
-        ? require('fs').readFileSync(icon2xPath).toString('base64')
-        : iconB64;
-      await pool.query(`
-        UPDATE brands
-        SET config = jsonb_set(
-          jsonb_set(COALESCE(config, '{}'), '{logos}', COALESCE(config->'logos', '{}'))
-          , '{logos,icon}', $1::jsonb)
-      `, [JSON.stringify(iconB64)]);
-      await pool.query(`
-        UPDATE brands
-        SET config = jsonb_set(
-          COALESCE(config, '{}')
-          , '{logos,icon@2x}', $1::jsonb)
-      `, [JSON.stringify(icon2xB64)]);
-      console.log('✓ Default icon (H mark) loaded into DB for all brands');
-    }
+    // scheduled_push — columns added after initial schema
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS schedule_type TEXT DEFAULT 'once'`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS schedule_time TEXT DEFAULT '09:00'`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS schedule_days TEXT DEFAULT ''`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS next_run_at TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS update_pass BOOLEAN DEFAULT true`).catch(()=>{});
 
-    // Add member_id column to pass_instances if not exists
-    await pool.query(`
-      ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id)
-    `);
+    // events — columns added after initial schema
+    await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS device_id TEXT`).catch(()=>{});
+    await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'`).catch(()=>{});
 
-    // Migrate members: split name → first_name + last_name
-    try {
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS first_name TEXT`);
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS last_name TEXT`);
-      // Copy data from name to first_name/last_name if name column exists
-      const colCheck = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'members' AND column_name = 'name'`);
-      if (colCheck.rows.length > 0) {
-        await pool.query(`UPDATE members SET first_name = split_part(name, ' ', 1), last_name = NULLIF(substr(name, position(' ' in name) + 1), name) WHERE first_name IS NULL AND name IS NOT NULL`);
-        await pool.query(`ALTER TABLE members DROP COLUMN IF EXISTS name`);
-        console.log('✓ Migrated members name → first_name + last_name');
-      }
-    } catch(e) { console.log('Members migration note:', e.message); }
+    // Indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand ON pass_instances(brand_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_campaign ON pass_instances(campaign_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_brand ON events(brand_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id)`);
 
-    // Add playtomic columns to members if not exists
-    try {
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_email TEXT`);
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_player_id TEXT`);
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS playtomic_accepts_marketing BOOLEAN DEFAULT false`);
-      console.log('✓ playtomic columns ensured on members');
-    } catch(e) { console.log('playtomic migration note:', e.message); }
-
-    // Create playtomic_sync_log table if not exists
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS playtomic_sync_log (
-          id TEXT PRIMARY KEY,
-          brand_id TEXT NOT NULL REFERENCES brands(id),
-          booking_id TEXT NOT NULL,
-          member_id TEXT REFERENCES members(id),
-          participant_email TEXT,
-          points_awarded INT DEFAULT 0,
-          booking_date TIMESTAMPTZ,
-          sport_id TEXT,
-          resource_name TEXT,
-          synced_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(brand_id, booking_id, member_id)
-        )
-      `);
-      console.log('✓ playtomic_sync_log table ensured');
-    } catch(e) { console.log('playtomic_sync_log migration note:', e.message); }
-
-    // Add trigger_type and trigger_config columns to challenges
-    try {
-      await pool.query(`ALTER TABLE challenges ADD COLUMN IF NOT EXISTS trigger_type TEXT DEFAULT 'manual'`);
-      await pool.query(`ALTER TABLE challenges ADD COLUMN IF NOT EXISTS trigger_config JSONB DEFAULT '{}'`);
-      console.log('✓ challenges trigger columns ensured');
-    } catch(e) { console.log('challenges trigger migration note:', e.message); }
-
-    // Create challenge_progress table for tracking per-member progress
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS challenge_progress (
-          id TEXT PRIMARY KEY,
-          challenge_id TEXT NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
-          member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-          brand_id TEXT NOT NULL REFERENCES brands(id),
-          current_count INTEGER DEFAULT 0,
-          target_count INTEGER DEFAULT 1,
-          period_start TIMESTAMPTZ,
-          period_end TIMESTAMPTZ,
-          streak_weeks INTEGER DEFAULT 0,
-          last_booking_week TEXT,
-          status TEXT DEFAULT 'in_progress',
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(challenge_id, member_id, period_start)
-        )
-      `);
-      console.log('✓ challenge_progress table ensured');
-    } catch(e) { console.log('challenge_progress migration note:', e.message); }
-
-    // --- Strip Promos table (scheduled promotional strips) ---
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS strip_promos (
-          id TEXT PRIMARY KEY,
-          brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-          title TEXT NOT NULL,
-          strip_base64 TEXT NOT NULL,
-          start_date TIMESTAMPTZ NOT NULL,
-          end_date TIMESTAMPTZ NOT NULL,
-          push_message TEXT,
-          push_frequency TEXT DEFAULT 'none',
-          last_push_sent TIMESTAMPTZ,
-          active BOOLEAN DEFAULT true,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      console.log('✓ strip_promos table ensured');
-    } catch(e) { console.log('strip_promos migration note:', e.message); }
-
-    // --- Add referral_code and referred_by to members ---
-    try {
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE`);
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS referred_by TEXT`);
-      await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0`);
-      console.log('✓ members referral columns ensured');
-    } catch(e) { console.log('members referral migration note:', e.message); }
-
-    // --- Analytics events table (pass lifecycle tracking) ---
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS analytics_events (
-          id TEXT PRIMARY KEY,
-          brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-          member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
-          pass_id TEXT,
-          event_type TEXT NOT NULL,
-          event_data JSONB DEFAULT '{}',
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_brand_type ON analytics_events(brand_id, event_type)`);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_events(created_at)`);
-      console.log('✓ analytics_events table ensured');
-    } catch(e) { console.log('analytics_events migration note:', e.message); }
-
-    // --- Points log table (tracks every point change for recap emails) ---
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS points_log (
-          id TEXT PRIMARY KEY,
-          brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-          member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-          pass_id TEXT,
-          points INTEGER NOT NULL,
-          reason TEXT NOT NULL DEFAULT 'manual',
-          details TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_points_log_brand_member ON points_log(brand_id, member_id)`);
-      await pool.query(`CREATE INDEX IF NOT EXISTS idx_points_log_created ON points_log(created_at)`);
-      console.log('✓ points_log table ensured');
-    } catch(e) { console.log('points_log migration note:', e.message); }
-
-    // --- Email log table (tracks sent recap emails) ---
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS email_log (
-          id TEXT PRIMARY KEY,
-          brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-          member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
-          email_type TEXT NOT NULL,
-          subject TEXT,
-          status TEXT DEFAULT 'sent',
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      console.log('✓ email_log table ensured');
-    } catch(e) { console.log('email_log migration note:', e.message); }
-
-    // --- Leads table (from ads.nudj.it contact form) ---
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS leads (
-          id TEXT PRIMARY KEY,
-          first_name TEXT,
-          last_name TEXT,
-          email TEXT NOT NULL,
-          company TEXT,
-          interest TEXT,
-          message TEXT,
-          source TEXT DEFAULT 'ads.nudj.it',
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      console.log('✓ leads table ensured');
-    } catch(e) { console.log('leads migration note:', e.message); }
-
-    // --- Generate referral codes for existing members that don't have one ---
-    try {
-      const membersNoCode = await pool.query(`SELECT id FROM members WHERE referral_code IS NULL`);
-      for (const m of membersNoCode.rows) {
-        const code = m.id.substring(0, 8).toUpperCase();
-        await pool.query(`UPDATE members SET referral_code = $1 WHERE id = $2`, [code, m.id]);
-      }
-      if (membersNoCode.rows.length > 0) console.log(`✓ Generated referral codes for ${membersNoCode.rows.length} members`);
-    } catch(e) { console.log('referral code generation note:', e.message); }
-
-    // --- Seed default tiers ONLY for padel brands (with Playtomic config) that have none ---
-    try {
-      const brandsWithoutTiers = await pool.query(`
-        SELECT b.id, b.name, b.config FROM brands b
-        WHERE NOT EXISTS (SELECT 1 FROM tiers t WHERE t.brand_id = b.id)
-      `);
-      for (const row of brandsWithoutTiers.rows) {
-        // Only seed padel tiers for brands with Playtomic integration
-        const config = typeof row.config === 'string' ? JSON.parse(row.config) : (row.config || {});
-        if (!config.playtomic) {
-          console.log(`⏭ Skipping tier seed for non-padel brand: ${row.name}`);
-          continue;
-        }
-        const defaultTiers = [
-          { name: 'Pared',   min_points: 0,    color: '#888888', sort_order: 1 },
-          { name: 'Bandeja', min_points: 100,  color: '#4CAF50', sort_order: 2 },
-          { name: 'Víbora',  min_points: 300,  color: '#2196F3', sort_order: 3 },
-          { name: 'Bajada',  min_points: 600,  color: '#9C27B0', sort_order: 4 },
-          { name: 'Por Tres', min_points: 1000, color: '#FFD700', sort_order: 5 }
-        ];
-        for (const tier of defaultTiers) {
-          await pool.query(
-            `INSERT INTO tiers (id, brand_id, name, min_points, color, perks, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [uuidv4(), row.id, tier.name, tier.min_points, tier.color, '[]', tier.sort_order]
-          );
-        }
-        console.log(`✓ Seeded 5 padel tiers for brand ${row.name} (${row.id})`);
-      }
-    } catch(e) { console.log('Tier seed note:', e.message); }
-
-    // --- Populate tier content (description, perks, rewards) where empty ---
-    try {
-      const tierContent = {
-        'Pared': {
-          description: 'Il primo passo nel club. Benvenuto in campo!',
-          perks: ['Accesso area soci', 'Newsletter settimanale eventi', 'Prenotazione campi online'],
-          rewards_list: ['Drink di benvenuto al bar', 'Grip overgrip omaggio']
-        },
-        'Bandeja': {
-          description: 'Stai prendendo ritmo. I vantaggi crescono con te.',
-          perks: ['Tutti i vantaggi Pared', 'Sconto 10% noleggio racchette', 'Accesso tornei sociali mensili', 'Priorita prenotazione weekend'],
-          rewards_list: ['1 ora campo gratuita al mese', 'Sconto 10% al bar', 'Tubo palline omaggio ogni 2 mesi']
-        },
-        'Víbora': {
-          description: 'Giocatore esperto. Il club ti riconosce.',
-          perks: ['Tutti i vantaggi Bandeja', 'Sconto 15% pro shop', 'Lezione di gruppo gratuita al mese', 'Invito eventi esclusivi', 'Parcheggio riservato'],
-          rewards_list: ['2 ore campo gratuite al mese', 'Sconto 15% al bar', 'Incordatura racchetta gratuita trimestrale', 'Maglietta club esclusiva']
-        },
-        'Bajada': {
-          description: 'Hai conquistato il campo. Trattamento premium.',
-          perks: ['Tutti i vantaggi Vibora', 'Sconto 20% su tutto il pro shop', 'Accesso spogliatoio VIP', 'Lezione privata al mese (30 min)', 'Ospite gratuito 1 volta al mese'],
-          rewards_list: ['4 ore campo gratuite al mese', 'Sconto 20% al bar', 'Kit completo palline ogni mese', 'Accesso anticipato tornei', 'Cena club semestrale con coach']
-        },
-        'Por Tres': {
-          description: 'Il livello massimo. Sei la leggenda del club.',
-          perks: ['Tutti i vantaggi Bajada', 'Campo riservato fascia prime time', 'Personal coach dedicato (1h/mese)', 'Accesso illimitato ospiti', 'Naming su torneo mensile', 'Posto riservato area lounge'],
-          rewards_list: ['Campo illimitato', 'Bar open 1 consumazione/giorno', 'Racchetta brandizzata club in omaggio', 'Abbigliamento tecnico stagionale', 'Invito cena annuale con sponsor', 'Trofeo socio dell\'anno (votazione)']
-        }
-      };
-
-      // Only update tiers belonging to padel brands (with Playtomic config)
-      const allTiers = await pool.query(`
-        SELECT t.id, t.name, t.description FROM tiers t
-        JOIN brands b ON b.id = t.brand_id
-        WHERE b.config::text LIKE '%playtomic%'
-      `);
-      for (const t of allTiers.rows) {
-        const content = tierContent[t.name];
-        if (content && (!t.description || t.description === '')) {
-          await pool.query(
-            `UPDATE tiers SET description = $1, perks = $2, rewards_list = $3 WHERE id = $4`,
-            [content.description, JSON.stringify(content.perks), JSON.stringify(content.rewards_list), t.id]
-          );
-          console.log(`✓ Populated content for tier: ${t.name}`);
-        }
-      }
-    } catch(e) { console.log('Tier content population note:', e.message); }
-
-    // --- Populate rewards catalog ONLY for padel brands without rewards ---
-    try {
-      // Find padel brands (with Playtomic config) that have zero rewards
-      const padelBrandsNoRewards = await pool.query(`
-        SELECT b.id, b.name FROM brands b
-        WHERE b.config::text LIKE '%playtomic%'
-        AND NOT EXISTS (SELECT 1 FROM rewards r WHERE r.brand_id = b.id)
-      `);
-      for (const brandRow of padelBrandsNoRewards.rows) {
-          const brandId = brandRow.id;
-          const rewards = [
-            // Livello Pared (base) — 50-100 punti
-            { title: 'Drink di benvenuto', description: 'Una consumazione gratuita al bar del club: acqua, succo o bibita a scelta.', cost: 50, icon: '🥤' },
-            { title: 'Grip overgrip omaggio', description: 'Un overgrip di qualità per la tua racchetta, a scelta tra i modelli disponibili.', cost: 80, icon: '🎾' },
-            { title: 'Tubo palline', description: 'Un tubo di 3 palline da padel omaggio per le tue partite.', cost: 100, icon: '🎯' },
-
-            // Livello Bandeja — 150-300 punti
-            { title: '1 ora campo gratuita', description: 'Prenota 1 ora di campo padel senza costi aggiuntivi. Valido in qualsiasi fascia oraria disponibile.', cost: 150, icon: '🏟️' },
-            { title: 'Sconto 10% al bar', description: 'Buono sconto del 10% su tutte le consumazioni al bar, valido per una giornata intera.', cost: 120, icon: '☕' },
-            { title: 'Sconto 10% noleggio racchette', description: 'Sconto del 10% sul noleggio racchette per un mese intero.', cost: 200, icon: '🏸' },
-            { title: 'Accesso torneo sociale', description: 'Iscrizione gratuita al prossimo torneo sociale mensile del club.', cost: 250, icon: '🏆' },
-
-            // Livello Víbora — 300-500 punti
-            { title: '2 ore campo gratuite', description: 'Prenota 2 ore di campo padel senza costi. Utilizzabili anche in giorni diversi.', cost: 300, icon: '⏰' },
-            { title: 'Sconto 15% al bar', description: 'Buono sconto del 15% su tutte le consumazioni al bar, valido per una settimana.', cost: 280, icon: '🍹' },
-            { title: 'Lezione di gruppo', description: 'Una lezione di gruppo con il coach del club (max 4 partecipanti, 1 ora).', cost: 350, icon: '👨‍🏫' },
-            { title: 'Incordatura racchetta', description: 'Servizio di incordatura professionale gratuito per la tua racchetta.', cost: 400, icon: '🔧' },
-            { title: 'Maglietta club esclusiva', description: 'T-shirt tecnica con il logo del club, in edizione limitata per i soci.', cost: 500, icon: '👕' },
-
-            // Livello Bajada — 500-800 punti
-            { title: '4 ore campo gratuite', description: '4 ore di campo padel gratuite, utilizzabili nel mese corrente.', cost: 550, icon: '🌟' },
-            { title: 'Sconto 20% pro shop', description: 'Buono sconto del 20% su tutti i prodotti del pro shop del club.', cost: 500, icon: '🛍️' },
-            { title: 'Lezione privata 30 min', description: 'Una sessione privata di 30 minuti con il coach per migliorare la tua tecnica.', cost: 600, icon: '🎓' },
-            { title: 'Kit palline mensile', description: 'Un kit completo di palline da padel premium ogni mese per un mese.', cost: 450, icon: '📦' },
-            { title: 'Cena club con coach', description: 'Invito alla cena esclusiva del club con il coach e gli altri soci premium.', cost: 800, icon: '🍽️' },
-
-            // Livello Por Tres — 800-2000 punti
-            { title: 'Campo illimitato mensile', description: 'Accesso illimitato ai campi per un mese intero. Il sogno di ogni padelista.', cost: 1000, icon: '♾️' },
-            { title: 'Bar open giornaliero', description: 'Una consumazione gratuita al giorno al bar per un mese intero.', cost: 800, icon: '🍺' },
-            { title: 'Racchetta brandizzata club', description: 'Una racchetta da padel con il logo del club, in edizione esclusiva numerata.', cost: 1500, icon: '🏅' },
-            { title: 'Abbigliamento tecnico stagionale', description: 'Kit completo di abbigliamento tecnico (maglia + pantaloncini) con branding club.', cost: 1200, icon: '🎽' },
-            { title: 'Ospite illimitato mensile', description: 'Porta un ospite gratuito a ogni partita per un mese intero.', cost: 900, icon: '🤝' },
-            { title: 'Trofeo Socio dell\'Anno', description: 'Candidatura al premio annuale "Socio dell\'Anno" con trofeo personalizzato e naming su torneo.', cost: 2000, icon: '🏆' },
-          ];
-
-          for (const r of rewards) {
-            const id = uuidv4();
-            await pool.query(
-              `INSERT INTO rewards (id, brand_id, title, description, cost, icon, active) VALUES ($1, $2, $3, $4, $5, $6, true)`,
-              [id, brandId, r.title, r.description, r.cost, r.icon]
-            );
-          }
-          console.log(`✓ Populated ${rewards.length} rewards for brand ${brandRow.name}`);
-      }
-    } catch(e) { console.log('Rewards population note:', e.message); }
-
-    // --- Seed default scratch card for brands without one ---
-    try {
-      const allBrands = await pool.query('SELECT id, name FROM brands');
-      console.log(`[ScratchSeed] Found ${allBrands.rows.length} brands total`);
-      for (const row of allBrands.rows) {
-        // Check if brand already has campaigns
-        const existing = await pool.query('SELECT id FROM instant_win_campaigns WHERE brand_id = $1 LIMIT 1', [row.id]);
-        if (existing.rows.length > 0) {
-          // Ensure scratchCardId is in brand config
-          const brandRes = await pool.query('SELECT config FROM brands WHERE id = $1', [row.id]);
-          const config = brandRes.rows[0]?.config || {};
-          if (!config.scratchCardId) {
-            config.scratchCardId = existing.rows[0].id;
-            await pool.query('UPDATE brands SET config = $1 WHERE id = $2', [JSON.stringify(config), row.id]);
-            console.log(`[ScratchSeed] ${row.name}: saved scratchCardId ${existing.rows[0].id} to brand config`);
-          } else {
-            console.log(`[ScratchSeed] ${row.name} already has campaign + config, skipping`);
-          }
-          continue;
-        }
-        const scratchId = uuidv4();
-        const prizes = [
-          { name: 'Super Bonus!', description: '+50 punti', points: 50, icon: '🎉', weight: 20 },
-          { name: 'Bonus', description: '+20 punti', points: 20, icon: '⭐', weight: 40 },
-          { name: 'Mini Bonus', description: '+10 punti', points: 10, icon: '🎁', weight: 40 }
-        ];
-        await pool.query(
-          `INSERT INTO instant_win_campaigns (id, brand_id, title, description, type, win_probability, prizes, max_plays_per_member)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [scratchId, row.id, 'Gratta e Vinci', 'Gratta la card per scoprire se hai vinto punti bonus!', 'scratch', 30, JSON.stringify(prizes), 1]
-        );
-        // Save scratchCardId to brand config
-        const brandRes = await pool.query('SELECT config FROM brands WHERE id = $1', [row.id]);
-        const config = brandRes.rows[0]?.config || {};
-        config.scratchCardId = scratchId;
-        await pool.query('UPDATE brands SET config = $1 WHERE id = $2', [JSON.stringify(config), row.id]);
-        console.log(`✓ Default scratch card created for brand ${row.name} (${row.id})`);
-      }
-    } catch(e) { console.error('Scratch card seed ERROR:', e.message, e.stack); }
-
-    // --- Seed default admin user ---
+    // Seed admin
     await seedAdminUser();
 
   } catch (error) {
-    console.error('Error initializing schema:', error);
+    console.error('Database initialization error:', error);
     throw error;
   }
-  return pool;
 }
 
-/**
- * saveDb - no-op for PostgreSQL (data is persisted automatically)
- */
 function saveDb() {
   // No-op: PostgreSQL persists automatically
 }
 
-/**
- * Create a new brand
- */
+// ─── Brands ──────────────────────────────────────────────
+
 async function createBrand(data) {
   const id = data.id || uuidv4();
   const { name, slug, config = {} } = data;
-
-  if (!name || !slug) {
-    throw new Error('Brand name and slug are required');
-  }
-
+  if (!name || !slug) throw new Error('Brand name and slug are required');
   const configObj = typeof config === 'string' ? JSON.parse(config) : config;
-
-  try {
-    await pool.query(
-      `INSERT INTO brands (id, name, slug, config) VALUES ($1, $2, $3, $4)`,
-      [id, name, slug, JSON.stringify(configObj)]
-    );
-    return { id, name, slug, config: configObj };
-  } catch (error) {
-    throw new Error(`Failed to create brand: ${error.message}`);
-  }
+  await pool.query(
+    `INSERT INTO brands (id, name, slug, config) VALUES ($1, $2, $3, $4)`,
+    [id, name, slug, JSON.stringify(configObj)]
+  );
+  return { id, name, slug, config: configObj };
 }
 
-/**
- * Create a new pass template
- */
-async function createTemplate(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, name, pass_type = 'generic', style = {}, fields = [], config = {} } = data;
-
-  if (!brand_id || !name) {
-    throw new Error('Brand ID and template name are required');
-  }
-
-  const styleObj = typeof style === 'string' ? JSON.parse(style) : style;
-  const fieldsObj = typeof fields === 'string' ? JSON.parse(fields) : fields;
-  const configObj = typeof config === 'string' ? JSON.parse(config) : config;
-
-  try {
-    await pool.query(
-      `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj)]
-    );
-    return {
-      id, brand_id, name, pass_type,
-      style: styleObj,
-      fields: fieldsObj,
-      config: configObj
-    };
-  } catch (error) {
-    throw new Error(`Failed to create template: ${error.message}`);
-  }
-}
-
-/**
- * Create a new pass instance
- */
-async function createPassInstance(data) {
-  const id = data.id || uuidv4();
-  const serial_number = data.serial_number || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  const { template_id, brand_id, customer_data = {}, field_values = {}, device_token = null, member_id = null } = data;
-  const auth_token = data.auth_token || uuidv4();
-
-  if (!template_id || !brand_id) {
-    throw new Error('Template ID and Brand ID are required');
-  }
-
-  const customerObj = typeof customer_data === 'string' ? JSON.parse(customer_data) : customer_data;
-  const fieldObj = typeof field_values === 'string' ? JSON.parse(field_values) : field_values;
-
-  try {
-    await pool.query(
-      `INSERT INTO pass_instances (id, serial_number, template_id, brand_id, customer_data, field_values, device_token, auth_token, member_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, serial_number, template_id, brand_id, JSON.stringify(customerObj), JSON.stringify(fieldObj), device_token, auth_token, member_id]
-    );
-    return {
-      id, serial_number, template_id, brand_id,
-      customer_data: customerObj,
-      field_values: fieldObj,
-      device_token, auth_token, member_id,
-      status: 'active'
-    };
-  } catch (error) {
-    throw new Error(`Failed to create pass instance: ${error.message}`);
-  }
-}
-
-/**
- * Get a pass instance by ID
- */
-async function getPassInstance(id) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM pass_instances WHERE id = $1`, [id]
-    );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      serial_number: row.serial_number,
-      template_id: row.template_id,
-      brand_id: row.brand_id,
-      customer_data: row.customer_data,
-      field_values: row.field_values,
-      status: row.status,
-      device_token: row.device_token,
-      auth_token: row.auth_token,
-      last_updated: row.last_updated,
-      created_at: row.created_at
-    };
-  } catch (error) {
-    throw new Error(`Failed to get pass instance: ${error.message}`);
-  }
-}
-
-/**
- * Get a pass instance by serial number
- */
-async function getPassBySerial(serial) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM pass_instances WHERE serial_number = $1`, [serial]
-    );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      serial_number: row.serial_number,
-      template_id: row.template_id,
-      brand_id: row.brand_id,
-      customer_data: row.customer_data,
-      field_values: row.field_values,
-      status: row.status,
-      device_token: row.device_token,
-      auth_token: row.auth_token,
-      last_updated: row.last_updated,
-      created_at: row.created_at
-    };
-  } catch (error) {
-    throw new Error(`Failed to get pass by serial: ${error.message}`);
-  }
-}
-
-/**
- * Update a pass instance
- */
-async function updatePassInstance(id, data) {
-  const updates = [];
-  const values = [];
-  let paramCount = 0;
-
-  if (data.status) {
-    paramCount++;
-    updates.push(`status = $${paramCount}`);
-    values.push(data.status);
-  }
-  if (data.device_token !== undefined) {
-    paramCount++;
-    updates.push(`device_token = $${paramCount}`);
-    values.push(data.device_token);
-  }
-  if (data.customer_data) {
-    paramCount++;
-    const customerObj = typeof data.customer_data === 'string' ? data.customer_data : JSON.stringify(data.customer_data);
-    updates.push(`customer_data = $${paramCount}`);
-    values.push(customerObj);
-  }
-  if (data.field_values) {
-    paramCount++;
-    const fieldObj = typeof data.field_values === 'string' ? data.field_values : JSON.stringify(data.field_values);
-    updates.push(`field_values = $${paramCount}`);
-    values.push(fieldObj);
-  }
-
-  if (updates.length === 0) return getPassInstance(id);
-
-  updates.push('last_updated = NOW()');
-  paramCount++;
-  values.push(id);
-
-  try {
-    await pool.query(
-      `UPDATE pass_instances SET ${updates.join(', ')} WHERE id = $${paramCount}`,
-      values
-    );
-    return getPassInstance(id);
-  } catch (error) {
-    throw new Error(`Failed to update pass instance: ${error.message}`);
-  }
-}
-
-/**
- * Touch a pass — update last_updated timestamp to signal a change to Apple Wallet
- */
-async function touchPass(id) {
-  try {
-    await pool.query('UPDATE pass_instances SET last_updated = NOW() WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to touch pass: ${error.message}`);
-  }
-}
-
-/**
- * Log an event
- */
-async function logEvent(data) {
-  const { pass_id, brand_id, event_type, device_id = null, metadata = {} } = data;
-
-  if (!brand_id || !event_type) {
-    throw new Error('Brand ID and event type are required');
-  }
-
-  const metadataObj = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
-
-  try {
-    await pool.query(
-      `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES ($1, $2, $3, $4, $5)`,
-      [pass_id || null, brand_id, event_type, device_id, metadataObj]
-    );
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to log event: ${error.message}`);
-  }
-}
-
-/**
- * Get all push tokens for devices registered to passes of a given brand
- */
-async function getDevicesForBrand(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT DISTINCT dr.push_token, dr.device_library_id, dr.serial_number
-       FROM device_registrations dr
-       JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-       WHERE pi.brand_id = $1`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to get devices for brand: ${error.message}`);
-  }
-}
-
-/**
- * Get analytics for a brand
- */
-async function getAnalytics(brandId) {
-  try {
-    const [passResult, statusResult, eventResult] = await Promise.all([
-      pool.query(`SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1`, [brandId]),
-      pool.query(`SELECT status, COUNT(*) as count FROM pass_instances WHERE brand_id = $1 GROUP BY status`, [brandId]),
-      pool.query(`SELECT event_type, COUNT(*) as count FROM events WHERE brand_id = $1 GROUP BY event_type`, [brandId])
-    ]);
-
-    const totalPasses = parseInt(passResult.rows[0].count) || 0;
-    const byStatus = {};
-    statusResult.rows.forEach(row => { byStatus[row.status] = parseInt(row.count); });
-    const events = {};
-    eventResult.rows.forEach(row => { events[row.event_type] = parseInt(row.count); });
-
-    return { totalPasses, byStatus, events };
-  } catch (error) {
-    throw new Error(`Failed to get analytics: ${error.message}`);
-  }
-}
-
-/**
- * Register a device for push notifications
- */
-async function registerDevice(data) {
-  const { device_library_id, push_token, serial_number } = data;
-
-  if (!device_library_id || !push_token || !serial_number) {
-    throw new Error('Device library ID, push token, and serial number are required');
-  }
-
-  try {
-    await pool.query(
-      `INSERT INTO device_registrations (device_library_id, push_token, serial_number)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (device_library_id, serial_number) DO NOTHING`,
-      [device_library_id, push_token, serial_number]
-    );
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to register device: ${error.message}`);
-  }
-}
-
-/**
- * Get all devices registered for a pass
- */
-async function getDevicesForPass(serial) {
-  try {
-    const result = await pool.query(
-      `SELECT device_library_id, push_token FROM device_registrations WHERE serial_number = $1`,
-      [serial]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to get devices for pass: ${error.message}`);
-  }
-}
-
-/**
- * Get a brand by ID
- */
 async function getBrand(id) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM brands WHERE id = $1`, [id]
-    );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      config: row.config,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    };
-  } catch (error) {
-    throw new Error(`Failed to get brand: ${error.message}`);
-  }
+  const result = await pool.query('SELECT * FROM brands WHERE id = $1', [id]);
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  return { ...row, config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config };
 }
 
 async function getBrandBySlug(slug) {
-  try {
-    const result = await pool.query(`SELECT * FROM brands WHERE slug = $1`, [slug]);
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return { id: row.id, name: row.name, slug: row.slug, config: row.config, created_at: row.created_at, updated_at: row.updated_at };
-  } catch (error) {
-    throw new Error(`Failed to get brand by slug: ${error.message}`);
-  }
+  const result = await pool.query('SELECT * FROM brands WHERE slug = $1', [slug]);
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  return { ...row, config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config };
 }
 
-/**
- * Get a template by ID
- */
-async function getTemplate(id) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM pass_templates WHERE id = $1`, [id]
-    );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      brand_id: row.brand_id,
-      name: row.name,
-      pass_type: row.pass_type,
-      style: row.style,
-      fields: row.fields,
-      config: row.config,
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    };
-  } catch (error) {
-    throw new Error(`Failed to get template: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// LIST FUNCTIONS (previously done via db.exec() in routes.js)
-// ============================================================================
-
-/**
- * List all brands
- */
 async function listBrands() {
   const result = await pool.query('SELECT * FROM brands ORDER BY created_at DESC');
   return result.rows.map(row => ({
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    config: row.config,
-    created_at: row.created_at,
-    updated_at: row.updated_at
+    ...row,
+    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config
   }));
 }
 
-/**
- * List templates (optionally filtered by brand_id)
- */
-async function listTemplates(brandId) {
-  let query = 'SELECT * FROM pass_templates';
-  const params = [];
-  if (brandId) {
-    query += ' WHERE brand_id = $1';
-    params.push(brandId);
-  }
-  query += ' ORDER BY created_at DESC';
-  const result = await pool.query(query, params);
-  return result.rows.map(row => ({
-    id: row.id,
-    brand_id: row.brand_id,
-    name: row.name,
-    pass_type: row.pass_type,
-    style: row.style,
-    fields: row.fields,
-    config: row.config,
-    created_at: row.created_at,
-    updated_at: row.updated_at
-  }));
-}
-
-/**
- * List passes (optionally filtered by brand_id and/or status)
- */
-async function listPasses(brandId, status) {
-  let query = 'SELECT * FROM pass_instances';
-  const conditions = [];
-  const params = [];
-  let paramCount = 0;
-
-  if (brandId) {
-    paramCount++;
-    conditions.push(`brand_id = $${paramCount}`);
-    params.push(brandId);
-  }
-  if (status) {
-    paramCount++;
-    conditions.push(`status = $${paramCount}`);
-    params.push(status);
-  }
-
-  if (conditions.length > 0) {
-    query += ` WHERE ${conditions.join(' AND ')}`;
-  }
-  query += ' ORDER BY created_at DESC';
-
-  const result = await pool.query(query, params);
-  return result.rows.map(row => ({
-    id: row.id,
-    serial_number: row.serial_number,
-    template_id: row.template_id,
-    brand_id: row.brand_id,
-    customer_data: row.customer_data,
-    field_values: row.field_values,
-    status: row.status,
-    device_token: row.device_token,
-    auth_token: row.auth_token,
-    last_updated: row.last_updated,
-    created_at: row.created_at
-  }));
-}
-
-/**
- * List events for a brand
- */
-async function listEvents(brandId, limit = 50) {
-  const result = await pool.query(
-    'SELECT * FROM events WHERE brand_id = $1 ORDER BY created_at DESC LIMIT $2',
-    [brandId, parseInt(limit)]
-  );
-  return result.rows.map(row => ({
-    id: row.id,
-    pass_id: row.pass_id,
-    brand_id: row.brand_id,
-    event_type: row.event_type,
-    device_id: row.device_id,
-    metadata: row.metadata,
-    created_at: row.created_at
-  }));
-}
-
-/**
- * Delete device registration
- */
-async function unregisterDevice(deviceLibraryId, serialNumber) {
-  await pool.query(
-    'DELETE FROM device_registrations WHERE device_library_id = $1 AND serial_number = $2',
-    [deviceLibraryId, serialNumber]
-  );
-}
-
-/**
- * Get serial numbers for a device
- */
-async function getSerialsForDevice(deviceLibraryId) {
-  const result = await pool.query(
-    'SELECT serial_number FROM device_registrations WHERE device_library_id = $1',
-    [deviceLibraryId]
-  );
-  return result.rows.map(row => row.serial_number);
-}
-
-// ============================================================================
-// REWARDS CRUD
-// ============================================================================
-
-/**
- * Create a new reward
- */
-async function createReward(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, title, description = '', cost = 0, icon = '🎁', active = true, max_claims = null } = data;
-
-  if (!brand_id || !title) {
-    throw new Error('Brand ID and title are required');
-  }
-
-  try {
-    await pool.query(
-      `INSERT INTO rewards (id, brand_id, title, description, cost, icon, active, max_claims)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [id, brand_id, title, description, cost, icon, active, max_claims]
-    );
-    return { id, brand_id, title, description, cost, icon, active, max_claims, total_claimed: 0 };
-  } catch (error) {
-    throw new Error(`Failed to create reward: ${error.message}`);
-  }
-}
-
-/**
- * List rewards for a brand
- */
-async function listRewards(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM rewards WHERE brand_id = $1 ORDER BY created_at DESC`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list rewards: ${error.message}`);
-  }
-}
-
-/**
- * Get a single reward by ID
- */
-async function getReward(id) {
-  try {
-    const result = await pool.query('SELECT * FROM rewards WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to get reward: ${error.message}`);
-  }
-}
-
-/**
- * Update a reward
- */
-async function updateReward(id, data) {
-  try {
-    const current = await getReward(id);
-    if (!current) return null;
-
-    const updates = [];
-    const values = [];
-    let paramCount = 0;
-
-    if (data.title) {
-      paramCount++;
-      updates.push(`title = $${paramCount}`);
-      values.push(data.title);
-    }
-    if (data.description !== undefined) {
-      paramCount++;
-      updates.push(`description = $${paramCount}`);
-      values.push(data.description);
-    }
-    if (data.cost !== undefined) {
-      paramCount++;
-      updates.push(`cost = $${paramCount}`);
-      values.push(data.cost);
-    }
-    if (data.icon !== undefined) {
-      paramCount++;
-      updates.push(`icon = $${paramCount}`);
-      values.push(data.icon);
-    }
-    if (data.active !== undefined) {
-      paramCount++;
-      updates.push(`active = $${paramCount}`);
-      values.push(data.active);
-    }
-
-    if (updates.length === 0) return getReward(id);
-
-    paramCount++;
-    values.push(id);
-
-    await pool.query(
-      `UPDATE rewards SET ${updates.join(', ')} WHERE id = $${paramCount}`,
-      values
-    );
-    return getReward(id);
-  } catch (error) {
-    throw new Error(`Failed to update reward: ${error.message}`);
-  }
-}
-
-/**
- * Delete a reward and its claims
- */
-async function deleteReward(id) {
-  try {
-    await pool.query('DELETE FROM reward_claims WHERE reward_id = $1', [id]);
-    await pool.query('DELETE FROM rewards WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete reward: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// CHALLENGES CRUD
-// ============================================================================
-
-/**
- * Create a new challenge
- */
-async function createChallenge(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, title, description = '', points = 0, icon = '⭐', type = 'action', recurring = false, active = true, trigger_type = 'manual', trigger_config = {} } = data;
-
-  if (!brand_id || !title) {
-    throw new Error('Brand ID and title are required');
-  }
-
-  try {
-    await pool.query(
-      `INSERT INTO challenges (id, brand_id, title, description, points, icon, type, recurring, active, trigger_type, trigger_config)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [id, brand_id, title, description, points, icon, type, recurring, active, trigger_type, JSON.stringify(trigger_config)]
-    );
-    return { id, brand_id, title, description, points, icon, type, recurring, active, trigger_type, trigger_config };
-  } catch (error) {
-    throw new Error(`Failed to create challenge: ${error.message}`);
-  }
-}
-
-/**
- * List challenges for a brand
- */
-async function listChallenges(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM challenges WHERE brand_id = $1 ORDER BY created_at DESC`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list challenges: ${error.message}`);
-  }
-}
-
-/**
- * Get a single challenge by ID
- */
-async function getChallenge(id) {
-  try {
-    const result = await pool.query('SELECT * FROM challenges WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to get challenge: ${error.message}`);
-  }
-}
-
-/**
- * Update a challenge
- */
-async function updateChallenge(id, data) {
-  try {
-    const current = await getChallenge(id);
-    if (!current) return null;
-
-    const updates = [];
-    const values = [];
-    let paramCount = 0;
-
-    if (data.title) {
-      paramCount++;
-      updates.push(`title = $${paramCount}`);
-      values.push(data.title);
-    }
-    if (data.description !== undefined) {
-      paramCount++;
-      updates.push(`description = $${paramCount}`);
-      values.push(data.description);
-    }
-    if (data.points !== undefined) {
-      paramCount++;
-      updates.push(`points = $${paramCount}`);
-      values.push(data.points);
-    }
-    if (data.icon !== undefined) {
-      paramCount++;
-      updates.push(`icon = $${paramCount}`);
-      values.push(data.icon);
-    }
-    if (data.type !== undefined) {
-      paramCount++;
-      updates.push(`type = $${paramCount}`);
-      values.push(data.type);
-    }
-    if (data.recurring !== undefined) {
-      paramCount++;
-      updates.push(`recurring = $${paramCount}`);
-      values.push(data.recurring);
-    }
-    if (data.active !== undefined) {
-      paramCount++;
-      updates.push(`active = $${paramCount}`);
-      values.push(data.active);
-    }
-    if (data.trigger_type !== undefined) {
-      paramCount++;
-      updates.push(`trigger_type = $${paramCount}`);
-      values.push(data.trigger_type);
-    }
-    if (data.trigger_config !== undefined) {
-      paramCount++;
-      updates.push(`trigger_config = $${paramCount}`);
-      values.push(JSON.stringify(data.trigger_config));
-    }
-
-    if (updates.length === 0) return getChallenge(id);
-
-    paramCount++;
-    values.push(id);
-
-    await pool.query(
-      `UPDATE challenges SET ${updates.join(', ')} WHERE id = $${paramCount}`,
-      values
-    );
-    return getChallenge(id);
-  } catch (error) {
-    throw new Error(`Failed to update challenge: ${error.message}`);
-  }
-}
-
-/**
- * Delete a challenge and its completions
- */
-async function deleteChallenge(id) {
-  try {
-    await pool.query('DELETE FROM challenge_completions WHERE challenge_id = $1', [id]);
-    await pool.query('DELETE FROM challenges WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete challenge: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// TIERS CRUD
-// ============================================================================
-
-/**
- * Create a new tier
- */
-async function createTier(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, name, min_points = 0, color = '#888888', perks = [], sort_order = 0, description = '', rewards_list = [] } = data;
-
-  if (!brand_id || !name) {
-    throw new Error('Brand ID and name are required');
-  }
-
-  try {
-    const perksJson = typeof perks === 'string' ? perks : JSON.stringify(perks);
-    const rewardsJson = typeof rewards_list === 'string' ? rewards_list : JSON.stringify(rewards_list);
-    await pool.query(
-      `INSERT INTO tiers (id, brand_id, name, min_points, color, perks, sort_order, description, rewards_list)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, brand_id, name, min_points, color, perksJson, sort_order, description, rewardsJson]
-    );
-    return { id, brand_id, name, min_points, color, perks, sort_order, description, rewards_list };
-  } catch (error) {
-    throw new Error(`Failed to create tier: ${error.message}`);
-  }
-}
-
-/**
- * List tiers for a brand
- */
-async function listTiers(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM tiers WHERE brand_id = $1 ORDER BY min_points ASC`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list tiers: ${error.message}`);
-  }
-}
-
-/**
- * Get a single tier by ID
- */
-async function getTier(id) {
-  try {
-    const result = await pool.query('SELECT * FROM tiers WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to get tier: ${error.message}`);
-  }
-}
-
-/**
- * Update a tier
- */
-async function updateTier(id, data) {
-  try {
-    const current = await getTier(id);
-    if (!current) return null;
-
-    const updates = [];
-    const values = [];
-    let paramCount = 0;
-
-    if (data.name) {
-      paramCount++;
-      updates.push(`name = $${paramCount}`);
-      values.push(data.name);
-    }
-    if (data.min_points !== undefined) {
-      paramCount++;
-      updates.push(`min_points = $${paramCount}`);
-      values.push(data.min_points);
-    }
-    if (data.color !== undefined) {
-      paramCount++;
-      updates.push(`color = $${paramCount}`);
-      values.push(data.color);
-    }
-    if (data.perks !== undefined) {
-      paramCount++;
-      const perksJson = typeof data.perks === 'string' ? data.perks : JSON.stringify(data.perks);
-      updates.push(`perks = $${paramCount}`);
-      values.push(perksJson);
-    }
-    if (data.sort_order !== undefined) {
-      paramCount++;
-      updates.push(`sort_order = $${paramCount}`);
-      values.push(data.sort_order);
-    }
-    if (data.description !== undefined) {
-      paramCount++;
-      updates.push(`description = $${paramCount}`);
-      values.push(data.description);
-    }
-    if (data.rewards_list !== undefined) {
-      paramCount++;
-      const rewardsJson = typeof data.rewards_list === 'string' ? data.rewards_list : JSON.stringify(data.rewards_list);
-      updates.push(`rewards_list = $${paramCount}`);
-      values.push(rewardsJson);
-    }
-
-    if (updates.length === 0) return getTier(id);
-
-    paramCount++;
-    values.push(id);
-
-    await pool.query(
-      `UPDATE tiers SET ${updates.join(', ')} WHERE id = $${paramCount}`,
-      values
-    );
-    return getTier(id);
-  } catch (error) {
-    throw new Error(`Failed to update tier: ${error.message}`);
-  }
-}
-
-/**
- * Delete a tier
- */
-async function deleteTier(id) {
-  try {
-    await pool.query('DELETE FROM tiers WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete tier: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// VIP CARDS CRUD
-// ============================================================================
-
-/**
- * Create a new VIP card
- */
-async function createVipCard(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, name, description = '', color = 'from-blue-400 to-blue-600', active = true } = data;
-
-  if (!brand_id || !name) {
-    throw new Error('Brand ID and name are required');
-  }
-
-  try {
-    await pool.query(
-      `INSERT INTO vip_cards (id, brand_id, name, description, color, active)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, brand_id, name, description, color, active]
-    );
-    return { id, brand_id, name, description, color, assigned: 0, active };
-  } catch (error) {
-    throw new Error(`Failed to create VIP card: ${error.message}`);
-  }
-}
-
-/**
- * List VIP cards for a brand
- */
-async function listVipCards(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM vip_cards WHERE brand_id = $1 ORDER BY created_at DESC`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list VIP cards: ${error.message}`);
-  }
-}
-
-/**
- * Get a single VIP card by ID
- */
-async function getVipCard(id) {
-  try {
-    const result = await pool.query('SELECT * FROM vip_cards WHERE id = $1', [id]);
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to get VIP card: ${error.message}`);
-  }
-}
-
-/**
- * Update a VIP card
- */
-async function updateVipCard(id, data) {
-  try {
-    const current = await getVipCard(id);
-    if (!current) return null;
-
-    const updates = [];
-    const values = [];
-    let paramCount = 0;
-
-    if (data.name) {
-      paramCount++;
-      updates.push(`name = $${paramCount}`);
-      values.push(data.name);
-    }
-    if (data.description !== undefined) {
-      paramCount++;
-      updates.push(`description = $${paramCount}`);
-      values.push(data.description);
-    }
-    if (data.color !== undefined) {
-      paramCount++;
-      updates.push(`color = $${paramCount}`);
-      values.push(data.color);
-    }
-    if (data.assigned !== undefined) {
-      paramCount++;
-      updates.push(`assigned = $${paramCount}`);
-      values.push(data.assigned);
-    }
-    if (data.active !== undefined) {
-      paramCount++;
-      updates.push(`active = $${paramCount}`);
-      values.push(data.active);
-    }
-
-    if (updates.length === 0) return getVipCard(id);
-
-    paramCount++;
-    values.push(id);
-
-    await pool.query(
-      `UPDATE vip_cards SET ${updates.join(', ')} WHERE id = $${paramCount}`,
-      values
-    );
-    return getVipCard(id);
-  } catch (error) {
-    throw new Error(`Failed to update VIP card: ${error.message}`);
-  }
-}
-
-/**
- * Delete a VIP card
- */
-async function deleteVipCard(id) {
-  try {
-    await pool.query('DELETE FROM vip_cards WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete VIP card: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// REWARD CLAIMS
-// ============================================================================
-
-/**
- * Claim a reward - creates claim, increments total_claimed, deducts points from pass
- */
-async function claimReward(data) {
-  const id = data.id || uuidv4();
-  const { reward_id, pass_id, brand_id } = data;
-
-  if (!reward_id || !pass_id || !brand_id) {
-    throw new Error('Reward ID, pass ID, and brand ID are required');
-  }
-
-  try {
-    // Get reward
-    const reward = await getReward(reward_id);
-    if (!reward) {
-      throw new Error('Reward not found');
-    }
-
-    // Get pass
-    const pass = await getPassInstance(pass_id);
-    if (!pass) {
-      throw new Error('Pass not found');
-    }
-
-    // Check if pass has enough points
-    const currentPoints = pass.field_values?.punti || 0;
-    if (currentPoints < reward.cost) {
-      throw new Error(`Insufficient points. Required: ${reward.cost}, Available: ${currentPoints}`);
-    }
-
-    // Create claim
-    await pool.query(
-      `INSERT INTO reward_claims (id, reward_id, pass_id, brand_id) VALUES ($1, $2, $3, $4)`,
-      [id, reward_id, pass_id, brand_id]
-    );
-
-    // Increment total_claimed
-    await pool.query(
-      `UPDATE rewards SET total_claimed = total_claimed + 1 WHERE id = $1`,
-      [reward_id]
-    );
-
-    // Deduct points from pass
-    const newPoints = currentPoints - reward.cost;
-    const updatedFieldValues = { ...pass.field_values, punti: newPoints };
-    await updatePassInstance(pass_id, { field_values: updatedFieldValues });
-
-    return { id, reward_id, pass_id, brand_id, claimed_at: new Date().toISOString() };
-  } catch (error) {
-    throw new Error(`Failed to claim reward: ${error.message}`);
-  }
-}
-
-/**
- * List reward claims
- */
-async function listClaims(brandId, passId = null) {
-  try {
-    let query = 'SELECT * FROM reward_claims WHERE brand_id = $1';
-    const params = [brandId];
-
-    if (passId) {
-      query += ' AND pass_id = $2';
-      params.push(passId);
-    }
-
-    query += ' ORDER BY claimed_at DESC';
-    const result = await pool.query(query, params);
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list claims: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// CHALLENGE COMPLETIONS
-// ============================================================================
-
-/**
- * Complete a challenge - creates completion, adds points to pass
- */
-async function completeChallenge(data) {
-  const id = data.id || uuidv4();
-  const { challenge_id, pass_id, brand_id } = data;
-
-  if (!challenge_id || !pass_id || !brand_id) {
-    throw new Error('Challenge ID, pass ID, and brand ID are required');
-  }
-
-  try {
-    // Get challenge
-    const challenge = await getChallenge(challenge_id);
-    if (!challenge) {
-      throw new Error('Challenge not found');
-    }
-
-    // Get pass
-    const pass = await getPassInstance(pass_id);
-    if (!pass) {
-      throw new Error('Pass not found');
-    }
-
-    // Create completion
-    await pool.query(
-      `INSERT INTO challenge_completions (id, challenge_id, pass_id, brand_id) VALUES ($1, $2, $3, $4)`,
-      [id, challenge_id, pass_id, brand_id]
-    );
-
-    // Add points to pass
-    const currentPoints = pass.field_values?.punti || 0;
-    const newPoints = currentPoints + challenge.points;
-    const updatedFieldValues = { ...pass.field_values, punti: newPoints };
-    await updatePassInstance(pass_id, { field_values: updatedFieldValues });
-
-    return { id, challenge_id, pass_id, brand_id, completed_at: new Date().toISOString() };
-  } catch (error) {
-    throw new Error(`Failed to complete challenge: ${error.message}`);
-  }
-}
-
-/**
- * List challenge completions
- */
-async function listCompletions(brandId, passId = null) {
-  try {
-    let query = 'SELECT * FROM challenge_completions WHERE brand_id = $1';
-    const params = [brandId];
-
-    if (passId) {
-      query += ' AND pass_id = $2';
-      params.push(passId);
-    }
-
-    query += ' ORDER BY completed_at DESC';
-    const result = await pool.query(query, params);
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list completions: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// CHALLENGE PROGRESS
-// ============================================================================
-
-/**
- * Upsert challenge progress for a member
- */
-async function upsertChallengeProgress(data) {
-  const id = uuidv4();
-  const { challenge_id, member_id, brand_id, current_count = 0, target_count = 1, period_start = null, period_end = null, streak_weeks = 0, last_booking_week = null, status = 'in_progress' } = data;
-
-  try {
-    const result = await pool.query(`
-      INSERT INTO challenge_progress (id, challenge_id, member_id, brand_id, current_count, target_count, period_start, period_end, streak_weeks, last_booking_week, status, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-      ON CONFLICT (challenge_id, member_id, period_start)
-      DO UPDATE SET current_count = $5, target_count = $6, period_end = $8, streak_weeks = $9, last_booking_week = $10, status = $11, updated_at = NOW()
-      RETURNING *
-    `, [id, challenge_id, member_id, brand_id, current_count, target_count, period_start, period_end, streak_weeks, last_booking_week, status]);
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to upsert challenge progress: ${error.message}`);
-  }
-}
-
-/**
- * Get challenge progress for a member
- */
-async function getChallengeProgress(member_id, brand_id) {
-  try {
-    const result = await pool.query(`
-      SELECT cp.*, c.title, c.description, c.points, c.icon, c.trigger_type, c.trigger_config, c.recurring
-      FROM challenge_progress cp
-      JOIN challenges c ON c.id = cp.challenge_id
-      WHERE cp.member_id = $1 AND cp.brand_id = $2
-      ORDER BY cp.updated_at DESC
-    `, [member_id, brand_id]);
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to get challenge progress: ${error.message}`);
-  }
-}
-
-/**
- * Get all active progress for a specific challenge (across all members)
- */
-async function getProgressForChallenge(challenge_id) {
-  try {
-    const result = await pool.query(`
-      SELECT cp.*, m.first_name, m.last_name, m.email
-      FROM challenge_progress cp
-      JOIN members m ON m.id = cp.member_id
-      WHERE cp.challenge_id = $1
-      ORDER BY cp.current_count DESC
-    `, [challenge_id]);
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to get progress for challenge: ${error.message}`);
-  }
-}
-
-/**
- * Complete a challenge for a member (via auto-evaluation)
- * Works with member_id instead of pass_id
- */
-async function completeChallengeForMember(data) {
-  const id = uuidv4();
-  const { challenge_id, member_id, brand_id } = data;
-
-  try {
-    const challenge = await getChallenge(challenge_id);
-    if (!challenge) throw new Error('Challenge not found');
-
-    // Find member's active pass
-    const passes = await listPasses(brand_id);
-    const memberPass = passes.find(p => p.member_id === member_id && p.status === 'active');
-    if (!memberPass) return null; // No active pass, skip
-
-    // Check if already completed for this period (non-recurring)
-    if (!challenge.recurring) {
-      const existing = await pool.query(
-        'SELECT id FROM challenge_completions WHERE challenge_id = $1 AND pass_id = $2',
-        [challenge_id, memberPass.id]
-      );
-      if (existing.rows.length > 0) return null; // Already completed
-    }
-
-    // Create completion record
-    await pool.query(
-      'INSERT INTO challenge_completions (id, challenge_id, pass_id, brand_id) VALUES ($1, $2, $3, $4)',
-      [id, challenge_id, memberPass.id, brand_id]
-    );
-
-    // Award points to pass
-    const currentPoints = parseInt(memberPass.field_values?.punti) || 0;
-    const newPoints = currentPoints + challenge.points;
-    const updatedFieldValues = { ...memberPass.field_values, punti: String(newPoints) };
-    await updatePassInstance(memberPass.id, { field_values: updatedFieldValues });
-
-    // Log points for recap emails
-    try {
-      await logPoints({
-        brand_id,
-        member_id,
-        pass_id: memberPass.id,
-        points: challenge.points,
-        reason: 'challenge',
-        details: challenge.title
-      });
-    } catch(e) { console.log('[PointsLog] Error logging challenge points:', e.message); }
-
-    console.log(`[Challenges] ✓ ${challenge.title} completed for member ${member_id} (+${challenge.points} pts)`);
-    return { id, challenge_id, member_id, pass_id: memberPass.id, points: challenge.points };
-  } catch (error) {
-    throw new Error(`Failed to complete challenge for member: ${error.message}`);
-  }
-}
-
-/**
- * Count bookings for a member in a date range with optional filters
- */
-async function countMemberBookings(brand_id, member_id, startDate, endDate, filters = {}) {
-  try {
-    let query = `
-      SELECT COUNT(*) as count,
-             json_agg(json_build_object(
-               'booking_date', booking_date,
-               'sport_id', sport_id,
-               'resource_name', resource_name
-             )) as bookings
-      FROM playtomic_sync_log
-      WHERE brand_id = $1 AND member_id = $2 AND synced_at >= $3 AND synced_at <= $4
-    `;
-    const params = [brand_id, member_id, startDate, endDate];
-
-    const result = await pool.query(query, params);
-    const row = result.rows[0];
-    return { count: parseInt(row.count) || 0, bookings: row.bookings || [] };
-  } catch (error) {
-    throw new Error(`Failed to count member bookings: ${error.message}`);
-  }
-}
-
-/**
- * Count distinct booking weeks for streak calculation
- */
-async function getMemberBookingWeeks(brand_id, member_id, weeksBack = 8) {
-  try {
-    const result = await pool.query(`
-      SELECT DISTINCT to_char(booking_date, 'IYYY-IW') as week_key
-      FROM playtomic_sync_log
-      WHERE brand_id = $1 AND member_id = $2 AND booking_date >= NOW() - interval '${weeksBack} weeks'
-      ORDER BY week_key DESC
-    `, [brand_id, member_id]);
-    return result.rows.map(r => r.week_key);
-  } catch (error) {
-    throw new Error(`Failed to get member booking weeks: ${error.message}`);
-  }
-}
-
-/**
- * Count total bookings for a member (lifetime)
- */
-async function countMemberTotalBookings(brand_id, member_id) {
-  try {
-    const result = await pool.query(
-      'SELECT COUNT(*) as count FROM playtomic_sync_log WHERE brand_id = $1 AND member_id = $2',
-      [brand_id, member_id]
-    );
-    return parseInt(result.rows[0].count) || 0;
-  } catch (error) {
-    throw new Error(`Failed to count total bookings: ${error.message}`);
-  }
-}
-
-/**
- * Count unique partners for a member in a period
- */
-async function countMemberUniquePartners(brand_id, member_id, startDate, endDate) {
-  try {
-    // Find all booking_ids where this member participated
-    const memberBookings = await pool.query(`
-      SELECT DISTINCT booking_id FROM playtomic_sync_log
-      WHERE brand_id = $1 AND member_id = $2 AND booking_date >= $3 AND booking_date <= $4
-    `, [brand_id, member_id, startDate, endDate]);
-
-    if (memberBookings.rows.length === 0) return 0;
-
-    const bookingIds = memberBookings.rows.map(r => r.booking_id);
-
-    // Count distinct other members in those same bookings
-    const result = await pool.query(`
-      SELECT COUNT(DISTINCT member_id) as count
-      FROM playtomic_sync_log
-      WHERE brand_id = $1 AND booking_id = ANY($2) AND member_id != $3
-    `, [brand_id, bookingIds, member_id]);
-
-    return parseInt(result.rows[0].count) || 0;
-  } catch (error) {
-    throw new Error(`Failed to count unique partners: ${error.message}`);
-  }
-}
-
-// ============================================================================
-// PUSH LOG
-// ============================================================================
-
-/**
- * Log a push notification
- */
-async function logPush(data) {
-  const { brand_id, title, message, target = 'all', sent_count = 0 } = data;
-
-  if (!brand_id || !title || !message) {
-    throw new Error('Brand ID, title, and message are required');
-  }
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO push_log (brand_id, title, message, target, sent_count) VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, brand_id, title, message, target, sent_count, created_at`,
-      [brand_id, title, message, target, sent_count]
-    );
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to log push: ${error.message}`);
-  }
-}
-
-/**
- * List push history for a brand
- */
-async function listPushes(brandId) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM push_log WHERE brand_id = $1 ORDER BY created_at DESC`,
-      [brandId]
-    );
-    return result.rows;
-  } catch (error) {
-    throw new Error(`Failed to list pushes: ${error.message}`);
-  }
-}
-
-/**
- * Delete a single push log entry
- */
-async function deletePush(id) {
-  try {
-    await pool.query('DELETE FROM push_log WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete push: ${error.message}`);
-  }
-}
-
-/**
- * Delete all push log entries for a brand
- */
-async function clearPushHistory(brandId) {
-  try {
-    const result = await pool.query('DELETE FROM push_log WHERE brand_id = $1', [brandId]);
-    return { success: true, deleted: result.rowCount };
-  } catch (error) {
-    throw new Error(`Failed to clear push history: ${error.message}`);
-  }
-}
-
-/**
- * Update a brand
- */
 async function updateBrand(id, data) {
   const current = await getBrand(id);
   if (!current) return null;
-
   const newName = data.name || current.name;
   const newSlug = data.slug || current.slug;
   let newConfig = current.config || {};
-  if (data.config) {
-    newConfig = { ...newConfig, ...data.config };
-  }
-
-  try {
-    await pool.query(
-      'UPDATE brands SET name = $1, slug = $2, config = $3, updated_at = NOW() WHERE id = $4',
-      [newName, newSlug, JSON.stringify(newConfig), id]
-    );
-    return getBrand(id);
-  } catch (error) {
-    throw new Error(`Failed to update brand: ${error.message}`);
-  }
+  if (data.config) newConfig = { ...newConfig, ...data.config };
+  await pool.query(
+    'UPDATE brands SET name = $1, slug = $2, config = $3, updated_at = NOW() WHERE id = $4',
+    [newName, newSlug, JSON.stringify(newConfig), id]
+  );
+  return getBrand(id);
 }
 
-/**
- * Delete a brand (and cascade)
- */
 async function deleteBrand(id) {
-  try {
-    // Delete in order due to foreign keys
-    await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE brand_id = $1)', [id]);
-    await pool.query('DELETE FROM events WHERE brand_id = $1', [id]);
-    await pool.query('DELETE FROM pass_instances WHERE brand_id = $1', [id]);
-    await pool.query('DELETE FROM pass_templates WHERE brand_id = $1', [id]);
-    await pool.query('DELETE FROM brands WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete brand: ${error.message}`);
-  }
+  await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE brand_id = $1)', [id]);
+  await pool.query('DELETE FROM events WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM push_log WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM scheduled_push WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM pass_instances WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM campaigns WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM strip_promos WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM pass_templates WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM brands WHERE id = $1', [id]);
+  return { success: true };
 }
 
-/**
- * Delete a template
- */
+// ─── Templates ──────────────────────────────────────────────
+
+async function createTemplate(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, name, pass_type = 'coupon', style = {}, fields = [], config = {} } = data;
+  if (!brand_id || !name) throw new Error('Brand ID and template name are required');
+  const styleObj = typeof style === 'string' ? JSON.parse(style) : style;
+  const fieldsObj = typeof fields === 'string' ? JSON.parse(fields) : fields;
+  const configObj = typeof config === 'string' ? JSON.parse(config) : config;
+  await pool.query(
+    `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj)]
+  );
+  return { id, brand_id, name, pass_type, style: styleObj, fields: fieldsObj, config: configObj };
+}
+
+async function getTemplate(id) {
+  const result = await pool.query('SELECT * FROM pass_templates WHERE id = $1', [id]);
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  return {
+    ...row,
+    style: typeof row.style === 'string' ? JSON.parse(row.style) : row.style,
+    fields: typeof row.fields === 'string' ? JSON.parse(row.fields) : row.fields,
+    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config
+  };
+}
+
+async function listTemplates(brandId) {
+  const result = await pool.query(
+    'SELECT * FROM pass_templates WHERE brand_id = $1 ORDER BY created_at DESC', [brandId]
+  );
+  return result.rows.map(row => ({
+    ...row,
+    style: typeof row.style === 'string' ? JSON.parse(row.style) : row.style,
+    fields: typeof row.fields === 'string' ? JSON.parse(row.fields) : row.fields,
+    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config
+  }));
+}
+
 async function updateTemplate(id, data) {
-  try {
-    const setClauses = [];
-    const values = [];
-    let idx = 1;
-    if (data.name !== undefined) { setClauses.push(`name = $${idx++}`); values.push(data.name); }
-    if (data.pass_type !== undefined) { setClauses.push(`pass_type = $${idx++}`); values.push(data.pass_type); }
-    if (data.style !== undefined) { setClauses.push(`style = $${idx++}`); values.push(JSON.stringify(data.style)); }
-    if (data.fields !== undefined) { setClauses.push(`fields = $${idx++}`); values.push(JSON.stringify(data.fields)); }
-    if (data.config !== undefined) { setClauses.push(`config = $${idx++}`); values.push(JSON.stringify(data.config)); }
-    setClauses.push(`updated_at = NOW()`);
-    values.push(id);
-    const result = await pool.query(
-      `UPDATE pass_templates SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  } catch (error) {
-    throw new Error(`Failed to update template: ${error.message}`);
-  }
+  const sets = [];
+  const vals = [];
+  let idx = 1;
+  if (data.name !== undefined) { sets.push(`name = $${idx++}`); vals.push(data.name); }
+  if (data.pass_type !== undefined) { sets.push(`pass_type = $${idx++}`); vals.push(data.pass_type); }
+  if (data.style !== undefined) { sets.push(`style = $${idx++}`); vals.push(JSON.stringify(data.style)); }
+  if (data.fields !== undefined) { sets.push(`fields = $${idx++}`); vals.push(JSON.stringify(data.fields)); }
+  if (data.config !== undefined) { sets.push(`config = $${idx++}`); vals.push(JSON.stringify(data.config)); }
+  sets.push(`updated_at = NOW()`);
+  vals.push(id);
+  const result = await pool.query(
+    `UPDATE pass_templates SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, vals
+  );
+  return result.rows[0] || null;
 }
 
 async function deleteTemplate(id) {
-  try {
-    await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE template_id = $1)', [id]);
-    await pool.query('DELETE FROM events WHERE pass_id IN (SELECT id FROM pass_instances WHERE template_id = $1)', [id]);
-    await pool.query('DELETE FROM pass_instances WHERE template_id = $1', [id]);
-    await pool.query('DELETE FROM pass_templates WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete template: ${error.message}`);
-  }
+  await pool.query('DELETE FROM device_registrations WHERE serial_number IN (SELECT serial_number FROM pass_instances WHERE template_id = $1)', [id]);
+  await pool.query('DELETE FROM events WHERE pass_id IN (SELECT id FROM pass_instances WHERE template_id = $1)', [id]);
+  await pool.query('DELETE FROM pass_instances WHERE template_id = $1', [id]);
+  await pool.query('DELETE FROM pass_templates WHERE id = $1', [id]);
+  return { success: true };
 }
 
-/**
- * Delete a pass instance
- */
+// ─── Campaigns ──────────────────────────────────────────────
+
+async function createCampaign(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, name, description, template_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, start_date, end_date } = data;
+  if (!brand_id || !name) throw new Error('Brand ID and campaign name are required');
+  await pool.query(
+    `INSERT INTO campaigns (id, brand_id, name, description, template_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, start_date, end_date)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [id, brand_id, name, description || null, template_id || null, utm_source || null, utm_medium || null, utm_campaign || null, utm_content || null, utm_term || null, start_date || null, end_date || null]
+  );
+  return { id, brand_id, name, description, template_id, active: true, total_downloads: 0, total_installs: 0 };
+}
+
+async function getCampaign(id) {
+  const res = await pool.query('SELECT * FROM campaigns WHERE id = $1', [id]);
+  return res.rows[0] || null;
+}
+
+async function listCampaigns(brand_id) {
+  const res = await pool.query('SELECT * FROM campaigns WHERE brand_id = $1 ORDER BY created_at DESC', [brand_id]);
+  return res.rows;
+}
+
+async function updateCampaign(id, data) {
+  const fields = [];
+  const values = [];
+  let idx = 1;
+  for (const key of ['name', 'description', 'template_id', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'start_date', 'end_date', 'active']) {
+    if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
+  }
+  if (fields.length === 0) return getCampaign(id);
+  fields.push('updated_at = NOW()');
+  values.push(id);
+  await pool.query(`UPDATE campaigns SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+  return getCampaign(id);
+}
+
+async function deleteCampaign(id) {
+  // Nullify campaign_id on passes (don't delete passes)
+  await pool.query('UPDATE pass_instances SET campaign_id = NULL WHERE campaign_id = $1', [id]);
+  await pool.query('DELETE FROM campaigns WHERE id = $1', [id]);
+  return { success: true };
+}
+
+async function incrementCampaignDownloads(id) {
+  await pool.query('UPDATE campaigns SET total_downloads = total_downloads + 1 WHERE id = $1', [id]);
+}
+
+async function incrementCampaignInstalls(id) {
+  await pool.query('UPDATE campaigns SET total_installs = total_installs + 1 WHERE id = $1', [id]);
+}
+
+// ─── Pass Instances ──────────────────────────────────────────────
+
+async function createPassInstance(data) {
+  const id = data.id || uuidv4();
+  const serial_number = data.serial_number || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const { template_id, brand_id, campaign_id = null, field_values = {}, utm = {}, device_token = null, user_agent = null, referrer_url = null } = data;
+  const auth_token = data.auth_token || uuidv4();
+  if (!template_id || !brand_id) throw new Error('Template ID and Brand ID are required');
+  const fieldObj = typeof field_values === 'string' ? JSON.parse(field_values) : field_values;
+  const utmObj = typeof utm === 'string' ? JSON.parse(utm) : utm;
+  await pool.query(
+    `INSERT INTO pass_instances (id, serial_number, template_id, brand_id, campaign_id, field_values, utm, device_token, auth_token, user_agent, referrer_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [id, serial_number, template_id, brand_id, campaign_id, JSON.stringify(fieldObj), JSON.stringify(utmObj), device_token, auth_token, user_agent, referrer_url]
+  );
+  return { id, serial_number, template_id, brand_id, campaign_id, field_values: fieldObj, utm: utmObj, device_token, auth_token, user_agent, referrer_url, status: 'active' };
+}
+
+async function getPassInstance(id) {
+  const result = await pool.query('SELECT * FROM pass_instances WHERE id = $1', [id]);
+  if (result.rows.length === 0) return null;
+  return result.rows[0];
+}
+
+async function getPassBySerial(serial) {
+  const result = await pool.query('SELECT * FROM pass_instances WHERE serial_number = $1', [serial]);
+  if (result.rows.length === 0) return null;
+  return result.rows[0];
+}
+
+async function updatePassInstance(id, data) {
+  const updates = [];
+  const values = [];
+  let p = 0;
+  if (data.status) { p++; updates.push(`status = $${p}`); values.push(data.status); }
+  if (data.device_token !== undefined) { p++; updates.push(`device_token = $${p}`); values.push(data.device_token); }
+  if (data.field_values) { p++; updates.push(`field_values = $${p}`); values.push(JSON.stringify(data.field_values)); }
+  if (updates.length === 0) return getPassInstance(id);
+  updates.push('last_updated = NOW()');
+  p++; values.push(id);
+  await pool.query(`UPDATE pass_instances SET ${updates.join(', ')} WHERE id = $${p}`, values);
+  return getPassInstance(id);
+}
+
+async function touchPass(id) {
+  await pool.query('UPDATE pass_instances SET last_updated = NOW() WHERE id = $1', [id]);
+  return { success: true };
+}
+
+async function listPasses(brandId, options = {}) {
+  let query = `SELECT p.*,
+    c.name as campaign_name,
+    dr.device_library_id,
+    dr.push_token,
+    dr.created_at as install_date
+    FROM pass_instances p
+    LEFT JOIN campaigns c ON p.campaign_id = c.id
+    LEFT JOIN device_registrations dr ON dr.serial_number = p.serial_number
+    WHERE p.brand_id = $1`;
+  const params = [brandId];
+  let idx = 2;
+  if (options.status) { query += ` AND p.status = $${idx++}`; params.push(options.status); }
+  if (options.campaign_id) { query += ` AND p.campaign_id = $${idx++}`; params.push(options.campaign_id); }
+  query += ' ORDER BY p.created_at DESC';
+  if (options.limit) { query += ` LIMIT $${idx++}`; params.push(options.limit); }
+  const result = await pool.query(query, params);
+  return result.rows;
+}
+
 async function deletePass(id) {
-  try {
-    const pass = await getPassInstance(id);
-    if (!pass) return null;
-    await pool.query('DELETE FROM device_registrations WHERE serial_number = $1', [pass.serial_number]);
-    await pool.query('DELETE FROM events WHERE pass_id = $1', [id]);
-    await pool.query('DELETE FROM pass_instances WHERE id = $1', [id]);
-    return { success: true };
-  } catch (error) {
-    throw new Error(`Failed to delete pass: ${error.message}`);
-  }
+  const pass = await getPassInstance(id);
+  if (!pass) return null;
+  await pool.query('DELETE FROM device_registrations WHERE serial_number = $1', [pass.serial_number]);
+  await pool.query('DELETE FROM events WHERE pass_id = $1', [id]);
+  await pool.query('DELETE FROM pass_instances WHERE id = $1', [id]);
+  return { success: true };
 }
 
-// ==================== SCHEDULED PUSH ====================
+// ─── Events ──────────────────────────────────────────────
+
+async function logEvent(data) {
+  const { pass_id, brand_id, event_type, device_id = null, metadata = {} } = data;
+  if (!brand_id || !event_type) throw new Error('Brand ID and event type are required');
+  await pool.query(
+    `INSERT INTO events (pass_id, brand_id, event_type, device_id, metadata) VALUES ($1, $2, $3, $4, $5)`,
+    [pass_id || null, brand_id, event_type, device_id, JSON.stringify(metadata)]
+  );
+  return { success: true };
+}
+
+async function listEvents(brandId, limit = 50) {
+  const result = await pool.query(
+    'SELECT * FROM events WHERE brand_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [brandId, limit]
+  );
+  return result.rows;
+}
+
+// ─── Device Registrations (Apple Wallet Protocol) ──────────────────
+
+async function registerDevice(data) {
+  const { device_library_id, push_token, serial_number } = data;
+  if (!device_library_id || !push_token || !serial_number) throw new Error('All device registration fields required');
+  await pool.query(
+    `INSERT INTO device_registrations (device_library_id, push_token, serial_number)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (device_library_id, serial_number) DO UPDATE SET push_token = $2`,
+    [device_library_id, push_token, serial_number]
+  );
+  return { success: true };
+}
+
+async function getDevicesForPass(serial) {
+  const result = await pool.query(
+    'SELECT device_library_id, push_token FROM device_registrations WHERE serial_number = $1', [serial]
+  );
+  return result.rows;
+}
+
+async function getDevicesForBrand(brandId) {
+  const result = await pool.query(
+    `SELECT DISTINCT dr.push_token, dr.device_library_id, dr.serial_number
+     FROM device_registrations dr
+     JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+     WHERE pi.brand_id = $1`,
+    [brandId]
+  );
+  return result.rows;
+}
+
+async function unregisterDevice(deviceLibraryId, serialNumber) {
+  await pool.query('DELETE FROM device_registrations WHERE device_library_id = $1 AND serial_number = $2', [deviceLibraryId, serialNumber]);
+  return { success: true };
+}
+
+async function getSerialsForDevice(deviceLibraryId, passesUpdatedSince) {
+  let query, params;
+  if (passesUpdatedSince) {
+    // Apple sends this tag — only return passes updated after that timestamp
+    query = `SELECT dr.serial_number FROM device_registrations dr
+             JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+             WHERE dr.device_library_id = $1 AND pi.last_updated > $2`;
+    params = [deviceLibraryId, new Date(passesUpdatedSince)];
+  } else {
+    query = 'SELECT serial_number FROM device_registrations WHERE device_library_id = $1';
+    params = [deviceLibraryId];
+  }
+  const result = await pool.query(query, params);
+  return result.rows.map(r => r.serial_number);
+}
+
+// ─── Analytics ──────────────────────────────────────────────
+
+async function getAnalytics(brandId) {
+  const [passResult, statusResult, eventResult, deviceResult] = await Promise.all([
+    pool.query('SELECT COUNT(*) as count FROM pass_instances WHERE brand_id = $1', [brandId]),
+    pool.query('SELECT status, COUNT(*) as count FROM pass_instances WHERE brand_id = $1 GROUP BY status', [brandId]),
+    pool.query('SELECT event_type, COUNT(*) as count FROM events WHERE brand_id = $1 GROUP BY event_type', [brandId]),
+    pool.query('SELECT COUNT(DISTINCT dr.device_library_id) as count FROM device_registrations dr JOIN pass_instances p ON dr.serial_number = p.serial_number WHERE p.brand_id = $1', [brandId])
+  ]);
+  const byStatus = {};
+  for (const row of statusResult.rows) byStatus[row.status] = parseInt(row.count);
+  const events = {};
+  for (const row of eventResult.rows) events[row.event_type] = parseInt(row.count);
+  return { totalPasses: parseInt(passResult.rows[0].count), byStatus, events, deviceCount: parseInt(deviceResult.rows[0].count) };
+}
+
+async function getCampaignAnalytics(brandId) {
+  const result = await pool.query(
+    `SELECT c.*,
+       (SELECT COUNT(*) FROM pass_instances p WHERE p.campaign_id = c.id) as pass_count,
+       (SELECT COUNT(*) FROM device_registrations dr JOIN pass_instances p ON dr.serial_number = p.serial_number WHERE p.campaign_id = c.id) as install_count
+     FROM campaigns c WHERE c.brand_id = $1 ORDER BY c.created_at DESC`,
+    [brandId]
+  );
+  return result.rows;
+}
+
+// ─── Push ──────────────────────────────────────────────
+
+async function logPush(data) {
+  const { brand_id, title, message, campaign_id = null, sent_count = 0 } = data;
+  if (!brand_id || !title || !message) throw new Error('Brand ID, title, and message are required');
+  const result = await pool.query(
+    `INSERT INTO push_log (brand_id, title, message, campaign_id, sent_count) VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, brand_id, title, message, campaign_id, sent_count, created_at`,
+    [brand_id, title, message, campaign_id, sent_count]
+  );
+  return result.rows[0];
+}
+
+async function listPushes(brandId) {
+  const result = await pool.query('SELECT * FROM push_log WHERE brand_id = $1 ORDER BY created_at DESC', [brandId]);
+  return result.rows;
+}
+
+async function deletePush(id) {
+  await pool.query('DELETE FROM push_log WHERE id = $1', [id]);
+  return { success: true };
+}
+
+async function clearPushHistory(brandId) {
+  const result = await pool.query('DELETE FROM push_log WHERE brand_id = $1', [brandId]);
+  return { success: true, deleted: result.rowCount };
+}
+
+// ─── Scheduled Push ──────────────────────────────────────────────
 
 async function createScheduledPush(data) {
   const id = data.id || uuidv4();
-  const { brand_id, title, message, target = 'all', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
+  const { brand_id, title, message, campaign_id = null, schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
   if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
   await pool.query(
-    `INSERT INTO scheduled_push (id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
+    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
+    [id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
   );
-  return { id, brand_id, title, message, target, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
+  return { id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
 }
 
 async function listScheduledPush(brand_id) {
@@ -2240,7 +678,7 @@ async function updateScheduledPush(id, data) {
   const fields = [];
   const values = [id];
   let idx = 2;
-  for (const key of ['title', 'message', 'target', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
+  for (const key of ['title', 'message', 'campaign_id', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
     if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
   }
   if (fields.length === 0) return getScheduledPush(id);
@@ -2255,131 +693,12 @@ async function deleteScheduledPush(id) {
 
 async function getDueScheduledPush() {
   const result = await pool.query(
-    `SELECT * FROM scheduled_push WHERE active = true AND next_run_at <= NOW() ORDER BY next_run_at ASC`
+    `SELECT * FROM scheduled_push WHERE active = true AND next_run_at <= NOW()`
   );
   return result.rows;
 }
 
-// ==================== MEMBERS ====================
-
-async function createMember(data) {
-  const id = data.id || uuidv4();
-  const { brand_id, first_name, last_name = null, email = null, phone = null, notes = null, playtomic_email = null, referred_by = null } = data;
-  if (!brand_id || !first_name) throw new Error('Brand ID and first_name are required');
-  const referral_code = data.referral_code || id.substring(0, 8).toUpperCase();
-  await pool.query(
-    `INSERT INTO members (id, brand_id, first_name, last_name, email, phone, notes, playtomic_email, referral_code, referred_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, brand_id, first_name, last_name, email, phone, notes, playtomic_email, referral_code, referred_by]
-  );
-  return { id, brand_id, first_name, last_name, email, phone, notes, playtomic_email, referral_code, referred_by, created_at: new Date() };
-}
-
-async function getMember(id) {
-  const result = await pool.query(`SELECT * FROM members WHERE id = $1`, [id]);
-  return result.rows[0] || null;
-}
-
-async function getMemberByEmail(brand_id, email) {
-  const result = await pool.query(
-    `SELECT * FROM members WHERE brand_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
-    [brand_id, email]
-  );
-  return result.rows[0] || null;
-}
-
-async function listMembers(brand_id) {
-  const result = await pool.query(
-    `SELECT m.*, CONCAT(m.first_name, COALESCE(' ' || m.last_name, '')) as full_name,
-      (SELECT COUNT(*) FROM pass_instances p WHERE p.member_id = m.id) as pass_count,
-      (SELECT COALESCE((p.field_values->>'punti')::int, 0) FROM pass_instances p WHERE p.member_id = m.id AND p.status = 'active' ORDER BY p.created_at DESC LIMIT 1) as punti
-    FROM members m WHERE m.brand_id = $1 ORDER BY m.last_name ASC NULLS LAST, m.first_name ASC`,
-    [brand_id]
-  );
-  return result.rows;
-}
-
-async function updateMember(id, data) {
-  const { first_name, last_name, email, phone, notes, playtomic_email } = data;
-  await pool.query(
-    `UPDATE members SET first_name = COALESCE($2, first_name), last_name = COALESCE($3, last_name), email = COALESCE($4, email), phone = COALESCE($5, phone), notes = COALESCE($6, notes), playtomic_email = COALESCE($7, playtomic_email), updated_at = NOW() WHERE id = $1`,
-    [id, first_name, last_name, email, phone, notes, playtomic_email]
-  );
-  return getMember(id);
-}
-
-async function bulkCreateMembers(brand_id, members) {
-  const results = { created: 0, skipped: 0, errors: [] };
-  for (const m of members) {
-    try {
-      if (!m.first_name) { results.skipped++; continue; }
-      await createMember({ brand_id, first_name: m.first_name, last_name: m.last_name || null, email: m.email || null, phone: m.phone || null, notes: m.notes || null, playtomic_email: m.playtomic_email || null });
-      results.created++;
-    } catch (e) {
-      results.errors.push(`${m.first_name} ${m.last_name || ''}: ${e.message}`);
-    }
-  }
-  return results;
-}
-
-async function deleteMember(id) {
-  // Unlink passes from member (don't delete them)
-  await pool.query(`UPDATE pass_instances SET member_id = NULL WHERE member_id = $1`, [id]);
-  await pool.query(`DELETE FROM members WHERE id = $1`, [id]);
-  return { success: true };
-}
-
-// ─── Playtomic Sync Log ─────────────────────────────────
-
-async function addSyncLogEntry({ brand_id, booking_id, member_id, participant_email, points_awarded, booking_date, sport_id, resource_name }) {
-  const id = uuidv4();
-  try {
-    await pool.query(
-      `INSERT INTO playtomic_sync_log (id, brand_id, booking_id, member_id, participant_email, points_awarded, booking_date, sport_id, resource_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (brand_id, booking_id, member_id) DO NOTHING`,
-      [id, brand_id, booking_id, member_id, participant_email, points_awarded || 0, booking_date, sport_id, resource_name]
-    );
-    return { id, inserted: true };
-  } catch(e) {
-    return { id: null, inserted: false, error: e.message };
-  }
-}
-
-async function isBookingSynced(brand_id, booking_id, member_id) {
-  const res = await pool.query(
-    `SELECT id FROM playtomic_sync_log WHERE brand_id = $1 AND booking_id = $2 AND member_id = $3`,
-    [brand_id, booking_id, member_id]
-  );
-  return res.rows.length > 0;
-}
-
-async function listSyncLogs(brand_id, limit = 50) {
-  const res = await pool.query(
-    `SELECT s.*, m.first_name, m.last_name FROM playtomic_sync_log s
-     LEFT JOIN members m ON s.member_id = m.id
-     WHERE s.brand_id = $1 ORDER BY s.synced_at DESC LIMIT $2`,
-    [brand_id, limit]
-  );
-  return res.rows;
-}
-
-async function getMembersByPlaytomicEmail(brand_id) {
-  const res = await pool.query(
-    `SELECT * FROM members WHERE brand_id = $1 AND (playtomic_email IS NOT NULL OR playtomic_player_id IS NOT NULL)`,
-    [brand_id]
-  );
-  return res.rows;
-}
-
-async function updateMemberPlaytomic(member_id, { playtomic_player_id, playtomic_accepts_marketing }) {
-  await pool.query(
-    `UPDATE members SET playtomic_player_id = COALESCE($2, playtomic_player_id), playtomic_accepts_marketing = COALESCE($3, playtomic_accepts_marketing), updated_at = NOW() WHERE id = $1`,
-    [member_id, playtomic_player_id, playtomic_accepts_marketing]
-  );
-}
-
-// ─── Strip Promos ──────────────────────────────────────
+// ─── Strip Promos ──────────────────────────────────────────────
 
 async function createStripPromo({ brand_id, title, strip_base64, start_date, end_date, push_message, push_frequency }) {
   const id = uuidv4();
@@ -2388,187 +707,48 @@ async function createStripPromo({ brand_id, title, strip_base64, start_date, end
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
     [id, brand_id, title, strip_base64, start_date, end_date, push_message || null, push_frequency || 'none']
   );
-  return { id, brand_id, title, start_date, end_date, push_message, push_frequency };
+  return { id };
 }
 
 async function listStripPromos(brand_id) {
   const res = await pool.query(
-    `SELECT id, brand_id, title, start_date, end_date, push_message, push_frequency, last_push_sent, active, created_at FROM strip_promos WHERE brand_id = $1 ORDER BY start_date DESC`,
+    'SELECT id, brand_id, title, start_date, end_date, push_message, push_frequency, active, created_at FROM strip_promos WHERE brand_id = $1 ORDER BY start_date DESC',
     [brand_id]
   );
   return res.rows;
 }
 
 async function getStripPromo(id) {
-  const res = await pool.query(`SELECT * FROM strip_promos WHERE id = $1`, [id]);
+  const res = await pool.query('SELECT * FROM strip_promos WHERE id = $1', [id]);
   return res.rows[0] || null;
 }
 
 async function updateStripPromo(id, fields) {
   const sets = [];
-  const vals = [id];
-  let i = 2;
+  const vals = [];
+  let i = 1;
   for (const [k, v] of Object.entries(fields)) {
     if (['title', 'strip_base64', 'start_date', 'end_date', 'push_message', 'push_frequency', 'active', 'last_push_sent'].includes(k)) {
-      sets.push(`${k} = $${i}`);
+      sets.push(`${k} = $${i++}`);
       vals.push(v);
-      i++;
     }
   }
-  if (sets.length === 0) return null;
-  await pool.query(`UPDATE strip_promos SET ${sets.join(', ')} WHERE id = $1`, vals);
-  return getStripPromo(id);
+  if (sets.length === 0) return;
+  vals.push(id);
+  await pool.query(`UPDATE strip_promos SET ${sets.join(', ')} WHERE id = $${i}`, vals);
 }
 
 async function deleteStripPromo(id) {
-  await pool.query(`DELETE FROM strip_promos WHERE id = $1`, [id]);
+  await pool.query('DELETE FROM strip_promos WHERE id = $1', [id]);
 }
 
 async function getActiveStripPromos() {
-  const now = new Date().toISOString();
   const res = await pool.query(
-    `SELECT sp.*, b.name as brand_name FROM strip_promos sp JOIN brands b ON sp.brand_id = b.id
-     WHERE sp.active = true AND sp.start_date <= $1 AND sp.end_date >= $1`,
-    [now]
+    `SELECT sp.*, b.name as brand_name, b.config as brand_config
+     FROM strip_promos sp JOIN brands b ON b.id = sp.brand_id
+     WHERE sp.active = true AND sp.start_date <= NOW() AND sp.end_date >= NOW()`
   );
   return res.rows;
-}
-
-// ─── Analytics Events ──────────────────────────────────
-
-async function logAnalyticsEvent({ brand_id, member_id, pass_id, event_type, event_data }) {
-  const id = uuidv4();
-  await pool.query(
-    `INSERT INTO analytics_events (id, brand_id, member_id, pass_id, event_type, event_data) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [id, brand_id, member_id || null, pass_id || null, event_type, JSON.stringify(event_data || {})]
-  );
-  return id;
-}
-
-async function getAnalyticsStats(brand_id) {
-  const results = {};
-  // Pass installs (device registrations)
-  const installs = await pool.query(
-    `SELECT COUNT(DISTINCT device_id) as total FROM device_registrations WHERE brand_id = $1`,
-    [brand_id]
-  );
-  results.active_devices = parseInt(installs.rows[0]?.total || 0);
-
-  // Pass count
-  const passes = await pool.query(
-    `SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active FROM pass_instances WHERE brand_id = $1`,
-    [brand_id]
-  );
-  results.total_passes = parseInt(passes.rows[0]?.total || 0);
-  results.active_passes = parseInt(passes.rows[0]?.active || 0);
-
-  // Members
-  const members = await pool.query(`SELECT COUNT(*) as total FROM members WHERE brand_id = $1`, [brand_id]);
-  results.total_members = parseInt(members.rows[0]?.total || 0);
-
-  // Referral stats
-  const referrals = await pool.query(
-    `SELECT COUNT(*) as total FROM members WHERE brand_id = $1 AND referred_by IS NOT NULL`,
-    [brand_id]
-  );
-  results.total_referrals = parseInt(referrals.rows[0]?.total || 0);
-
-  // Analytics events by type (last 30 days)
-  const events = await pool.query(
-    `SELECT event_type, COUNT(*) as count FROM analytics_events
-     WHERE brand_id = $1 AND created_at > NOW() - INTERVAL '30 days'
-     GROUP BY event_type`,
-    [brand_id]
-  );
-  results.events_30d = {};
-  events.rows.forEach(r => { results.events_30d[r.event_type] = parseInt(r.count); });
-
-  // Retention: passes created vs still active
-  results.retention_rate = results.total_passes > 0
-    ? Math.round((results.active_passes / results.total_passes) * 100)
-    : 0;
-
-  return results;
-}
-
-// ─── Referral helpers ──────────────────────────────────
-
-async function getMemberByReferralCode(code) {
-  const res = await pool.query(`SELECT * FROM members WHERE referral_code = $1`, [code]);
-  return res.rows[0] || null;
-}
-
-async function incrementReferralCount(member_id) {
-  await pool.query(`UPDATE members SET referral_count = COALESCE(referral_count, 0) + 1 WHERE id = $1`, [member_id]);
-}
-
-// ─── Points Log ──────────────────────────────────────
-
-async function logPoints({ brand_id, member_id, pass_id, points, reason, details }) {
-  const id = uuidv4();
-  await pool.query(
-    `INSERT INTO points_log (id, brand_id, member_id, pass_id, points, reason, details) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [id, brand_id, member_id, pass_id || null, points, reason || 'manual', details || null]
-  );
-  return id;
-}
-
-async function getPointsLogForPeriod(brand_id, startDate, endDate) {
-  const res = await pool.query(
-    `SELECT pl.*, m.first_name, m.last_name, m.email
-     FROM points_log pl
-     JOIN members m ON pl.member_id = m.id
-     WHERE pl.brand_id = $1 AND pl.created_at >= $2 AND pl.created_at <= $3
-     ORDER BY pl.created_at DESC`,
-    [brand_id, startDate, endDate]
-  );
-  return res.rows;
-}
-
-async function getAllMembersWithEmail(brand_id) {
-  const res = await pool.query(
-    `SELECT m.id, m.first_name, m.last_name, m.email
-     FROM members m
-     WHERE m.brand_id = $1 AND m.email IS NOT NULL AND m.email != ''
-     ORDER BY m.last_name ASC NULLS LAST, m.first_name ASC`,
-    [brand_id]
-  );
-  return res.rows;
-}
-
-async function getMembersWithPointsInPeriod(brand_id, startDate, endDate) {
-  const res = await pool.query(
-    `SELECT m.id, m.first_name, m.last_name, m.email,
-            SUM(pl.points) as period_points,
-            COUNT(pl.id) as events_count
-     FROM members m
-     JOIN points_log pl ON pl.member_id = m.id AND pl.brand_id = $1
-     WHERE pl.created_at >= $2 AND pl.created_at <= $3
-       AND m.email IS NOT NULL AND m.email != ''
-     GROUP BY m.id, m.first_name, m.last_name, m.email
-     ORDER BY SUM(pl.points) DESC`,
-    [brand_id, startDate, endDate]
-  );
-  return res.rows;
-}
-
-async function getMemberTotalPoints(member_id) {
-  const res = await pool.query(
-    `SELECT pi.field_values->>'punti' as punti FROM pass_instances pi WHERE pi.member_id = $1 AND pi.status = 'active' LIMIT 1`,
-    [member_id]
-  );
-  return parseInt(res.rows[0]?.punti || '0');
-}
-
-// ─── Email Log ──────────────────────────────────────
-
-async function logEmail({ brand_id, member_id, email_type, subject, status }) {
-  const id = uuidv4();
-  await pool.query(
-    `INSERT INTO email_log (id, brand_id, member_id, email_type, subject, status) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [id, brand_id, member_id || null, email_type, subject || '', status || 'sent']
-  );
-  return id;
 }
 
 // ─── Users ──────────────────────────────────────────────
@@ -2585,12 +765,12 @@ async function createUser({ email, password, name, role, brand_id }) {
 }
 
 async function getUserByEmail(email) {
-  const res = await pool.query(`SELECT * FROM users WHERE email = $1 AND active = true`, [email.toLowerCase().trim()]);
+  const res = await pool.query('SELECT * FROM users WHERE email = $1 AND active = true', [email.toLowerCase().trim()]);
   return res.rows[0] || null;
 }
 
 async function getUser(id) {
-  const res = await pool.query(`SELECT id, email, name, role, brand_id, active, created_at FROM users WHERE id = $1`, [id]);
+  const res = await pool.query('SELECT id, email, name, role, brand_id, active, created_at FROM users WHERE id = $1', [id]);
   return res.rows[0] || null;
 }
 
@@ -2598,7 +778,6 @@ async function listUsers(brand_id = null) {
   let query = `SELECT u.id, u.email, u.name, u.role, u.brand_id, b.name as brand_name, u.active, u.created_at FROM users u LEFT JOIN brands b ON u.brand_id = b.id`;
   const params = [];
   if (brand_id) {
-    // Show users assigned to this brand + admins (no brand_id)
     query += ` WHERE (u.brand_id = $1 OR u.brand_id IS NULL)`;
     params.push(brand_id);
   }
@@ -2631,7 +810,7 @@ async function updateUser(id, data) {
 }
 
 async function deleteUser(id) {
-  await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+  await pool.query('DELETE FROM users WHERE id = $1', [id]);
   return { success: true };
 }
 
@@ -2655,206 +834,171 @@ async function seedAdminUser() {
   } catch(e) { console.log('Admin seed note:', e.message); }
 }
 
-// ─── Instant Win (Scratch Card) ─────────────────────────────
+// ─── Media Hub ──────────────────────────────────────────────
 
-async function createInstantWinCampaign({ brand_id, title, description, type, win_probability, prizes, max_plays_per_member, start_date, end_date, style }) {
+async function createMedia({ brand_id, type, title, image_base64, width, height }) {
   const id = uuidv4();
   await pool.query(
-    `INSERT INTO instant_win_campaigns (id, brand_id, title, description, type, win_probability, prizes, max_plays_per_member, start_date, end_date, style)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-    [id, brand_id, title, description || null, type || 'scratch', win_probability || 10, JSON.stringify(prizes || []), max_plays_per_member || 1, start_date || null, end_date || null, JSON.stringify(style || {})]
+    `INSERT INTO media (id, brand_id, type, title, image_base64, width, height) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [id, brand_id, type || 'generic', title || null, image_base64, width || null, height || null]
   );
-  return { id };
+  return { id, brand_id, type, title, created_at: new Date().toISOString() };
 }
 
-async function listInstantWinCampaigns(brand_id) {
-  const res = await pool.query('SELECT * FROM instant_win_campaigns WHERE brand_id = $1 ORDER BY created_at DESC', [brand_id]);
-  return res.rows;
-}
-
-async function getInstantWinCampaign(id) {
-  const res = await pool.query('SELECT * FROM instant_win_campaigns WHERE id = $1', [id]);
-  return res.rows[0] || null;
-}
-
-async function updateInstantWinCampaign(id, fields) {
-  const sets = [];
-  const vals = [];
-  let i = 1;
-  for (const [k, v] of Object.entries(fields)) {
-    if (['title','description','type','win_probability','max_plays_per_member','start_date','end_date','active'].includes(k)) {
-      sets.push(`${k} = $${i++}`);
-      vals.push(v);
-    } else if (k === 'prizes' || k === 'style') {
-      sets.push(`${k} = $${i++}`);
-      vals.push(JSON.stringify(v));
-    }
-  }
-  if (sets.length === 0) return;
-  vals.push(id);
-  await pool.query(`UPDATE instant_win_campaigns SET ${sets.join(', ')} WHERE id = $${i}`, vals);
-}
-
-async function deleteInstantWinCampaign(id) {
-  await pool.query('DELETE FROM instant_win_plays WHERE campaign_id = $1', [id]);
-  await pool.query('DELETE FROM instant_win_campaigns WHERE id = $1', [id]);
-}
-
-async function createInstantWinPlay({ campaign_id, member_id, brand_id, won, prize }) {
-  const id = uuidv4();
-  await pool.query(
-    `INSERT INTO instant_win_plays (id, campaign_id, member_id, brand_id, won, prize) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [id, campaign_id, member_id, brand_id, won, prize ? JSON.stringify(prize) : null]
-  );
-  // Update campaign counters
-  if (won) {
-    await pool.query('UPDATE instant_win_campaigns SET total_plays = total_plays + 1, total_wins = total_wins + 1 WHERE id = $1', [campaign_id]);
-  } else {
-    await pool.query('UPDATE instant_win_campaigns SET total_plays = total_plays + 1 WHERE id = $1', [campaign_id]);
-  }
-  return { id, won };
-}
-
-async function getMemberPlays(campaign_id, member_id) {
-  const res = await pool.query(
-    'SELECT COUNT(*) as count FROM instant_win_plays WHERE campaign_id = $1 AND member_id = $2',
-    [campaign_id, member_id]
-  );
-  return parseInt(res.rows[0].count);
-}
-
-async function listInstantWinPlays(campaign_id) {
-  const res = await pool.query(
-    `SELECT p.*, m.first_name, m.last_name, m.email
-     FROM instant_win_plays p
-     LEFT JOIN members m ON m.id = p.member_id
-     WHERE p.campaign_id = $1
-     ORDER BY p.played_at DESC`,
-    [campaign_id]
-  );
-  return res.rows;
-}
-
-// ── Leads ──────────────────────────────────────────────
-async function createLead({ first_name, last_name, email, company, interest, message, source }) {
-  const id = require('crypto').randomUUID();
-  const res = await pool.query(
-    `INSERT INTO leads (id, first_name, last_name, email, company, interest, message, source)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [id, first_name, last_name, email, company, interest, message, source || 'ads.nudj.it']
-  );
-  return res.rows[0];
-}
-
-async function listLeads({ source, limit = 100, offset = 0 } = {}) {
-  let q = 'SELECT * FROM leads';
-  const params = [];
-  if (source) {
-    params.push(source);
-    q += ` WHERE source = $${params.length}`;
-  }
+async function listMedia(brand_id, type) {
+  let q = 'SELECT id, brand_id, type, title, width, height, created_at FROM media WHERE brand_id = $1';
+  const params = [brand_id];
+  if (type && type !== 'all') { q += ' AND type = $2'; params.push(type); }
   q += ' ORDER BY created_at DESC';
-  params.push(limit);
-  q += ` LIMIT $${params.length}`;
-  params.push(offset);
-  q += ` OFFSET $${params.length}`;
-  const res = await pool.query(q, params);
-  return res.rows;
+  const { rows } = await pool.query(q, params);
+  return rows;
 }
 
-async function getLeadCount(source) {
-  let q = 'SELECT COUNT(*)::int AS count FROM leads';
-  const params = [];
-  if (source) {
-    params.push(source);
-    q += ` WHERE source = $${params.length}`;
-  }
-  const res = await pool.query(q, params);
-  return res.rows[0].count;
+async function getMedia(id) {
+  const { rows } = await pool.query('SELECT * FROM media WHERE id = $1', [id]);
+  return rows[0] || null;
 }
+
+async function deleteMedia(id) {
+  await pool.query('DELETE FROM media WHERE id = $1', [id]);
+}
+
+// ─── Ad Events (Ad Serving Tracking) ──────────────────────────────
+
+async function logAdEvent({ brand_id, campaign_id, creative_id, event_type, ip, user_agent, referer, metadata }) {
+  await pool.query(
+    `INSERT INTO ad_events (brand_id, campaign_id, creative_id, event_type, ip, user_agent, referer, metadata)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [brand_id, campaign_id || null, creative_id || null, event_type, ip || null, user_agent || null, referer || null, JSON.stringify(metadata || {})]
+  );
+}
+
+async function getAdStats(brand_id, campaign_id, days = 30) {
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  let where = 'brand_id = $1 AND created_at >= $2';
+  const params = [brand_id, since];
+  if (campaign_id) { where += ' AND campaign_id = $3'; params.push(campaign_id); }
+  const { rows } = await pool.query(
+    `SELECT event_type, COUNT(*)::int as count,
+            COUNT(DISTINCT ip) as unique_count
+     FROM ad_events WHERE ${where}
+     GROUP BY event_type`, params
+  );
+  const stats = { impressions: 0, clicks: 0, installs: 0, unique_impressions: 0, unique_clicks: 0 };
+  rows.forEach(r => {
+    if (r.event_type === 'impression') { stats.impressions = r.count; stats.unique_impressions = r.unique_count; }
+    if (r.event_type === 'click') { stats.clicks = r.count; stats.unique_clicks = r.unique_count; }
+    if (r.event_type === 'install') { stats.installs = r.count; }
+  });
+  stats.ctr = stats.impressions > 0 ? (stats.clicks / stats.impressions * 100).toFixed(2) : '0.00';
+  stats.install_rate = stats.clicks > 0 ? (stats.installs / stats.clicks * 100).toFixed(2) : '0.00';
+  return stats;
+}
+
+async function getAdTimeline(brand_id, campaign_id, days = 30) {
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  let where = 'brand_id = $1 AND created_at >= $2';
+  const params = [brand_id, since];
+  if (campaign_id) { where += ' AND campaign_id = $3'; params.push(campaign_id); }
+  const { rows } = await pool.query(
+    `SELECT DATE(created_at) as date, event_type, COUNT(*)::int as count
+     FROM ad_events WHERE ${where}
+     GROUP BY DATE(created_at), event_type
+     ORDER BY date`, params
+  );
+  return rows;
+}
+
+// ─── Creative Assets ──────────────────────────────────────────────
+
+async function createCreativeAsset(data) {
+  const id = uuidv4();
+  await pool.query(
+    `INSERT INTO creative_assets (id, brand_id, campaign_id, segment, format_key, format_label, width, height, title, headline, cta_text, ai_prompt, ai_model, source, image_base64, image_url, qr_embedded, metadata)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+    [id, data.brand_id, data.campaign_id || null, data.segment, data.format_key, data.format_label,
+     data.width, data.height, data.title || null, data.headline || null, data.cta_text || null,
+     data.ai_prompt || null, data.ai_model || null, data.source || 'upload',
+     data.image_base64 || null, data.image_url || null, data.qr_embedded || false,
+     JSON.stringify(data.metadata || {})]
+  );
+  return getCreativeAsset(id);
+}
+
+async function getCreativeAsset(id) {
+  const r = await pool.query('SELECT * FROM creative_assets WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+
+async function listCreativeAssets(brandId, options = {}) {
+  let query = 'SELECT * FROM creative_assets WHERE brand_id = $1';
+  const params = [brandId];
+  let idx = 2;
+  if (options.segment) { query += ` AND segment = $${idx}`; params.push(options.segment); idx++; }
+  if (options.campaign_id) { query += ` AND campaign_id = $${idx}`; params.push(options.campaign_id); idx++; }
+  query += ' ORDER BY created_at DESC';
+  if (options.limit) { query += ` LIMIT $${idx}`; params.push(options.limit); }
+  const r = await pool.query(query, params);
+  return r.rows;
+}
+
+async function deleteCreativeAsset(id) {
+  await pool.query('DELETE FROM creative_assets WHERE id = $1', [id]);
+  return { success: true };
+}
+
+// ─── Exports ──────────────────────────────────────────────
 
 module.exports = {
   getDb,
   saveDb,
+  pool,
+  // Brands
   createBrand,
+  getBrand,
+  getBrandBySlug,
+  listBrands,
+  updateBrand,
+  deleteBrand,
+  // Templates
   createTemplate,
+  getTemplate,
+  listTemplates,
+  updateTemplate,
+  deleteTemplate,
+  // Campaigns
+  createCampaign,
+  getCampaign,
+  listCampaigns,
+  updateCampaign,
+  deleteCampaign,
+  incrementCampaignDownloads,
+  incrementCampaignInstalls,
+  // Pass Instances
   createPassInstance,
   getPassInstance,
   getPassBySerial,
   updatePassInstance,
   touchPass,
+  listPasses,
+  deletePass,
+  // Events
   logEvent,
-  getAnalytics,
+  listEvents,
+  // Device Registrations
   registerDevice,
   getDevicesForPass,
   getDevicesForBrand,
-  getBrand,
-  getBrandBySlug,
-  getTemplate,
-  updateBrand,
-  deleteBrand,
-  updateTemplate,
-  deleteTemplate,
-  deletePass,
-  listBrands,
-  listTemplates,
-  listPasses,
-  listEvents,
   unregisterDevice,
   getSerialsForDevice,
-  // Rewards
-  createReward,
-  listRewards,
-  getReward,
-  updateReward,
-  deleteReward,
-  // Challenges
-  createChallenge,
-  listChallenges,
-  getChallenge,
-  updateChallenge,
-  deleteChallenge,
-  // Tiers
-  createTier,
-  listTiers,
-  getTier,
-  updateTier,
-  deleteTier,
-  // VIP Cards
-  createVipCard,
-  listVipCards,
-  getVipCard,
-  updateVipCard,
-  deleteVipCard,
-  // Reward Claims
-  claimReward,
-  listClaims,
-  // Challenge Completions
-  completeChallenge,
-  completeChallengeForMember,
-  listCompletions,
-  // Challenge Progress
-  upsertChallengeProgress,
-  getChallengeProgress,
-  getProgressForChallenge,
-  // Booking Analytics (for challenge evaluation)
-  countMemberBookings,
-  getMemberBookingWeeks,
-  countMemberTotalBookings,
-  countMemberUniquePartners,
-  // Push Log
+  // Analytics
+  getAnalytics,
+  getCampaignAnalytics,
+  // Push
   logPush,
   listPushes,
   deletePush,
   clearPushHistory,
-  // Members
-  createMember,
-  getMember,
-  getMemberByEmail,
-  listMembers,
-  updateMember,
-  deleteMember,
-  bulkCreateMembers,
   // Scheduled Push
   createScheduledPush,
   listScheduledPush,
@@ -2862,12 +1006,6 @@ module.exports = {
   updateScheduledPush,
   deleteScheduledPush,
   getDueScheduledPush,
-  // Playtomic Sync
-  addSyncLogEntry,
-  isBookingSynced,
-  listSyncLogs,
-  getMembersByPlaytomicEmail,
-  updateMemberPlaytomic,
   // Strip Promos
   createStripPromo,
   listStripPromos,
@@ -2875,20 +1013,6 @@ module.exports = {
   updateStripPromo,
   deleteStripPromo,
   getActiveStripPromos,
-  // Analytics
-  logAnalyticsEvent,
-  getAnalyticsStats,
-  // Referral
-  getMemberByReferralCode,
-  incrementReferralCount,
-  // Points Log
-  logPoints,
-  getPointsLogForPeriod,
-  getAllMembersWithEmail,
-  getMembersWithPointsInPeriod,
-  getMemberTotalPoints,
-  // Email Log
-  logEmail,
   // Users
   createUser,
   getUserByEmail,
@@ -2898,18 +1022,18 @@ module.exports = {
   deleteUser,
   verifyPassword,
   seedAdminUser,
-  // Instant Win (Scratch Card)
-  createInstantWinCampaign,
-  listInstantWinCampaigns,
-  getInstantWinCampaign,
-  updateInstantWinCampaign,
-  deleteInstantWinCampaign,
-  createInstantWinPlay,
-  getMemberPlays,
-  listInstantWinPlays,
-  // Leads
-  createLead,
-  listLeads,
-  getLeadCount,
-  pool
+  // Media Hub
+  createMedia,
+  listMedia,
+  getMedia,
+  deleteMedia,
+  // Ad Events
+  logAdEvent,
+  getAdStats,
+  getAdTimeline,
+  // Creative Assets
+  createCreativeAsset,
+  getCreativeAsset,
+  listCreativeAssets,
+  deleteCreativeAsset
 };

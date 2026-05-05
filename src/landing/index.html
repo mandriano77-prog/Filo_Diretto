@@ -1,853 +1,305 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nudj Pass</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" id="themeColor" content="#0D0B1A">
+  <title>Wallet Ads</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg, #0D0B1A);
+      color: var(--fg, #fff);
+      min-height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 24px;
+      min-height: 100vh;
+      position: relative;
+    }
+    /* Background image layer */
+    .bg-image {
+      position: fixed;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+      display: none;
+    }
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      display: none;
+    }
+    body > * { position: relative; z-index: 2; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #0D0B1A 0%, #1E1A36 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: #ffffff;
-        }
-
-        .loading {
-            text-align: center;
-            font-size: 14px;
-            color: #00D4AA;
-            opacity: 0.7;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 420px;
-            opacity: 0;
-            animation: fadeIn 0.6s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .brand-logo {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #00D4AA 0%, #00A88A 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 28px;
-            font-weight: 600;
-            color: #0D0B1A;
-        }
-
-        .brand-name {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .brand-subtitle {
-            font-size: 13px;
-            color: #7C3AED;
-            opacity: 0.8;
-        }
-
-        .pass-card {
-            background: linear-gradient(135deg, #1E1A36 0%, #2D2645 100%);
-            border: 1px solid #3A3556;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 8px 32px rgba(0, 212, 170, 0.1);
-            overflow: hidden;
-        }
-
-        .phone-row {
-            max-width: 100%;
-        }
-
-        .phone-row input,
-        .phone-row select {
-            box-sizing: border-box;
-        }
-
-        .pass-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-
-        .pass-type {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #00D4AA;
-            font-weight: 600;
-        }
-
-        .pass-serial {
-            font-size: 10px;
-            color: #7C3AED;
-            opacity: 0.6;
-            text-align: right;
-        }
-
-        .pass-content {
-            margin-bottom: 20px;
-        }
-
-        .field-group {
-            margin-bottom: 16px;
-        }
-
-        .field-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .field-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #00D4AA;
-            opacity: 0.7;
-            margin-bottom: 4px;
-        }
-
-        .field-value {
-            font-size: 18px;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .field-value.secondary {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
-        .field-value.auxiliary {
-            font-size: 13px;
-            opacity: 0.8;
-        }
-
-        .pass-barcode {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px solid #3A3556;
-            text-align: center;
-        }
-
-        .qr-code {
-            display: inline-block;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            margin-bottom: 12px;
-        }
-
-        .qr-code img {
-            width: 120px;
-            height: 120px;
-            display: block;
-        }
-
-        .barcode-hint {
-            font-size: 11px;
-            color: #7C3AED;
-            opacity: 0.6;
-        }
-
-        .cta-section {
-            margin-bottom: 16px;
-        }
-
-        .cta-button {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #00D4AA 0%, #00A88A 100%);
-            color: #0D0B1A;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-decoration: none;
-            box-shadow: 0 4px 16px rgba(0, 212, 170, 0.3);
-        }
-
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(0, 212, 170, 0.4);
-        }
-
-        .cta-button:active {
-            transform: translateY(0);
-        }
-
-        .wallet-icon {
-            width: 20px;
-            height: 20px;
-            display: inline-block;
-        }
-
-        .secondary-cta {
-            padding: 12px;
-            background: transparent;
-            color: #00D4AA;
-            border: 1px solid #00D4AA;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: block;
-            width: 100%;
-            text-decoration: none;
-            text-align: center;
-        }
-
-        .secondary-cta:hover {
-            background: rgba(0, 212, 170, 0.1);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 32px;
-            font-size: 12px;
-            color: #7C3AED;
-            opacity: 0.6;
-        }
-
-        .error {
-            background: rgba(255, 67, 54, 0.1);
-            border: 1px solid #FF4336;
-            color: #FFB3B3;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 14px;
-        }
-
-        .error-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                max-width: 100%;
-                padding: 16px 12px;
-            }
-
-            .header {
-                margin-bottom: 12px;
-            }
-
-            .header img {
-                width: 120px !important;
-                height: 120px !important;
-            }
-
-            .brand-logo {
-                width: 48px !important;
-                height: 48px !important;
-                font-size: 22px !important;
-            }
-
-            .brand-name {
-                font-size: 18px;
-            }
-
-            .pass-card {
-                padding: 14px;
-            }
-
-            .field-row {
-                margin-bottom: 10px !important;
-            }
-
-            .phone-prefix {
-                width: 64px !important;
-                font-size: 12px !important;
-                padding: 10px 0 !important;
-            }
-        }
-    </style>
+    .top { width: 100%; max-width: 420px; }
+    .brand-row {
+      display: flex; align-items: center; gap: 10px;
+      opacity: 0.6; font-size: 13px; letter-spacing: 0.04em;
+    }
+    .brand-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #00D4AA); }
+    .main {
+      width: 100%; max-width: 420px;
+      text-align: center;
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    .logo-area {
+      width: 320px; max-width: 75vw;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .logo-area img {
+      width: 100%; height: auto;
+      object-fit: contain;
+    }
+    .logo-letter {
+      display: none;
+    }
+    .cta-section { width: 100%; max-width: 420px; }
+    .text-section {
+      margin-top: 12px;
+    }
+    h1 {
+      font-size: 26px; font-weight: 700; line-height: 1.2;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    h1 small {
+      display: block;
+      font-size: 15px; font-weight: 400;
+      opacity: 0.65;
+      margin-top: 8px;
+      letter-spacing: 0;
+      line-height: 1.4;
+    }
+    .claim {
+      font-size: 14px; line-height: 1.5;
+      opacity: 0.5;
+      max-width: 300px;
+      margin: 8px auto 0;
+    }
+    .cta {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px 24px;
+      background: var(--cta-bg, #CCFF00);
+      color: #000;
+      border: none;
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+      font-family: inherit;
+      box-shadow: 0 8px 32px -4px rgba(204,255,0,0.25);
+    }
+    .cta:active { transform: scale(0.98); }
+    .cta[disabled] { opacity: 0.6; cursor: default; }
+    .cta svg { width: 22px; height: 22px; }
+    .footnote {
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.4;
+      margin-top: 16px;
+    }
+    .error {
+      color: #ff6b6b;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-    <div class="container" id="container">
-        <div class="loading">Caricamento...</div>
+  <div class="bg-image" id="bgImage"></div>
+  <div class="bg-overlay" id="bgOverlay"></div>
+
+  <div class="top">
+    <div class="brand-row">
+      <span class="brand-dot"></span>
+      <span>Powered by Wallet Ads</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- 1. Logo -->
+    <div class="logo-area" id="logoArea">
+      <span class="logo-letter" id="logoLetter">&middot;</span>
     </div>
 
-    <script>
-        // Parse URL query parameter
-        function getQueryParam(name) {
-            const url = new URL(window.location);
-            return url.searchParams.get(name);
+    <!-- 2. Descriptive text after logo -->
+    <div class="text-section">
+      <h1 id="headline">
+        <span id="brandName">Aggiungi al Wallet</span>
+        <small id="subheadline">Sblocca offerte e novità sul tuo iPhone</small>
+      </h1>
+      <p class="claim" id="claim"></p>
+    </div>
+
+    <!-- 3. CTA button below text -->
+    <div class="cta-section">
+      <button class="cta" id="installBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="18" height="13" rx="2"/>
+          <path d="M3 10h18"/>
+        </svg>
+        <span id="btnLabel">Aggiungi al Wallet</span>
+      </button>
+      <div class="error" id="error"></div>
+    </div>
+
+    <div class="footnote">
+      Nessun dato richiesto · Nessun account · Cancellabile in qualsiasi momento
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const slug = location.pathname.replace(/^\/+|\/+$/g, '');
+      const params = new URLSearchParams(location.search);
+      const campaignId = params.get('c') || params.get('campaign_id');
+      const utm = {};
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(k => {
+        const v = params.get(k);
+        if (v) utm[k] = v;
+      });
+
+      const el = {
+        logoArea: document.getElementById('logoArea'),
+        logoLetter: document.getElementById('logoLetter'),
+        brandName: document.getElementById('brandName'),
+        sub: document.getElementById('subheadline'),
+        claim: document.getElementById('claim'),
+        btn: document.getElementById('installBtn'),
+        btnLabel: document.getElementById('btnLabel'),
+        error: document.getElementById('error'),
+        bgImage: document.getElementById('bgImage'),
+        bgOverlay: document.getElementById('bgOverlay')
+      };
+
+      function applyColors(bg, fg, accent) {
+        const root = document.documentElement.style;
+        root.setProperty('--bg', bg);
+        root.setProperty('--fg', fg);
+        root.setProperty('--accent', accent);
+        document.getElementById('themeColor').content = bg;
+      }
+
+      async function loadBrand() {
+        try {
+          const r = await fetch(`/api/v1/brands/by-slug/${encodeURIComponent(slug)}`);
+          if (!r.ok) return;
+          const brand = await r.json();
+          const c = brand.config || {};
+
+          // Apply brand colors
+          const bg = c.backgroundColor || '#0D0B1A';
+          const fg = c.foregroundColor || '#FFFFFF';
+          const accent = c.labelColor || '#00D4AA';
+          applyColors(bg, fg, accent);
+
+          // Brand name & text
+          if (brand.name) {
+            el.logoLetter.textContent = brand.name.charAt(0).toUpperCase();
+            el.brandName.textContent = brand.name;
+            document.title = `${brand.name} · Wallet Ads`;
+          }
+          if (c.headline) el.brandName.textContent = c.headline;
+          if (c.subheadline) el.sub.textContent = c.subheadline;
+          if (c.claim) el.claim.textContent = c.claim;
+          if (c.button_label) el.btnLabel.textContent = c.button_label;
+
+          // Always try to load brand logo from endpoint
+          const logoImg = new Image();
+          logoImg.onload = () => {
+            el.logoLetter.style.display = 'none';
+            const img = document.createElement('img');
+            img.src = logoImg.src;
+            img.alt = brand.name || 'Logo';
+            el.logoArea.appendChild(img);
+          };
+          logoImg.src = `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/logo?t=${Date.now()}`;
+
+          // Always try to load background image from endpoint
+          const bgImg = new Image();
+          bgImg.onload = () => {
+            el.bgImage.style.backgroundImage = `url(${bgImg.src})`;
+            el.bgImage.style.display = 'block';
+            el.bgOverlay.style.background = `linear-gradient(180deg, ${bg}cc 0%, ${bg}40 40%, ${bg}cc 100%)`;
+            el.bgOverlay.style.display = 'block';
+          };
+          bgImg.src = `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/landing-bg?t=${Date.now()}`;
+
+        } catch (e) { console.error(e); }
+      }
+
+      async function install() {
+        el.btn.disabled = true;
+        el.error.textContent = '';
+        el.btnLabel.innerHTML = '<span class="spinner"></span>';
+
+        try {
+          const r = await fetch('/api/v1/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              brand_slug: slug,
+              campaign_id: campaignId || null,
+              utm: Object.keys(utm).length ? utm : null
+            })
+          });
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error || 'Errore download pass');
+          }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'pass.pkpass';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          el.btnLabel.textContent = 'Aperto in Wallet';
+          setTimeout(() => { el.btn.disabled = false; el.btnLabel.textContent = 'Aggiungi di nuovo'; }, 2000);
+        } catch (e) {
+          el.error.textContent = e.message;
+          el.btn.disabled = false;
+          el.btnLabel.textContent = 'Riprova';
         }
-
-        // Detect slug from URL path (e.g. /hirostar-hangar → "hirostar-hangar")
-        function getSlugFromPath() {
-            const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-            // Skip known routes and files
-            if (!path || path.includes('/') || path.includes('.') ||
-                ['api', 'dashboard', 'landing', 'debug', 'health'].includes(path)) {
-                return null;
-            }
-            return path;
-        }
-
-        // Generate QR code using simple inline algorithm
-        function generateQRCode(text, size = 120) {
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, size, size);
-            ctx.fillStyle = '#0D0B1A';
-
-            const cellSize = size / 21;
-            for (let i = 0; i < 21; i++) {
-                for (let j = 0; j < 21; j++) {
-                    if (Math.random() > 0.5) {
-                        ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
-                    }
-                }
-            }
-
-            return canvas.toDataURL('image/png');
-        }
-
-        // Format date
-        function formatDate(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('it-IT', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
-        }
-
-        // Main function — detects mode: slug (brand page) or ?id= (single pass)
-        async function loadPass() {
-            const passId = getQueryParam('id');
-            const slug = getSlugFromPath();
-
-            // MODE 1: Brand landing via slug (nudj.studio/hirostar-hangar)
-            if (slug && !passId) {
-                try {
-                    const response = await fetch(`/api/v1/landing/brand/${slug}`);
-                    if (!response.ok) {
-                        renderError(response.status === 404
-                            ? 'Brand non trovato. Verifica il link.'
-                            : 'Errore nel caricamento.');
-                        return;
-                    }
-                    const data = await response.json();
-                    renderBrandLanding(data);
-                } catch (error) {
-                    console.error('Error loading brand:', error);
-                    renderError('Errore nella connessione. Riprova più tardi.');
-                }
-                return;
-            }
-
-            // MODE 2: Single pass via ?id=
-            if (!passId) {
-                renderError('Pass ID non trovato. Verifica il link.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/v1/landing/${passId}`);
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        renderError('Pass non trovato. Verifica il link.');
-                    } else {
-                        renderError('Errore nel caricamento del pass.');
-                    }
-                    return;
-                }
-
-                const data = await response.json();
-                renderPass(data);
-            } catch (error) {
-                console.error('Error loading pass:', error);
-                renderError('Errore nella connessione. Riprova più tardi.');
-            }
-        }
-
-        function renderError(message) {
-            const container = document.getElementById('container');
-            container.innerHTML = `
-                <div style="text-align: center;">
-                    <div class="error">
-                        <div class="error-icon">⚠️</div>
-                        <div>${message}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // ── Brand Landing (slug mode) ──────────────────────────────
-        function renderBrandLanding(data) {
-            const { brand, template, signup_url } = data;
-            const config = brand.config || {};
-            const bg = config.backgroundColor || '#000000';
-            const fg = config.foregroundColor || '#FFFFFF';
-            const lbl = config.labelColor || '#D4E600';
-            const initial = brand.name.charAt(0).toUpperCase();
-
-            // Apply brand colors to page + save for thank-you screen
-            window.__brandLbl = lbl;
-            document.body.style.background = bg;
-
-            const passType = template ? template.pass_type_label || template.pass_type || 'Fidelity Card' : 'Fidelity Card';
-            const templateName = template ? template.name : '';
-
-            // Build fields preview from template
-            let fieldsPreview = '';
-            if (template && template.fields) {
-                const previewFields = template.fields.filter(f => f.type === 'primary' || f.type === 'secondary').slice(0, 3);
-                previewFields.forEach(f => {
-                    fieldsPreview += `
-                        <div class="field-group">
-                            <div class="field-label" style="color:${lbl}">${f.label}</div>
-                            <div class="field-value secondary" style="color:${fg}">${f.value || '—'}</div>
-                        </div>`;
-                });
-            }
-
-            // Build logo: use brand logo image if available, fallback to initial letter
-            const hasLogo = config.logos && (config.logos.landing_logo || config.logos.logo);
-            const logoHtml = hasLogo
-                ? `<img src="/api/v1/brands/${brand.id}/logo?t=${Date.now()}" style="width:200px; height:200px; border-radius:50%; object-fit:cover; display:block; margin:0 auto;" alt="${brand.name}">`
-                : `<div class="brand-logo" style="background:${lbl}; color:${bg};">${initial}</div>`;
-
-            const container = document.getElementById('container');
-            container.innerHTML = `
-                <div class="header">
-                    ${logoHtml}
-                    <div class="brand-name" style="color:${fg}">${brand.name}</div>
-                </div>
-
-                <div style="text-align:center; margin:0 0 8px;">
-                    <p style="color:${lbl}; font-size:18px; font-weight:700; margin:0;">Ogni partita vale.</p>
-                    <p style="color:${lbl}; font-size:14px; margin:6px 0 0;">Accumula punti, sblocca premi.</p>
-                </div>
-
-                <form id="signupForm" class="pass-card" style="background:${bg}; border-color:${lbl}33;" onsubmit="handleSignup(event)">
-                    <input type="hidden" name="brand_id" value="${brand.id}">
-                    <div class="field-row" style="margin-bottom:16px;">
-                        <label style="display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:${lbl}; margin-bottom:6px;">Nome</label>
-                        <input type="text" name="name" required placeholder="Il tuo nome"
-                            style="width:100%; padding:12px; background:${fg}11; border:1px solid ${lbl}33; border-radius:8px; color:${fg}; font-size:15px; outline:none;">
-                    </div>
-                    <div class="field-row" style="margin-bottom:16px;">
-                        <label style="display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:${lbl}; margin-bottom:6px;">Email</label>
-                        <input type="email" name="email" required placeholder="La tua email"
-                            style="width:100%; padding:12px; background:${fg}11; border:1px solid ${lbl}33; border-radius:8px; color:${fg}; font-size:15px; outline:none;">
-                    </div>
-                    <div class="field-row" style="margin-bottom:16px;">
-                        <label style="display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:${lbl}; margin-bottom:6px;">Telefono</label>
-                        <div class="phone-row" style="display:flex; gap:6px;">
-                            <select name="phone_prefix" required class="phone-prefix"
-                                style="width:72px; padding:10px 2px; background:${fg}11; border:1px solid ${lbl}33; border-radius:8px; color:${fg}; font-size:13px; outline:none; flex-shrink:0; text-align:center;">
-                                <option value="+39">+39</option>
-                                <option value="+40">+40</option>
-                                <option value="+44">+44</option>
-                                <option value="+49">+49</option>
-                                <option value="+33">+33</option>
-                                <option value="+34">+34</option>
-                                <option value="+41">+41</option>
-                                <option value="+43">+43</option>
-                                <option value="+31">+31</option>
-                                <option value="+32">+32</option>
-                                <option value="+351">+351</option>
-                                <option value="+46">+46</option>
-                                <option value="+47">+47</option>
-                                <option value="+45">+45</option>
-                                <option value="+48">+48</option>
-                                <option value="+30">+30</option>
-                                <option value="+385">+385</option>
-                                <option value="+1">+1</option>
-                                <option value="+55">+55</option>
-                                <option value="+54">+54</option>
-                                <option value="+971">+971</option>
-                            </select>
-                            <input type="tel" name="phone_number" required placeholder="Numero"
-                                style="flex:1; min-width:0; padding:10px 12px; background:${fg}11; border:1px solid ${lbl}33; border-radius:8px; color:${fg}; font-size:15px; outline:none;">
-                        </div>
-                    </div>
-                    <div class="field-row" style="margin-bottom:16px;">
-                        <label style="display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:${lbl}; margin-bottom:6px;">Email Playtomic <span style="text-transform:none;opacity:0.6;font-size:10px;">(opzionale)</span></label>
-                        <input type="email" name="playtomic_email" placeholder="Email usata su Playtomic"
-                            style="width:100%; padding:12px; background:${fg}11; border:1px solid ${lbl}33; border-radius:8px; color:${fg}; font-size:15px; outline:none;">
-                        <span style="display:block; font-size:11px; color:${fg}; opacity:0.5; margin-top:4px; line-height:1.3;">Inserisci la mail con cui prenoti su Playtomic per accumulare punti automaticamente ad ogni prenotazione.</span>
-                    </div>
-                    <div class="field-row" style="margin-bottom:20px;">
-                        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
-                            <input type="checkbox" name="privacy" required
-                                style="margin-top:3px; width:18px; height:18px; accent-color:${lbl}; flex-shrink:0;">
-                            <span style="font-size:12px; color:${fg}; opacity:0.7; line-height:1.4;">
-                                Ho letto e accetto la <a href="/privacy/${brand.slug || brand.id}" target="_blank" style="color:${lbl}; text-decoration:underline;">Privacy Policy</a>. Autorizzo il trattamento dei miei dati personali ai sensi del GDPR (Reg. UE 2016/679).
-                            </span>
-                        </label>
-                    </div>
-                    <button type="submit" class="cta-button" style="background:${lbl}; color:${bg}; box-shadow: 0 4px 16px ${lbl}44;">
-                        <svg class="wallet-icon" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20 8H4V4h16m0-2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 11h-4v2h4v-2z"/>
-                        </svg>
-                        Ottieni la tua Card
-                    </button>
-                </form>
-
-                <div class="footer" style="color:${lbl}; opacity:0.3; font-size:11px; margin-top:24px;">Powered by Precise Consulting</div>
-            `;
-        }
-
-        // ── Signup handler ──────────────────────────────────────────
-        async function handleSignup(e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('button[type="submit"]');
-            const origText = btn.innerHTML;
-            btn.innerHTML = 'Creazione in corso...';
-            btn.disabled = true;
-
-            const phonePrefix = form.phone_prefix.value;
-            const phoneNumber = form.phone_number.value.replace(/\s+/g, '');
-            const userName = form.name.value;
-            const playtomicEmail = form.playtomic_email ? form.playtomic_email.value.trim() : '';
-            // Referral code from URL (?ref=XXXX)
-            const urlParams = new URLSearchParams(window.location.search);
-            const referralCode = urlParams.get('ref') || null;
-            const body = {
-                brand_id: form.brand_id.value,
-                name: userName,
-                email: form.email.value,
-                phone: phonePrefix + phoneNumber,
-                playtomic_email: playtomicEmail || null,
-                referral_code: referralCode
-            };
-
-            try {
-                const resp = await fetch('/api/v1/passes/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({}));
-                    throw new Error(err.error || 'Errore nella registrazione');
-                }
-
-                const data = await resp.json();
-                const downloadUrl = data.download_url || (data.pass ? `/api/v1/passes/${data.pass.id}/download` : null);
-
-                // Check if already registered
-                if (data.message && data.message.includes('già')) {
-                    showAlreadyRegistered(downloadUrl);
-                } else {
-                    showThankYou(userName.split(/\s+/)[0], downloadUrl);
-                }
-
-            } catch (error) {
-                console.error('Signup error:', error);
-                btn.innerHTML = origText;
-                btn.disabled = false;
-                alert(error.message || 'Errore. Riprova.');
-            }
-        }
-
-        function showAlreadyRegistered(downloadUrl) {
-            const lbl = window.__brandLbl || '#CCFF00';
-            const container = document.getElementById('container');
-            container.style.animation = 'none';
-            container.style.opacity = '0';
-            container.innerHTML = `
-                <div style="text-align:center; padding:40px 0 0;">
-                    <div style="font-size:64px; margin-bottom:16px;">👋</div>
-                    <h1 style="color:#fff; font-size:24px; font-weight:700; margin:0 0 8px;">Sei già registrato!</h1>
-                    <p style="color:#bbb; font-size:14px; margin:0 0 24px; line-height:1.5;">Hai già una card attiva. Scaricala di nuovo se non la trovi nel tuo Wallet.</p>
-                </div>
-
-                ${downloadUrl ? `
-                <a href="${downloadUrl}" style="display:block; background:${lbl}; color:#000; font-weight:700; font-size:16px; padding:16px 24px; border-radius:12px; text-decoration:none; text-align:center; margin:0 0 12px; box-shadow: 0 4px 16px ${lbl}44;">
-                    <svg style="width:20px; height:20px; vertical-align:middle; margin-right:8px;" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20 8H4V4h16m0-2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 11h-4v2h4v-2z"/>
-                    </svg>
-                    Scarica la tua Card
-                </a>
-                ` : ''}
-
-                <div class="footer" style="color:${lbl}; opacity:0.3; font-size:11px; margin-top:32px; text-align:center;">Powered by Precise Consulting</div>
-            `;
-            requestAnimationFrame(() => {
-                container.style.transition = 'opacity 0.5s ease';
-                container.style.opacity = '1';
-            });
-        }
-
-        function showThankYou(firstName, downloadUrl) {
-            // Read brand colors from current page state
-            const bg = document.body.style.background || '#000000';
-            const container = document.getElementById('container');
-            // Get label color from the form before we overwrite
-            const lblEl = container.querySelector('.field-label, label');
-            const lbl = window.__brandLbl || '#CCFF00';
-
-            container.style.animation = 'none';
-            container.style.opacity = '0';
-            container.innerHTML = `
-                <div style="text-align:center; padding:40px 0 0;">
-                    <div style="font-size:64px; margin-bottom:16px;">🎉</div>
-                    <h1 style="color:#fff; font-size:26px; font-weight:700; margin:0 0 8px;">Benvenuto nel Club!</h1>
-                    <p style="color:${lbl}; font-size:16px; font-weight:600; margin:0 0 24px;">Ciao ${firstName}, sei dei nostri!</p>
-                </div>
-
-                <div style="background:#1a1a1a; border:1px solid ${lbl}33; border-radius:16px; padding:28px 24px; margin:0 0 20px;">
-                    <div style="text-align:center; margin-bottom:20px;">
-                        <p style="color:${lbl}; font-size:11px; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; margin:0 0 8px;">I tuoi punti di benvenuto</p>
-                        <p style="color:#fff; font-size:56px; font-weight:800; margin:0; line-height:1;">10</p>
-                        <p style="color:#888; font-size:13px; margin:4px 0 0;">punti</p>
-                    </div>
-                    <div style="border-top:1px solid #333; padding-top:16px;">
-                        <p style="color:#bbb; font-size:13px; line-height:1.6; text-align:center; margin:0;">
-                            Accumula punti ad ogni visita, sblocca premi esclusivi e scala i livelli del programma!
-                        </p>
-                    </div>
-                </div>
-
-                ${downloadUrl ? `
-                <a href="${downloadUrl}" style="display:block; background:${lbl}; color:#000; font-weight:700; font-size:16px; padding:16px 24px; border-radius:12px; text-decoration:none; text-align:center; margin:0 0 12px; box-shadow: 0 4px 16px ${lbl}44;">
-                    <svg style="width:20px; height:20px; vertical-align:middle; margin-right:8px;" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20 8H4V4h16m0-2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 11h-4v2h4v-2z"/>
-                    </svg>
-                    Aggiungi a Apple Wallet
-                </a>
-                ` : ''}
-
-                <p style="color:#666; font-size:12px; text-align:center; margin:20px 0 0;">
-                    Controlla la tua email per i dettagli del tuo account.
-                </p>
-
-                <div class="footer" style="color:${lbl}; opacity:0.3; font-size:11px; margin-top:32px; text-align:center;">Powered by Precise Consulting</div>
-            `;
-
-            // Fade in + confetti
-            requestAnimationFrame(() => {
-                container.style.transition = 'opacity 0.5s ease';
-                container.style.opacity = '1';
-                launchConfetti();
-            });
-        }
-
-        function launchConfetti() {
-            const canvas = document.createElement('canvas');
-            canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
-            document.body.appendChild(canvas);
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            const lbl = window.__brandLbl || '#CCFF00';
-            const colors = [lbl, '#fff', '#FFD700', '#FF6B6B', '#4ECDC4', '#A78BFA', lbl, '#fff'];
-            const pieces = [];
-            const total = 120;
-
-            for (let i = 0; i < total; i++) {
-                pieces.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height * -1.2,
-                    w: Math.random() * 8 + 4,
-                    h: Math.random() * 6 + 2,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    vx: (Math.random() - 0.5) * 3,
-                    vy: Math.random() * 3 + 2,
-                    rot: Math.random() * 360,
-                    rotSpeed: (Math.random() - 0.5) * 8,
-                    opacity: 1,
-                    shape: Math.random() > 0.5 ? 'rect' : 'circle'
-                });
-            }
-
-            let frame = 0;
-            const maxFrames = 180;
-
-            function animate() {
-                frame++;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                pieces.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += 0.04;
-                    p.vx *= 0.99;
-                    p.rot += p.rotSpeed;
-
-                    if (frame > maxFrames - 40) {
-                        p.opacity = Math.max(0, p.opacity - 0.025);
-                    }
-
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.rot * Math.PI / 180);
-                    ctx.globalAlpha = p.opacity;
-                    ctx.fillStyle = p.color;
-
-                    if (p.shape === 'rect') {
-                        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                    } else {
-                        ctx.beginPath();
-                        ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    ctx.restore();
-                });
-
-                if (frame < maxFrames) {
-                    requestAnimationFrame(animate);
-                } else {
-                    canvas.remove();
-                }
-            }
-            animate();
-        }
-
-        // ── Single Pass View ────────────────────────────────────────
-        function renderPass(data) {
-            const { pass, template, brand, download_url } = data;
-
-            // Get brand initial
-            const initial = brand.name.charAt(0).toUpperCase();
-
-            // Build field HTML
-            let fieldsHtml = '';
-            if (template.fields && template.fields.length > 0) {
-                template.fields.forEach(field => {
-                    const value = pass.field_values[field.key] || field.value || '';
-
-                    if (field.type === 'header' || field.type === 'primary') {
-                        fieldsHtml += `
-                            <div class="field-group">
-                                <div class="field-label">${field.label}</div>
-                                <div class="field-value">${value}</div>
-                            </div>
-                        `;
-                    } else if (field.type === 'secondary') {
-                        fieldsHtml += `
-                            <div class="field-group">
-                                <div class="field-label">${field.label}</div>
-                                <div class="field-value secondary">${value}</div>
-                            </div>
-                        `;
-                    } else if (field.type === 'auxiliary') {
-                        fieldsHtml += `
-                            <div class="field-group">
-                                <div class="field-label">${field.label}</div>
-                                <div class="field-value auxiliary">${value}</div>
-                            </div>
-                        `;
-                    }
-                });
-            }
-
-            // Generate QR code
-            const qrDataUrl = generateQRCode(download_url);
-
-            const container = document.getElementById('container');
-            container.innerHTML = `
-                <div class="header">
-                    <div class="brand-logo">${initial}</div>
-                    <div class="brand-name">${brand.name}</div>
-                    <div class="brand-subtitle">${template.name}</div>
-                </div>
-
-                <div class="pass-card">
-                    <div class="pass-header">
-                        <div class="pass-type">${template.pass_type}</div>
-                        <div class="pass-serial">#${pass.serial_number.substring(0, 12)}</div>
-                    </div>
-
-                    <div class="pass-content">
-                        ${fieldsHtml}
-                    </div>
-
-                    <div class="pass-barcode">
-                        <div class="qr-code">
-                            <img src="${qrDataUrl}" alt="QR Code">
-                        </div>
-                        <div class="barcode-hint">Scansiona per aggiungere a Wallet</div>
-                    </div>
-                </div>
-
-                <div class="cta-section">
-                    <a href="${download_url}" class="cta-button">
-                        <svg class="wallet-icon" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20 8H4V4h16m0-2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 11h-4v2h4v-2z"/>
-                        </svg>
-                        Aggiungi a Apple Wallet
-                    </a>
-                </div>
-
-                <button class="secondary-cta" onclick="copyToClipboard('${window.location.href}')">
-                    Copia Link
-                </button>
-
-                <div class="footer" style="opacity:0.3; font-size:11px; margin-top:24px;">Powered by Precise Consulting</div>
-            `;
-
-            // Track view
-            navigator.sendBeacon('/api/v1/landing/${pass.id}');
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Link copiato!');
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
-        }
-
-        // Load pass when page is ready
-        document.addEventListener('DOMContentLoaded', loadPass);
-    </script>
+      }
+
+      el.btn.addEventListener('click', install);
+      loadBrand();
+    })();
+  </script>
 </body>
 </html>

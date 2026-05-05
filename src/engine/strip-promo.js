@@ -21,7 +21,7 @@ const {
   touchPass,
   getDevicesForBrand,
   logPush,
-  logAnalyticsEvent,
+  logEvent,
   listStripPromos
 } = require('../db');
 const { createPkpass } = require('./passkit');
@@ -88,10 +88,10 @@ async function applyStripPromo(promo) {
     // Regenerate all active passes with new strip
     await regenerateBrandPasses(promo.brand_id);
 
-    await logAnalyticsEvent({
+    await logEvent({
       brand_id: promo.brand_id,
       event_type: 'strip_promo_applied',
-      event_data: { promo_id: promo.id, title: promo.title }
+      metadata: { promo_id: promo.id, title: promo.title }
     });
   }
 
@@ -199,10 +199,10 @@ async function checkExpiredPromos() {
         }
       }
 
-      await logAnalyticsEvent({
+      await logEvent({
         brand_id: promo.brand_id,
         event_type: 'strip_promo_expired',
-        event_data: { promo_id: promo.id, title: promo.title }
+        metadata: { promo_id: promo.id, title: promo.title }
       });
 
       console.log(`[StripPromo] Promo "${promo.title}" expired for brand ${promo.brand_name}`);
@@ -232,8 +232,8 @@ async function regenerateBrandPasses(brand_id) {
     let regenerated = 0;
     for (const pass of activePasses) {
       try {
-        const pkpassPath = await createPkpass(pass, template, brand);
-        await touchPass(pass.serial_number);
+        const pkpassPath = await createPkpass(template, pass, brand);
+        await touchPass(pass.id);
         regenerated++;
       } catch (e) {
         // Skip failed passes silently

@@ -2,3875 +2,1795 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
-const { sendWelcomeEmail, sendUserInviteEmail, sendScratchEmail } = require('../engine/mailer');
 const {
-  createBrand,
-  createTemplate,
-  createPassInstance,
-  getPassInstance,
-  getPassBySerial,
-  updatePassInstance,
-  touchPass,
-  logEvent,
-  getAnalytics,
-  registerDevice,
-  getDevicesForPass,
-  getBrand,
-  getBrandBySlug,
-  getTemplate,
-  updateBrand,
-  deleteBrand,
-  updateTemplate,
-  deleteTemplate,
-  deletePass,
-  listBrands,
-  listTemplates,
-  listPasses,
-  listEvents,
-  unregisterDevice,
-  getSerialsForDevice,
-  // Rewards
-  createReward,
-  listRewards,
-  getReward,
-  updateReward,
-  deleteReward,
-  // Challenges
-  createChallenge,
-  listChallenges,
-  getChallenge,
-  updateChallenge,
-  deleteChallenge,
-  // Tiers
-  createTier,
-  listTiers,
-  getTier,
-  updateTier,
-  deleteTier,
-  // VIP Cards
-  createVipCard,
-  listVipCards,
-  getVipCard,
-  updateVipCard,
-  deleteVipCard,
-  // Reward Claims
-  claimReward,
-  listClaims,
-  // Challenge Completions
-  completeChallenge,
-  completeChallengeForMember,
-  listCompletions,
-  // Challenge Progress
-  getChallengeProgress,
-  getProgressForChallenge,
-  // Push Log
-  logPush,
-  listPushes,
-  deletePush,
-  clearPushHistory,
-  getDevicesForBrand,
-  // Members
-  createMember,
-  getMember,
-  getMemberByEmail,
-  listMembers,
-  updateMember,
-  deleteMember,
-  bulkCreateMembers,
-  // Scheduled Push
-  createScheduledPush,
-  listScheduledPush,
-  getScheduledPush,
-  updateScheduledPush,
-  deleteScheduledPush,
-  getDueScheduledPush,
-  // Playtomic Sync
-  listSyncLogs,
-  // Users
-  createUser,
-  getUserByEmail,
-  getUser,
-  listUsers,
-  updateUser,
-  deleteUser,
-  verifyPassword,
-  // Referral
-  getMemberByReferralCode,
-  incrementReferralCount,
-  // Analytics
-  logAnalyticsEvent,
-  getAnalyticsStats,
-  // Points Log
-  logPoints,
-  // Instant Win (Scratch Card)
-  createInstantWinCampaign,
-  listInstantWinCampaigns,
-  getInstantWinCampaign,
-  updateInstantWinCampaign,
-  deleteInstantWinCampaign,
-  createInstantWinPlay,
-  getMemberPlays,
-  listInstantWinPlays,
-  // Leads
-  createLead,
-  listLeads,
-  getLeadCount,
+  createBrand, getBrand, getBrandBySlug, listBrands, updateBrand, deleteBrand,
+  createTemplate, getTemplate, listTemplates, updateTemplate, deleteTemplate,
+  createCampaign, getCampaign, listCampaigns, updateCampaign, deleteCampaign,
+  incrementCampaignDownloads, incrementCampaignInstalls,
+  createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, listPasses, deletePass,
+  logEvent, listEvents,
+  registerDevice, getDevicesForPass, getDevicesForBrand, unregisterDevice, getSerialsForDevice,
+  getAnalytics, getCampaignAnalytics,
+  logPush, listPushes, deletePush, clearPushHistory,
+  createScheduledPush, listScheduledPush, getScheduledPush, updateScheduledPush, deleteScheduledPush,
+  createStripPromo, listStripPromos, getStripPromo, updateStripPromo, deleteStripPromo,
+  createUser, getUserByEmail, getUser, listUsers, updateUser, deleteUser, verifyPassword,
+  createMedia, listMedia, getMedia, deleteMedia,
+  logAdEvent, getAdStats, getAdTimeline,
+  createCreativeAsset, getCreativeAsset, listCreativeAssets, deleteCreativeAsset,
   pool
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
+const { getFormats, getFormat, generateWithFal, composeCreative } = require('../engine/creative-ai');
+const { generateBanner, BANNER_TEMPLATES, IAB_FORMATS } = require('../engine/banner-builder');
+const { generateVideo, cleanupVideo, VIDEO_FORMATS, VIDEO_TEMPLATES } = require('../engine/video-builder');
 const { sendPushUpdate } = require('../engine/apns');
-const { runFullSync } = require('../engine/playtomic');
-const { evaluateChallenges } = require('../engine/challenges');
-const { runRecap, sendBrandRecap } = require('../engine/email-recap');
-const { runPointsDecay } = require('../engine/points-decay');
+const { generateLandingCopy, generateCreativeCopy } = require('../engine/ai-copy');
 const sharp = require('sharp');
-const XLSX = require('xlsx');
 const jwt = require('jsonwebtoken');
+const { execFile } = require('child_process');
+const os = require('os');
 
 const router = express.Router();
 
-// JWT secret — use env var in production
+/**
+ * Convert a base64 PDF (first page) to base64 PNG using pdftoppm (poppler-utils).
+ * If input is not a PDF (no %PDF header), returns it unchanged.
+ */
+async function pdfToPngIfNeeded(base64Data) {
+  const buf = Buffer.from(base64Data, 'base64');
+  // Check PDF magic bytes: %PDF
+  if (buf.length < 4 || buf.toString('ascii', 0, 4) !== '%PDF') return base64Data;
+  const tmpDir = os.tmpdir();
+  const tmpId = `pdf-conv-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const pdfPath = path.join(tmpDir, `${tmpId}.pdf`);
+  const outPrefix = path.join(tmpDir, tmpId);
+  fs.writeFileSync(pdfPath, buf);
+  try {
+    await new Promise((resolve, reject) => {
+      execFile('pdftoppm', ['-png', '-f', '1', '-l', '1', '-r', '300', '-singlefile', pdfPath, outPrefix], { timeout: 15000 }, (err) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    const pngPath = `${outPrefix}.png`;
+    const pngBuf = fs.readFileSync(pngPath);
+    // Cleanup
+    try { fs.unlinkSync(pdfPath); } catch(e) {}
+    try { fs.unlinkSync(pngPath); } catch(e) {}
+    return pngBuf.toString('base64');
+  } catch (err) {
+    console.error('PDF→PNG conversion error:', err.message);
+    try { fs.unlinkSync(pdfPath); } catch(e) {}
+    throw new Error('Impossibile convertire il PDF in immagine. Verifica che il file sia un PDF valido.');
+  }
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'nudj-secret-change-me-in-prod';
 const JWT_EXPIRES = '7d';
 
 // ============================================================================
-// AUTH MIDDLEWARE
+// PUBLIC ENDPOINTS (before auth middleware)
 // ============================================================================
 
-/**
- * Auth middleware — verifies JWT token from Authorization header or cookie
- * Attaches req.user = { id, email, name, role, brand_id }
- * Non-auth routes (landing, pass download, Apple Wallet callbacks) skip this
- */
-function authMiddleware(req, res, next) {
-  // Skip auth for public routes (login, signup, pass download, Apple Wallet callbacks, seed endpoints)
-  const publicPrefixes = [
-    '/auth/login',
-    '/signup',              // landing page signup
-    '/brands/',             // brand slug lookup (used by landing page)
-    '/landing/',            // landing page API (brand by slug, pass info)
-    '/passes/signup',       // public signup endpoint
-    '/rewards/seed', '/challenges/seed', '/challenges/migrate-triggers', '/rewards/check', '/rewards/fix-brand', '/cleanup/non-padel', '/cleanup/strip/'
-  ];
-  // Apple Wallet device registration paths & pass downloads
-  if (req.path.match(/\/devices\//) || req.path.match(/\/passes\/.*\/pkpass/) || req.path.match(/\/passes\/.*\/download/)) return next();
-  if (publicPrefixes.some(p => req.path.startsWith(p))) return next();
-
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!token) {
-    return res.status(401).json({ error: 'Token mancante. Effettua il login.' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (e) {
-    return res.status(401).json({ error: 'Token non valido o scaduto.' });
-  }
-}
-
-/**
- * Admin-only middleware — must be called after authMiddleware
- */
-function adminOnly(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Accesso riservato agli amministratori.' });
-  }
-  next();
-}
-
-/**
- * Brand filter middleware — if user is manager, force brand_id filter
- * Modifies req.query.brand_id and req.body.brand_id
- */
-function brandFilter(req, res, next) {
-  if (req.user && req.user.role === 'manager' && req.user.brand_id) {
-    req.query.brand_id = req.user.brand_id;
-    if (req.body) req.body.brand_id = req.user.brand_id;
-  }
-  next();
-}
-
-// ============================================================================
-// AUTH ENDPOINTS (public, no auth required)
-// ============================================================================
-
-/**
- * POST /api/v1/auth/login
- */
+// ─── Auth ──────────────────────────────────────────────
 router.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email e password sono obbligatorie.' });
-    }
-
+    if (!email || !password) return res.status(400).json({ error: 'Email e password richiesti' });
     const user = await getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Credenziali non valide.' });
-    }
-
+    if (!user) return res.status(401).json({ error: 'Credenziali non valide' });
     const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) {
-      return res.status(401).json({ error: 'Credenziali non valide.' });
-    }
+    if (!valid) return res.status(401).json({ error: 'Credenziali non valide' });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, brand_id: user.brand_id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, brand_id: user.brand_id } });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Errore login' });
+  }
+});
 
-    const payload = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      brand_id: user.brand_id
+// ─── Debug: Full push diagnostics ──────────────────
+router.get('/debug/push-diagnostics', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const certPath = process.env.CERT_PATH || path.join(__dirname, '../../certs/signerCert.pem');
+    const keyPath = process.env.KEY_PATH || path.join(__dirname, '../../certs/signerKey.pem');
+
+    const deviceCount = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
+    const passCount = await pool.query('SELECT COUNT(*) as count FROM pass_instances');
+    const devices = await pool.query('SELECT device_library_id, push_token, serial_number, created_at FROM device_registrations ORDER BY created_at DESC LIMIT 20');
+    const passes = await pool.query('SELECT id, serial_number, brand_id, auth_token, created_at FROM pass_instances ORDER BY created_at DESC LIMIT 20');
+    const recentEvents = await pool.query("SELECT event_type, metadata, created_at FROM events ORDER BY created_at DESC LIMIT 30");
+
+    // Check certs
+    const certsExist = {
+      signerCert: fs.existsSync(certPath),
+      signerKey: fs.existsSync(keyPath),
+      certPath,
+      keyPath
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+    // Check if serial_numbers match between passes and devices
+    const orphanDevices = await pool.query(
+      `SELECT dr.* FROM device_registrations dr
+       LEFT JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+       WHERE pi.id IS NULL`
+    );
 
     res.json({
-      token,
-      user: payload
+      status: 'ok',
+      build_version: '3.0.0-' + Date.now(),
+      env: {
+        CUSTOM_DOMAIN: process.env.CUSTOM_DOMAIN || 'NOT SET',
+        PASS_TYPE_IDENTIFIER: process.env.PASS_TYPE_IDENTIFIER || 'NOT SET',
+        TEAM_IDENTIFIER: process.env.TEAM_IDENTIFIER || 'NOT SET',
+        APNS_ENV: process.env.APNS_ENV || 'production (default)',
+        NODE_ENV: process.env.NODE_ENV || 'NOT SET'
+      },
+      webServiceURL_in_pass: `https://${process.env.CUSTOM_DOMAIN || 'localhost:3000'}/api`,
+      apple_will_call: `https://${process.env.CUSTOM_DOMAIN || 'localhost:3000'}/api/v1/devices/{did}/registrations/{ptid}/{sn}`,
+      certs: certsExist,
+      counts: {
+        registered_devices: parseInt(deviceCount.rows[0].count),
+        total_passes: parseInt(passCount.rows[0].count),
+        orphan_device_registrations: orphanDevices.rows.length
+      },
+      devices: devices.rows.map(d => ({
+        device: d.device_library_id?.substring(0,16) + '...',
+        token: d.push_token?.substring(0,16) + '...',
+        serial: d.serial_number,
+        created: d.created_at
+      })),
+      passes: passes.rows.map(p => ({
+        id: p.id?.substring(0,12) + '...',
+        serial: p.serial_number,
+        brand: p.brand_id?.substring(0,12) + '...',
+        auth_token_length: p.auth_token?.length,
+        created: p.created_at
+      })),
+      recent_events: recentEvents.rows.map(e => ({
+        type: e.event_type,
+        meta: e.metadata,
+        at: e.created_at
+      })),
+      troubleshooting: [
+        'If registered_devices=0: pass in Wallet may have wrong webServiceURL',
+        'Check that webServiceURL in pass.json is baseUrl/api (NOT /api/v1)',
+        'Apple adds /v1/ prefix automatically',
+        'Fix: delete pass from Wallet, re-download from dashboard, re-add',
+        'If certs missing: push will silently fail'
+      ]
     });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/auth/me — get current user from token
- */
-router.get('/auth/me', authMiddleware, (req, res) => {
-  res.json({ user: req.user });
-});
-
-// ============================================================================
-// USER MANAGEMENT (admin only)
-// ============================================================================
-
-/**
- * GET /api/v1/users — list all users (admin only)
- */
-router.get('/users', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const users = await listUsers(req.query.brand_id || null);
-    res.json(users);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * POST /api/v1/users — create user (admin only)
- */
-router.post('/users', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const { email, password, name, role, brand_id } = req.body;
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, password e nome sono obbligatori.' });
-    }
-    if (role && !['admin', 'manager'].includes(role)) {
-      return res.status(400).json({ error: 'Ruolo non valido. Usa admin o manager.' });
-    }
-    const user = await createUser({ email, password, name, role: role || 'manager', brand_id });
-
-    // Send invite email with credentials
-    let brandName = null;
-    if (brand_id) {
-      const brand = await getBrand(brand_id);
-      if (brand) brandName = brand.name;
-    }
-    const dashboardUrl = `https://${(process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio')}/dashboard/`;
-    sendUserInviteEmail({
-      to: email,
-      name,
-      password,
-      role: role || 'manager',
-      brandName,
-      dashboardUrl
-    }).catch(err => console.error('Invite email error:', err));
-
-    res.status(201).json(user);
-  } catch (e) {
-    if (e.message.includes('duplicate') || e.message.includes('unique')) {
-      return res.status(409).json({ error: 'Email già registrata.' });
-    }
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/**
- * PUT /api/v1/users/:id — update user (admin only)
- */
-router.put('/users/:id', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const user = await updateUser(req.params.id, req.body);
-    if (!user) return res.status(404).json({ error: 'Utente non trovato.' });
-    res.json(user);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * DELETE /api/v1/users/:id — delete user (admin only)
- */
-router.delete('/users/:id', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    await deleteUser(req.params.id);
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * PUT /api/v1/auth/change-password — change own password
- */
-router.put('/auth/change-password', authMiddleware, async (req, res) => {
-  try {
-    const { current_password, new_password } = req.body;
-    if (!current_password || !new_password) {
-      return res.status(400).json({ error: 'Password attuale e nuova sono obbligatorie.' });
-    }
-    const user = await getUserByEmail(req.user.email);
-    const valid = await verifyPassword(current_password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Password attuale non corretta.' });
-
-    await updateUser(req.user.id, { password: new_password });
-    res.json({ success: true, message: 'Password aggiornata.' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── Public webhook inbound (BEFORE auth middleware) ──
-router.post('/webhook/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    const { email, points, reason, action } = req.body;
-
-    if (!email) return res.status(400).json({ error: 'Missing email' });
-    const pts = parseInt(points) || 0;
-    if (pts <= 0 && action !== 'event') return res.status(400).json({ error: 'Points must be > 0 (or use action: "event")' });
-
-    // Find brand by webhook key
-    const brandRes = await pool.query(
-      `SELECT * FROM brands WHERE config->>'webhookKey' = $1`, [key]
-    );
-    const brand = brandRes.rows[0];
-    if (!brand) return res.status(404).json({ error: 'Invalid webhook key' });
-
-    // Find member by email
-    const member = await getMemberByEmail(brand.id, email);
-    if (!member) return res.status(404).json({ error: 'Member not found', email });
-
-    // Find member's active pass
-    const passes = await listPasses(brand.id);
-    const memberPass = passes.find(p => p.member_id === member.id && p.status === 'active');
-
-    if (pts > 0 && memberPass) {
-      // Credit points
-      await logPoints({
-        brand_id: brand.id,
-        member_id: member.id,
-        pass_id: memberPass.id,
-        points: pts,
-        reason: reason || 'webhook',
-        details: `Webhook: ${reason || 'external'}`
-      });
-      const currentPunti = parseInt(memberPass.field_values?.punti || '0');
-      const newPunti = currentPunti + pts;
-      await updatePassInstance(memberPass.id, {
-        field_values: { ...memberPass.field_values, punti: String(newPunti) }
-      });
-      console.log(`[Webhook] +${pts} pts to ${email} (brand ${brand.name})`);
-    }
-
-    // Log event
-    await logEvent({
-      brand_id: brand.id,
-      pass_id: memberPass?.id || null,
-      event_type: 'webhook_inbound',
-      event_data: { email, points: pts, reason: reason || 'external', action: action || 'points' }
-    });
-
-    res.json({ ok: true, member_id: member.id, points_added: pts, new_total: memberPass ? parseInt(memberPass.field_values?.punti || '0') + pts : null });
   } catch (err) {
-    console.error('[Webhook] Error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 
-// ─── Public Shopify webhook receiver (BEFORE auth middleware) ──
-router.post('/shopify-webhook/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    const brandRes = await pool.query(`SELECT * FROM brands WHERE config->>'shopifyKey' = $1`, [key]);
-    const brand = brandRes.rows[0];
-    if (!brand) return res.status(404).json({ error: 'Invalid shopify key' });
-
-    const order = req.body;
-    const email = order.email || order.customer?.email;
-    if (!email) { console.log('[Shopify] Order without email, skipping'); return res.json({ ok: true, skipped: true }); }
-
-    const member = await getMemberByEmail(brand.id, email);
-    if (!member) { console.log(`[Shopify] No member for ${email}`); return res.json({ ok: true, skipped: true, reason: 'no_member' }); }
-
-    const totalPrice = parseFloat(order.total_price || order.subtotal_price || 0);
-    const pointsPerEuro = parseInt(brand.config?.shopify?.pointsPerEuro) || 1;
-    const pts = Math.floor(totalPrice * pointsPerEuro);
-    if (pts <= 0) return res.json({ ok: true, skipped: true, reason: 'zero_points' });
-
-    const passes = await listPasses(brand.id);
-    const memberPass = passes.find(p => p.member_id === member.id && p.status === 'active');
-    if (memberPass) {
-      await logPoints({ brand_id: brand.id, member_id: member.id, pass_id: memberPass.id, points: pts, reason: 'shopify', details: `Ordine #${order.order_number || order.id} — €${totalPrice}` });
-      const newPunti = (parseInt(memberPass.field_values?.punti || '0') + pts);
-      await updatePassInstance(memberPass.id, { field_values: { ...memberPass.field_values, punti: String(newPunti) } });
-      console.log(`[Shopify] +${pts} pts to ${email} (order #${order.order_number || order.id})`);
-    }
-    await logEvent({ brand_id: brand.id, pass_id: memberPass?.id, event_type: 'shopify_order', event_data: { email, total: totalPrice, points: pts, order_id: order.id } });
-
-    res.json({ ok: true, member_id: member.id, points_added: pts });
-  } catch (err) {
-    console.error('[Shopify] Webhook error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Public SumUp webhook receiver (BEFORE auth middleware) ──
-router.post('/sumup-webhook/:key', async (req, res) => {
-  try {
-    const { key } = req.params;
-    const brandRes = await pool.query(`SELECT * FROM brands WHERE config->>'sumupKey' = $1`, [key]);
-    const brand = brandRes.rows[0];
-    if (!brand) return res.status(404).json({ error: 'Invalid sumup key' });
-
-    const tx = req.body;
-    const email = tx.receipt_email || tx.customer_email || tx.email;
-    if (!email) { console.log('[SumUp] Transaction without email, skipping'); return res.json({ ok: true, skipped: true }); }
-
-    const member = await getMemberByEmail(brand.id, email);
-    if (!member) { console.log(`[SumUp] No member for ${email}`); return res.json({ ok: true, skipped: true, reason: 'no_member' }); }
-
-    const amount = parseFloat(tx.amount || tx.total || 0);
-    const pointsPerEuro = parseInt(brand.config?.sumup?.pointsPerEuro) || 1;
-    const pts = Math.floor(amount * pointsPerEuro);
-    if (pts <= 0) return res.json({ ok: true, skipped: true, reason: 'zero_points' });
-
-    const passes = await listPasses(brand.id);
-    const memberPass = passes.find(p => p.member_id === member.id && p.status === 'active');
-    if (memberPass) {
-      await logPoints({ brand_id: brand.id, member_id: member.id, pass_id: memberPass.id, points: pts, reason: 'sumup', details: `SumUp tx ${tx.transaction_id || tx.id || ''} — €${amount}` });
-      const newPunti = (parseInt(memberPass.field_values?.punti || '0') + pts);
-      await updatePassInstance(memberPass.id, { field_values: { ...memberPass.field_values, punti: String(newPunti) } });
-      console.log(`[SumUp] +${pts} pts to ${email} (€${amount})`);
-    }
-    await logEvent({ brand_id: brand.id, pass_id: memberPass?.id, event_type: 'sumup_transaction', event_data: { email, amount, points: pts, tx_id: tx.transaction_id || tx.id } });
-
-    res.json({ ok: true, member_id: member.id, points_added: pts });
-  } catch (err) {
-    console.error('[SumUp] Webhook error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Public scratch card play endpoint (BEFORE auth middleware) ──
-router.post('/scratch-cards/:id/play', async (req, res) => {
-  try {
-    const { member_id } = req.body;
-    if (!member_id) return res.status(400).json({ error: 'Missing member_id' });
-
-    const campaign = await getInstantWinCampaign(req.params.id);
-    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
-    if (!campaign.active) return res.status(400).json({ error: 'Campagna non attiva' });
-
-    // Check date range
-    const now = new Date();
-    if (campaign.start_date && new Date(campaign.start_date) > now) {
-      return res.status(400).json({ error: 'Campagna non ancora iniziata' });
-    }
-    if (campaign.end_date && new Date(campaign.end_date) < now) {
-      return res.status(400).json({ error: 'Campagna scaduta' });
-    }
-
-    // Check max plays per member
-    const playCount = await getMemberPlays(req.params.id, member_id);
-    if (playCount >= (campaign.max_plays_per_member || 1)) {
-      return res.status(400).json({ error: 'Hai già giocato il numero massimo di volte', already_played: true });
-    }
-
-    // Determine win/lose based on probability
-    const roll = Math.random() * 100;
-    const won = roll < parseFloat(campaign.win_probability);
-
-    // Pick a prize if won
-    let prize = null;
-    if (won && campaign.prizes && campaign.prizes.length > 0) {
-      const prizes = campaign.prizes.filter(p => p.active !== false);
-      if (prizes.length > 0) {
-        const totalWeight = prizes.reduce((sum, p) => sum + (p.weight || 1), 0);
-        let r = Math.random() * totalWeight;
-        for (const p of prizes) {
-          r -= (p.weight || 1);
-          if (r <= 0) { prize = p; break; }
-        }
-        if (!prize) prize = prizes[0];
-      }
-    }
-
-    const play = await createInstantWinPlay({
-      campaign_id: req.params.id,
-      member_id,
-      brand_id: campaign.brand_id,
-      won,
-      prize
-    });
-
-    // If won and prize has points, credit them
-    if (won && prize && prize.points && prize.points > 0) {
-      try {
-        // Find the member's pass — try multiple matching strategies
-        const memberPasses = await listPasses(campaign.brand_id);
-        let memberPass = memberPasses.find(p =>
-          p.customer_data?.member_id === member_id ||
-          p.field_values?.member_id === member_id
-        );
-
-        // Fallback: match by member email on pass
-        if (!memberPass) {
-          const member = await getMember(member_id);
-          if (member?.email) {
-            memberPass = memberPasses.find(p =>
-              p.customer_data?.email === member.email ||
-              p.field_values?.email === member.email ||
-              p.customer_email === member.email
-            );
-          }
-          console.log(`[ScratchCard] member_id match failed, email fallback: ${member?.email} → ${memberPass ? 'FOUND' : 'NOT FOUND'}`);
-        }
-
-        if (memberPass) {
-          await logPoints({
-            brand_id: campaign.brand_id,
-            member_id,
-            pass_id: memberPass.id,
-            points: prize.points,
-            reason: 'instant_win',
-            details: `Scratch card: ${campaign.title} — ${prize.name}`
-          });
-          const currentPunti = parseInt(memberPass.field_values?.punti || '0');
-          const newPunti = currentPunti + prize.points;
-          await updatePassInstance(memberPass.id, {
-            field_values: { ...memberPass.field_values, punti: String(newPunti) }
-          });
-          console.log(`[ScratchCard] Awarded ${prize.points} points to member ${member_id} (pass ${memberPass.id})`);
-
-          // Push update to wallet so points refresh on device
-          try {
-            const devices = await getDevicesForPass(memberPass.id);
-            for (const d of devices) {
-              await sendPushUpdate(d.push_token);
-            }
-          } catch (pushErr) { console.error('[ScratchCard] Push after points error:', pushErr.message); }
-        } else {
-          console.warn(`[ScratchCard] No pass found for member ${member_id} in brand ${campaign.brand_id} — points NOT awarded`);
-        }
-      } catch (e) { console.error('[ScratchCard] Error awarding points:', e.message); }
-    }
-
-    res.json({ won, prize, play_id: play.id });
-  } catch (err) {
-    console.error('[ScratchCard] Play error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Leads (public submit + login) ──────────────────────────
-const leadsCors = (req, res, next) => {
-  res.set({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  });
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-};
-
-router.options('/leads', leadsCors);
-router.options('/leads/login', leadsCors);
-
-// Login for ads admin panel — uses same users table
-router.post('/leads/login', leadsCors, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    const user = await getUserByEmail(email);
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
-  } catch (err) {
-    console.error('Leads login error:', err);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-// PUBLIC — submit lead (no auth)
-router.post('/leads', leadsCors, async (req, res) => {
-  try {
-    const { first, last, email, company, interest, message, source } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
-    const lead = await createLead({
-      first_name: first || '',
-      last_name: last || '',
-      email,
-      company: company || '',
-      interest: interest || '',
-      message: message || '',
-      source: source || 'ads.nudj.it',
-    });
-    res.json({ ok: true, id: lead.id });
-  } catch (err) {
-    console.error('Lead creation error:', err);
-    res.status(500).json({ error: 'Failed to save lead' });
-  }
-});
-
-// Apply brand filter to all routes below (no auth required)
-router.use(brandFilter);
-
-// Admin — list leads (after auth middleware, so it requires login)
-router.get('/leads', leadsCors, async (req, res) => {
-  try {
-    const { source, limit, offset } = req.query;
-    const leads = await listLeads({ source, limit: parseInt(limit) || 100, offset: parseInt(offset) || 0 });
-    const count = await getLeadCount(source);
-    res.json({ leads, total: count });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// Custom domain for short landing URLs (fallback to request host)
-const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
-
-// Helper to ensure cache directory exists
-function ensureCacheDir() {
-  const cacheDir = path.join(__dirname, '../../data/pkpass-cache');
-  if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-  }
-  return cacheDir;
-}
-
-// ============================================================================
-// BRAND MANAGEMENT
-// ============================================================================
-
-/**
- * POST /api/v1/brands - Create a new brand
- */
-router.post('/brands', async (req, res) => {
-  try {
-    const { name, slug, config } = req.body;
-
-    if (!name || !slug) {
-      return res.status(400).json({
-        error: 'Name and slug are required'
-      });
-    }
-
-    const brand = await createBrand({
-      name,
-      slug,
-      config: config || {}
-    });
-
-    await logEvent({
-      brand_id: brand.id,
-      event_type: 'brand_created',
-      metadata: { name }
-    });
-
-    // Auto-create default scratch card campaign
-    try {
-      await createInstantWinCampaign({
-        brand_id: brand.id,
-        title: 'Gratta e Vinci',
-        description: 'Gratta la card per scoprire se hai vinto punti bonus!',
-        win_probability: 30,
-        prizes: [
-          { name: 'Super Bonus!', description: '+50 punti', points: 50, icon: '🎉', weight: 20 },
-          { name: 'Bonus', description: '+20 punti', points: 20, icon: '⭐', weight: 40 },
-          { name: 'Mini Bonus', description: '+10 punti', points: 10, icon: '🎁', weight: 40 }
-        ],
-        max_plays_per_member: 1,
-        start_date: null,
-        end_date: null,
-        style: {}
-      });
-      console.log(`✓ Default scratch card created for brand ${brand.id}`);
-    } catch (scratchErr) {
-      console.warn('Could not create default scratch card:', scratchErr.message);
-    }
-
-    res.status(201).json(brand);
-  } catch (error) {
-    console.error('Error creating brand:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/brands - List all brands
- */
-router.get('/brands', async (req, res) => {
-  try {
-    let brands = await listBrands();
-    // Filter for manager users — only show their assigned brand
-    if (req.user && req.user.role === 'manager' && req.user.brand_id) {
-      brands = brands.filter(b => b.id === req.user.brand_id);
-    }
-    res.json(brands);
-  } catch (error) {
-    console.error('Error listing brands:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/brands/by-slug/:slug - Get brand by slug
- */
+// ─── Brand lookup by slug (used by landing page) ──────────────────
 router.get('/brands/by-slug/:slug', async (req, res) => {
   try {
     const brand = await getBrandBySlug(req.params.slug);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    res.json(brand);
-  } catch (error) {
-    console.error('Error getting brand by slug:', error);
-    res.status(500).json({ error: error.message });
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    // Strip heavy base64 data from public response — images served via dedicated endpoints
+    const safeConfig = { ...(brand.config || {}) };
+    delete safeConfig.logos;
+    delete safeConfig.landingBg;
+    res.json({ ...brand, config: safeConfig });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * GET /api/v1/brands/:id - Get brand details
- */
-router.get('/brands/:id', async (req, res) => {
+// ─── Brand logo by slug (public, for landing page) ──────────────────
+router.get('/brands/by-slug/:slug/logo', async (req, res) => {
   try {
-    const brand = await getBrand(req.params.id);
-
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    res.json(brand);
-  } catch (error) {
-    console.error('Error getting brand:', error);
-    res.status(500).json({ error: error.message });
-  }
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand?.config?.logos?.['logo@2x']) return res.status(404).json({ error: 'Nessun logo' });
+    const buf = Buffer.from(brand.config.logos['logo@2x'], 'base64');
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * GET /api/v1/brands/:id/logo - Serve brand logo as PNG image
- * Priority: static file (slug-based) > landing_logo in DB > logo@2x > logo > icon
- */
-router.get('/brands/:id/logo', async (req, res) => {
+// ─── Brand landing background by slug (public) ──────────────────
+router.get('/brands/by-slug/:slug/landing-bg', async (req, res) => {
   try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).send('Not found');
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand?.config?.landingBg) return res.status(404).json({ error: 'Nessuna immagine' });
+    const buf = Buffer.from(brand.config.landingBg, 'base64');
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-    const logos = brand.config?.logos;
+// ─── Anonymous signup — zero data, just download .pkpass ──────────────────
+router.post('/signup', async (req, res) => {
+  try {
+    const { brand_slug, campaign_id, utm } = req.body;
+    if (!brand_slug) return res.status(400).json({ error: 'brand_slug richiesto' });
 
-    // 1. DB landing_logo has highest priority (uploaded via dashboard)
-    if (logos?.landing_logo) {
-      const buf = Buffer.from(logos.landing_logo, 'base64');
-      res.set('Content-Type', 'image/png');
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      return res.send(buf);
-    }
+    // Find brand
+    const brand = await getBrandBySlug(brand_slug);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
 
-    // 2. Check for static file: public/assets/{slug}-logo.png
-    if (brand.slug) {
-      const staticPath = path.resolve(__dirname, '..', '..', 'public', 'assets', `${brand.slug}-logo.png`);
-      if (fs.existsSync(staticPath)) {
-        res.set('Content-Type', 'image/png');
-        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        return res.sendFile(staticPath);
+    // Find template (use campaign template if specified, otherwise first active template)
+    let template = null;
+    if (campaign_id) {
+      const campaign = await getCampaign(campaign_id);
+      if (campaign && campaign.template_id) {
+        template = await getTemplate(campaign.template_id);
       }
     }
+    if (!template) {
+      const templates = await listTemplates(brand.id);
+      template = templates[0];
+    }
+    if (!template) return res.status(400).json({ error: 'Nessun template configurato per questo brand' });
 
-    // 3. Fallback to other DB logos
-    const b64 = logos?.['logo@2x'] || logos?.logo || logos?.['icon@2x'] || logos?.icon;
-    if (!b64) return res.status(404).send('No logo');
+    // Create anonymous pass instance with browser metadata
+    const passData = {
+      template_id: template.id,
+      brand_id: brand.id,
+      campaign_id: campaign_id || null,
+      field_values: {},
+      utm: utm || {},
+      user_agent: req.headers['user-agent'] || null,
+      referrer_url: req.headers['referer'] || req.body.referrer || null
+    };
+    const passInstance = await createPassInstance(passData);
 
-    const buf = Buffer.from(b64, 'base64');
-    res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Log event
+    await logEvent({ pass_id: passInstance.id, brand_id: brand.id, event_type: 'pass_created', metadata: { source: 'landing', campaign_id, utm } });
+
+    // Increment campaign downloads
+    if (campaign_id) await incrementCampaignDownloads(campaign_id);
+
+    // Generate .pkpass
+    const baseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : `${req.protocol}://${req.get('host')}`;
+
+    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+    });
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename="${brand.slug || 'pass'}.pkpass"`,
+      'Content-Length': pkpassBuffer.length
+    });
+    res.send(pkpassBuffer);
+
+  } catch (err) {
+    console.error('Signup error:', err);
+    res.status(500).json({ error: 'Errore creazione pass: ' + err.message });
+  }
+});
+
+// ─── Pass download ──────────────────
+router.get('/passes/:id/download', async (req, res) => {
+  try {
+    const passInstance = await getPassInstance(req.params.id);
+    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
+    const brand = await getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
+
+    const baseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : `${req.protocol}://${req.get('host')}`;
+
+    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+    });
+
+    await logEvent({ pass_id: passInstance.id, brand_id: brand.id, event_type: 'pass_downloaded' });
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename="${brand.slug || 'pass'}.pkpass"`,
+      'Content-Length': pkpassBuffer.length
+    });
+    res.send(pkpassBuffer);
+  } catch (err) {
+    console.error('Download error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Apple Wallet Protocol ──────────────────
+
+// Log all Apple Wallet protocol calls for debugging
+router.all('/devices/*', (req, res, next) => {
+  console.log(`[Apple Wallet] ${req.method} ${req.originalUrl} | Auth: ${req.headers.authorization ? 'yes' : 'no'} | Body: ${JSON.stringify(req.body || {})}`);
+  next();
+});
+router.all('/passes/:passTypeId/:serialNumber', (req, res, next) => {
+  if (req.params.passTypeId && req.params.serialNumber && !req.path.includes('/download') && !req.path.includes('/regenerate')) {
+    console.log(`[Apple Wallet] ${req.method} ${req.originalUrl} | Auth: ${req.headers.authorization ? 'yes' : 'no'}`);
+  }
+  next();
+});
+
+// Register device for push notifications
+router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber', async (req, res) => {
+  try {
+    const { deviceLibraryId, serialNumber } = req.params;
+    const pushToken = req.body.pushToken;
+    console.log(`[Apple Wallet] REGISTER device=${deviceLibraryId.substring(0,8)}... serial=${serialNumber.substring(0,8)}... pushToken=${pushToken ? pushToken.substring(0,8)+'...' : 'MISSING'}`);
+    if (!pushToken) return res.status(400).send();
+
+    await registerDevice({ device_library_id: deviceLibraryId, push_token: pushToken, serial_number: serialNumber });
+
+    // Track install
+    const pass = await getPassBySerial(serialNumber);
+    if (pass) {
+      await logEvent({ pass_id: pass.id, brand_id: pass.brand_id, event_type: 'pass_installed', device_id: deviceLibraryId });
+      if (pass.campaign_id) await incrementCampaignInstalls(pass.campaign_id);
+      console.log(`[Apple Wallet] ✓ Device registered for pass ${pass.id}`);
+    } else {
+      console.warn(`[Apple Wallet] ⚠️ No pass found for serial ${serialNumber}`);
+    }
+
+    res.status(201).send();
+  } catch (err) {
+    console.error('[Apple Wallet] Registration error:', err);
+    res.status(200).send(); // Apple expects 200 if already registered
+  }
+});
+
+// Unregister device
+router.delete('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber', async (req, res) => {
+  try {
+    const { deviceLibraryId, serialNumber } = req.params;
+    await unregisterDevice(deviceLibraryId, serialNumber);
+
+    const pass = await getPassBySerial(serialNumber);
+    if (pass) {
+      await logEvent({ pass_id: pass.id, brand_id: pass.brand_id, event_type: 'pass_removed', device_id: deviceLibraryId });
+    }
+
+    res.status(200).send();
+  } catch (err) {
+    console.error('Device unregister error:', err);
+    res.status(200).send();
+  }
+});
+
+// Get serial numbers for device
+router.get('/devices/:deviceLibraryId/registrations/:passTypeId', async (req, res) => {
+  try {
+    const tag = req.query.passesUpdatedSince || null;
+    const serials = await getSerialsForDevice(req.params.deviceLibraryId, tag);
+    if (serials.length === 0) return res.status(204).send();
+    res.json({ serialNumbers: serials, lastUpdated: new Date().toISOString() });
+  } catch (err) {
+    console.error('Get serials error:', err);
+    res.status(500).send();
+  }
+});
+
+// Get latest pass (Apple Wallet refresh)
+router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
+  try {
+    const pass = await getPassBySerial(req.params.serialNumber);
+    if (!pass) return res.status(404).send();
+
+    const brand = await getBrand(pass.brand_id);
+    const template = await getTemplate(pass.template_id);
+    if (!brand || !template) return res.status(404).send();
+
+    const baseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : `${req.protocol}://${req.get('host')}`;
+
+    const pkpassBuffer = await createPkpass(template, pass, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+    });
+
+    await logEvent({ pass_id: pass.id, brand_id: pass.brand_id, event_type: 'pass_fetched' });
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Last-Modified': new Date(pass.last_updated).toUTCString()
+    });
+    res.send(pkpassBuffer);
+  } catch (err) {
+    console.error('Pass fetch error:', err);
+    res.status(500).send();
+  }
+});
+
+// ─── Creative asset image (public, used by <img> tags) ──────────────────
+router.get('/creative-assets/:id/image', async (req, res) => {
+  try {
+    const asset = await getCreativeAsset(req.params.id);
+    if (!asset || !asset.image_base64) return res.status(404).send('No image');
+    const buf = Buffer.from(asset.image_base64, 'base64');
+    res.set({ 'Content-Type': 'image/png', 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=3600' });
     res.send(buf);
-  } catch (error) {
+  } catch (err) {
+    console.error('Creative image error:', err);
     res.status(500).send('Error');
   }
 });
 
-/**
- * PUT /api/v1/brands/:id - Update brand (name, config)
- */
-router.put('/brands/:id', async (req, res) => {
+// ─── Media image (public, used by <img> tags) ──────────────────
+router.get('/media/:id/image', async (req, res) => {
   try {
-    const { name, slug, config } = req.body;
-
-    // Merge with existing brand config to preserve logos/strip/links etc.
-    const existingBrand = await getBrand(req.params.id);
-    if (!existingBrand) return res.status(404).json({ error: 'Brand not found' });
-    const existingConfig = existingBrand.config || {};
-    const mergedLogos = { ...(existingConfig.logos || {}) };
-
-    // If logo uploaded, resize to Apple Wallet required sizes
-    if (config?.logos?.logo) {
-      const rawBuf = Buffer.from(config.logos.logo, 'base64');
-      const logo1x = await sharp(rawBuf).resize(160, 50, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      const logo2x = await sharp(rawBuf).resize(320, 100, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      const icon1x = await sharp(rawBuf).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      const icon2x = await sharp(rawBuf).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      mergedLogos.logo = logo1x.toString('base64');
-      mergedLogos['logo@2x'] = logo2x.toString('base64');
-      mergedLogos.icon = icon1x.toString('base64');
-      mergedLogos['icon@2x'] = icon2x.toString('base64');
-      console.log('✓ Logo resized for Apple Wallet');
-    }
-
-    // If strip uploaded, store raw base64 (passkit.js resizes it)
-    if (config?.logos?.strip) {
-      mergedLogos.strip = config.logos.strip;
-      console.log('✓ Strip image uploaded');
-    }
-
-    // If landing logo uploaded, store raw base64 (used on landing page)
-    if (config?.logos?.landing_logo) {
-      mergedLogos.landing_logo = config.logos.landing_logo;
-      console.log('✓ Landing logo uploaded');
-    }
-
-    // Merge config: new values override, but preserve existing keys not in request
-    const mergedConfig = { ...existingConfig, ...config, logos: mergedLogos };
-
-    const updated = await updateBrand(req.params.id, { name, slug, config: mergedConfig });
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    res.json(updated);
+    const item = await getMedia(req.params.id);
+    if (!item || !item.image_base64) return res.status(404).send('No image');
+    const buf = Buffer.from(item.image_base64, 'base64');
+    res.set({ 'Content-Type': 'image/png', 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=3600' });
+    res.send(buf);
   } catch (err) {
-    console.error('Error updating brand:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Media image error:', err);
+    res.status(500).send('Error');
   }
 });
 
-/**
- * POST /api/v1/brands/:id/strip - Upload strip image (dedicated endpoint)
- */
-router.post('/brands/:id/strip', async (req, res) => {
+// ─── Ad Serving (public) ──────────────────────────────────────────
+
+const PIXEL_1x1 = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
+// Serve ad tag — returns HTML snippet with creative + impression pixel
+router.get('/serve/:campaign_id', async (req, res) => {
   try {
-    const { strip } = req.body; // base64 string
-    if (!strip) return res.status(400).json({ error: 'Missing strip base64 data' });
+    const campaign = await getCampaign(req.params.campaign_id);
+    if (!campaign) return res.status(404).send('Campaign not found');
+    const brand = await getBrand(campaign.brand_id);
+    if (!brand) return res.status(404).send('Brand not found');
 
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-
-    const existingConfig = brand.config || {};
-    const logos = { ...(existingConfig.logos || {}), strip };
-    const config = { ...existingConfig, logos };
-
-    const updated = await updateBrand(req.params.id, { config });
-    console.log('✓ Strip image saved for brand', req.params.id, '- base64 length:', strip.length);
-    res.json({ success: true, stripLength: strip.length });
-  } catch (err) {
-    console.error('Error uploading strip:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * POST /api/v1/brands/:id/ai-strip - Generate strip image via Replicate Flux AI
- */
-router.post('/brands/:id/ai-strip', async (req, res) => {
-  try {
-    const { prompt, style } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
-
-    const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-    if (!REPLICATE_API_TOKEN) {
-      return res.status(503).json({ error: 'REPLICATE_API_TOKEN not configured' });
+    // Check for HTML5 banner creative first (type: 'banner' in media table)
+    const reqW = parseInt(req.query.w) || 300;
+    const reqH = parseInt(req.query.h) || 250;
+    const bannerMedia = await listMedia(campaign.brand_id, 'banner');
+    const matchedBanner = bannerMedia.find(m => m.width === reqW && m.height === reqH);
+    if (matchedBanner && req.query.format !== 'json') {
+      // Serve the HTML5 animated banner directly
+      const bannerHtml = Buffer.from(matchedBanner.image_base64, 'base64').toString('utf-8');
+      // Inject campaign tracking
+      const baseUrl = `${req.protocol}://${req.get('host')}/api/v1`;
+      const pixelTag = `<img src="${baseUrl}/pixel/${campaign.id}" width="1" height="1" style="position:absolute;opacity:0">`;
+      const tracked = bannerHtml.replace('</body>', pixelTag + '</body>')
+        .replace('href="#"', `href="${baseUrl}/click/${campaign.id}"`);
+      res.set({ 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=300' });
+      return res.send(tracked);
     }
 
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    // Find best creative for this campaign
+    const creatives = await listCreativeAssets(campaign.brand_id, { campaign_id: campaign.id, limit: 1 });
+    const creative = creatives[0] || null;
 
-    // Build enhanced prompt for strip banner
-    const styleHints = {
-      dark: 'dark moody atmosphere, deep shadows, premium luxury feel',
-      vibrant: 'vibrant vivid colors, energetic, bold contrast',
-      minimal: 'clean minimalist, geometric shapes, soft tones',
-      sport: 'dynamic sports action, motion blur, athletic energy',
-      nature: 'natural outdoor scenery, organic textures, warm light'
-    };
-    const styleText = styleHints[style] || styleHints.dark;
-    const fullPrompt = `Ultra-wide horizontal banner image, purely visual, NO text, NO letters, NO numbers, NO words, NO logos, NO watermarks, NO typography of any kind. ${styleText}. Subject: ${prompt}. Cinematic composition, 3:1 aspect ratio, high quality, photographic.`;
+    // Determine dimensions from query or creative
+    const width = reqW || (creative ? creative.width : 300);
+    const height = reqH || (creative ? creative.height : 250);
 
-    console.log('🎨 AI Strip generation — brand:', brand.name, 'prompt:', prompt, 'style:', style);
+    const baseUrl = `${req.protocol}://${req.get('host')}/api/v1`;
+    const cid = campaign.id;
+    const crId = creative ? creative.id : '';
+    const clickUrl = `${baseUrl}/click/${cid}?cr=${crId}`;
+    const pixelUrl = `${baseUrl}/pixel/${cid}?cr=${crId}`;
+    const imageUrl = creative ? `${baseUrl}/serve/${cid}/image?cr=${crId}` : '';
+    const landingUrl = `${req.protocol}://${req.get('host')}/${brand.slug}?utm_source=${campaign.utm_source || 'walletad'}&utm_medium=${campaign.utm_medium || 'display'}&utm_campaign=${campaign.utm_campaign || campaign.name}`;
 
-    // Use replicate npm package for reliable API calls
-    const Replicate = require('replicate');
-    const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
+    const config = brand.config || {};
+    const bgColor = config.backgroundColor || '#000000';
+    const fgColor = config.foregroundColor || '#ffffff';
+    const brandName = brand.name || '';
 
-    console.log('🎨 Calling Replicate flux-schnell...');
+    // Return format based on query param
+    const format = req.query.format || 'html';
 
-    const output = await replicate.run('black-forest-labs/flux-schnell', {
-      input: {
-        prompt: fullPrompt,
-        num_outputs: 1,
-        aspect_ratio: '21:9',
-        output_format: 'png'
-      }
-    });
-
-    console.log('🎨 Replicate output type:', typeof output, Array.isArray(output) ? 'array len ' + output.length : '');
-
-    // Output is an array of ReadableStream or URLs
-    let imageUrl;
-    let imgBuffer;
-
-    if (Array.isArray(output) && output.length > 0) {
-      const item = output[0];
-      if (typeof item === 'string') {
-        // It's a URL string
-        imageUrl = item;
-        const imgRes = await fetch(imageUrl);
-        imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-      } else if (item instanceof ReadableStream || (item && typeof item.read === 'function')) {
-        // It's a stream — read it
-        const chunks = [];
-        for await (const chunk of item) {
-          chunks.push(chunk);
-        }
-        imgBuffer = Buffer.concat(chunks);
-      } else if (Buffer.isBuffer(item)) {
-        imgBuffer = item;
-      } else {
-        // Try to fetch if it has a url property
-        console.log('🎨 Unknown output format:', typeof item, JSON.stringify(item).substring(0, 200));
-        return res.status(502).json({ error: 'Unexpected AI output format' });
-      }
-    } else if (typeof output === 'string') {
-      imageUrl = output;
-      const imgRes = await fetch(imageUrl);
-      imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-    } else {
-      console.error('🎨 Unexpected output:', typeof output, JSON.stringify(output).substring(0, 500));
-      return res.status(502).json({ error: 'Unexpected AI output' });
-    }
-
-    if (!imgBuffer || imgBuffer.length === 0) {
-      return res.status(502).json({ error: 'Empty image returned from AI' });
-    }
-
-    console.log('✓ AI Strip generated — image size:', imgBuffer.length, 'bytes');
-    const base64 = `data:image/png;base64,${imgBuffer.toString('base64')}`;
-
-    res.json({ success: true, image_url: imageUrl || 'stream', base64, prompt: fullPrompt });
-  } catch (err) {
-    console.error('Error generating AI strip:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * DELETE /api/v1/brands/:id - Delete a brand and all related data
- */
-router.delete('/brands/:id', async (req, res) => {
-  try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    await deleteBrand(req.params.id);
-    res.json({ success: true, message: `Brand "${brand.name}" deleted` });
-  } catch (err) {
-    console.error('Error deleting brand:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================================
-// TEMPLATE MANAGEMENT
-// ============================================================================
-
-/**
- * POST /api/v1/templates - Create a new pass template
- */
-router.post('/templates', async (req, res) => {
-  try {
-    const { brand_id, name, pass_type, style, fields, config } = req.body;
-
-    if (!brand_id || !name) {
-      return res.status(400).json({
-        error: 'Brand ID and name are required'
+    if (format === 'json') {
+      return res.json({
+        campaign_id: cid, brand: brandName, creative_id: crId,
+        click_url: clickUrl, pixel_url: pixelUrl, image_url: imageUrl,
+        landing_url: landingUrl, width, height
       });
     }
 
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
+    // HTML ad tag
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden}
+.wa-ad{position:relative;width:${width}px;height:${height}px;background:${bgColor};cursor:pointer;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+.wa-ad img.wa-creative{width:100%;height:100%;object-fit:cover}
+.wa-ad .wa-overlay{position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.wa-ad .wa-brand{color:${fgColor};font-size:${height > 100 ? 14 : 11}px;font-weight:700}
+.wa-ad .wa-cta{display:inline-block;margin-top:4px;padding:4px 12px;background:${fgColor};color:${bgColor};border-radius:4px;font-size:${height > 100 ? 12 : 10}px;font-weight:600}
+.wa-ad .wa-badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;font-size:8px;padding:2px 5px;border-radius:3px}
+</style></head><body>
+<div class="wa-ad" onclick="window.open('${clickUrl}','_blank')">
+${imageUrl ? `<img class="wa-creative" src="${imageUrl}" alt="${brandName}">` : ''}
+<div class="wa-overlay">
+<div class="wa-brand">${brandName}</div>
+<span class="wa-cta">${creative?.cta_text || 'Aggiungi a Wallet'}</span>
+</div>
+<div class="wa-badge">Ad</div>
+</div>
+<img src="${pixelUrl}" width="1" height="1" style="position:absolute;opacity:0">
+</body></html>`;
+
+    res.set({ 'Content-Type': 'text/html', 'Cache-Control': 'no-cache' });
+    res.send(html);
+  } catch (err) {
+    console.error('Ad serve error:', err);
+    res.status(500).send('Error');
+  }
+});
+
+// Serve creative image for ad tag
+router.get('/serve/:campaign_id/image', async (req, res) => {
+  try {
+    const crId = req.query.cr;
+    let imageData = null;
+    if (crId) {
+      const asset = await getCreativeAsset(crId);
+      if (asset?.image_base64) imageData = asset.image_base64;
+    }
+    if (!imageData) {
+      const campaign = await getCampaign(req.params.campaign_id);
+      if (campaign) {
+        const creatives = await listCreativeAssets(campaign.brand_id, { campaign_id: campaign.id, limit: 1 });
+        if (creatives[0]?.image_base64) imageData = creatives[0].image_base64;
+      }
+    }
+    if (!imageData) return res.status(404).send('No image');
+    const buf = Buffer.from(imageData, 'base64');
+    res.set({ 'Content-Type': 'image/png', 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=3600' });
+    res.send(buf);
+  } catch (err) {
+    console.error('Ad image error:', err);
+    res.status(500).send('Error');
+  }
+});
+
+// Impression tracking pixel
+router.get('/pixel/:campaign_id', async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.campaign_id);
+    if (campaign) {
+      logAdEvent({
+        brand_id: campaign.brand_id,
+        campaign_id: campaign.id,
+        creative_id: req.query.cr || null,
+        event_type: 'impression',
+        ip: req.ip || req.headers['x-forwarded-for'],
+        user_agent: req.headers['user-agent'],
+        referer: req.headers['referer'] || req.headers['referrer']
+      }).catch(err => console.error('Pixel log error:', err));
+    }
+  } catch (e) { /* fire-and-forget */ }
+  res.set({ 'Content-Type': 'image/gif', 'Content-Length': PIXEL_1x1.length, 'Cache-Control': 'no-store, no-cache' });
+  res.send(PIXEL_1x1);
+});
+
+// Click redirect + tracking
+router.get('/click/:campaign_id', async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.campaign_id);
+    if (!campaign) return res.status(404).send('Campaign not found');
+    const brand = await getBrand(campaign.brand_id);
+    if (!brand) return res.status(404).send('Brand not found');
+
+    // Log click
+    logAdEvent({
+      brand_id: campaign.brand_id,
+      campaign_id: campaign.id,
+      creative_id: req.query.cr || null,
+      event_type: 'click',
+      ip: req.ip || req.headers['x-forwarded-for'],
+      user_agent: req.headers['user-agent'],
+      referer: req.headers['referer'] || req.headers['referrer']
+    }).catch(err => console.error('Click log error:', err));
+
+    // Redirect to landing
+    const landingUrl = `${req.protocol}://${req.get('host')}/${brand.slug}?utm_source=${campaign.utm_source || 'walletad'}&utm_medium=${campaign.utm_medium || 'display'}&utm_campaign=${campaign.utm_campaign || campaign.name}`;
+    res.redirect(302, landingUrl);
+  } catch (err) {
+    console.error('Click redirect error:', err);
+    res.status(500).send('Error');
+  }
+});
+
+// ============================================================================
+// AUTH MIDDLEWARE — everything below requires JWT
+// ============================================================================
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Token mancante. Effettua il login.' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token non valido o scaduto' });
+  }
+}
+
+router.use(authMiddleware);
+
+// ─── Auth (authenticated) ──────────────────
+router.get('/auth/me', (req, res) => {
+  res.json({ user: req.user });
+});
+
+router.put('/auth/change-password', async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) return res.status(400).json({ error: 'Entrambe le password richieste' });
+    const user = await getUser(req.user.id);
+    const fullUser = await getUserByEmail(user.email);
+    const valid = await verifyPassword(current_password, fullUser.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Password attuale errata' });
+    await updateUser(req.user.id, { password: new_password });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Users (admin only) ──────────────────
+router.get('/users', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo admin' });
+    const users = await listUsers(req.query.brand_id || null);
+    res.json(users);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/users', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo admin' });
+    const user = await createUser(req.body);
+    res.json(user);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/users/:id', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo admin' });
+    const user = await updateUser(req.params.id, req.body);
+    res.json(user);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo admin' });
+    await deleteUser(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Brands ──────────────────
+
+router.get('/brands', async (req, res) => {
+  try {
+    const brands = await listBrands();
+    // Filter by user's brand if not admin
+    if (req.user.role !== 'admin' && req.user.brand_id) {
+      res.json(brands.filter(b => b.id === req.user.brand_id));
+    } else {
+      res.json(brands);
+    }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands', async (req, res) => {
+  try {
+    const brand = await createBrand(req.body);
+    res.json(brand);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:id', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    res.json(brand);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/brands/:id', async (req, res) => {
+  try {
+    const brand = await updateBrand(req.params.id, req.body);
+    res.json(brand);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/brands/:id', async (req, res) => {
+  try {
+    await deleteBrand(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Brand logo upload ──────────────────
+router.post('/brands/:id/logo', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    let { logo_base64 } = req.body;
+    if (!logo_base64) return res.status(400).json({ error: 'logo_base64 richiesto' });
+
+    // Convert PDF to PNG if needed
+    logo_base64 = await pdfToPngIfNeeded(logo_base64);
+    const imgBuffer = Buffer.from(logo_base64, 'base64');
+    // Generate @1x and @2x logos
+    const logo1x = await sharp(imgBuffer).resize(160, 50, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    const logo2x = await sharp(imgBuffer).resize(320, 100, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    // Generate icons
+    const icon1x = await sharp(imgBuffer).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    const icon2x = await sharp(imgBuffer).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    const icon3x = await sharp(imgBuffer).resize(87, 87, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+
+    const config = brand.config || {};
+    config.logos = config.logos || {};
+    config.logos.logo = logo1x.toString('base64');
+    config.logos['logo@2x'] = logo2x.toString('base64');
+    config.logos.icon = icon1x.toString('base64');
+    config.logos['icon@2x'] = icon2x.toString('base64');
+    config.logos['icon@3x'] = icon3x.toString('base64');
+
+    await updateBrand(req.params.id, { config });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Logo upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/brands/:id/logo', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand?.config?.logos?.logo) return res.status(404).json({ error: 'Nessun logo' });
+    const buf = Buffer.from(brand.config.logos.logo, 'base64');
+    res.set('Content-Type', 'image/png');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Brand landing background upload ──────────────────
+router.post('/brands/:id/landing-bg', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    let { image_base64 } = req.body;
+    if (!image_base64) return res.status(400).json({ error: 'image_base64 richiesto' });
+    // Convert PDF to PNG if needed
+    image_base64 = await pdfToPngIfNeeded(image_base64);
+    const imgBuffer = Buffer.from(image_base64, 'base64');
+    // Resize to max 1200px wide, optimize as JPEG for faster loading
+    const optimized = await sharp(imgBuffer)
+      .resize(1200, 2400, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    const config = brand.config || {};
+    config.landingBg = optimized.toString('base64');
+    await updateBrand(req.params.id, { config });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Brand strip upload ──────────────────
+router.post('/brands/:id/strip', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    let { strip_base64 } = req.body;
+    if (!strip_base64) return res.status(400).json({ error: 'strip_base64 richiesto' });
+
+    // Convert PDF to PNG if needed
+    strip_base64 = await pdfToPngIfNeeded(strip_base64);
+
+    const config = brand.config || {};
+    config.logos = config.logos || {};
+    config.logos.strip = strip_base64;
+
+    await updateBrand(req.params.id, { config });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/brands/:id/strip', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const config = brand.config || {};
+    if (config.logos) delete config.logos.strip;
+    await updateBrand(req.params.id, { config });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── AI strip generation ──────────────────
+router.post('/brands/:id/ai-strip', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt richiesto' });
+
+    const { generateWithFal } = require('../engine/creative-ai');
+    const stylePrompt = (brand.config && brand.config.aiStylePrompt) || null;
+
+    // Strip dimensions: 1125x432 (Apple Wallet @3x)
+    const imageUrl = await generateWithFal(
+      `${prompt}, promotional banner, wide aspect ratio, no text, no watermark`,
+      1125, 432, 'fal-ai/flux/dev', null, stylePrompt
+    );
+
+    // Download and convert to base64
+    const imgResponse = await fetch(imageUrl);
+    const arrayBuf = await imgResponse.arrayBuffer();
+    const base64 = Buffer.from(arrayBuf).toString('base64');
+
+    const config = brand.config || {};
+    config.logos = config.logos || {};
+    config.logos.strip = base64;
+    await updateBrand(req.params.id, { config });
+
+    res.json({ success: true, strip_base64: base64 });
+  } catch (err) {
+    console.error('AI strip error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── AI landing page copy ──────────────────
+router.post('/brands/:id/ai-copy', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const description = req.body.description || '';
+    const options = await generateLandingCopy(brand.name, description);
+    res.json({ options });
+  } catch (err) {
+    console.error('AI copy error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── AI Creative Generator (copy + image in one shot) ──────────────────
+router.post('/brands/:id/ai-creative', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const { prompt, type, generate_image } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'prompt richiesto' });
+
+    console.log(`[AI Creative] Generating ${type || 'banner'} concept for "${brand.name}": ${prompt}`);
+
+    // Step 1: Generate copy + colors + image prompt via Claude
+    const concept = await generateCreativeCopy(brand.name, prompt, type || 'banner');
+
+    // Step 2: Optionally generate background image via fal.ai
+    let image_url = null;
+    if (generate_image !== false && concept.image_prompt) {
+      try {
+        const { generateWithFal } = require('../engine/creative-ai');
+        const stylePrompt = (brand.config && brand.config.aiStylePrompt) || null;
+        const fullPrompt = stylePrompt
+          ? `${concept.image_prompt}. Style: ${stylePrompt}`
+          : concept.image_prompt;
+        const falUrl = await generateWithFal(fullPrompt, 1080, 1080, 'fal-ai/flux/dev', null, null);
+        // Save as media
+        const imgRes = await fetch(falUrl);
+        const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+        const media = await createMedia({
+          brand_id: brand.id,
+          type: 'ai_generated',
+          title: prompt.substring(0, 60),
+          image_base64: imgBuf.toString('base64'),
+          width: 1080, height: 1080
+        });
+        image_url = `/api/v1/media/${media.id}/image`;
+        console.log(`[AI Creative] Image generated and saved as media ${media.id}`);
+      } catch (imgErr) {
+        console.error('[AI Creative] Image generation failed:', imgErr.message);
+        // Continue without image — copy is still useful
+      }
     }
 
-    const template = await createTemplate({
-      brand_id,
-      name,
-      pass_type: pass_type || 'generic',
-      style: style || {},
-      fields: fields || [],
-      config: config || {}
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: 'template_created',
-      metadata: { template_id: template.id, name }
-    });
-
-    res.status(201).json(template);
-  } catch (error) {
-    console.error('Error creating template:', error);
-    res.status(400).json({ error: error.message });
+    res.json({ ...concept, image_url });
+  } catch (err) {
+    console.error('AI creative error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * GET /api/v1/templates - List templates (optional ?brand_id=)
- */
+// ─── Templates ──────────────────
+
 router.get('/templates', async (req, res) => {
   try {
-    const templates = await listTemplates(req.query.brand_id);
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const templates = await listTemplates(brand_id);
     res.json(templates);
-  } catch (error) {
-    console.error('Error listing templates:', error);
-    res.status(500).json({ error: error.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * GET /api/v1/templates/:id - Get template details
- */
+router.post('/templates', async (req, res) => {
+  try {
+    const template = await createTemplate(req.body);
+    res.json(template);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/templates/:id', async (req, res) => {
   try {
     const template = await getTemplate(req.params.id);
-
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
-
+    if (!template) return res.status(404).json({ error: 'Template non trovato' });
     res.json(template);
-  } catch (error) {
-    console.error('Error getting template:', error);
-    res.status(500).json({ error: error.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * PUT /api/v1/templates/:id - Update a template
- */
 router.put('/templates/:id', async (req, res) => {
   try {
-    const updated = await updateTemplate(req.params.id, req.body);
-    if (!updated) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
-    res.json(updated);
-  } catch (err) {
-    console.error('Error updating template:', err);
-    res.status(500).json({ error: err.message });
-  }
+    const template = await updateTemplate(req.params.id, req.body);
+    res.json(template);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * DELETE /api/v1/templates/:id - Delete a template and related passes
- */
-router.delete('/templates/:id', async (req, res) => {
+// ─── Template image upload (base64 in style JSONB) ──────────
+router.post('/templates/:id/images', async (req, res) => {
   try {
     const template = await getTemplate(req.params.id);
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
+    if (!template) return res.status(404).json({ error: 'Template non trovato' });
+    const { image_type, image_base64 } = req.body;
+    // image_type: 'logo', 'strip', 'thumbnail', 'background'
+    if (!['logo', 'strip', 'thumbnail', 'background'].includes(image_type)) {
+      return res.status(400).json({ error: 'image_type deve essere: logo, strip, thumbnail, background' });
     }
+    if (!image_base64) return res.status(400).json({ error: 'image_base64 richiesto' });
+    const style = template.style || {};
+    style.images = style.images || {};
+    style.images[image_type] = image_base64;
+    await updateTemplate(req.params.id, { style });
+    res.json({ success: true, image_type });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
+router.delete('/templates/:id/images/:imageType', async (req, res) => {
+  try {
+    const template = await getTemplate(req.params.id);
+    if (!template) return res.status(404).json({ error: 'Template non trovato' });
+    const style = template.style || {};
+    if (style.images) {
+      delete style.images[req.params.imageType];
+      await updateTemplate(req.params.id, { style });
+    }
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/templates/:id', async (req, res) => {
+  try {
     await deleteTemplate(req.params.id);
-    res.json({ success: true, message: `Template "${template.name}" deleted` });
-  } catch (err) {
-    console.error('Error deleting template:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================================================
-// PASS GENERATION & MANAGEMENT
-// ============================================================================
-
-/**
- * POST /api/v1/passes - Generate a pass instance
- */
-router.post('/passes', async (req, res) => {
-  try {
-    const { template_id, customer_data, field_values, member_id } = req.body;
-
-    if (!template_id) {
-      return res.status(400).json({
-        error: 'Template ID is required'
-      });
-    }
-
-    // Enforce one pass per member
-    if (member_id) {
-      const check = await pool.query('SELECT id FROM pass_instances WHERE member_id = $1 AND status = $2', [member_id, 'active']);
-      if (check.rows.length > 0) {
-        return res.status(400).json({ error: 'Questo membro ha già un pass attivo' });
-      }
-    }
-
-    const template = await getTemplate(template_id);
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
-
-    const brand = await getBrand(template.brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    // Create pass instance
-    const passInstance = await createPassInstance({
-      template_id,
-      brand_id: brand.id,
-      customer_data: customer_data || {},
-      field_values: field_values || {},
-      member_id: member_id || null
-    });
-
-    // Generate .pkpass file
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
-      baseUrl
-    });
-
-    // Cache the pkpass file
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${passInstance.id}.pkpass`);
-    fs.writeFileSync(pkpassPath, pkpassBuffer);
-
-    await logEvent({
-      pass_id: passInstance.id,
-      brand_id: brand.id,
-      event_type: 'pass_created',
-      metadata: { template_id, customer_email: customer_data?.email, source: 'dashboard' }
-    });
-
-    // If pass has welcome points (punti = '10' or similar) and is linked to a member, log the points
-    const puntiValue = parseInt(field_values?.punti || '0');
-    if (member_id && puntiValue > 0) {
-      try {
-        await logPoints({
-          brand_id: brand.id,
-          member_id: member_id,
-          pass_id: passInstance.id,
-          points: puntiValue,
-          reason: 'signup',
-          details: 'Punti di benvenuto'
-        });
-        console.log(`[CreatePass] Logged ${puntiValue} welcome points for member ${member_id}`);
-      } catch(e) { console.error('[CreatePass] Error logging points:', e.message); }
-
-      // Send welcome email if member has email
-      if (member_id) {
-        try {
-          const memberData = await getMember(member_id);
-          if (memberData && memberData.email) {
-            const fullName = [memberData.first_name, memberData.last_name].filter(Boolean).join(' ') || 'Membro';
-            const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-            sendWelcomeEmail({
-              to: memberData.email,
-              name: fullName,
-              brandName: brand.name,
-              brandColor: brand.config?.backgroundColor || '#000000',
-              points: puntiValue,
-              downloadUrl
-            }).catch(err => console.error('[CreatePass] Welcome email error:', err.message));
-          }
-        } catch(e) { console.error('[CreatePass] Member lookup error:', e.message); }
-      }
-    }
-
-    const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-    const brandSlug = brand.slug || '';
-    const landingUrl = `https://${CUSTOM_DOMAIN}/${brandSlug}`;
-
-    res.status(201).json({
-      id: passInstance.id,
-      serial_number: passInstance.serial_number,
-      template_id: passInstance.template_id,
-      brand_id: passInstance.brand_id,
-      status: passInstance.status,
-      download_url: downloadUrl,
-      landing_url: landingUrl,
-      created_at: passInstance.created_at
-    });
-  } catch (error) {
-    console.error('Error creating pass:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/passes/:id - Get pass details
- */
-router.get('/passes/:id', async (req, res) => {
-  try {
-    const passInstance = await getPassInstance(req.params.id);
-
-    if (!passInstance) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-    const brand = await getBrand(passInstance.brand_id);
-    const landingUrl = `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`;
-
-    res.json({
-      ...passInstance,
-      download_url: downloadUrl,
-      landing_url: landingUrl
-    });
-  } catch (error) {
-    console.error('Error getting pass:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/passes/:id/download - Download .pkpass file
- */
-router.get('/passes/:id/download', async (req, res) => {
-  try {
-    const passInstance = await getPassInstance(req.params.id);
-
-    if (!passInstance) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
-
-    // Check if cached file exists
-    if (fs.existsSync(pkpassPath)) {
-      await logEvent({
-        pass_id: req.params.id,
-        brand_id: passInstance.brand_id,
-        event_type: 'pass_downloaded',
-        metadata: {}
-      });
-
-      res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
-      return res.sendFile(pkpassPath);
-    }
-
-    // Otherwise generate it
-    const template = await getTemplate(passInstance.template_id);
-    const brand = await getBrand(passInstance.brand_id);
-
-    if (!template || !brand) {
-      return res.status(404).json({ error: 'Template or brand not found' });
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
-      baseUrl
-    });
-
-    fs.writeFileSync(pkpassPath, pkpassBuffer);
-
-    await logEvent({
-      pass_id: req.params.id,
-      brand_id: passInstance.brand_id,
-      event_type: 'pass_downloaded',
-      metadata: {}
-    });
-
-    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${passInstance.serial_number}.pkpass"`);
-    res.send(pkpassBuffer);
-  } catch (error) {
-    console.error('Error downloading pass:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/passes/:id - Update pass fields (triggers re-generation)
- */
-router.put('/passes/:id', async (req, res) => {
-  try {
-    const { field_values, customer_data, status } = req.body;
-
-    const passInstance = await getPassInstance(req.params.id);
-    if (!passInstance) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const updated = await updatePassInstance(req.params.id, {
-      field_values: field_values || passInstance.field_values,
-      customer_data: customer_data || passInstance.customer_data,
-      status: status || passInstance.status
-    });
-
-    // Log points change if punti field was updated
-    if (field_values && field_values.punti !== undefined) {
-      const oldPunti = parseInt(passInstance.field_values?.punti) || 0;
-      const newPunti = parseInt(field_values.punti) || 0;
-      const diff = newPunti - oldPunti;
-      if (diff !== 0) {
-        try {
-          await logPoints({
-            brand_id: passInstance.brand_id,
-            member_id: passInstance.member_id || null,
-            pass_id: req.params.id,
-            points: diff,
-            reason: 'manual',
-            details: 'Punti aggiornati manualmente'
-          });
-        } catch(e) { console.log('[PointsLog] Error logging manual points:', e.message); }
-      }
-    }
-
-    // Clear cache to force regeneration
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
-    if (fs.existsSync(pkpassPath)) {
-      fs.unlinkSync(pkpassPath);
-    }
-
-    await logEvent({
-      pass_id: req.params.id,
-      brand_id: passInstance.brand_id,
-      event_type: 'pass_updated',
-      metadata: {}
-    });
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    const brand = await getBrand(updated.brand_id);
-    res.json({
-      ...updated,
-      download_url: `${baseUrl}/api/v1/passes/${req.params.id}/download`,
-      landing_url: `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`
-    });
-  } catch (error) {
-    console.error('Error updating pass:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/passes/:id - Delete a pass instance
- */
-router.delete('/passes/:id', async (req, res) => {
-  try {
-    const pass = await getPassInstance(req.params.id);
-    if (!pass) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    // Remove cached pkpass file
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
-    if (fs.existsSync(pkpassPath)) {
-      fs.unlinkSync(pkpassPath);
-    }
-
-    await deletePass(req.params.id);
-    res.json({ success: true, message: 'Pass deleted' });
-  } catch (err) {
-    console.error('Error deleting pass:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * POST /api/v1/passes/:id/regenerate - Clear cache and regenerate .pkpass
- */
-router.post('/passes/:id/regenerate', async (req, res) => {
-  try {
-    const pass = await getPassInstance(req.params.id);
-    if (!pass) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    // Delete cached .pkpass
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
-    if (fs.existsSync(pkpassPath)) {
-      fs.unlinkSync(pkpassPath);
-      console.log(`🗑️ Deleted cached pkpass: ${req.params.id}`);
-    }
-
-    // Regenerate
-    const template = await getTemplate(pass.template_id);
-    const brand = await getBrand(pass.brand_id);
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const pkpassBuffer = await createPkpass(template, pass, brand, { baseUrl });
-    fs.writeFileSync(pkpassPath, pkpassBuffer);
-    console.log(`✓ Regenerated pkpass: ${req.params.id}`);
-
-    await logEvent({
-      pass_id: pass.id,
-      brand_id: brand.id,
-      event_type: 'pass_regenerated',
-      metadata: {}
-    });
-
-    res.json({
-      success: true,
-      message: 'Pass regenerated',
-      download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`
-    });
-  } catch (err) {
-    console.error('Error regenerating pass:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * GET /api/v1/passes/:id/debug-json - Return the pass.json from cached pkpass (debug)
- */
-router.get('/passes/:id/debug-json', async (req, res) => {
-  try {
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${req.params.id}.pkpass`);
-    if (!fs.existsSync(pkpassPath)) {
-      return res.status(404).json({ error: 'No cached pkpass found. Regenerate first.' });
-    }
-    const AdmZip = require('adm-zip');
-    const zip = new AdmZip(pkpassPath);
-    const passEntry = zip.getEntry('pass.json');
-    if (!passEntry) return res.status(500).json({ error: 'pass.json not found in pkpass' });
-    const passJson = JSON.parse(passEntry.getData().toString('utf8'));
-    res.json(passJson);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * GET /api/v1/passes - List passes (optional ?brand_id=&status=)
- */
-router.get('/passes', async (req, res) => {
-  try {
-    const passes = await listPasses(req.query.brand_id, req.query.status);
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    // Get brand slugs for landing URLs
-    const brandCache = {};
-    const passesWithUrls = await Promise.all(passes.map(async pass => {
-      if (!brandCache[pass.brand_id]) {
-        brandCache[pass.brand_id] = await getBrand(pass.brand_id);
-      }
-      const brand = brandCache[pass.brand_id];
-      return {
-        ...pass,
-        download_url: `${baseUrl}/api/v1/passes/${pass.id}/download`,
-        landing_url: `https://${CUSTOM_DOMAIN}/${brand?.slug || ''}`
-      };
-    }));
-
-    res.json(passesWithUrls);
-  } catch (error) {
-    console.error('Error listing passes:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// APPLE WALLET WEB SERVICE PROTOCOL
-// ============================================================================
-
-/**
- * POST /api/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
- * Register device for push notifications
- */
-router.post('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber', async (req, res) => {
-  try {
-    const { deviceLibraryId, serialNumber } = req.params;
-    const { pushToken } = req.body;
-
-    if (!pushToken) {
-      return res.status(400).json({ error: 'Push token is required' });
-    }
-
-    await registerDevice({
-      device_library_id: deviceLibraryId,
-      push_token: pushToken,
-      serial_number: serialNumber
-    });
-
-    // Log pass installation analytics event
-    await logAnalyticsEvent({
-      event_type: 'pass_installed',
-      metadata: { serial_number: serialNumber, device_library_id: deviceLibraryId }
-    });
-
-    await logEvent({
-      event_type: 'device_registered',
-      device_id: deviceLibraryId,
-      brand_id: 'system',
-      metadata: { serial_number: serialNumber }
-    });
-
-    res.status(201).json({ success: true });
-  } catch (error) {
-    console.error('Error registering device:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
- * Unregister device
- */
-router.delete('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber', async (req, res) => {
-  try {
-    const { deviceLibraryId, serialNumber } = req.params;
-
-    await unregisterDevice(deviceLibraryId, serialNumber);
-
-    await logEvent({
-      event_type: 'device_unregistered',
-      device_id: deviceLibraryId,
-      brand_id: 'system',
-      metadata: { serial_number: serialNumber }
-    });
-
     res.json({ success: true });
-  } catch (error) {
-    console.error('Error unregistering device:', error);
-    res.status(500).json({ error: error.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * GET /api/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier
- * Get serial numbers for device (Apple Wallet update check)
- *
- * Apple sends ?passesUpdatedSince=<tag> to check which passes changed.
- * We filter by last_updated and return a lastUpdated tag for the next check.
- * If there are no updates, return 204 (Apple spec).
- */
-router.get('/devices/:deviceLibraryId/registrations/:passTypeId', async (req, res) => {
-  try {
-    const { deviceLibraryId } = req.params;
-    const passesUpdatedSince = req.query.passesUpdatedSince;
+// ─── Campaigns ──────────────────
 
-    // Get all serial numbers registered for this device
-    const allSerials = await getSerialsForDevice(deviceLibraryId);
-
-    if (allSerials.length === 0) {
-      return res.status(204).send();
-    }
-
-    // Filter by last_updated if tag is provided
-    let filteredSerials = allSerials;
-    if (passesUpdatedSince) {
-      const sinceDate = new Date(passesUpdatedSince);
-      const updatedSerials = [];
-      for (const serial of allSerials) {
-        const pass = await getPassBySerial(serial);
-        if (pass && new Date(pass.last_updated) > sinceDate) {
-          updatedSerials.push(serial);
-        }
-      }
-      filteredSerials = updatedSerials;
-    }
-
-    if (filteredSerials.length === 0) {
-      return res.status(204).send(); // No updates — Apple spec
-    }
-
-    // Return serial numbers + lastUpdated tag (ISO string)
-    res.json({
-      serialNumbers: filteredSerials,
-      lastUpdated: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error getting device registrations:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/passes/:passTypeIdentifier/:serialNumber
- * Get latest pass (returns .pkpass for Apple's update check)
- */
-router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
-  try {
-    const { serialNumber } = req.params;
-
-    const passInstance = await getPassBySerial(serialNumber);
-
-    if (!passInstance) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const template = await getTemplate(passInstance.template_id);
-    const brand = await getBrand(passInstance.brand_id);
-
-    if (!template || !brand) {
-      return res.status(404).json({ error: 'Template or brand not found' });
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${passInstance.id}.pkpass`);
-
-    // Check if cached file exists
-    if (fs.existsSync(pkpassPath)) {
-      const stat = fs.statSync(pkpassPath);
-      res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-      res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
-      res.setHeader('Last-Modified', stat.mtime.toUTCString());
-      return res.sendFile(pkpassPath);
-    }
-
-    // Generate it
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, { baseUrl });
-    fs.writeFileSync(pkpassPath, pkpassBuffer);
-
-    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
-    res.send(pkpassBuffer);
-  } catch (error) {
-    console.error('Error getting pass:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// ANALYTICS
-// ============================================================================
-
-/**
- * GET /api/v1/analytics/:brand_id - Get analytics summary
- */
-router.get('/analytics/:brand_id', async (req, res) => {
-  try {
-    const { brand_id } = req.params;
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    const analytics = await getAnalytics(brand_id);
-
-    res.json({
-      brand_id,
-      ...analytics
-    });
-  } catch (error) {
-    console.error('Error getting analytics:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/events/:brand_id - Get recent events (optional ?limit=50)
- */
-router.get('/events/:brand_id', async (req, res) => {
-  try {
-    const events = await listEvents(req.params.brand_id, req.query.limit || 50);
-    res.json(events);
-  } catch (error) {
-    console.error('Error getting events:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// LANDING PAGE DATA
-// ============================================================================
-
-/**
- * GET /api/v1/landing/:pass_id - Get data for landing page
- */
-router.get('/landing/:pass_id', async (req, res) => {
-  try {
-    const passInstance = await getPassInstance(req.params.pass_id);
-
-    if (!passInstance) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const template = await getTemplate(passInstance.template_id);
-    const brand = await getBrand(passInstance.brand_id);
-
-    if (!template || !brand) {
-      return res.status(404).json({ error: 'Template or brand not found' });
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    await logEvent({
-      pass_id: req.params.pass_id,
-      brand_id: passInstance.brand_id,
-      event_type: 'landing_page_viewed',
-      metadata: {}
-    });
-
-    res.json({
-      pass: {
-        id: passInstance.id,
-        serial_number: passInstance.serial_number,
-        status: passInstance.status,
-        field_values: passInstance.field_values,
-        customer_data: passInstance.customer_data
-      },
-      template: {
-        id: template.id,
-        name: template.name,
-        pass_type: template.pass_type,
-        style: template.style,
-        fields: template.fields
-      },
-      brand: {
-        id: brand.id,
-        name: brand.name,
-        slug: brand.slug,
-        config: brand.config
-      },
-      download_url: `${baseUrl}/api/v1/passes/${passInstance.id}/download`,
-      qr_code_url: `${baseUrl}/api/qr/${passInstance.id}`
-    });
-  } catch (error) {
-    console.error('Error getting landing page data:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/landing/brand/:slug - Get brand landing data by slug
- * Used when accessing nudj.studio/:slug
- */
-router.get('/landing/brand/:slug', async (req, res) => {
-  try {
-    const { getBrandBySlug, listPasses, getTemplate } = require('../db');
-    const brand = await getBrandBySlug(req.params.slug);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-
-    // Get first template for this brand
-    const passes = await listPasses(brand.id);
-    let template = null;
-    if (passes.length > 0) {
-      template = await getTemplate(passes[0].template_id);
-    }
-
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-    res.json({
-      brand: { id: brand.id, name: brand.name, slug: brand.slug, config: brand.config },
-      template: template ? { id: template.id, name: template.name, pass_type: template.pass_type, style: template.style } : null,
-      signup_url: `${baseUrl}/api/v1/passes/signup`,
-      passes_count: passes.length
-    });
-  } catch (error) {
-    console.error('Error getting brand landing:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/passes/signup - Public self-signup from brand landing page
- * Creates a member + pass in one step. Expects: brand_id, name, email, phone (optional)
- */
-router.post('/passes/signup', async (req, res) => {
-  try {
-    const { brand_id, name, email, phone, playtomic_email, referral_code } = req.body;
-    if (!brand_id || !name || !email) {
-      return res.status(400).json({ error: 'brand_id, name e email sono obbligatori' });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
-
-    // Get the first template for this brand
-    const templates = await listTemplates(brand_id);
-    if (!templates || templates.length === 0) {
-      return res.status(400).json({ error: 'Nessun template configurato per questo brand' });
-    }
-    const template = templates[0];
-
-    // Split name into first/last
-    const nameParts = name.trim().split(/\s+/);
-    const first_name = nameParts[0];
-    const last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
-
-    // Check if member with same email already exists for this brand
-    const existingCheck = await pool.query(
-      'SELECT id FROM members WHERE brand_id = $1 AND email = $2', [brand_id, email]
-    );
-
-    let member;
-    let referrer_id = null;
-
-    // Handle referral code if provided
-    if (referral_code) {
-      const referrer = await getMemberByReferralCode(referral_code);
-      if (referrer) {
-        referrer_id = referrer.id;
-      }
-    }
-
-    if (existingCheck.rows.length > 0) {
-      // Member exists — check if they already have an active pass
-      const memberId = existingCheck.rows[0].id;
-      const passCheck = await pool.query(
-        'SELECT id FROM pass_instances WHERE member_id = $1 AND status = $2', [memberId, 'active']
-      );
-      if (passCheck.rows.length > 0) {
-        // Already has a pass — return download URL
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        return res.json({
-          message: 'Hai già un pass attivo!',
-          download_url: `${baseUrl}/api/v1/passes/${passCheck.rows[0].id}/download`
-        });
-      }
-      member = { id: memberId, first_name, last_name, email, phone };
-      // Update playtomic_email if provided during signup
-      if (playtomic_email) {
-        await updateMember(memberId, { playtomic_email });
-      }
-    } else {
-      // Create new member
-      member = await createMember({ brand_id, first_name, last_name, email, phone, playtomic_email: playtomic_email || null, referred_by: referrer_id });
-
-      // Increment referrer's referral count and evaluate referral missions
-      if (referrer_id) {
-        await incrementReferralCount(referrer_id);
-        await logAnalyticsEvent({
-          event_type: 'member_referred',
-          brand_id: brand_id,
-          metadata: { referred_member_id: member.id, referrer_id: referrer_id, referral_code: referral_code }
-        });
-        // Trigger referral challenge evaluation for the referrer
-        try {
-          const { evaluateChallenges } = require('../engine/challenges');
-          await evaluateChallenges(brand_id);
-        } catch(e) { console.error('Referral challenge eval error:', e.message); }
-      }
-    }
-
-    // Get first tier for this brand (lowest sort_order / min_points)
-    const tiers = await listTiers(brand_id);
-    const firstTier = tiers.length > 0 ? tiers[0].name : '';
-
-    // Create pass instance with name + tier populated
-    const fullName = [first_name, last_name].filter(Boolean).join(' ');
-    const passInstance = await createPassInstance({
-      template_id: template.id,
-      brand_id: brand.id,
-      customer_data: { email, phone, name: fullName },
-      field_values: { nome: fullName, name: fullName, livello: firstTier, punti: '10' },
-      member_id: member.id
-    });
-
-    // Generate .pkpass file
-    const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, { baseUrl });
-
-    // Cache the pkpass file
-    const cacheDir = ensureCacheDir();
-    const pkpassPath = path.join(cacheDir, `${passInstance.id}.pkpass`);
-    fs.writeFileSync(pkpassPath, pkpassBuffer);
-
-    await logEvent({
-      pass_id: passInstance.id,
-      brand_id: brand.id,
-      event_type: 'pass_created',
-      metadata: { source: 'landing_signup', email, welcome_points: 10 }
-    });
-
-    // Log welcome points for recap emails
-    try {
-      await logPoints({
-        brand_id: brand.id,
-        member_id: member.id,
-        pass_id: passInstance.id,
-        points: 10,
-        reason: 'signup',
-        details: 'Punti di benvenuto'
-      });
-    } catch(e) { console.log('[PointsLog] Error logging welcome points:', e.message); }
-
-    const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-    const landingUrl = `https://${CUSTOM_DOMAIN}/${brand.slug || ''}`;
-
-    // Send welcome email (async, don't block response)
-    sendWelcomeEmail({
-      to: email,
-      name: fullName,
-      brandName: brand.name,
-      brandColor: brand.config?.backgroundColor || '#000000',
-      points: 10,
-      downloadUrl
-    }).catch(err => console.error('Welcome email error:', err));
-
-    res.status(201).json({
-      message: 'Pass creato con successo!',
-      pass: { id: passInstance.id, serial_number: passInstance.serial_number },
-      download_url: downloadUrl
-    });
-  } catch (error) {
-    console.error('Error in signup:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// REWARDS
-// ============================================================================
-
-/**
- * GET /api/v1/challenges/seed - Seed challenges for Hirostar
- */
-router.get('/challenges/seed', async (req, res) => {
-  try {
-    // Find Hirostar brand
-    const hirostar = await pool.query(`SELECT id, name FROM brands WHERE LOWER(name) LIKE '%hirostar%' OR LOWER(name) LIKE '%hangar%' LIMIT 1`);
-    if (!hirostar.rows.length) return res.status(404).json({ error: 'Hirostar brand not found' });
-    const bid = hirostar.rows[0].id;
-
-    // Check existing
-    const existing = await listChallenges(bid);
-    if (existing.length > 0) {
-      return res.json({ message: `Already have ${existing.length} challenges`, challenges: existing });
-    }
-
-    const challenges = [
-      // ── MISSIONI PLAYTOMIC (automatiche) ──
-      // Frequenza di gioco
-      { title: 'Warm Up', description: 'Gioca la tua prima partita dopo l\'iscrizione al club.', points: 30, icon: '🎾', type: 'action', recurring: false, trigger_type: 'booking_count', trigger_config: { count: 1, period: 'lifetime' } },
-      { title: 'Settimana Calda', description: 'Gioca 3 partite in una settimana. Il ritmo fa la differenza!', points: 50, icon: '🔥', type: 'action', recurring: true, trigger_type: 'booking_count', trigger_config: { count: 3, period: 'week' } },
-      { title: 'Maratoneta del Mese', description: 'Gioca 10 partite in un mese. Sei un vero habitué!', points: 200, icon: '💪', type: 'action', recurring: true, trigger_type: 'booking_count', trigger_config: { count: 10, period: 'month' } },
-      { title: 'Streak Machine', description: 'Gioca almeno una partita a settimana per 4 settimane consecutive.', points: 300, icon: '⚡', type: 'action', recurring: true, trigger_type: 'booking_streak', trigger_config: { weeks: 4 } },
-
-      // Social / Partners
-      { title: 'Doppio Misto', description: 'Gioca con 5 partner diversi nello stesso mese. Socialità in campo!', points: 150, icon: '👥', type: 'action', recurring: true, trigger_type: 'booking_partners', trigger_config: { count: 5, period: 'month' } },
-
-      // Fasce orarie
-      { title: 'Early Bird', description: 'Gioca 3 volte in fascia mattutina (8:00-12:00). Il padel del mattino ha l\'oro in bocca.', points: 80, icon: '🌅', type: 'action', recurring: true, trigger_type: 'booking_time', trigger_config: { count: 3, period: 'month', time_start: '08:00', time_end: '12:00' } },
-      { title: 'Midweek Warrior', description: 'Prenota e gioca un campo dal lunedì al giovedì. I veri giocatori non aspettano il weekend.', points: 40, icon: '📅', type: 'action', recurring: true, trigger_type: 'booking_day', trigger_config: { count: 1, period: 'week', days: [1, 2, 3, 4] } },
-
-      // Stagionali
-      { title: 'Estate in Campo', description: 'Gioca 20 partite tra giugno e agosto. Il caldo non ti ferma!', points: 300, icon: '☀️', type: 'action', recurring: false, trigger_type: 'booking_count', trigger_config: { count: 20, period: 'custom', start_month: 6, end_month: 8 } },
-
-      // ── MISSIONI AD HOC (manuali) ──
-      // Referral
-      { title: 'Porta un Amico', description: 'Invita un amico che si iscrive al programma fedeltà. Tu guadagni punti, lui il benvenuto!', points: 100, icon: '🤝', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Capitano', description: 'Organizza una partita completa da 4 persone prenotando tu il campo.', points: 80, icon: '🫡', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-
-      // Eventi e tornei
-      { title: 'Torneo Debuttante', description: 'Partecipa al tuo primo torneo sociale del club.', points: 150, icon: '🏆', type: 'action', recurring: false, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Gladiatore', description: 'Partecipa a 3 tornei in un trimestre. Sei un combattente!', points: 400, icon: '⚔️', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Campione Sociale', description: 'Vinci un torneo sociale mensile. Gloria eterna!', points: 300, icon: '👑', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-
-      // Cross-selling
-      { title: 'After Match', description: 'Ordina al bar dopo la partita 5 volte nel mese. Il terzo tempo è sacro!', points: 100, icon: '🍻', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Upgrade Kit', description: 'Effettua un acquisto nel pro shop del club.', points: 80, icon: '🛒', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-
-      // Stagionali manuali
-      { title: 'Sfida del 1° Maggio', description: 'Gioca una partita il giorno della festa. Chi gioca non fa ponte!', points: 100, icon: '🎉', type: 'action', recurring: false, trigger_type: 'manual', trigger_config: {} },
-
-      // Milestone
-      { title: 'Quota 500', description: 'Raggiungi 500 punti totali. Stai scalando!', points: 50, icon: '📈', type: 'action', recurring: false, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Level Up', description: 'Passa al livello successivo del programma. Ogni livello è una conquista.', points: 100, icon: '🆙', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-
-      // Community
-      { title: 'Recensione Google', description: 'Lascia una recensione su Google Maps per il club. Aiutaci a crescere!', points: 50, icon: '⭐', type: 'action', recurring: false, trigger_type: 'manual', trigger_config: {} },
-      { title: 'Social Padel', description: 'Condividi un post o una story taggando @HangarPadel. Fai vedere che ci sei!', points: 40, icon: '📱', type: 'action', recurring: true, trigger_type: 'manual', trigger_config: {} },
-    ];
-
-    const created = [];
-    for (const c of challenges) {
-      const challenge = await createChallenge({ brand_id: bid, ...c });
-      created.push(challenge);
-    }
-
-    res.json({ message: `Created ${created.length} challenges`, count: created.length });
-  } catch (error) {
-    console.error('Error seeding challenges:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/challenges/migrate-triggers - Update existing challenges with trigger_type/config
- */
-router.get('/challenges/migrate-triggers', async (req, res) => {
-  try {
-    const TRIGGER_MAP = {
-      'Warm Up':            { trigger_type: 'booking_count', trigger_config: { count: 1, period: 'lifetime' } },
-      'Settimana Calda':    { trigger_type: 'booking_count', trigger_config: { count: 3, period: 'week' } },
-      'Maratoneta del Mese':{ trigger_type: 'booking_count', trigger_config: { count: 10, period: 'month' } },
-      'Streak Machine':     { trigger_type: 'booking_streak', trigger_config: { weeks: 4 } },
-      'Doppio Misto':       { trigger_type: 'booking_partners', trigger_config: { count: 5, period: 'month' } },
-      'Early Bird':         { trigger_type: 'booking_time', trigger_config: { count: 3, period: 'month', time_start: '08:00', time_end: '12:00' } },
-      'Midweek Warrior':    { trigger_type: 'booking_day', trigger_config: { count: 1, period: 'week', days: [1, 2, 3, 4] } },
-      'Estate in Campo':    { trigger_type: 'booking_count', trigger_config: { count: 20, period: 'custom', start_month: 6, end_month: 8 } },
-    };
-
-    let updated = 0;
-    const results = [];
-
-    // Get all challenges across all brands
-    const allBrands = await pool.query('SELECT id, name FROM brands');
-    for (const brand of allBrands.rows) {
-      const challenges = await listChallenges(brand.id);
-      for (const c of challenges) {
-        const mapping = TRIGGER_MAP[c.title];
-        if (mapping) {
-          await updateChallenge(c.id, mapping);
-          updated++;
-          results.push({ brand: brand.name, title: c.title, trigger_type: mapping.trigger_type });
-        }
-      }
-    }
-
-    res.json({ message: `Updated ${updated} challenges with triggers`, updated, results });
-  } catch (error) {
-    console.error('Error migrating triggers:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/rewards/check - Check rewards in DB
- */
-router.get('/rewards/check', async (req, res) => {
-  try {
-    const all = await pool.query('SELECT id, brand_id, title, cost FROM rewards ORDER BY cost');
-    const brands = await pool.query('SELECT id, name FROM brands');
-    res.json({ total: all.rows.length, brands: brands.rows, rewards: all.rows });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * GET /api/v1/rewards/fix-brand - Move all rewards & tiers to Hirostar brand
- */
-router.get('/rewards/fix-brand', async (req, res) => {
-  try {
-    // Find Hirostar brand
-    const hirostar = await pool.query(`SELECT id, name FROM brands WHERE LOWER(name) LIKE '%hirostar%' OR LOWER(name) LIKE '%hangar%' LIMIT 1`);
-    if (!hirostar.rows.length) return res.status(404).json({ error: 'Hirostar brand not found' });
-    const hid = hirostar.rows[0].id;
-
-    // Move all rewards to Hirostar
-    const rResult = await pool.query('UPDATE rewards SET brand_id = $1 WHERE brand_id != $1 RETURNING id, title', [hid]);
-
-    // Move all tiers to Hirostar
-    const tResult = await pool.query('UPDATE tiers SET brand_id = $1 WHERE brand_id != $1 RETURNING id, name', [hid]);
-
-    res.json({
-      brand: hirostar.rows[0],
-      rewards_moved: rResult.rows.length,
-      tiers_moved: tResult.rows.length,
-      rewards: rResult.rows,
-      tiers: tResult.rows
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * GET /api/v1/cleanup/strip/:brandId - Remove strip image from a specific brand
- */
-router.get('/cleanup/strip/:brandId', async (req, res) => {
-  try {
-    const brandId = req.params.brandId;
-    const brand = await pool.query('SELECT id, name, config FROM brands WHERE id = $1', [brandId]);
-    if (!brand.rows.length) return res.status(404).json({ error: 'Brand not found' });
-
-    const config = typeof brand.rows[0].config === 'string' ? JSON.parse(brand.rows[0].config) : (brand.rows[0].config || {});
-    const hadStrip = !!(config.logos && config.logos.strip);
-
-    if (config.logos && config.logos.strip) {
-      delete config.logos.strip;
-      await pool.query('UPDATE brands SET config = $1::jsonb WHERE id = $2', [JSON.stringify(config), brandId]);
-    }
-
-    res.json({ brand: brand.rows[0].name, had_strip: hadStrip, strip_removed: hadStrip, config_logos: Object.keys(config.logos || {}) });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * GET /api/v1/cleanup/non-padel - Remove padel-specific data from non-padel brands
- * Deletes tiers, rewards, and challenges that were incorrectly seeded
- */
-router.get('/cleanup/non-padel', async (req, res) => {
-  try {
-    // Find non-padel brands (those WITHOUT Playtomic config)
-    const nonPadel = await pool.query(`
-      SELECT id, name FROM brands
-      WHERE config::text NOT LIKE '%playtomic%' OR config IS NULL
-    `);
-
-    if (nonPadel.rows.length === 0) {
-      return res.json({ message: 'No non-padel brands found', cleaned: [] });
-    }
-
-    const cleaned = [];
-    for (const brand of nonPadel.rows) {
-      const tiersDeleted = await pool.query('DELETE FROM tiers WHERE brand_id = $1 RETURNING id, name', [brand.id]);
-      const rewardsDeleted = await pool.query('DELETE FROM rewards WHERE brand_id = $1 RETURNING id, title', [brand.id]);
-      const challengesDeleted = await pool.query('DELETE FROM challenges WHERE brand_id = $1 RETURNING id, title', [brand.id]);
-
-      // Remove strip image if it was copied from another brand
-      const brandData = await getBrand(brand.id);
-      let stripRemoved = false;
-      if (brandData?.config?.logos?.strip) {
-        const cfg = { ...brandData.config };
-        delete cfg.logos.strip;
-        await pool.query('UPDATE brands SET config = $1::jsonb WHERE id = $2', [JSON.stringify(cfg), brand.id]);
-        stripRemoved = true;
-      }
-
-      cleaned.push({
-        brand: brand.name,
-        brand_id: brand.id,
-        tiers_removed: tiersDeleted.rows.length,
-        rewards_removed: rewardsDeleted.rows.length,
-        challenges_removed: challengesDeleted.rows.length,
-        strip_removed: stripRemoved
-      });
-      console.log(`[Cleanup] Brand ${brand.name}: removed ${tiersDeleted.rows.length} tiers, ${rewardsDeleted.rows.length} rewards, ${challengesDeleted.rows.length} challenges, strip: ${stripRemoved}`);
-    }
-
-    res.json({ message: 'Cleanup completed', cleaned });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * GET/POST /api/v1/rewards/seed - Force-seed the rewards catalog
- */
-router.all('/rewards/seed', async (req, res) => {
-  try {
-    const brand_id = req.body?.brand_id || req.query?.brand_id;
-    let bid = brand_id;
-    if (!bid) {
-      const brandResult = await pool.query('SELECT id FROM brands LIMIT 1');
-      if (!brandResult.rows.length) return res.status(404).json({ error: 'No brands found' });
-      bid = brandResult.rows[0].id;
-    }
-
-    // Check existing
-    const existing = await listRewards(bid);
-    if (existing.length > 0) {
-      return res.json({ message: `Already have ${existing.length} rewards`, rewards: existing });
-    }
-
-    const rewards = [
-      { title: 'Drink di benvenuto', description: 'Una consumazione gratuita al bar del club: acqua, succo o bibita a scelta.', cost: 50, icon: '🥤' },
-      { title: 'Grip overgrip omaggio', description: 'Un overgrip di qualità per la tua racchetta, a scelta tra i modelli disponibili.', cost: 80, icon: '🎾' },
-      { title: 'Tubo palline', description: 'Un tubo di 3 palline da padel omaggio per le tue partite.', cost: 100, icon: '🎯' },
-      { title: '1 ora campo gratuita', description: 'Prenota 1 ora di campo padel senza costi aggiuntivi.', cost: 150, icon: '🏟️' },
-      { title: 'Sconto 10% al bar', description: 'Buono sconto del 10% su tutte le consumazioni al bar, valido per una giornata intera.', cost: 120, icon: '☕' },
-      { title: 'Sconto 10% noleggio racchette', description: 'Sconto del 10% sul noleggio racchette per un mese intero.', cost: 200, icon: '🏸' },
-      { title: 'Accesso torneo sociale', description: 'Iscrizione gratuita al prossimo torneo sociale mensile del club.', cost: 250, icon: '🏆' },
-      { title: '2 ore campo gratuite', description: 'Prenota 2 ore di campo padel senza costi. Utilizzabili anche in giorni diversi.', cost: 300, icon: '⏰' },
-      { title: 'Sconto 15% al bar', description: 'Buono sconto del 15% su tutte le consumazioni al bar, valido per una settimana.', cost: 280, icon: '🍹' },
-      { title: 'Lezione di gruppo', description: 'Una lezione di gruppo con il coach del club (max 4 partecipanti, 1 ora).', cost: 350, icon: '👨‍🏫' },
-      { title: 'Incordatura racchetta', description: 'Servizio di incordatura professionale gratuito per la tua racchetta.', cost: 400, icon: '🔧' },
-      { title: 'Maglietta club esclusiva', description: 'T-shirt tecnica con il logo del club, in edizione limitata per i soci.', cost: 500, icon: '👕' },
-      { title: '4 ore campo gratuite', description: '4 ore di campo padel gratuite, utilizzabili nel mese corrente.', cost: 550, icon: '🌟' },
-      { title: 'Sconto 20% pro shop', description: 'Buono sconto del 20% su tutti i prodotti del pro shop del club.', cost: 500, icon: '🛍️' },
-      { title: 'Lezione privata 30 min', description: 'Una sessione privata di 30 minuti con il coach per migliorare la tua tecnica.', cost: 600, icon: '🎓' },
-      { title: 'Kit palline mensile', description: 'Un kit completo di palline da padel premium ogni mese per un mese.', cost: 450, icon: '📦' },
-      { title: 'Cena club con coach', description: 'Invito alla cena esclusiva del club con il coach e gli altri soci premium.', cost: 800, icon: '🍽️' },
-      { title: 'Campo illimitato mensile', description: 'Accesso illimitato ai campi per un mese intero.', cost: 1000, icon: '♾️' },
-      { title: 'Bar open giornaliero', description: 'Una consumazione gratuita al giorno al bar per un mese intero.', cost: 800, icon: '🍺' },
-      { title: 'Racchetta brandizzata club', description: 'Una racchetta da padel con il logo del club, in edizione esclusiva numerata.', cost: 1500, icon: '🏅' },
-      { title: 'Abbigliamento tecnico stagionale', description: 'Kit completo di abbigliamento tecnico (maglia + pantaloncini) con branding club.', cost: 1200, icon: '🎽' },
-      { title: 'Ospite illimitato mensile', description: 'Porta un ospite gratuito a ogni partita per un mese intero.', cost: 900, icon: '🤝' },
-      { title: 'Trofeo Socio dell\'Anno', description: 'Candidatura al premio annuale con trofeo personalizzato e naming su torneo.', cost: 2000, icon: '🏆' },
-    ];
-
-    const created = [];
-    for (const r of rewards) {
-      const reward = await createReward({ brand_id: bid, ...r });
-      created.push(reward);
-    }
-
-    res.json({ message: `Created ${created.length} rewards`, count: created.length });
-  } catch (error) {
-    console.error('Error seeding rewards:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/rewards - Create reward
- */
-router.post('/rewards', async (req, res) => {
-  try {
-    const { brand_id, title, description, cost, icon } = req.body;
-
-    if (!brand_id || !title) {
-      return res.status(400).json({
-        error: 'Brand ID and title are required'
-      });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    const reward = await createReward({
-      brand_id,
-      title,
-      description: description || '',
-      cost: cost || 0,
-      icon: icon || '🎁'
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: 'reward_created',
-      metadata: { reward_id: reward.id, title }
-    });
-
-    res.status(201).json(reward);
-  } catch (error) {
-    console.error('Error creating reward:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/rewards - List rewards
- */
-router.get('/rewards', async (req, res) => {
+router.get('/campaigns', async (req, res) => {
   try {
     const { brand_id } = req.query;
-
-    if (!brand_id) {
-      return res.status(400).json({ error: 'Brand ID is required' });
-    }
-
-    const rewards = await listRewards(brand_id);
-    res.json(rewards);
-  } catch (error) {
-    console.error('Error listing rewards:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/rewards/:id - Update reward
- */
-router.put('/rewards/:id', async (req, res) => {
-  try {
-    const { title, description, cost, icon, active } = req.body;
-
-    const reward = await getReward(req.params.id);
-    if (!reward) {
-      return res.status(404).json({ error: 'Reward not found' });
-    }
-
-    const updated = await updateReward(req.params.id, {
-      title,
-      description,
-      cost,
-      icon,
-      active
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating reward:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/rewards/:id - Delete reward
- */
-router.delete('/rewards/:id', async (req, res) => {
-  try {
-    const reward = await getReward(req.params.id);
-    if (!reward) {
-      return res.status(404).json({ error: 'Reward not found' });
-    }
-
-    await deleteReward(req.params.id);
-
-    await logEvent({
-      brand_id: reward.brand_id,
-      event_type: 'reward_deleted',
-      metadata: { reward_id: req.params.id, title: reward.title }
-    });
-
-    res.json({ success: true, message: `Reward "${reward.title}" deleted` });
-  } catch (error) {
-    console.error('Error deleting reward:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/rewards/:id/claim - Claim reward
- */
-router.post('/rewards/:id/claim', async (req, res) => {
-  try {
-    const { pass_id } = req.body;
-
-    if (!pass_id) {
-      return res.status(400).json({ error: 'Pass ID is required' });
-    }
-
-    const reward = await getReward(req.params.id);
-    if (!reward) {
-      return res.status(404).json({ error: 'Reward not found' });
-    }
-
-    const pass = await getPassInstance(pass_id);
-    if (!pass) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const claim = await claimReward({
-      reward_id: req.params.id,
-      pass_id,
-      brand_id: reward.brand_id
-    });
-
-    await logEvent({
-      pass_id,
-      brand_id: reward.brand_id,
-      event_type: 'reward_claimed',
-      metadata: { reward_id: req.params.id, cost: reward.cost }
-    });
-
-    res.status(201).json(claim);
-  } catch (error) {
-    console.error('Error claiming reward:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// CHALLENGES
-// ============================================================================
-
-/**
- * POST /api/v1/challenges - Create challenge
- */
-router.post('/challenges', async (req, res) => {
-  try {
-    const { brand_id, title, description, points, icon, type, recurring } = req.body;
-
-    if (!brand_id || !title) {
-      return res.status(400).json({
-        error: 'Brand ID and title are required'
-      });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    const challenge = await createChallenge({
-      brand_id,
-      title,
-      description: description || '',
-      points: points || 0,
-      icon: icon || '⭐',
-      type: type || 'action',
-      recurring: recurring || false
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: 'challenge_created',
-      metadata: { challenge_id: challenge.id, title }
-    });
-
-    res.status(201).json(challenge);
-  } catch (error) {
-    console.error('Error creating challenge:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/challenges - List challenges
- */
-router.get('/challenges', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-
-    if (!brand_id) {
-      return res.status(400).json({ error: 'Brand ID is required' });
-    }
-
-    const challenges = await listChallenges(brand_id);
-    res.json(challenges);
-  } catch (error) {
-    console.error('Error listing challenges:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/challenges/:id - Update challenge
- */
-router.put('/challenges/:id', async (req, res) => {
-  try {
-    const { title, description, points, icon, type, recurring, active } = req.body;
-
-    const challenge = await getChallenge(req.params.id);
-    if (!challenge) {
-      return res.status(404).json({ error: 'Challenge not found' });
-    }
-
-    const updated = await updateChallenge(req.params.id, {
-      title,
-      description,
-      points,
-      icon,
-      type,
-      recurring,
-      active
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating challenge:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/challenges/:id - Delete challenge
- */
-router.delete('/challenges/:id', async (req, res) => {
-  try {
-    const challenge = await getChallenge(req.params.id);
-    if (!challenge) {
-      return res.status(404).json({ error: 'Challenge not found' });
-    }
-
-    await deleteChallenge(req.params.id);
-
-    await logEvent({
-      brand_id: challenge.brand_id,
-      event_type: 'challenge_deleted',
-      metadata: { challenge_id: req.params.id, title: challenge.title }
-    });
-
-    res.json({ success: true, message: `Challenge "${challenge.title}" deleted` });
-  } catch (error) {
-    console.error('Error deleting challenge:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/challenges/:id/complete - Complete challenge
- */
-router.post('/challenges/:id/complete', async (req, res) => {
-  try {
-    const { pass_id } = req.body;
-
-    if (!pass_id) {
-      return res.status(400).json({ error: 'Pass ID is required' });
-    }
-
-    const challenge = await getChallenge(req.params.id);
-    if (!challenge) {
-      return res.status(404).json({ error: 'Challenge not found' });
-    }
-
-    const pass = await getPassInstance(pass_id);
-    if (!pass) {
-      return res.status(404).json({ error: 'Pass not found' });
-    }
-
-    const completion = await completeChallenge({
-      challenge_id: req.params.id,
-      pass_id,
-      brand_id: challenge.brand_id
-    });
-
-    await logEvent({
-      pass_id,
-      brand_id: challenge.brand_id,
-      event_type: 'challenge_completed',
-      metadata: { challenge_id: req.params.id, points: challenge.points }
-    });
-
-    res.status(201).json(completion);
-  } catch (error) {
-    console.error('Error completing challenge:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/challenges/:id/progress - Get progress for all members on a challenge
- */
-router.get('/challenges/:id/progress', async (req, res) => {
-  try {
-    const progress = await getProgressForChallenge(req.params.id);
-    res.json(progress);
-  } catch (error) {
-    console.error('Error getting challenge progress:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/members/:id/challenge-progress - Get all challenge progress for a member
- */
-router.get('/members/:id/challenge-progress', async (req, res) => {
-  try {
-    const brand_id = req.query.brand_id;
-    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
-    const progress = await getChallengeProgress(req.params.id, brand_id);
-    res.json(progress);
-  } catch (error) {
-    console.error('Error getting member challenge progress:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/challenges/evaluate - Manually trigger challenge evaluation
- */
-router.post('/challenges/evaluate', async (req, res) => {
-  try {
-    const { brand_id } = req.body;
-    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
-    const result = await evaluateChallenges(brand_id);
-    res.json(result);
-  } catch (error) {
-    console.error('Error evaluating challenges:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// TIERS
-// ============================================================================
-
-/**
- * POST /api/v1/tiers - Create tier
- */
-router.post('/tiers', async (req, res) => {
-  try {
-    const { brand_id, name, min_points, color, perks, sort_order } = req.body;
-
-    if (!brand_id || !name) {
-      return res.status(400).json({
-        error: 'Brand ID and name are required'
-      });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    const tier = await createTier({
-      brand_id,
-      name,
-      min_points: min_points || 0,
-      color: color || '#888888',
-      perks: perks || [],
-      sort_order: sort_order || 0
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: 'tier_created',
-      metadata: { tier_id: tier.id, name }
-    });
-
-    res.status(201).json(tier);
-  } catch (error) {
-    console.error('Error creating tier:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/tiers - List tiers
- */
-router.get('/tiers', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-
-    if (!brand_id) {
-      return res.status(400).json({ error: 'Brand ID is required' });
-    }
-
-    const tiers = await listTiers(brand_id);
-    res.json(tiers);
-  } catch (error) {
-    console.error('Error listing tiers:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/tiers/:id - Update tier
- */
-router.put('/tiers/:id', async (req, res) => {
-  try {
-    const { name, min_points, color, perks, sort_order } = req.body;
-
-    const tier = await getTier(req.params.id);
-    if (!tier) {
-      return res.status(404).json({ error: 'Tier not found' });
-    }
-
-    const updated = await updateTier(req.params.id, {
-      name,
-      min_points,
-      color,
-      perks,
-      sort_order
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating tier:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/tiers/:id - Delete tier
- */
-router.delete('/tiers/:id', async (req, res) => {
-  try {
-    const tier = await getTier(req.params.id);
-    if (!tier) {
-      return res.status(404).json({ error: 'Tier not found' });
-    }
-
-    await deleteTier(req.params.id);
-
-    await logEvent({
-      brand_id: tier.brand_id,
-      event_type: 'tier_deleted',
-      metadata: { tier_id: req.params.id, name: tier.name }
-    });
-
-    res.json({ success: true, message: `Tier "${tier.name}" deleted` });
-  } catch (error) {
-    console.error('Error deleting tier:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// VIP CARDS
-// ============================================================================
-
-/**
- * POST /api/v1/vip-cards - Create VIP card
- */
-router.post('/vip-cards', async (req, res) => {
-  try {
-    const { brand_id, name, description, color } = req.body;
-
-    if (!brand_id || !name) {
-      return res.status(400).json({
-        error: 'Brand ID and name are required'
-      });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    const vipCard = await createVipCard({
-      brand_id,
-      name,
-      description: description || '',
-      color: color || 'from-blue-400 to-blue-600'
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: 'vip_card_created',
-      metadata: { vip_card_id: vipCard.id, name }
-    });
-
-    res.status(201).json(vipCard);
-  } catch (error) {
-    console.error('Error creating VIP card:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/vip-cards - List VIP cards
- */
-router.get('/vip-cards', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-
-    if (!brand_id) {
-      return res.status(400).json({ error: 'Brand ID is required' });
-    }
-
-    const vipCards = await listVipCards(brand_id);
-    res.json(vipCards);
-  } catch (error) {
-    console.error('Error listing VIP cards:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/vip-cards/:id - Update VIP card
- */
-router.put('/vip-cards/:id', async (req, res) => {
-  try {
-    const { name, description, color, assigned, active } = req.body;
-
-    const vipCard = await getVipCard(req.params.id);
-    if (!vipCard) {
-      return res.status(404).json({ error: 'VIP card not found' });
-    }
-
-    const updated = await updateVipCard(req.params.id, {
-      name,
-      description,
-      color,
-      assigned,
-      active
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating VIP card:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/vip-cards/:id - Delete VIP card
- */
-router.delete('/vip-cards/:id', async (req, res) => {
-  try {
-    const vipCard = await getVipCard(req.params.id);
-    if (!vipCard) {
-      return res.status(404).json({ error: 'VIP card not found' });
-    }
-
-    await deleteVipCard(req.params.id);
-
-    await logEvent({
-      brand_id: vipCard.brand_id,
-      event_type: 'vip_card_deleted',
-      metadata: { vip_card_id: req.params.id, name: vipCard.name }
-    });
-
-    res.json({ success: true, message: `VIP card "${vipCard.name}" deleted` });
-  } catch (error) {
-    console.error('Error deleting VIP card:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// PUSH NOTIFICATIONS
-// ============================================================================
-
-/**
- * POST /api/v1/push/send - Log push notification
- */
-router.post('/push/send', async (req, res) => {
-  try {
-    const { brand_id, title, message, target, update_pass } = req.body;
-
-    if (!brand_id || !title || !message) {
-      return res.status(400).json({
-        error: 'Brand ID, title, and message are required'
-      });
-    }
-
-    const brand = await getBrand(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    // If update_pass is true, update brand config with the announcement
-    // and regenerate all passes so iOS shows "Pass Updated" notification
-    let passesUpdated = 0;
-    if (update_pass) {
-      console.log('📝 Updating pass content with push announcement...');
-
-      // Save announcement to brand config
-      const updatedConfig = {
-        ...(brand.config || {}),
-        pushAnnouncement: {
-          title: title,
-          message: message,
-          date: new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          timestamp: new Date().toISOString()
-        }
-      };
-      await updateBrand(brand_id, { config: updatedConfig });
-
-      // Regenerate all passes for this brand (clear cache + rebuild)
-      const passes = await listPasses(brand_id);
-      const updatedBrand = await getBrand(brand_id);
-      const cacheDir = ensureCacheDir();
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-      for (const pass of passes) {
-        try {
-          // Clear cached pkpass
-          const pkpassPath = path.join(cacheDir, `${pass.id}.pkpass`);
-          if (fs.existsSync(pkpassPath)) {
-            fs.unlinkSync(pkpassPath);
-          }
-          // Regenerate with updated brand config (includes announcement)
-          const template = await getTemplate(pass.template_id);
-          if (template) {
-            const pkpassBuffer = await createPkpass(template, pass, updatedBrand, { baseUrl });
-            fs.writeFileSync(pkpassPath, pkpassBuffer);
-            // Touch last_updated so Apple's passesUpdatedSince check finds it
-            await touchPass(pass.id);
-            passesUpdated++;
-          }
-        } catch (err) {
-          console.error(`Error regenerating pass ${pass.id}:`, err.message);
-        }
-      }
-      console.log(`✓ Regenerated ${passesUpdated}/${passes.length} passes with announcement`);
-    }
-
-    // Get all registered devices for this brand's passes
-    const devices = await getDevicesForBrand(brand_id);
-    let sentCount = 0;
-    let failCount = 0;
-    const results = [];
-
-    // Send APNs push to each device (empty payload = wallet pass update signal)
-    for (const device of devices) {
-      try {
-        const result = await sendPushUpdate(device.push_token);
-        if (result.success) {
-          sentCount++;
-        } else {
-          failCount++;
-        }
-        results.push({ token: device.push_token.substring(0, 8) + '...', ...result });
-      } catch (err) {
-        failCount++;
-        results.push({ token: device.push_token.substring(0, 8) + '...', success: false, reason: err.message });
-      }
-    }
-
-    // Log the push to DB
-    const pushLog = await logPush({
-      brand_id,
-      title,
-      message,
-      target: target || 'all',
-      sent_count: sentCount
-    });
-
-    await logEvent({
-      brand_id,
-      event_type: update_pass ? 'push_update_sent' : 'push_sent',
-      metadata: {
-        title,
-        target: target || 'all',
-        sent_count: sentCount,
-        fail_count: failCount,
-        total_devices: devices.length,
-        passes_updated: passesUpdated
-      }
-    });
-
-    res.status(201).json({
-      ...pushLog,
-      delivery: {
-        total_devices: devices.length,
-        sent: sentCount,
-        failed: failCount,
-        passes_updated: passesUpdated,
-        results: results,
-        note: devices.length === 0
-          ? 'No devices registered yet. Passes must be added to Apple Wallet first.'
-          : update_pass && passesUpdated > 0
-            ? `${passesUpdated} pass aggiornati. iOS mostrerà "Carta aggiornata" ai possessori.`
-            : undefined
-      }
-    });
-  } catch (error) {
-    console.error('Error sending push:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/push/history - Get push history
- */
-router.get('/push/history', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-
-    if (!brand_id) {
-      return res.status(400).json({ error: 'Brand ID is required' });
-    }
-
-    const history = await listPushes(brand_id);
-    res.json(history);
-  } catch (error) {
-    console.error('Error getting push history:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/push/:id - Delete a single push log entry
- */
-router.delete('/push/:id', async (req, res) => {
-  try {
-    await deletePush(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting push:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/push/clear/:brand_id - Clear all push history for a brand
- */
-router.delete('/push/clear/:brand_id', async (req, res) => {
-  try {
-    const result = await clearPushHistory(req.params.brand_id);
-    res.json(result);
-  } catch (error) {
-    console.error('Error clearing push history:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== SCHEDULED PUSH ====================
-
-/**
- * GET /api/v1/push/scheduled?brand_id= - List scheduled notifications
- */
-router.get('/push/scheduled', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
-    const items = await listScheduledPush(brand_id);
-    res.json(items);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/push/scheduled - Create a scheduled notification
- */
-router.post('/push/scheduled', async (req, res) => {
-  try {
-    const item = await createScheduledPush(req.body);
-    res.status(201).json(item);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/push/scheduled/:id - Update (toggle active, change schedule)
- */
-router.put('/push/scheduled/:id', async (req, res) => {
-  try {
-    const item = await updateScheduledPush(req.params.id, req.body);
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    res.json(item);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/push/scheduled/:id - Delete a scheduled notification
- */
-router.delete('/push/scheduled/:id', async (req, res) => {
-  try {
-    await deleteScheduledPush(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== MEMBERS ====================
-
-/**
- * GET /api/v1/members?brand_id= - List all members for a brand
- */
-router.get('/members', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
-    const members = await listMembers(brand_id);
-    res.json(members);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/members/export?brand_id= - Export members as CSV
- */
-router.get('/members/export', async (req, res) => {
-  try {
-    const { brand_id } = req.query;
-    if (!brand_id) return res.status(400).json({ error: 'brand_id is required' });
-    const members = await listMembers(brand_id);
-    const header = 'Nome,Cognome,Email,Telefono,Email Playtomic,Note,Pass,Punti,Data Iscrizione\n';
-    const rows = members.map(m => {
-      const date = new Date(m.created_at).toLocaleDateString('it-IT');
-      return `"${(m.first_name||'').replace(/"/g,'""')}","${(m.last_name||'').replace(/"/g,'""')}","${m.email||''}","${m.phone||''}","${m.playtomic_email||''}","${(m.notes||'').replace(/"/g,'""')}",${m.pass_count||0},${m.punti||0},${date}`;
-    }).join('\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=membri.csv');
-    res.send('﻿' + header + rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/members/import - Import members from CSV or Excel
- * Expects JSON body: { brand_id, file_data (base64), file_name }
- */
-router.post('/members/import', async (req, res) => {
-  try {
-    const { brand_id, file_data, file_name } = req.body;
-    if (!brand_id || !file_data) return res.status(400).json({ error: 'brand_id and file_data are required' });
-
-    const buffer = Buffer.from(file_data, 'base64');
-    let rows = [];
-
-    // Parse file based on extension
-    const ext = (file_name || '').toLowerCase().split('.').pop();
-    if (ext === 'csv') {
-      // Parse CSV
-      const text = buffer.toString('utf-8');
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) return res.status(400).json({ error: 'File vuoto o senza dati' });
-      const headers = lines[0].split(/[,;]/).map(h => h.replace(/"/g, '').trim().toLowerCase());
-      for (let i = 1; i < lines.length; i++) {
-        const vals = lines[i].split(/[,;]/).map(v => v.replace(/"/g, '').trim());
-        const obj = {};
-        headers.forEach((h, idx) => { obj[h] = vals[idx] || ''; });
-        rows.push(obj);
-      }
-    } else {
-      // Parse Excel
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      rows = data.map(r => {
-        const obj = {};
-        Object.keys(r).forEach(k => { obj[k.toLowerCase().trim()] = String(r[k]).trim(); });
-        return obj;
-      });
-    }
-
-    if (rows.length === 0) return res.status(400).json({ error: 'Nessuna riga trovata nel file' });
-
-    // Column mapping — recognize common header names
-    const NOME_KEYS = ['nome', 'first_name', 'firstname', 'first name', 'name', 'prenom'];
-    const COGNOME_KEYS = ['cognome', 'last_name', 'lastname', 'last name', 'surname', 'family name', 'nom'];
-    const EMAIL_KEYS = ['email', 'e-mail', 'mail', 'indirizzo email'];
-    const PHONE_KEYS = ['telefono', 'phone', 'tel', 'cellulare', 'mobile', 'cell'];
-    const NOTES_KEYS = ['note', 'notes', 'commento', 'commenti', 'osservazioni'];
-    const PLAYTOMIC_KEYS = ['playtomic_email', 'email playtomic', 'playtomic', 'email_playtomic'];
-
-    function findKey(obj, candidates) {
-      for (const c of candidates) { if (obj[c] !== undefined && obj[c] !== '') return obj[c]; }
-      return '';
-    }
-
-    // If there's only a "nome" or "name" field with spaces, try to split
-    const members = rows.map(r => {
-      let firstName = findKey(r, NOME_KEYS);
-      let lastName = findKey(r, COGNOME_KEYS);
-
-      // If no separate cognome but nome contains space, split
-      if (!lastName && firstName && firstName.includes(' ')) {
-        const parts = firstName.split(' ');
-        firstName = parts[0];
-        lastName = parts.slice(1).join(' ');
-      }
-
-      return {
-        first_name: firstName,
-        last_name: lastName || null,
-        email: findKey(r, EMAIL_KEYS) || null,
-        phone: findKey(r, PHONE_KEYS) || null,
-        notes: findKey(r, NOTES_KEYS) || null,
-        playtomic_email: findKey(r, PLAYTOMIC_KEYS) || null
-      };
-    }).filter(m => m.first_name); // Skip rows without name
-
-    const result = await bulkCreateMembers(brand_id, members);
-    res.json({ ...result, total_rows: rows.length, parsed: members.length });
-  } catch (error) {
-    console.error('Import error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/members - Create a new member (from back office)
- * Also creates pass, assigns welcome points, sends welcome email
- */
-router.post('/members', async (req, res) => {
-  try {
-    const { brand_id, first_name, last_name, email, phone, playtomic_email, notes } = req.body;
-    if (!brand_id || !first_name) return res.status(400).json({ error: 'brand_id and first_name are required' });
-
-    // Create the member
-    const member = await createMember({ brand_id, first_name, last_name, email, phone, playtomic_email, notes });
-
-    // Try to also create a pass + welcome points (like self-service signup)
-    try {
-      console.log(`[Backoffice] Creating pass for member ${member.id} (${first_name} ${last_name})`);
-      const brand = await getBrand(brand_id);
-      const templates = await listTemplates(brand_id);
-      const template = templates[0];
-
-      if (brand && template) {
-        console.log(`[Backoffice] Brand: ${brand.name}, Template: ${template.id}`);
-        const tiers = await listTiers(brand_id);
-        const firstTier = tiers.length > 0 ? tiers[0].name : '';
-        const fullName = [first_name, last_name].filter(Boolean).join(' ');
-
-        const passInstance = await createPassInstance({
-          template_id: template.id,
-          brand_id: brand.id,
-          customer_data: { email, phone, name: fullName },
-          field_values: { nome: fullName, name: fullName, livello: firstTier, punti: '10' },
-          member_id: member.id
-        });
-
-        // Generate and cache .pkpass
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const pkpassBuffer = await createPkpass(template, passInstance, brand, { baseUrl });
-        const cacheDir = ensureCacheDir();
-        fs.writeFileSync(path.join(cacheDir, `${passInstance.id}.pkpass`), pkpassBuffer);
-
-        await logEvent({
-          pass_id: passInstance.id,
-          brand_id: brand.id,
-          event_type: 'pass_created',
-          metadata: { source: 'backoffice', email, welcome_points: 10 }
-        });
-
-        console.log(`[Backoffice] Pass created: ${passInstance.id} with punti=10 for member ${member.id}`);
-
-        // Log welcome points
-        try {
-          await logPoints({
-            brand_id: brand.id,
-            member_id: member.id,
-            pass_id: passInstance.id,
-            points: 10,
-            reason: 'signup',
-            details: 'Punti di benvenuto'
-          });
-          console.log(`[Backoffice] Welcome points logged for member ${member.id}`);
-        } catch(e) { console.error('[Backoffice] Error logging welcome points:', e.message); }
-
-        // Send welcome email if member has email
-        if (email) {
-          const CUSTOM_DOMAIN = (process.env.CUSTOM_DOMAIN || 'www.nudj.studio').replace(/^nudj\.studio$/, 'www.nudj.studio');
-          const downloadUrl = `${baseUrl}/api/v1/passes/${passInstance.id}/download`;
-          sendWelcomeEmail({
-            to: email,
-            name: fullName,
-            brandName: brand.name,
-            brandColor: brand.config?.backgroundColor || '#000000',
-            points: 10,
-            downloadUrl
-          }).catch(err => console.error('Welcome email error (backoffice):', err));
-        }
-
-        // Log analytics
-        await logAnalyticsEvent({
-          event_type: 'member_signup',
-          brand_id: brand.id,
-          metadata: { source: 'backoffice', member_id: member.id }
-        });
-      }
-    } catch(passErr) {
-      // Pass creation failed but member was created — log and continue
-      console.error('[Members] Pass creation from backoffice failed:', passErr.message);
-    }
-
-    res.status(201).json(member);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/members/:id - Get a single member
- */
-router.get('/members/:id', async (req, res) => {
-  try {
-    const member = await getMember(req.params.id);
-    if (!member) return res.status(404).json({ error: 'Member not found' });
-    res.json(member);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/members/:id - Update a member
- */
-router.put('/members/:id', async (req, res) => {
-  try {
-    const member = await updateMember(req.params.id, req.body);
-    if (!member) return res.status(404).json({ error: 'Member not found' });
-    res.json(member);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/members/:id - Delete a member
- */
-router.delete('/members/:id', async (req, res) => {
-  try {
-    await deleteMember(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== PLAYTOMIC SYNC ====================
-
-/**
- * POST /api/v1/brands/:id/playtomic/sync - Trigger manual Playtomic sync
- */
-router.post('/brands/:id/playtomic/sync', async (req, res) => {
-  try {
-    const result = await runFullSync(req.params.id);
-    res.json(result);
-  } catch (error) {
-    console.error('Playtomic sync error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/v1/brands/:id/playtomic/logs - Get sync history
- */
-router.get('/brands/:id/playtomic/logs', async (req, res) => {
-  try {
-    const logs = await listSyncLogs(req.params.id, parseInt(req.query.limit) || 50);
-    res.json(logs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== STRIP PROMOS ====================
-
-/**
- * GET /api/v1/brands/:id/strip-promos - List all strip promos for a brand
- */
-router.get('/brands/:id/strip-promos', authMiddleware, async (req, res) => {
-  try {
-    const promos = await pool.query(
-      'SELECT * FROM strip_promos WHERE brand_id = $1 ORDER BY created_at DESC',
-      [req.params.id]
-    );
-    res.json(promos.rows);
-  } catch (error) {
-    console.error('Error listing strip promos:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/brands/:id/strip-promos - Create new strip promo
- * Body: { title, strip_base64, start_date, end_date, push_message, push_frequency }
- */
-router.post('/brands/:id/strip-promos', authMiddleware, async (req, res) => {
-  try {
-    const { title, strip_base64, start_date, end_date, push_message, push_frequency } = req.body;
-
-    if (!title || !strip_base64 || !start_date || !end_date) {
-      return res.status(400).json({ error: 'title, strip_base64, start_date, and end_date are required' });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO strip_promos
-       (brand_id, title, strip_base64, start_date, end_date, push_message, push_frequency, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-       RETURNING *`,
-      [req.params.id, title, strip_base64, start_date, end_date, push_message || null, push_frequency || null]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Error creating strip promo:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * PUT /api/v1/strip-promos/:id - Update strip promo
- */
-router.put('/strip-promos/:id', authMiddleware, async (req, res) => {
-  try {
-    const { title, strip_base64, start_date, end_date, push_message, push_frequency } = req.body;
-
-    const updates = [];
-    const params = [req.params.id];
-    let paramIndex = 2;
-
-    if (title !== undefined) {
-      updates.push(`title = $${paramIndex++}`);
-      params.push(title);
-    }
-    if (strip_base64 !== undefined) {
-      updates.push(`strip_base64 = $${paramIndex++}`);
-      params.push(strip_base64);
-    }
-    if (start_date !== undefined) {
-      updates.push(`start_date = $${paramIndex++}`);
-      params.push(start_date);
-    }
-    if (end_date !== undefined) {
-      updates.push(`end_date = $${paramIndex++}`);
-      params.push(end_date);
-    }
-    if (push_message !== undefined) {
-      updates.push(`push_message = $${paramIndex++}`);
-      params.push(push_message);
-    }
-    if (push_frequency !== undefined) {
-      updates.push(`push_frequency = $${paramIndex++}`);
-      params.push(push_frequency);
-    }
-
-    updates.push(`updated_at = NOW()`);
-
-    if (updates.length === 1) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
-
-    const result = await pool.query(
-      `UPDATE strip_promos SET ${updates.join(', ')} WHERE id = $1 RETURNING *`,
-      params
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Strip promo not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error updating strip promo:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * DELETE /api/v1/strip-promos/:id - Delete strip promo
- */
-router.delete('/strip-promos/:id', authMiddleware, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'DELETE FROM strip_promos WHERE id = $1 RETURNING id',
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Strip promo not found' });
-    }
-
-    res.json({ success: true, id: req.params.id });
-  } catch (error) {
-    console.error('Error deleting strip promo:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== REFERRAL ====================
-
-/**
- * GET /api/v1/brands/:id/referral-stats - Get referral stats for brand
- */
-router.get('/brands/:id/referral-stats', authMiddleware, async (req, res) => {
-  try {
-    const stats = await pool.query(
-      `SELECT
-        COUNT(*) as total_members,
-        COUNT(*) FILTER (WHERE referred_by IS NOT NULL) as referred_members,
-        COALESCE(AVG(referral_count), 0) as avg_referrals_per_member,
-        COALESCE(MAX(referral_count), 0) as max_referrals
-       FROM members WHERE brand_id = $1`,
-      [req.params.id]
-    );
-
-    const topReferrers = await pool.query(
-      `SELECT id, first_name, last_name, email, referral_count
-       FROM members
-       WHERE brand_id = $1 AND referral_count > 0
-       ORDER BY referral_count DESC
-       LIMIT 10`,
-      [req.params.id]
-    );
-
-    res.json({
-      stats: stats.rows[0],
-      topReferrers: topReferrers.rows
-    });
-  } catch (error) {
-    console.error('Error getting referral stats:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ==================== ANALYTICS FULL ====================
-
-/**
- * GET /api/v1/brands/:id/analytics/full - Get comprehensive analytics for brand
- */
-router.get('/brands/:id/analytics/full', authMiddleware, async (req, res) => {
-  try {
-    // Pass statistics
-    const passStats = await pool.query(
-      `SELECT
-        COUNT(*) as total_passes,
-        COUNT(*) FILTER (WHERE status = 'active') as active_passes,
-        COUNT(*) FILTER (WHERE status = 'inactive') as inactive_passes,
-        COUNT(*) FILTER (WHERE status = 'expired') as expired_passes,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as passes_created_week,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as passes_created_month
-       FROM pass_instances WHERE brand_id = $1`,
-      [req.params.id]
-    );
-
-    // Device statistics
-    const deviceStats = await pool.query(
-      `SELECT
-        COUNT(DISTINCT device_library_id) as total_devices,
-        COUNT(*) as total_registrations
-       FROM devices
-       WHERE pass_id IN (SELECT id FROM pass_instances WHERE brand_id = $1)`,
-      [req.params.id]
-    );
-
-    // Member statistics
-    const memberStats = await pool.query(
-      `SELECT
-        COUNT(*) as total_members,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as members_created_week,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as members_created_month,
-        COUNT(*) FILTER (WHERE referred_by IS NOT NULL) as referred_members,
-        COALESCE(AVG(referral_count), 0) as avg_referral_count
-       FROM members WHERE brand_id = $1`,
-      [req.params.id]
-    );
-
-    // Event statistics
-    const eventStats = await pool.query(
-      `SELECT
-        COUNT(*) as total_events,
-        COUNT(*) FILTER (WHERE event_type = 'pass_created') as passes_created,
-        COUNT(*) FILTER (WHERE event_type = 'pass_updated') as passes_updated,
-        COUNT(*) FILTER (WHERE event_type = 'device_registered') as devices_registered,
-        COUNT(*) FILTER (WHERE event_type = 'push_sent') as pushes_sent,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as events_week
-       FROM events WHERE brand_id = $1`,
-      [req.params.id]
-    );
-
-    // Points/engagement statistics
-    const engagementStats = await pool.query(
-      `SELECT
-        COUNT(*) as total_claims,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as claims_week
-       FROM reward_claims WHERE reward_id IN (SELECT id FROM rewards WHERE brand_id = $1)`,
-      [req.params.id]
-    );
-
-    res.json({
-      passes: passStats.rows[0],
-      devices: deviceStats.rows[0],
-      members: memberStats.rows[0],
-      events: eventStats.rows[0],
-      engagement: engagementStats.rows[0],
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error getting analytics:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// PULSE: RFM SEGMENTATION
-// ============================================================================
-
-/**
- * GET /api/v1/brands/:id/analytics/rfm - RFM segmentation for all members
- *
- * Recency: days since last points_log entry (excl. decay)
- * Frequency: count of points_log entries in last 90 days (excl. decay)
- * Monetary: total points currently on pass
- *
- * Each axis scored 1-5 via quintiles, then mapped to named segments.
- */
-router.get('/brands/:id/analytics/rfm', authMiddleware, async (req, res) => {
-  try {
-    const brandId = req.params.id;
-
-    // Get all members with their R, F, M raw values in one query
-    const raw = await pool.query(`
-      SELECT
-        m.id, m.first_name, m.last_name, m.email, m.created_at as member_since,
-        COALESCE(CAST(p.field_values->>'punti' AS INTEGER), 0) as points,
-        (SELECT EXTRACT(EPOCH FROM (NOW() - MAX(pl.created_at))) / 86400
-         FROM points_log pl WHERE pl.member_id = m.id AND pl.brand_id = $1 AND pl.reason != 'decay'
-        ) as days_since_last,
-        (SELECT COUNT(*)
-         FROM points_log pl WHERE pl.member_id = m.id AND pl.brand_id = $1 AND pl.reason != 'decay'
-           AND pl.created_at >= NOW() - INTERVAL '90 days'
-        ) as frequency_90d
-      FROM members m
-      LEFT JOIN pass_instances p ON (
-        (p.customer_data->>'member_id' = m.id OR p.field_values->>'member_id' = m.id)
-        AND p.brand_id = $1 AND p.status = 'active'
-      )
-      WHERE m.brand_id = $1
-      ORDER BY m.last_name ASC NULLS LAST
-    `, [brandId]);
-
-    const members = raw.rows;
-    if (members.length === 0) {
-      return res.json({ segments: {}, members: [], summary: {} });
-    }
-
-    // Calculate quintile thresholds for R, F, M
-    function quintileScore(values, val, inverse) {
-      // inverse=true means lower is better (recency: fewer days = more recent = higher score)
-      const sorted = [...values].filter(v => v !== null).sort((a, b) => a - b);
-      if (sorted.length === 0) return 3;
-      const idx = sorted.indexOf(val);
-      const pct = sorted.length > 1 ? idx / (sorted.length - 1) : 0.5;
-      const score = Math.ceil(pct * 5) || 1;
-      return inverse ? (6 - score) : score;
-    }
-
-    const recencyVals = members.map(m => m.days_since_last !== null ? parseFloat(m.days_since_last) : 9999);
-    const freqVals = members.map(m => parseInt(m.frequency_90d) || 0);
-    const monetaryVals = members.map(m => m.points || 0);
-
-    // Score each member
-    const scored = members.map((m, i) => {
-      const r = quintileScore(recencyVals, recencyVals[i], true);  // lower days = higher score
-      const f = quintileScore(freqVals, freqVals[i], false);        // higher freq = higher score
-      const mv = quintileScore(monetaryVals, monetaryVals[i], false); // higher points = higher score
-      const segment = classifyRFM(r, f, mv);
-      return {
-        id: m.id,
-        name: [m.first_name, m.last_name].filter(Boolean).join(' ') || 'N/A',
-        email: m.email,
-        member_since: m.member_since,
-        points: m.points,
-        days_since_last: m.days_since_last !== null ? Math.round(parseFloat(m.days_since_last)) : null,
-        frequency_90d: parseInt(m.frequency_90d) || 0,
-        r, f, m: mv,
-        rfm: `${r}${f}${mv}`,
-        segment: segment.name,
-        segment_label: segment.label,
-        segment_color: segment.color
-      };
-    });
-
-    // Build segment summary
-    const segments = {};
-    scored.forEach(m => {
-      if (!segments[m.segment]) {
-        segments[m.segment] = { name: m.segment, label: m.segment_label, color: m.segment_color, count: 0, members: [] };
-      }
-      segments[m.segment].count++;
-      segments[m.segment].members.push(m.id);
-    });
-
-    res.json({
-      members: scored,
-      segments,
-      total: members.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error computing RFM:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-function classifyRFM(r, f, m) {
-  // Champions: high on all
-  if (r >= 4 && f >= 4 && m >= 4) return { name: 'champions', label: 'Champions', color: '#34e89e' };
-  // Loyal: good frequency and monetary
-  if (f >= 3 && m >= 3) return { name: 'loyal', label: 'Fedeli', color: '#3a7bd5' };
-  // Recent: came recently but not frequent yet
-  if (r >= 4 && f <= 2) return { name: 'recent', label: 'Nuovi Attivi', color: '#00d2ff' };
-  // Promising: moderate across the board
-  if (r >= 3 && f >= 2 && m >= 2) return { name: 'promising', label: 'Promettenti', color: '#ffd93d' };
-  // At Risk: were good but haven't been around
-  if (r <= 2 && f >= 3) return { name: 'at_risk', label: 'A Rischio', color: '#ff922b' };
-  // Need Attention: moderate recency, low engagement
-  if (r >= 2 && r <= 3 && f <= 2) return { name: 'need_attention', label: 'Da Attivare', color: '#cc5de8' };
-  // Hibernating: gone
-  if (r <= 2 && f <= 2) return { name: 'hibernating', label: 'Dormienti', color: '#ff6b6b' };
-  // Default
-  return { name: 'other', label: 'Altro', color: '#888888' };
-}
-
-// ============================================================================
-// EMAIL RECAP
-// ============================================================================
-
-/**
- * POST /api/v1/brands/:id/send-recap - Manually trigger a recap email for a brand
- */
-router.post('/brands/:id/send-recap', authMiddleware, async (req, res) => {
-  try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const { type } = req.body; // 'weekly' or 'monthly'
-    if (!type || !['weekly', 'monthly'].includes(type)) {
-      return res.status(400).json({ error: 'type must be "weekly" or "monthly"' });
-    }
-    const result = await sendBrandRecap(brand, type);
-    res.json(result);
-  } catch (error) {
-    console.error('Error sending recap:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/v1/recap/run - Manually trigger recap for all brands
- */
-router.post('/recap/run', authMiddleware, async (req, res) => {
-  try {
-    const { type } = req.body;
-    if (!type || !['weekly', 'monthly'].includes(type)) {
-      return res.status(400).json({ error: 'type must be "weekly" or "monthly"' });
-    }
-    const results = await runRecap(type);
-    res.json({ results });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ─── Sparq: Instant Win / Scratch Card ─────────────────────────
-
-// CRUD Campaigns
-router.get('/brands/:id/scratch-cards', authMiddleware, async (req, res) => {
-  try {
-    const campaigns = await listInstantWinCampaigns(req.params.id);
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const campaigns = await listCampaigns(brand_id);
     res.json(campaigns);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/brands/:id/scratch-cards', authMiddleware, async (req, res) => {
+router.post('/campaigns', async (req, res) => {
   try {
-    const { title, description, win_probability, prizes, max_plays_per_member, start_date, end_date, style } = req.body;
-    if (!title) return res.status(400).json({ error: 'Missing title' });
-    const result = await createInstantWinCampaign({
-      brand_id: req.params.id,
-      title, description,
-      win_probability: win_probability || 10,
-      prizes: prizes || [],
-      max_plays_per_member: max_plays_per_member || 1,
-      start_date, end_date, style
+    const campaign = await createCampaign(req.body);
+    res.json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/campaigns/:id', async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campagna non trovata' });
+    res.json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/campaigns/:id', async (req, res) => {
+  try {
+    const campaign = await updateCampaign(req.params.id, req.body);
+    res.json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/campaigns/:id', async (req, res) => {
+  try {
+    await deleteCampaign(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Passes (backoffice) ──────────────────
+
+router.get('/passes', async (req, res) => {
+  try {
+    const { brand_id, status, campaign_id, limit } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const passes = await listPasses(brand_id, { status, campaign_id, limit: limit ? parseInt(limit) : undefined });
+    res.json(passes);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/passes', async (req, res) => {
+  try {
+    const { brand_id, template_id, campaign_id, field_values } = req.body;
+    if (!brand_id || !template_id) return res.status(400).json({ error: 'brand_id e template_id richiesti' });
+
+    const passInstance = await createPassInstance({ template_id, brand_id, campaign_id, field_values });
+    await logEvent({ pass_id: passInstance.id, brand_id, event_type: 'pass_created', metadata: { source: 'backoffice' } });
+    if (campaign_id) await incrementCampaignDownloads(campaign_id);
+
+    res.json(passInstance);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/passes/:id', async (req, res) => {
+  try {
+    const pass = await getPassInstance(req.params.id);
+    if (!pass) return res.status(404).json({ error: 'Pass non trovato' });
+    res.json(pass);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/passes/:id', async (req, res) => {
+  try {
+    const pass = await updatePassInstance(req.params.id, req.body);
+    res.json(pass);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/passes/:id', async (req, res) => {
+  try {
+    await deletePass(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/passes/:id/regenerate', async (req, res) => {
+  try {
+    const pass = await getPassInstance(req.params.id);
+    if (!pass) return res.status(404).json({ error: 'Pass non trovato' });
+    const brand = await getBrand(pass.brand_id);
+    const template = await getTemplate(pass.template_id);
+
+    const baseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : `${req.protocol}://${req.get('host')}`;
+
+    const pkpassBuffer = await createPkpass(template, pass, brand, {
+      baseUrl,
+      passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
     });
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename="${brand.slug || 'pass'}.pkpass"`,
+      'Content-Length': pkpassBuffer.length
+    });
+    res.send(pkpassBuffer);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Push Notifications ──────────────────
+
+router.post('/push/send', async (req, res) => {
+  try {
+    const { brand_id, title, message, campaign_id, update_pass, field_values } = req.body;
+    if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
+
+    console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
+
+    // Debug: check what's in the DB
+    const allDevices = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
+    const allPasses = await pool.query('SELECT DISTINCT brand_id FROM pass_instances');
+    console.log(`[PUSH DEBUG] Total devices in DB: ${allDevices.rows[0].count} | Brand IDs in passes: ${JSON.stringify(allPasses.rows.map(r => r.brand_id))}`);
+
+    // Get all devices for this brand (optionally filter by campaign)
+    let devices;
+    if (campaign_id) {
+      const result = await pool.query(
+        `SELECT DISTINCT dr.push_token, dr.serial_number
+         FROM device_registrations dr
+         JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+         WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
+        [brand_id, campaign_id]
+      );
+      devices = result.rows;
+    } else {
+      devices = await getDevicesForBrand(brand_id);
+    }
+
+    console.log(`[PUSH DEBUG] Devices found for brand: ${devices.length}`);
+
+    if (devices.length === 0) return res.json({ sent: 0, message: 'Nessun device registrato', debug: { brand_id_sent: brand_id, total_devices_in_db: parseInt(allDevices.rows[0].count), brand_ids_in_passes: allPasses.rows.map(r => r.brand_id) } });
+
+    // Update pass content if requested
+    if (update_pass !== false) {
+      const brand = await getBrand(brand_id);
+
+      // Update brand.config.pushAnnouncement — this is what passkit.js reads
+      // to build the announcement field with changeMessage on the pass
+      const config = brand.config || {};
+      config.pushAnnouncement = { title, message, ts: Date.now() };
+      await updateBrand(brand_id, { config });
+      console.log(`[PUSH] Updated brand.config.pushAnnouncement: "${title}: ${message}"`);
+
+      // Touch all affected passes to trigger Apple Wallet refresh
+      const passQuery = campaign_id
+        ? await pool.query('SELECT id FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])
+        : await pool.query('SELECT id FROM pass_instances WHERE brand_id = $1', [brand_id]);
+      for (const p of passQuery.rows) {
+        await touchPass(p.id);
+      }
+    }
+
+    // Send push to all devices — check actual APNs result
+    let sentCount = 0;
+    const pushResults = [];
+    for (const device of devices) {
+      try {
+        const result = await sendPushUpdate(device.push_token);
+        console.log(`[PUSH] token=${device.push_token.substring(0,12)}... result=${JSON.stringify(result)}`);
+        pushResults.push({ token: device.push_token.substring(0,12) + '...', ...result });
+        if (result.success) sentCount++;
+      } catch (pushErr) {
+        console.error('Push error for token:', device.push_token, pushErr.message);
+        pushResults.push({ token: device.push_token.substring(0,12) + '...', success: false, reason: pushErr.message });
+      }
+    }
+
+    await logPush({ brand_id, title, message, campaign_id, sent_count: sentCount });
+    res.json({ sent: sentCount, total: devices.length, apns_results: pushResults });
+  } catch (err) {
+    console.error('Push send error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/push/history', async (req, res) => {
+  try {
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const pushes = await listPushes(brand_id);
+    res.json(pushes);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/push/:id', async (req, res) => {
+  try {
+    await deletePush(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/push/clear/:brand_id', async (req, res) => {
+  try {
+    const result = await clearPushHistory(req.params.brand_id);
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.put('/scratch-cards/:id', authMiddleware, async (req, res) => {
+// ─── Scheduled Push ──────────────────
+
+router.get('/push/scheduled', async (req, res) => {
   try {
-    await updateInstantWinCampaign(req.params.id, req.body);
-    res.json({ ok: true });
+    const { brand_id } = req.query;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const items = await listScheduledPush(brand_id);
+    res.json(items);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/scratch-cards/:id', authMiddleware, async (req, res) => {
+router.post('/push/scheduled', async (req, res) => {
   try {
-    await deleteInstantWinCampaign(req.params.id);
-    res.json({ ok: true });
+    const item = await createScheduledPush(req.body);
+    res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/scratch-cards/:id/plays', authMiddleware, async (req, res) => {
+router.put('/push/scheduled/:id', async (req, res) => {
   try {
-    const plays = await listInstantWinPlays(req.params.id);
-    res.json(plays);
+    const item = await updateScheduledPush(req.params.id, req.body);
+    res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── Scratch Card: send email invitations ───────────────────────
-router.post('/scratch-cards/:id/send-email', authMiddleware, async (req, res) => {
+router.delete('/push/scheduled/:id', async (req, res) => {
   try {
-    const campaign = await getInstantWinCampaign(req.params.id);
-    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    await deleteScheduledPush(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-    const brand = await getBrand(campaign.brand_id);
+// ─── Geofencing Locations ──────────────────
+
+router.get('/brands/:id/geofencing', async (req, res) => {
+  try {
+    const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const locations = brand.config?.locations || [];
+    res.json({ locations, maxDistance: brand.config?.maxDistance || 500 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-    const members = await listMembers(campaign.brand_id);
-    const membersWithEmail = members.filter(m => m.email);
-    if (membersWithEmail.length === 0) return res.json({ sent: 0, skipped: 0, message: 'No members with email' });
+router.put('/brands/:id/geofencing', async (req, res) => {
+  try {
+    const { locations, maxDistance } = req.body;
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const config = brand.config || {};
+    config.locations = (locations || []).map(loc => ({
+      latitude: parseFloat(loc.latitude),
+      longitude: parseFloat(loc.longitude),
+      relevantText: loc.relevantText || '',
+      name: loc.name || '',
+      radius: parseInt(loc.radius) || 500
+    }));
+    if (maxDistance) config.maxDistance = parseInt(maxDistance);
+    await updateBrand(req.params.id, { config });
 
-    const baseUrl = `https://${CUSTOM_DOMAIN}`;
-    const brandColor = brand.config?.primaryColor || brand.config?.colors?.primary || '#D4E600';
-    let sent = 0, skipped = 0, errors = [];
-
-    for (const member of membersWithEmail) {
-      const scratchUrl = `${baseUrl}/scratch/${campaign.id}?m=${member.id}`;
-      try {
-        const result = await sendScratchEmail({
-          to: member.email,
-          name: member.first_name || member.full_name || '',
-          brandName: brand.name,
-          brandColor,
-          scratchUrl,
-          campaignTitle: campaign.title
-        });
-        if (result?.skipped) { skipped++; } else { sent++; }
-      } catch (e) {
-        errors.push({ member_id: member.id, error: e.message });
-        skipped++;
-      }
+    // Regenerate all active passes to include new locations
+    const passes = await pool.query(
+      'SELECT id FROM pass_instances WHERE brand_id = $1', [req.params.id]
+    );
+    for (const p of passes.rows) {
+      await touchPass(p.id);
     }
 
-    console.log(`[ScratchEmail] Campaign ${campaign.id}: sent=${sent}, skipped=${skipped}, errors=${errors.length}`);
-    res.json({ sent, skipped, total: membersWithEmail.length, errors: errors.slice(0, 5) });
+    // Push update to all devices so they re-download the pass with new locations
+    const devices = await getDevicesForBrand(req.params.id);
+    let pushCount = 0;
+    for (const d of devices) {
+      try {
+        await sendPushUpdate(d.push_token);
+        pushCount++;
+      } catch (e) { console.error('Geofencing push error:', e.message); }
+    }
+
+    res.json({ success: true, locations: config.locations, pushes_sent: pushCount });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Analytics ──────────────────
+
+router.get('/analytics/:brand_id', async (req, res) => {
+  try {
+    const analytics = await getAnalytics(req.params.brand_id);
+    res.json(analytics);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/analytics/:brand_id/campaigns', async (req, res) => {
+  try {
+    const data = await getCampaignAnalytics(req.params.brand_id);
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/events/:brand_id', async (req, res) => {
+  try {
+    const events = await listEvents(req.params.brand_id, parseInt(req.query.limit) || 50);
+    res.json(events);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Strip Promos ──────────────────
+
+router.get('/brands/:id/strip-promos', async (req, res) => {
+  try {
+    const promos = await listStripPromos(req.params.id);
+    res.json(promos);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:id/strip-promos', async (req, res) => {
+  try {
+    const promo = await createStripPromo({ brand_id: req.params.id, ...req.body });
+    res.json(promo);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/strip-promos/:id', async (req, res) => {
+  try {
+    await updateStripPromo(req.params.id, req.body);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/strip-promos/:id', async (req, res) => {
+  try {
+    await deleteStripPromo(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Get strip promo image base64 (for template reuse)
+router.get('/strip-promos/:id/image', async (req, res) => {
+  try {
+    const promo = await getStripPromo(req.params.id);
+    if (!promo) return res.status(404).json({ error: 'Strip promo non trovata' });
+    // If ?raw=1, serve as actual image for <img> tags
+    if (req.query.raw === '1') {
+      const buf = Buffer.from(promo.strip_base64, 'base64');
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'public, max-age=600');
+      return res.send(buf);
+    }
+    res.json({ strip_base64: promo.strip_base64 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Creative Assets ──────────────────────────────────────────────
+
+// Get available formats (optionally filter by segment)
+router.get('/creative-formats', (req, res) => {
+  const { segment } = req.query;
+  res.json(getFormats(segment || null));
+});
+
+// List assets for a brand
+router.get('/creative-assets', async (req, res) => {
+  const { brand_id, segment, campaign_id, limit } = req.query;
+  if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+  const assets = await listCreativeAssets(brand_id, {
+    segment, campaign_id, limit: limit ? parseInt(limit) : undefined
+  });
+  // Don't send image_base64 in list (too heavy) — send thumbnail info
+  const light = assets.map(a => ({ ...a, image_base64: a.image_base64 ? '[has_image]' : null }));
+  res.json(light);
+});
+
+// Get single asset (with image)
+router.get('/creative-assets/:id', async (req, res) => {
+  const asset = await getCreativeAsset(req.params.id);
+  if (!asset) return res.status(404).json({ error: 'Asset non trovato' });
+  res.json(asset);
+});
+
+// Upload a creative asset (manual upload)
+router.post('/creative-assets/upload', express.raw({ type: 'image/*', limit: '10mb' }), async (req, res) => {
+  try {
+    const { brand_id, campaign_id, segment, format_key, title } = req.query;
+    if (!brand_id || !segment || !format_key) {
+      return res.status(400).json({ error: 'brand_id, segment, format_key richiesti' });
+    }
+    const fmt = getFormat(format_key);
+    if (!fmt) return res.status(400).json({ error: 'Formato non valido: ' + format_key });
+
+    // Resize uploaded image to format dimensions
+    const sharp = require('sharp');
+    const resized = await sharp(req.body).resize(fmt.w, fmt.h, { fit: 'cover' }).png().toBuffer();
+
+    const asset = await createCreativeAsset({
+      brand_id, campaign_id: campaign_id || null, segment, format_key: fmt.key,
+      format_label: fmt.label, width: fmt.w, height: fmt.h, title: title || fmt.label,
+      source: 'upload', image_base64: resized.toString('base64')
+    });
+    res.json(asset);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Upload via multipart form
+router.post('/creative-assets/upload-form', async (req, res) => {
+  try {
+    const { brand_id, campaign_id, segment, format_key, title } = req.body;
+    if (!brand_id || !segment || !format_key) {
+      return res.status(400).json({ error: 'brand_id, segment, format_key richiesti' });
+    }
+    const fmt = getFormat(format_key);
+    if (!fmt) return res.status(400).json({ error: 'Formato non valido' });
+
+    // Expect image_base64 in body (from dashboard FileReader)
+    if (!req.body.image_base64) return res.status(400).json({ error: 'image_base64 richiesto' });
+
+    const sharp = require('sharp');
+    const imgBuf = Buffer.from(req.body.image_base64, 'base64');
+    const resized = await sharp(imgBuf).resize(fmt.w, fmt.h, { fit: 'cover' }).png().toBuffer();
+
+    const asset = await createCreativeAsset({
+      brand_id, campaign_id: campaign_id || null, segment, format_key: fmt.key,
+      format_label: fmt.label, width: fmt.w, height: fmt.h, title: title || fmt.label,
+      source: 'upload', image_base64: resized.toString('base64')
+    });
+    res.json({ id: asset.id, format_label: asset.format_label, width: asset.width, height: asset.height, created_at: asset.created_at });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Generate creative with AI (fal.ai)
+router.post('/creative-assets/generate', async (req, res) => {
+  try {
+    const { brand_id, campaign_id, segment, format_key, prompt, headline, cta_text, model, reference_image } = req.body;
+    if (!brand_id || !segment || !format_key || !prompt) {
+      return res.status(400).json({ error: 'brand_id, segment, format_key, prompt richiesti' });
+    }
+    const fmt = getFormat(format_key);
+    if (!fmt) return res.status(400).json({ error: 'Formato non valido' });
+
+    const brand = await getBrand(brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    // Choose model: image-to-image if reference provided, otherwise text-to-image
+    let aiModel = model || 'fal-ai/flux/dev';
+    let refImageUrl = null;
+    if (reference_image) {
+      aiModel = 'fal-ai/flux/dev/image-to-image';
+      refImageUrl = `data:image/png;base64,${reference_image}`;
+      console.log(`[Creative AI] Using image-to-image with reference (${Math.round(reference_image.length/1024)}KB)`);
+    }
+
+    // Step 1: Generate background with AI (using brand style prompt if configured)
+    const stylePrompt = (brand.config && brand.config.aiStylePrompt) || null;
+    console.log(`[Creative AI] Generating ${fmt.key} (${fmt.w}x${fmt.h}) with model: ${aiModel}${stylePrompt ? ' + brand style' : ' + default style'}`);
+    const imageUrl = await generateWithFal(prompt, fmt.w, fmt.h, aiModel, refImageUrl, stylePrompt);
+
+    // Step 2: Download generated image
+    const imgRes = await fetch(imageUrl);
+    const bgBuffer = Buffer.from(await imgRes.arrayBuffer());
+
+    // Step 3: Get brand logo (if available)
+    let logoBuffer = null;
+    if (brand.config && brand.config.logos && brand.config.logos.logo) {
+      logoBuffer = Buffer.from(brand.config.logos.logo, 'base64');
+    }
+
+    // Step 4: Generate QR for CTV/DOOH
+    let qrBuffer = null;
+    const isDooh = segment === 'ctv_dooh';
+    if (isDooh && campaign_id) {
+      // Generate QR code as PNG using a simple SVG-based QR
+      // For now, we'll mark it and the dashboard will handle QR separately
+    }
+
+    // Step 5: Compose final creative
+    const brandColors = {
+      bg: brand.config?.backgroundColor || '#0A0A0A',
+      fg: brand.config?.foregroundColor || '#FFFFFF',
+      lbl: brand.config?.labelColor || '#00D4AA'
+    };
+
+    const finalBuffer = await composeCreative({
+      backgroundBuffer: bgBuffer, width: fmt.w, height: fmt.h,
+      logoBuffer, headline, ctaText: cta_text, brandColors, qrBuffer, segment
+    });
+
+    // Step 6: Save to DB
+    const asset = await createCreativeAsset({
+      brand_id, campaign_id: campaign_id || null, segment, format_key: fmt.key,
+      format_label: fmt.label, width: fmt.w, height: fmt.h,
+      title: headline || prompt.substring(0, 60),
+      headline, cta_text, ai_prompt: prompt, ai_model: aiModel,
+      source: 'ai', image_base64: finalBuffer.toString('base64'),
+      qr_embedded: isDooh, metadata: { original_image_url: imageUrl }
+    });
+
+    res.json({ id: asset.id, format_label: asset.format_label, width: asset.width, height: asset.height, created_at: asset.created_at });
   } catch (err) {
-    console.error('[ScratchEmail] Error:', err);
+    console.error('Creative AI error:', err);
+    res.status(500).json({ error: 'Errore generazione: ' + err.message });
+  }
+});
+
+// Delete asset
+router.delete('/creative-assets/:id', async (req, res) => {
+  try {
+    await deleteCreativeAsset(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Media Hub ──────────────────────────────────────────────────────────
+router.get('/media', async (req, res) => {
+  try {
+    const brand_id = req.query.brand_id || req.user.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const type = req.query.type || 'all';
+    const items = await listMedia(brand_id, type);
+    res.json(items);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/media', async (req, res) => {
+  try {
+    let { brand_id, type, title, image_base64 } = req.body;
+    if (!brand_id || !image_base64) return res.status(400).json({ error: 'brand_id e image_base64 richiesti' });
+    // Convert PDF to PNG if needed
+    image_base64 = await pdfToPngIfNeeded(image_base64);
+    const item = await createMedia({ brand_id, type, title, image_base64 });
+    res.json(item);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/media/:id', async (req, res) => {
+  try {
+    await deleteMedia(req.params.id);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Bulk delete all media for a brand
+router.delete('/media', async (req, res) => {
+  try {
+    const brand_id = req.query.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const items = await listMedia(brand_id);
+    for (const it of items) await deleteMedia(it.id);
+    res.json({ ok: true, deleted: items.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Ad Serving Stats (protected) ────────────────────────────────────
+router.get('/ad-stats', async (req, res) => {
+  try {
+    const brand_id = req.query.brand_id || req.user.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const campaign_id = req.query.campaign_id || null;
+    const days = parseInt(req.query.days) || 30;
+    const stats = await getAdStats(brand_id, campaign_id, days);
+    res.json(stats);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/ad-timeline', async (req, res) => {
+  try {
+    const brand_id = req.query.brand_id || req.user.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
+    const campaign_id = req.query.campaign_id || null;
+    const days = parseInt(req.query.days) || 30;
+    const timeline = await getAdTimeline(brand_id, campaign_id, days);
+    res.json(timeline);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Ad tag generator — returns embeddable code for a campaign
+router.get('/ad-tag/:campaign_id', async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.campaign_id);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    const baseUrl = process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : `${req.protocol}://${req.get('host')}`;
+    const w = parseInt(req.query.w) || 300;
+    const h = parseInt(req.query.h) || 250;
+
+    const iframeTag = `<iframe src="${baseUrl}/api/v1/serve/${campaign.id}?w=${w}&h=${h}" width="${w}" height="${h}" frameborder="0" scrolling="no" style="border:none;overflow:hidden"></iframe>`;
+    const scriptTag = `<script>!function(){var d=document,f=d.createElement('iframe');f.src='${baseUrl}/api/v1/serve/${campaign.id}?w=${w}&h=${h}';f.width=${w};f.height=${h};f.frameBorder=0;f.scrolling='no';f.style.cssText='border:none;overflow:hidden';d.currentScript.parentNode.insertBefore(f,d.currentScript)}()</script>`;
+    const jsonUrl = `${baseUrl}/api/v1/serve/${campaign.id}?format=json`;
+
+    res.json({
+      campaign_id: campaign.id,
+      campaign_name: campaign.name,
+      formats: {
+        iframe: iframeTag,
+        script: scriptTag,
+        json_endpoint: jsonUrl,
+        direct_image: `${baseUrl}/api/v1/serve/${campaign.id}/image`
+      },
+      tracking: {
+        pixel: `${baseUrl}/api/v1/pixel/${campaign.id}`,
+        click: `${baseUrl}/api/v1/click/${campaign.id}`
+      }
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Banner Builder endpoints ──────────────────────────────────────
+
+// Get available templates & formats
+router.get('/banners/templates', (req, res) => {
+  res.json({ templates: BANNER_TEMPLATES, formats: IAB_FORMATS });
+});
+
+// Generate HTML5 banner preview (does not save)
+router.post('/banners/preview', async (req, res) => {
+  try {
+    const { brandName, headline, subheadline, ctaText, clickUrl, logoUrl, backgroundUrl, bgColor, fgColor, accentColor, format, template } = req.body;
+    const brand_id = req.query.brand_id || req.body.brand_id;
+    const baseUrl = process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : `${req.protocol}://${req.get('host')}`;
+
+    const html = generateBanner({
+      brandName, headline, subheadline, ctaText,
+      clickUrl: clickUrl || '#',
+      pixelUrl: '',
+      logoUrl, backgroundUrl,
+      bgColor, fgColor, accentColor,
+      format: format || '300x250',
+      template: template || 'fade-slide'
+    });
+
+    res.json({ html, format: format || '300x250', template: template || 'fade-slide' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Generate and save as creative asset
+router.post('/banners/generate', async (req, res) => {
+  try {
+    const { brandName, headline, subheadline, ctaText, clickUrl, logoUrl, backgroundUrl, bgColor, fgColor, accentColor, format, template, campaign_id, title } = req.body;
+    const brand_id = req.query.brand_id || req.body.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id required' });
+
+    const baseUrl = process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : `${req.protocol}://${req.get('host')}`;
+    const pixelUrl = campaign_id ? `${baseUrl}/api/v1/pixel/${campaign_id}` : '';
+    const clickTarget = campaign_id ? `${baseUrl}/api/v1/click/${campaign_id}` : (clickUrl || '#');
+
+    const html = generateBanner({
+      brandName, headline, subheadline, ctaText,
+      clickUrl: clickTarget,
+      pixelUrl,
+      logoUrl, backgroundUrl,
+      bgColor, fgColor, accentColor,
+      format: format || '300x250',
+      template: template || 'fade-slide'
+    });
+
+    // Save as media asset (type: banner)
+    const fmtInfo = IAB_FORMATS[format] || IAB_FORMATS['300x250'];
+    const mediaId = uuidv4();
+    const assetTitle = title || `Banner ${fmtInfo.label} - ${template || 'fade-slide'}`;
+
+    await createMedia({
+      id: mediaId,
+      brand_id,
+      type: 'banner',
+      title: assetTitle,
+      image_base64: Buffer.from(html).toString('base64'),
+      width: fmtInfo.w,
+      height: fmtInfo.h
+    });
+
+    res.json({
+      id: mediaId,
+      title: assetTitle,
+      format,
+      template,
+      width: fmtInfo.w,
+      height: fmtInfo.h,
+      html
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Serve a saved banner creative
+router.get('/banners/:id/serve', async (req, res) => {
+  try {
+    const media = await getMedia(req.params.id);
+    if (!media) return res.status(404).send('Not found');
+    if (media.type !== 'banner') return res.status(400).send('Not a banner');
+    const html = Buffer.from(media.image_base64, 'base64').toString('utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(html);
+  } catch (err) { res.status(500).send('Error'); }
+});
+
+// ─── Video Builder endpoints ───────────────────────────────────────
+
+// Get available video templates & formats
+router.get('/videos/templates', (req, res) => {
+  res.json({ templates: VIDEO_TEMPLATES, formats: VIDEO_FORMATS });
+});
+
+// Generate video and return as downloadable MP4
+router.post('/videos/generate', async (req, res) => {
+  try {
+    const { headline, subheadline, ctaText, brandName, bgColor, fgColor, accentColor, format, template, duration } = req.body;
+    const brand_id = req.query.brand_id || req.body.brand_id;
+
+    // If there's a logo in media, get its path
+    let logoPath = null;
+    let backgroundPath = null;
+
+    // Generate video
+    const result = await generateVideo({
+      headline, subheadline, ctaText, brandName,
+      bgColor, fgColor, accentColor,
+      format: format || '1080x1080',
+      template: template || 'brand-reveal',
+      duration: duration || undefined,
+      logoPath, backgroundPath
+    });
+
+    // Send the file
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('Content-Length', result.size);
+
+    const stream = require('fs').createReadStream(result.path);
+    stream.pipe(res);
+    stream.on('end', () => cleanupVideo(result.tmpDir));
+    stream.on('error', () => cleanupVideo(result.tmpDir));
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── Bridge: Webhook key management ─────────────────────────────
-router.post('/brands/:id/webhook-key', authMiddleware, async (req, res) => {
+// Generate video and save as media asset (base64 stored in DB)
+router.post('/videos/save', async (req, res) => {
   try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const config = brand.config || {};
-    config.webhookKey = require('crypto').randomBytes(20).toString('hex');
-    await updateBrand(brand.id, { config });
-    res.json({ webhookKey: config.webhookKey });
+    const { headline, subheadline, ctaText, brandName, bgColor, fgColor, accentColor, format, template, duration, title } = req.body;
+    const brand_id = req.query.brand_id || req.body.brand_id;
+    if (!brand_id) return res.status(400).json({ error: 'brand_id required' });
+
+    const result = await generateVideo({
+      headline, subheadline, ctaText, brandName,
+      bgColor, fgColor, accentColor,
+      format: format || '1080x1080',
+      template: template || 'brand-reveal',
+      duration: duration || undefined
+    });
+
+    // Read file and store as base64
+    const videoBuffer = require('fs').readFileSync(result.path);
+    const videoBase64 = videoBuffer.toString('base64');
+
+    const mediaId = uuidv4();
+    const fmtInfo = VIDEO_FORMATS[format] || VIDEO_FORMATS['1080x1080'];
+    const assetTitle = title || `Video ${fmtInfo.label} - ${template || 'brand-reveal'}`;
+
+    await createMedia({
+      id: mediaId,
+      brand_id,
+      type: 'video',
+      title: assetTitle,
+      image_base64: videoBase64,
+      width: fmtInfo.w,
+      height: fmtInfo.h
+    });
+
+    cleanupVideo(result.tmpDir);
+
+    res.json({
+      id: mediaId,
+      title: assetTitle,
+      format,
+      template,
+      width: fmtInfo.w,
+      height: fmtInfo.h,
+      duration: result.duration,
+      size: result.size
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── Bridge: Shopify key management ─────────────────────────────
-router.post('/brands/:id/shopify-key', authMiddleware, async (req, res) => {
+// Serve a saved video
+router.get('/videos/:id/serve', async (req, res) => {
   try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const config = brand.config || {};
-    config.shopifyKey = require('crypto').randomBytes(20).toString('hex');
-    if (!config.shopify) config.shopify = {};
-    config.shopify.pointsPerEuro = req.body.pointsPerEuro || config.shopify.pointsPerEuro || 1;
-    await updateBrand(brand.id, { config });
-    res.json({ shopifyKey: config.shopifyKey });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.put('/brands/:id/shopify-config', authMiddleware, async (req, res) => {
-  try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const config = brand.config || {};
-    if (!config.shopify) config.shopify = {};
-    if (req.body.pointsPerEuro) config.shopify.pointsPerEuro = parseInt(req.body.pointsPerEuro) || 1;
-    await updateBrand(brand.id, { config });
-    res.json({ ok: true, shopify: config.shopify });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// ─── Bridge: SumUp key management ─────────────────────────────
-router.post('/brands/:id/sumup-key', authMiddleware, async (req, res) => {
-  try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const config = brand.config || {};
-    config.sumupKey = require('crypto').randomBytes(20).toString('hex');
-    if (!config.sumup) config.sumup = {};
-    config.sumup.pointsPerEuro = req.body.pointsPerEuro || config.sumup.pointsPerEuro || 1;
-    await updateBrand(brand.id, { config });
-    res.json({ sumupKey: config.sumupKey });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-router.put('/brands/:id/sumup-config', authMiddleware, async (req, res) => {
-  try {
-    const brand = await getBrand(req.params.id);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
-    const config = brand.config || {};
-    if (!config.sumup) config.sumup = {};
-    if (req.body.pointsPerEuro) config.sumup.pointsPerEuro = parseInt(req.body.pointsPerEuro) || 1;
-    await updateBrand(brand.id, { config });
-    res.json({ ok: true, sumup: config.sumup });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// ─── Loop: Points Decay (manual trigger) ───────────────────────
-
-router.post('/decay/run', authMiddleware, async (req, res) => {
-  try {
-    const count = await runPointsDecay();
-    res.json({ ok: true, decayed: count });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const media = await getMedia(req.params.id);
+    if (!media) return res.status(404).send('Not found');
+    if (media.type !== 'video') return res.status(400).send('Not a video');
+    const videoBuf = Buffer.from(media.image_base64, 'base64');
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Length', videoBuf.length);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(videoBuf);
+  } catch (err) { res.status(500).send('Error'); }
 });
 
 module.exports = router;
