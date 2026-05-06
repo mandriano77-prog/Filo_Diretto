@@ -21,6 +21,9 @@ const {
   createInstantWinCampaign, getInstantWinCampaign, listInstantWinCampaigns,
   updateInstantWinCampaign, deleteInstantWinCampaign,
   createInstantWinPlay, listInstantWinPlays, countPlaysForUser, getInstantWinStats,
+  createGamificationCampaign, getGamificationCampaign, listGamificationCampaigns,
+  updateGamificationCampaign, deleteGamificationCampaign,
+  createGamificationPlay, listGamificationPlays, countGamificationPlaysForUser, getGamificationStats,
   pool
 } = require('../db');
 const { createPkpass } = require('../engine/passkit');
@@ -2114,6 +2117,182 @@ router.get('/brands/:brand_id/leads', async (req, res) => {
       with_device: withDevice,
       with_phone: withPhone,
       with_email: withEmail
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Gamification Campaigns CRUD ──────────────────────────────────────
+
+router.get('/gamification/campaigns/:brand_id', authMiddleware, async (req, res) => {
+  try {
+    const campaigns = await listGamificationCampaigns(req.params.brand_id);
+    res.json(campaigns);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/gamification/campaign/:id', authMiddleware, async (req, res) => {
+  try {
+    const campaign = await getGamificationCampaign(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campagna non trovata' });
+    res.json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/gamification/campaigns', authMiddleware, async (req, res) => {
+  try {
+    const campaign = await createGamificationCampaign(req.body);
+    res.status(201).json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/gamification/campaign/:id', authMiddleware, async (req, res) => {
+  try {
+    const campaign = await updateGamificationCampaign(req.params.id, req.body);
+    if (!campaign) return res.status(404).json({ error: 'Campagna non trovata' });
+    res.json(campaign);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/gamification/campaign/:id', authMiddleware, async (req, res) => {
+  try {
+    await deleteGamificationCampaign(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/gamification/stats/:brand_id', authMiddleware, async (req, res) => {
+  try {
+    const stats = await getGamificationStats(req.params.brand_id);
+    res.json(stats);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/gamification/plays/:campaign_id', authMiddleware, async (req, res) => {
+  try {
+    const plays = await listGamificationPlays(req.params.campaign_id, {
+      limit: parseInt(req.query.limit) || 100
+    });
+    res.json(plays);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Gamification Game Info (public, no auth) ──────────────────────────────
+
+router.get('/game/:serial_number/info', async (req, res) => {
+  try {
+    const { serial_number } = req.params;
+    const pass = await getPassBySerial(serial_number);
+    if (!pass) return res.status(404).json({ error: 'Pass non trovato' });
+
+    const brand = await getBrand(pass.brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    // Find active gamification campaign for this brand
+    const allCampaigns = await listGamificationCampaigns(pass.brand_id);
+    const activeCampaign = allCampaigns.find(c => c.status === 'active');
+
+    // Check if player already registered (from gamification or instant win plays)
+    let registeredPlayer = null;
+    const prevPlay = await pool.query(
+      `SELECT player_first_name, player_last_name, player_email, player_phone
+       FROM gamification_plays WHERE serial_number = $1 AND player_email IS NOT NULL
+       ORDER BY played_at DESC LIMIT 1`,
+      [serial_number]
+    );
+    if (prevPlay.rows.length > 0) {
+      registeredPlayer = prevPlay.rows[0];
+    } else {
+      // Fallback: check instant_win_plays too
+      const iwPlay = await pool.query(
+        `SELECT player_first_name, player_last_name, player_email, player_phone
+         FROM instant_win_plays WHERE serial_number = $1 AND player_email IS NOT NULL
+         ORDER BY played_at DESC LIMIT 1`,
+        [serial_number]
+      );
+      if (iwPlay.rows.length > 0) registeredPlayer = iwPlay.rows[0];
+    }
+
+    res.json({
+      brand: { id: brand.id, name: brand.name, slug: brand.slug, config: brand.config },
+      campaign: activeCampaign || null,
+      serial_number,
+      registered_player: registeredPlayer
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Gamification Play endpoint (public, no auth) ──────────────────────────
+
+router.post('/game/:serial_number', async (req, res) => {
+  try {
+    const { serial_number } = req.params;
+    const { campaign_id, completion_time_secs, score,
+            player_email, player_phone, player_first_name, player_last_name, privacy_accepted } = req.body;
+
+    const pass = await getPassBySerial(serial_number);
+    if (!pass) return res.status(404).json({ error: 'Pass non trovato' });
+
+    const campaign = await getGamificationCampaign(campaign_id);
+    if (!campaign) return res.status(404).json({ error: 'Campagna non trovata' });
+    if (campaign.status !== 'active') return res.status(400).json({ error: 'Campagna non attiva' });
+    if (campaign.brand_id !== pass.brand_id) return res.status(403).json({ error: 'Brand mismatch' });
+
+    // Check date range
+    const now = new Date();
+    if (campaign.start_date && new Date(campaign.start_date) > now)
+      return res.status(400).json({ error: 'Campagna non ancora iniziata' });
+    if (campaign.end_date && new Date(campaign.end_date) < now)
+      return res.status(400).json({ error: 'Campagna terminata' });
+
+    // Check max plays per user
+    const playCount = await countGamificationPlaysForUser(campaign_id, serial_number);
+    if (campaign.max_plays_per_user && playCount >= campaign.max_plays_per_user)
+      return res.status(400).json({ error: 'Hai già giocato il massimo numero di volte', already_played: true });
+
+    // Determine tier based on completion time
+    const timeSecs = parseFloat(completion_time_secs);
+    let tier = 'none';
+    let prizeName = null;
+    if (timeSecs <= parseFloat(campaign.gold_threshold_secs)) {
+      tier = 'gold';
+      prizeName = campaign.gold_prize;
+    } else if (timeSecs <= parseFloat(campaign.silver_threshold_secs)) {
+      tier = 'silver';
+      prizeName = campaign.silver_prize;
+    } else if (timeSecs <= parseFloat(campaign.bronze_threshold_secs)) {
+      tier = 'bronze';
+      prizeName = campaign.bronze_prize;
+    }
+
+    const play = await createGamificationPlay({
+      campaign_id,
+      serial_number,
+      brand_id: pass.brand_id,
+      completion_time_secs: timeSecs,
+      tier,
+      prize_name: prizeName,
+      score: score || 0,
+      player_email: player_email || null,
+      player_phone: player_phone || null,
+      player_first_name: player_first_name || null,
+      player_last_name: player_last_name || null,
+      privacy_accepted: privacy_accepted || false
+    });
+
+    // Log event
+    await logEvent({
+      pass_id: pass.id,
+      brand_id: pass.brand_id,
+      event_type: `gamification_${tier}`,
+      metadata: { campaign_id, game_type: campaign.game_type, completion_time_secs: timeSecs, tier, prize_name: prizeName }
+    });
+
+    res.json({
+      result: tier !== 'none' ? 'win' : 'lose',
+      tier,
+      prize_name: prizeName,
+      completion_time_secs: timeSecs,
+      play_id: play.id
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

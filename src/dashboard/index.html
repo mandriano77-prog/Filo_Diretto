@@ -813,23 +813,66 @@
             <!-- GAMIFICATION -->
             <div id="gamification" class="section">
                 <div class="sec-title">Gamification</div>
-                <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Sfide, missioni e obiettivi per aumentare l'engagement e il ritorno degli utenti sul pass.</p>
+                <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea campagne di gioco skill-based: Quiz, Memory Match, Puzzle. Premi a fasce in base al tempo di completamento.</p>
 
                 <div class="stats-grid" id="gamStats">
-                    <div class="stat-card"><div class="stat-value" id="gamStatChallenges">0</div><div class="stat-label">Sfide attive</div></div>
-                    <div class="stat-card"><div class="stat-value" id="gamStatCompletions">0</div><div class="stat-label">Completamenti</div></div>
-                    <div class="stat-card"><div class="stat-value" id="gamStatParticipants">0</div><div class="stat-label">Partecipanti</div></div>
-                    <div class="stat-card"><div class="stat-value" id="gamStatEngRate">0%</div><div class="stat-label">Engagement Rate</div></div>
+                    <div class="stat-card"><div class="stat-value" id="gamStatCampaigns">0</div><div class="stat-label">Campagne attive</div></div>
+                    <div class="stat-card"><div class="stat-value" id="gamStatPlays">0</div><div class="stat-label">Giocate totali</div></div>
+                    <div class="stat-card"><div class="stat-value" id="gamStatGold">0</div><div class="stat-label">Premi Oro</div></div>
                 </div>
 
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                    <div class="sec-title" style="font-size:18px;margin-bottom:0;">Sfide e Missioni</div>
-                    <button class="btn" onclick="openChallengeModal()">+ Nuova Sfida</button>
+                    <div class="sec-title" style="font-size:18px;margin-bottom:0;">Campagne Gamification</div>
+                    <button class="btn" onclick="openGamModal()">+ Nuova Campagna</button>
                 </div>
                 <table class="table" id="gamTable">
-                    <thead><tr><th>Nome</th><th>Tipo</th><th>Obiettivo</th><th>Premio</th><th>Partecipanti</th><th>Completamenti</th><th>Stato</th><th>Azioni</th></tr></thead>
+                    <thead><tr><th>Nome</th><th>Tipo</th><th>Oro</th><th>Argento</th><th>Bronzo</th><th>Giocate</th><th>Stato</th><th>Azioni</th></tr></thead>
                     <tbody></tbody>
                 </table>
+
+                <!-- Gamification Modal -->
+                <div id="gamModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+                  <div style="background:var(--card);border-radius:16px;padding:28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                      <h3 id="gamModalTitle" style="margin:0;font-size:20px;">Nuova Campagna Gamification</h3>
+                      <button class="btn sec" onclick="closeGamModal()" style="font-size:18px;padding:4px 12px;">✕</button>
+                    </div>
+                    <input type="hidden" id="gamEditId">
+                    <div class="form-group"><label class="form-label">Nome campagna</label><input id="gamName" placeholder="es. Quiz Natale 2026"></div>
+                    <div class="form-group"><label class="form-label">Tipo gioco</label>
+                      <select id="gamGameType"><option value="quiz">Quiz</option><option value="memory">Memory Match</option><option value="puzzle">Puzzle</option></select>
+                    </div>
+
+                    <div style="background:var(--bg2);border-radius:12px;padding:16px;margin:16px 0;border:1px solid var(--border);">
+                      <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Fasce Premio (in base al tempo)</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">🥇 Soglia Oro (secondi)</label><input type="number" id="gamGoldSecs" min="1" value="15" step="1"></div>
+                        <div class="form-group"><label class="form-label">🥇 Premio Oro</label><input id="gamGoldPrize" placeholder="es. Sconto 30%"></div>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">🥈 Soglia Argento (secondi)</label><input type="number" id="gamSilverSecs" min="1" value="30" step="1"></div>
+                        <div class="form-group"><label class="form-label">🥈 Premio Argento</label><input id="gamSilverPrize" placeholder="es. Sconto 15%"></div>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-group"><label class="form-label">🥉 Soglia Bronzo (secondi)</label><input type="number" id="gamBronzeSecs" min="1" value="60" step="1"></div>
+                        <div class="form-group"><label class="form-label">🥉 Premio Bronzo</label><input id="gamBronzePrize" placeholder="es. Sconto 5%"></div>
+                      </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div class="form-group"><label class="form-label">Max giocate per utente</label><input type="number" id="gamMaxPlays" min="1" value="1"></div>
+                      <div class="form-group"><label class="form-label">Stato</label>
+                        <select id="gamStatus"><option value="draft">Bozza</option><option value="active">Attiva</option><option value="paused">In pausa</option><option value="ended">Terminata</option></select>
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div class="form-group"><label class="form-label">Data inizio</label><input type="date" id="gamStartDate"></div>
+                      <div class="form-group"><label class="form-label">Data fine</label><input type="date" id="gamEndDate"></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Messaggio push (opzionale)</label><input id="gamPushMsg" placeholder="es. Una nuova sfida ti aspetta!"></div>
+                    <button class="btn" onclick="saveGamCampaign()" style="width:100%;margin-top:12px;">Salva Campagna</button>
+                  </div>
+                </div>
             </div>
 
             <!-- LEADS DATABASE -->
@@ -2575,53 +2618,128 @@ function exportLeadsCSV() {
 async function loadGamification() {
     if (!brandId) return;
     try {
-        const res = await fetch(`${API}/challenges?brand_id=${brandId}`, { headers: getAuthHeaders() });
-        if (!res.ok) { document.getElementById('gamTable').querySelector('tbody').innerHTML = '<tr><td colspan="8" style="color:var(--text2);text-align:center;">Nessuna sfida</td></tr>'; return; }
-        const challenges = await res.json();
+        const [statsRes, campaignsRes] = await Promise.all([
+            fetch(`${API}/gamification/stats/${brandId}`, { headers: getAuthHeaders() }),
+            fetch(`${API}/gamification/campaigns/${brandId}`, { headers: getAuthHeaders() })
+        ]);
+        const stats = statsRes.ok ? await statsRes.json() : { campaigns: 0, active_campaigns: 0, total_plays: 0, total_gold: 0 };
+        const campaigns = campaignsRes.ok ? await campaignsRes.json() : [];
 
-        // Stats
-        const active = challenges.filter(c => c.status === 'active' || !c.status).length;
-        const totalCompletions = challenges.reduce((s, c) => s + (c.completions || 0), 0);
-        const totalParticipants = challenges.reduce((s, c) => s + (c.participants || 0), 0);
-        const engRate = totalParticipants > 0 ? Math.round((totalCompletions / totalParticipants) * 100) : 0;
-
-        document.getElementById('gamStatChallenges').textContent = active;
-        document.getElementById('gamStatCompletions').textContent = totalCompletions;
-        document.getElementById('gamStatParticipants').textContent = totalParticipants;
-        document.getElementById('gamStatEngRate').textContent = engRate + '%';
+        document.getElementById('gamStatCampaigns').textContent = stats.active_campaigns;
+        document.getElementById('gamStatPlays').textContent = stats.total_plays;
+        document.getElementById('gamStatGold').textContent = stats.total_gold;
 
         const tbody = document.getElementById('gamTable').querySelector('tbody');
-        if (!challenges.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text2);text-align:center;">Nessuna sfida configurata. Creane una per gamificare l\'esperienza.</td></tr>';
+        if (!campaigns.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text2);text-align:center;">Nessuna campagna. Creane una per iniziare.</td></tr>';
             return;
         }
-        tbody.innerHTML = challenges.map(c => {
-            const type = c.trigger_type || 'manual';
-            const typeLabel = { manual: 'Ad Hoc', playtomic_bookings: 'Playtomic', referral: 'Referral' }[type] || type;
-            return `
+        const gameLabels = { quiz: 'Quiz', memory: 'Memory Match', puzzle: 'Puzzle' };
+        tbody.innerHTML = campaigns.map(c => `
             <tr>
                 <td><strong>${esc(c.name)}</strong></td>
-                <td>${typeLabel}</td>
-                <td>${c.target_value || '—'}</td>
-                <td>${c.reward_points || 0} punti</td>
-                <td>${c.participants || 0}</td>
-                <td>${c.completions || 0}</td>
-                <td><span class="badge ${c.status === 'active' || !c.status ? 'active' : 'inactive'}">${c.status || 'active'}</span></td>
+                <td>${gameLabels[c.game_type] || c.game_type}</td>
+                <td style="color:var(--gold);">${esc(c.gold_prize)} <span style="color:var(--text2);font-size:11px;">(&lt;${c.gold_threshold_secs}s)</span></td>
+                <td style="color:#C0C0C0;">${esc(c.silver_prize)} <span style="color:var(--text2);font-size:11px;">(&lt;${c.silver_threshold_secs}s)</span></td>
+                <td style="color:#CD7F32;">${esc(c.bronze_prize)} <span style="color:var(--text2);font-size:11px;">(&lt;${c.bronze_threshold_secs}s)</span></td>
+                <td>${c.total_plays || 0}</td>
+                <td><span class="badge ${c.status === 'active' ? 'active' : 'inactive'}">${c.status}</span></td>
                 <td>
-                    <button class="btn sec" style="font-size:11px;padding:4px 10px;" onclick="editChallenge('${c.id}')">Modifica</button>
-                    <button class="btn sec" style="font-size:11px;padding:4px 10px;color:var(--danger);" onclick="deleteChallenge('${c.id}')">Elimina</button>
+                    <button class="btn sec" style="font-size:11px;padding:4px 10px;" onclick="editGamCampaign('${c.id}')">Modifica</button>
+                    <button class="btn sec" style="font-size:11px;padding:4px 10px;color:var(--danger);" onclick="deleteGamCampaign('${c.id}')">Elimina</button>
                 </td>
             </tr>
-        `}).join('');
+        `).join('');
     } catch(e) {
         console.error('loadGamification error:', e);
         document.getElementById('gamTable').querySelector('tbody').innerHTML = '<tr><td colspan="8" style="color:var(--text2);text-align:center;">Errore caricamento</td></tr>';
     }
 }
 
-function openChallengeModal() { toast('Editor sfide in arrivo — stay tuned!'); }
-function editChallenge(id) { toast('Editor sfida in sviluppo'); }
-async function deleteChallenge(id) { if (!confirm('Eliminare questa sfida?')) return; toast('Eliminazione in sviluppo'); }
+function openGamModal(editId) {
+    document.getElementById('gamEditId').value = editId || '';
+    document.getElementById('gamModalTitle').textContent = editId ? 'Modifica Campagna' : 'Nuova Campagna Gamification';
+    if (!editId) {
+        document.getElementById('gamName').value = '';
+        document.getElementById('gamGameType').value = 'quiz';
+        document.getElementById('gamGoldSecs').value = '15';
+        document.getElementById('gamSilverSecs').value = '30';
+        document.getElementById('gamBronzeSecs').value = '60';
+        document.getElementById('gamGoldPrize').value = '';
+        document.getElementById('gamSilverPrize').value = '';
+        document.getElementById('gamBronzePrize').value = '';
+        document.getElementById('gamMaxPlays').value = '1';
+        document.getElementById('gamStatus').value = 'draft';
+        document.getElementById('gamStartDate').value = '';
+        document.getElementById('gamEndDate').value = '';
+        document.getElementById('gamPushMsg').value = '';
+    }
+    document.getElementById('gamModal').style.display = 'flex';
+}
+function closeGamModal() { document.getElementById('gamModal').style.display = 'none'; }
+
+async function saveGamCampaign() {
+    const editId = document.getElementById('gamEditId').value;
+    const data = {
+        brand_id: brandId,
+        name: document.getElementById('gamName').value,
+        game_type: document.getElementById('gamGameType').value,
+        gold_threshold_secs: parseFloat(document.getElementById('gamGoldSecs').value) || 15,
+        silver_threshold_secs: parseFloat(document.getElementById('gamSilverSecs').value) || 30,
+        bronze_threshold_secs: parseFloat(document.getElementById('gamBronzeSecs').value) || 60,
+        gold_prize: document.getElementById('gamGoldPrize').value,
+        silver_prize: document.getElementById('gamSilverPrize').value,
+        bronze_prize: document.getElementById('gamBronzePrize').value,
+        max_plays_per_user: parseInt(document.getElementById('gamMaxPlays').value) || 1,
+        status: document.getElementById('gamStatus').value,
+        start_date: document.getElementById('gamStartDate').value || null,
+        end_date: document.getElementById('gamEndDate').value || null,
+        push_message: document.getElementById('gamPushMsg').value || null
+    };
+    if (!data.name) { toast('Inserisci un nome per la campagna'); return; }
+    try {
+        const url = editId ? `${API}/gamification/campaign/${editId}` : `${API}/gamification/campaigns`;
+        const method = editId ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error((await res.json()).error || 'Errore');
+        closeGamModal();
+        loadGamification();
+        toast(editId ? 'Campagna aggiornata' : 'Campagna creata');
+    } catch(e) { toast('Errore: ' + e.message); }
+}
+
+async function editGamCampaign(id) {
+    try {
+        const res = await fetch(`${API}/gamification/campaign/${id}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('Campagna non trovata');
+        const c = await res.json();
+        document.getElementById('gamEditId').value = id;
+        document.getElementById('gamName').value = c.name;
+        document.getElementById('gamGameType').value = c.game_type;
+        document.getElementById('gamGoldSecs').value = c.gold_threshold_secs;
+        document.getElementById('gamSilverSecs').value = c.silver_threshold_secs;
+        document.getElementById('gamBronzeSecs').value = c.bronze_threshold_secs;
+        document.getElementById('gamGoldPrize').value = c.gold_prize;
+        document.getElementById('gamSilverPrize').value = c.silver_prize;
+        document.getElementById('gamBronzePrize').value = c.bronze_prize;
+        document.getElementById('gamMaxPlays').value = c.max_plays_per_user;
+        document.getElementById('gamStatus').value = c.status;
+        document.getElementById('gamStartDate').value = c.start_date ? c.start_date.split('T')[0] : '';
+        document.getElementById('gamEndDate').value = c.end_date ? c.end_date.split('T')[0] : '';
+        document.getElementById('gamPushMsg').value = c.push_message || '';
+        openGamModal(id);
+    } catch(e) { toast('Errore: ' + e.message); }
+}
+
+async function deleteGamCampaign(id) {
+    if (!confirm('Eliminare questa campagna e tutte le giocate associate?')) return;
+    try {
+        const res = await fetch(`${API}/gamification/campaign/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('Errore eliminazione');
+        loadGamification();
+        toast('Campagna eliminata');
+    } catch(e) { toast('Errore: ' + e.message); }
+}
 
 // ==================== ANALYTICS ====================
 async function loadAnalytics() {

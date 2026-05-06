@@ -221,6 +221,46 @@ CREATE TABLE IF NOT EXISTS instant_win_plays (
   prize_name TEXT,
   played_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS gamification_campaigns (
+  id TEXT PRIMARY KEY,
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  game_type TEXT NOT NULL CHECK (game_type IN ('quiz', 'memory', 'puzzle')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'paused', 'ended')),
+  gold_threshold_secs NUMERIC NOT NULL DEFAULT 15,
+  silver_threshold_secs NUMERIC NOT NULL DEFAULT 30,
+  bronze_threshold_secs NUMERIC NOT NULL DEFAULT 60,
+  gold_prize TEXT NOT NULL DEFAULT '',
+  silver_prize TEXT NOT NULL DEFAULT '',
+  bronze_prize TEXT NOT NULL DEFAULT '',
+  max_plays_per_user INTEGER DEFAULT 1,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
+  strip_base64 TEXT,
+  push_message TEXT,
+  config JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS gamification_plays (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES gamification_campaigns(id) ON DELETE CASCADE,
+  serial_number TEXT NOT NULL,
+  brand_id TEXT NOT NULL,
+  completion_time_secs NUMERIC NOT NULL,
+  tier TEXT NOT NULL CHECK (tier IN ('gold', 'silver', 'bronze', 'none')),
+  prize_name TEXT,
+  score INTEGER DEFAULT 0,
+  player_email TEXT,
+  player_phone TEXT,
+  player_first_name TEXT,
+  player_last_name TEXT,
+  privacy_accepted BOOLEAN DEFAULT FALSE,
+  privacy_accepted_at TIMESTAMPTZ,
+  played_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 // ─── Init ──────────────────────────────────────────────
@@ -332,6 +372,14 @@ async function getDb() {
 
     // Drop legacy member_id NOT NULL constraint (plays use serial_number, not member_id)
     await pool.query(`ALTER TABLE instant_win_plays ALTER COLUMN member_id DROP NOT NULL`).catch(()=>{});
+
+    // Gamification indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_campaigns_brand ON gamification_campaigns(brand_id)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_campaigns_status ON gamification_campaigns(status)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_campaign ON gamification_plays(campaign_id)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_serial ON gamification_plays(serial_number)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_brand ON gamification_plays(brand_id)`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_email ON gamification_plays(player_email)`).catch(()=>{});
 
     // Seed admin
     await seedAdminUser();
@@ -1162,6 +1210,141 @@ async function getInstantWinStats(brandId) {
   };
 }
 
+// ─── Gamification Campaigns ──────────────────────────────────
+
+async function createGamificationCampaign(data) {
+  const id = data.id || uuidv4();
+  const { brand_id, name, game_type, status = 'draft',
+    gold_threshold_secs = 15, silver_threshold_secs = 30, bronze_threshold_secs = 60,
+    gold_prize = '', silver_prize = '', bronze_prize = '',
+    max_plays_per_user = 1, start_date, end_date,
+    strip_base64, push_message, config = {} } = data;
+  await pool.query(
+    `INSERT INTO gamification_campaigns (id, brand_id, name, game_type, status,
+      gold_threshold_secs, silver_threshold_secs, bronze_threshold_secs,
+      gold_prize, silver_prize, bronze_prize,
+      max_plays_per_user, start_date, end_date, strip_base64, push_message, config)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+    [id, brand_id, name, game_type, status,
+      gold_threshold_secs, silver_threshold_secs, bronze_threshold_secs,
+      gold_prize, silver_prize, bronze_prize,
+      max_plays_per_user, start_date || null, end_date || null,
+      strip_base64 || null, push_message || null, JSON.stringify(config)]
+  );
+  return getGamificationCampaign(id);
+}
+
+async function getGamificationCampaign(id) {
+  const r = await pool.query('SELECT * FROM gamification_campaigns WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+
+async function listGamificationCampaigns(brandId) {
+  const r = await pool.query(`
+    SELECT c.*, COALESCE(p.play_count, 0)::int AS total_plays
+    FROM gamification_campaigns c
+    LEFT JOIN (
+      SELECT campaign_id, COUNT(*) AS play_count
+      FROM gamification_plays GROUP BY campaign_id
+    ) p ON p.campaign_id = c.id
+    WHERE c.brand_id = $1
+    ORDER BY c.created_at DESC
+  `, [brandId]);
+  return r.rows;
+}
+
+async function updateGamificationCampaign(id, data) {
+  const current = await getGamificationCampaign(id);
+  if (!current) return null;
+  const fields = ['name', 'game_type', 'status',
+    'gold_threshold_secs', 'silver_threshold_secs', 'bronze_threshold_secs',
+    'gold_prize', 'silver_prize', 'bronze_prize',
+    'max_plays_per_user', 'start_date', 'end_date',
+    'strip_base64', 'push_message', 'config'];
+  const updated = { ...current };
+  for (const f of fields) {
+    if (data[f] !== undefined) updated[f] = data[f];
+  }
+  if (typeof updated.config === 'object') updated.config = JSON.stringify(updated.config);
+  await pool.query(
+    `UPDATE gamification_campaigns SET name=$1, game_type=$2, status=$3,
+      gold_threshold_secs=$4, silver_threshold_secs=$5, bronze_threshold_secs=$6,
+      gold_prize=$7, silver_prize=$8, bronze_prize=$9,
+      max_plays_per_user=$10, start_date=$11, end_date=$12,
+      strip_base64=$13, push_message=$14, config=$15, updated_at=NOW()
+     WHERE id=$16`,
+    [updated.name, updated.game_type, updated.status,
+      updated.gold_threshold_secs, updated.silver_threshold_secs, updated.bronze_threshold_secs,
+      updated.gold_prize, updated.silver_prize, updated.bronze_prize,
+      updated.max_plays_per_user, updated.start_date, updated.end_date,
+      updated.strip_base64, updated.push_message, updated.config, id]
+  );
+  return getGamificationCampaign(id);
+}
+
+async function deleteGamificationCampaign(id) {
+  await pool.query('DELETE FROM gamification_plays WHERE campaign_id = $1', [id]);
+  await pool.query('DELETE FROM gamification_campaigns WHERE id = $1', [id]);
+  return { success: true };
+}
+
+// ─── Gamification Plays ──────────────────────────────────
+
+async function createGamificationPlay(data) {
+  const id = data.id || uuidv4();
+  const { campaign_id, serial_number, brand_id, completion_time_secs, tier, prize_name,
+          score, player_email, player_phone, player_first_name, player_last_name, privacy_accepted } = data;
+  await pool.query(
+    `INSERT INTO gamification_plays (id, campaign_id, serial_number, brand_id, completion_time_secs,
+     tier, prize_name, score, player_email, player_phone, player_first_name, player_last_name,
+     privacy_accepted, privacy_accepted_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+    [id, campaign_id, serial_number, brand_id, completion_time_secs,
+     tier, prize_name || null, score || 0,
+     player_email || null, player_phone || null, player_first_name || null, player_last_name || null,
+     privacy_accepted || false, privacy_accepted ? new Date().toISOString() : null]
+  );
+  return { id, campaign_id, serial_number, brand_id, completion_time_secs, tier, prize_name, score };
+}
+
+async function listGamificationPlays(campaignId, options = {}) {
+  let query = 'SELECT * FROM gamification_plays WHERE campaign_id = $1';
+  const params = [campaignId];
+  if (options.serial_number) {
+    query += ' AND serial_number = $2';
+    params.push(options.serial_number);
+  }
+  query += ' ORDER BY played_at DESC';
+  if (options.limit) { query += ` LIMIT $${params.length + 1}`; params.push(options.limit); }
+  const r = await pool.query(query, params);
+  return r.rows;
+}
+
+async function countGamificationPlaysForUser(campaignId, serialNumber) {
+  const r = await pool.query(
+    'SELECT COUNT(*) as count FROM gamification_plays WHERE campaign_id = $1 AND serial_number = $2',
+    [campaignId, serialNumber]
+  );
+  return parseInt(r.rows[0].count, 10);
+}
+
+async function getGamificationStats(brandId) {
+  const campaigns = await pool.query(
+    'SELECT COUNT(*) as total FROM gamification_campaigns WHERE brand_id = $1', [brandId]);
+  const activeCampaigns = await pool.query(
+    "SELECT COUNT(*) as total FROM gamification_campaigns WHERE brand_id = $1 AND status = 'active'", [brandId]);
+  const plays = await pool.query(
+    'SELECT COUNT(*) as total FROM gamification_plays WHERE brand_id = $1', [brandId]);
+  const goldWins = await pool.query(
+    "SELECT COUNT(*) as total FROM gamification_plays WHERE brand_id = $1 AND tier = 'gold'", [brandId]);
+  return {
+    campaigns: parseInt(campaigns.rows[0].total, 10),
+    active_campaigns: parseInt(activeCampaigns.rows[0].total, 10),
+    total_plays: parseInt(plays.rows[0].total, 10),
+    total_gold: parseInt(goldWins.rows[0].total, 10)
+  };
+}
+
 // ─── Exports ──────────────────────────────────────────────
 
 module.exports = {
@@ -1260,5 +1443,15 @@ module.exports = {
   createInstantWinPlay,
   listInstantWinPlays,
   countPlaysForUser,
-  getInstantWinStats
+  getInstantWinStats,
+  // Gamification
+  createGamificationCampaign,
+  getGamificationCampaign,
+  listGamificationCampaigns,
+  updateGamificationCampaign,
+  deleteGamificationCampaign,
+  createGamificationPlay,
+  listGamificationPlays,
+  countGamificationPlaysForUser,
+  getGamificationStats
 };

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Memory Match</title>
+<style>
+:root {
+  --bg: #0a0a0a; --card: #141414; --border: #222;
+  --teal: #3CDFFF; --purple: #A78BFA; --gold: #FFD700;
+  --green: #22c55e; --red: #ef4444; --text: #f0f0f0; --muted: #888;
+  --silver: #C0C0C0; --bronze: #CD7F32;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+.container { width: 100%; max-width: 420px; padding: 20px; text-align: center; }
+.brand-name { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-top: 20px; }
+.game-title { font-size: 28px; font-weight: 800; margin: 8px 0 4px; }
+.prize-label { font-size: 16px; color: var(--purple); margin-bottom: 16px; }
+
+/* Timer & stats */
+.game-stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
+.timer-text { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--teal); }
+.moves-text { font-size: 14px; color: var(--muted); }
+.pairs-text { font-size: 14px; color: var(--green); }
+
+/* Grid */
+.memory-grid { display: grid; gap: 8px; margin: 0 auto 24px; }
+.grid-4x4 { grid-template-columns: repeat(4, 1fr); }
+.grid-4x3 { grid-template-columns: repeat(4, 1fr); }
+
+.memory-card { aspect-ratio: 1; perspective: 600px; cursor: pointer; }
+.memory-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+.memory-card.flipped .memory-card-inner { transform: rotateY(180deg); }
+.memory-card.matched .memory-card-inner { transform: rotateY(180deg); }
+.memory-card.matched { animation: matchPop 0.4s ease; }
+@keyframes matchPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+.card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+.card-front { background: linear-gradient(135deg, #1a1a2e, #16213e); border: 2px solid var(--border); }
+.card-front::after { content: '?'; font-size: 28px; color: var(--teal); font-weight: 700; opacity: 0.5; }
+.card-back { background: var(--card); border: 2px solid var(--border); transform: rotateY(180deg); }
+.memory-card.matched .card-back { border-color: var(--green); background: rgba(34,197,94,0.1); }
+
+/* Result */
+.result-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; }
+.result-overlay.show { display: flex; }
+.result-card { background: var(--card); border-radius: 24px; padding: 40px 32px; text-align: center; max-width: 360px; width: 90%; border: 2px solid var(--border); animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.result-icon { font-size: 64px; margin-bottom: 16px; }
+.result-title { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+.result-desc { font-size: 16px; color: var(--muted); margin-bottom: 8px; }
+.result-time { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+.result-prize { font-size: 20px; color: var(--gold); font-weight: 700; margin-bottom: 24px; }
+.tier-badge { display: inline-block; padding: 6px 20px; border-radius: 50px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+.tier-gold { background: rgba(255,215,0,0.15); color: var(--gold); border: 1px solid var(--gold); }
+.tier-silver { background: rgba(192,192,192,0.15); color: var(--silver); border: 1px solid var(--silver); }
+.tier-bronze { background: rgba(205,127,50,0.15); color: var(--bronze); border: 1px solid var(--bronze); }
+.tier-none { background: rgba(136,136,136,0.15); color: var(--muted); border: 1px solid var(--muted); }
+.btn-close-result { background: var(--teal); color: #000; border: none; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 50px; cursor: pointer; }
+
+/* Loading & Form */
+.loading { text-align: center; padding: 60px 20px; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-msg { background: rgba(239,68,68,0.1); border: 1px solid var(--red); padding: 20px; border-radius: 12px; margin: 20px 0; }
+.form-step { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.form-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 32px 24px; margin: 16px 0; text-align: left; }
+.form-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; text-align: center; }
+.form-card .subtitle { font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.form-group input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 16px; -webkit-appearance: none; }
+.form-group input:focus { outline: none; border-color: var(--teal); }
+.form-group .required { color: var(--red); }
+.form-error { color: var(--red); font-size: 13px; margin-top: 4px; display: none; }
+.submit-btn { width: 100%; background: linear-gradient(135deg, var(--teal), var(--purple)); color: #fff; border: none; padding: 16px; font-size: 17px; font-weight: 700; border-radius: 50px; cursor: pointer; margin-top: 20px; }
+.play-btn { background: linear-gradient(135deg, var(--teal), var(--purple)); color: #fff; border: none; padding: 16px 48px; font-size: 18px; font-weight: 700; border-radius: 50px; cursor: pointer; transition: transform 0.2s; }
+.play-btn:hover { transform: scale(1.05); }
+.confetti { position: fixed; width: 10px; height: 10px; top: -10px; animation: confettiFall 3s ease-out forwards; z-index: 200; pointer-events: none; }
+@keyframes confettiFall { to { top: 110vh; transform: rotate(720deg) translateX(50px); } }
+.powered-by { font-size: 11px; color: #444; margin-top: 40px; }
+.powered-by a { color: #555; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <div class="loading" id="loadingScreen">
+    <div class="spinner"></div>
+    <div>Caricamento memory...</div>
+  </div>
+</div>
+
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-desc" id="resultDesc"></div>
+    <div class="tier-badge" id="tierBadge"></div>
+    <div class="result-time" id="resultTime"></div>
+    <div class="result-prize" id="resultPrize"></div>
+    <button class="btn-close-result" onclick="location.reload()">Gioca ancora</button>
+  </div>
+</div>
+
+<script>
+const serial = window.location.pathname.split('/').pop();
+const API = '/api';
+let gameInfo = null;
+let campaign = null;
+let playerData = {};
+
+// Memory game state
+let cards = [];
+let flippedCards = [];
+let matchedPairs = 0;
+let totalPairs = 0;
+let moves = 0;
+let startTime = null;
+let timerInterval = null;
+let isLocked = false;
+
+// Default emoji sets for cards (brand can override via config.card_emojis)
+const DEFAULT_EMOJIS = ['🎁', '⭐', '💎', '🎯', '🔥', '🎪', '🏆', '💰'];
+
+async function init() {
+  try {
+    const res = await fetch(`${API}/game/${serial}/info`);
+    if (!res.ok) throw new Error('Pass non trovato');
+    gameInfo = await res.json();
+    if (!gameInfo.campaign) throw new Error('Nessuna campagna attiva');
+    campaign = gameInfo.campaign;
+
+    if (gameInfo.registered_player) {
+      playerData = {
+        player_first_name: gameInfo.registered_player.player_first_name,
+        player_last_name: gameInfo.registered_player.player_last_name,
+        player_email: gameInfo.registered_player.player_email,
+        player_phone: gameInfo.registered_player.player_phone
+      };
+      renderStart();
+    } else {
+      renderForm();
+    }
+  } catch (err) {
+    document.getElementById('app').innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+function renderForm() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="brand-name">${gameInfo.brand.name}</div>
+    <div class="game-title">Memory Match</div>
+    <div class="prize-label">Trova le coppie e vinci!</div>
+    <div class="form-step">
+      <div class="form-card">
+        <h2>Registrati per giocare</h2>
+        <div class="subtitle">Compila i dati per partecipare</div>
+        <div class="form-group"><label>Nome <span class="required">*</span></label><input type="text" id="pFirst" placeholder="Il tuo nome" autocomplete="given-name"></div>
+        <div class="form-group"><label>Cognome <span class="required">*</span></label><input type="text" id="pLast" placeholder="Il tuo cognome" autocomplete="family-name"></div>
+        <div class="form-group"><label>Email <span class="required">*</span></label><input type="email" id="pEmail" placeholder="email@esempio.com" autocomplete="email"></div>
+        <div class="form-group"><label>Telefono</label><input type="tel" id="pPhone" placeholder="+39 333 1234567" autocomplete="tel"></div>
+        <div class="form-group" style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;">
+          <input type="checkbox" id="pPrivacy" style="margin-top:3px;width:18px;height:18px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;">
+          <label for="pPrivacy" style="font-size:12px;color:var(--muted);line-height:1.5;cursor:pointer;">
+            Acconsento al trattamento dei miei dati personali ai sensi del <a href="/privacy" target="_blank" style="color:var(--teal);">Regolamento Privacy</a> e della normativa vigente (GDPR UE 2016/679). <span class="required">*</span>
+          </label>
+        </div>
+        <div class="form-error" id="privacyError" style="display:none;text-align:center;">Devi accettare la privacy policy per partecipare</div>
+        <div class="form-error" id="formError" style="display:none;text-align:center;">Compila tutti i campi obbligatori</div>
+        <button class="submit-btn" onclick="submitForm()">Inizia il Memory</button>
+      </div>
+    </div>
+    <div class="powered-by">Powered by <a href="https://studio.ads2wallet.com" target="_blank">Ads2Wallet</a></div>
+  `;
+}
+
+function submitForm() {
+  const first = document.getElementById('pFirst').value.trim();
+  const last = document.getElementById('pLast').value.trim();
+  const email = document.getElementById('pEmail').value.trim();
+  const phone = document.getElementById('pPhone').value.trim();
+  const privacy = document.getElementById('pPrivacy').checked;
+  document.getElementById('formError').style.display = 'none';
+  document.getElementById('privacyError').style.display = 'none';
+  if (!first || !last || !email) { document.getElementById('formError').style.display = 'block'; return; }
+  if (!privacy) { document.getElementById('privacyError').style.display = 'block'; return; }
+  playerData = { player_first_name: first, player_last_name: last, player_email: email, player_phone: phone, privacy_accepted: true };
+  renderStart();
+}
+
+function renderStart() {
+  const app = document.getElementById('app');
+  const numPairs = (campaign.config && campaign.config.num_pairs) || 6;
+  app.innerHTML = `
+    <div class="brand-name">${gameInfo.brand.name}</div>
+    <div class="game-title">Memory Match</div>
+    <div class="prize-label">Trova tutte le ${numPairs} coppie!</div>
+    <div style="margin: 30px 0;">
+      <div style="font-size:80px;">🃏</div>
+      <div style="margin-top:20px;font-size:14px;color:var(--muted);">
+        <div style="margin-bottom:8px;">🥇 Oro: sotto ${campaign.gold_threshold_secs}s → <span style="color:var(--gold)">${campaign.gold_prize}</span></div>
+        <div style="margin-bottom:8px;">🥈 Argento: sotto ${campaign.silver_threshold_secs}s → <span style="color:var(--silver)">${campaign.silver_prize}</span></div>
+        <div>🥉 Bronzo: sotto ${campaign.bronze_threshold_secs}s → <span style="color:var(--bronze)">${campaign.bronze_prize}</span></div>
+      </div>
+    </div>
+    <button class="play-btn" onclick="startGame()">Inizia!</button>
+    <div class="powered-by">Powered by <a href="https://studio.ads2wallet.com" target="_blank">Ads2Wallet</a></div>
+  `;
+}
+
+function startGame() {
+  const numPairs = (campaign.config && campaign.config.num_pairs) || 6;
+  totalPairs = numPairs;
+  const emojis = (campaign.config && campaign.config.card_emojis) || DEFAULT_EMOJIS;
+  const selectedEmojis = emojis.slice(0, numPairs);
+
+  // Create pairs
+  cards = [];
+  selectedEmojis.forEach((emoji, i) => {
+    cards.push({ id: i * 2, emoji, pairId: i });
+    cards.push({ id: i * 2 + 1, emoji, pairId: i });
+  });
+
+  // Shuffle
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+
+  matchedPairs = 0;
+  moves = 0;
+  flippedCards = [];
+  isLocked = false;
+  startTime = Date.now();
+
+  renderGrid();
+  updateTimer();
+}
+
+function renderGrid() {
+  const cols = cards.length <= 12 ? 'grid-4x3' : 'grid-4x4';
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="game-stats">
+      <div class="timer-text" id="timerDisplay">0.0s</div>
+      <div class="pairs-text" id="pairsDisplay">${matchedPairs}/${totalPairs} coppie</div>
+      <div class="moves-text" id="movesDisplay">${moves} mosse</div>
+    </div>
+    <div class="memory-grid ${cols}" id="grid">
+      ${cards.map((card, idx) => `
+        <div class="memory-card" data-idx="${idx}" onclick="flipCard(${idx})">
+          <div class="memory-card-inner">
+            <div class="card-face card-front"></div>
+            <div class="card-face card-back">${card.emoji}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="powered-by">Powered by <a href="https://studio.ads2wallet.com" target="_blank">Ads2Wallet</a></div>
+  `;
+
+  // Brief flash: show all cards for 1.5s then hide
+  const allCards = document.querySelectorAll('.memory-card');
+  allCards.forEach(c => c.classList.add('flipped'));
+  setTimeout(() => {
+    allCards.forEach(c => c.classList.remove('flipped'));
+  }, 1500);
+}
+
+function updateTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const el = document.getElementById('timerDisplay');
+    if (el && startTime) el.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+  }, 100);
+}
+
+function flipCard(idx) {
+  if (isLocked) return;
+  const cardEl = document.querySelectorAll('.memory-card')[idx];
+  if (!cardEl || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+
+  cardEl.classList.add('flipped');
+  flippedCards.push(idx);
+
+  if (flippedCards.length === 2) {
+    moves++;
+    document.getElementById('movesDisplay').textContent = moves + ' mosse';
+    isLocked = true;
+
+    const [a, b] = flippedCards;
+    if (cards[a].pairId === cards[b].pairId) {
+      // Match!
+      const allCards = document.querySelectorAll('.memory-card');
+      allCards[a].classList.add('matched');
+      allCards[b].classList.add('matched');
+      matchedPairs++;
+      document.getElementById('pairsDisplay').textContent = `${matchedPairs}/${totalPairs} coppie`;
+      flippedCards = [];
+      isLocked = false;
+
+      if (matchedPairs === totalPairs) {
+        clearInterval(timerInterval);
+        setTimeout(() => finishGame(), 500);
+      }
+    } else {
+      // No match — flip back
+      setTimeout(() => {
+        const allCards = document.querySelectorAll('.memory-card');
+        allCards[a].classList.remove('flipped');
+        allCards[b].classList.remove('flipped');
+        flippedCards = [];
+        isLocked = false;
+      }, 800);
+    }
+  }
+}
+
+async function finishGame() {
+  const totalTime = (Date.now() - startTime) / 1000;
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Calcolo risultati...</div></div>`;
+
+  try {
+    const res = await fetch(`${API}/game/${serial}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaign_id: campaign.id,
+        completion_time_secs: totalTime.toFixed(2),
+        score: moves,
+        ...playerData
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore');
+    showResult(data, totalTime);
+  } catch (err) {
+    app.innerHTML = `<div class="error-msg">${err.message}</div>`;
+  }
+}
+
+function showResult(data, totalTime) {
+  const overlay = document.getElementById('resultOverlay');
+  const icons = { gold: '🏆', silver: '🥈', bronze: '🥉', none: '😔' };
+  const titles = { gold: 'Oro!', silver: 'Argento!', bronze: 'Bronzo!', none: 'Tempo scaduto' };
+  const tierClasses = { gold: 'tier-gold', silver: 'tier-silver', bronze: 'tier-bronze', none: 'tier-none' };
+
+  document.getElementById('resultIcon').textContent = icons[data.tier];
+  document.getElementById('resultTitle').textContent = titles[data.tier];
+  document.getElementById('resultDesc').textContent = `${totalPairs} coppie in ${moves} mosse`;
+  document.getElementById('tierBadge').textContent = data.tier.toUpperCase();
+  document.getElementById('tierBadge').className = `tier-badge ${tierClasses[data.tier]}`;
+  document.getElementById('resultTime').textContent = `Tempo: ${totalTime.toFixed(1)} secondi`;
+
+  if (data.prize_name) {
+    document.getElementById('resultPrize').textContent = `Hai vinto: ${data.prize_name}`;
+    document.getElementById('resultPrize').style.display = 'block';
+    launchConfetti();
+  } else {
+    document.getElementById('resultPrize').style.display = 'none';
+  }
+  overlay.classList.add('show');
+}
+
+function launchConfetti() {
+  const colors = ['#3CDFFF', '#A78BFA', '#FFD700', '#22c55e', '#ef4444', '#FF6B6B'];
+  for (let i = 0; i < 40; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDelay = Math.random() * 1.5 + 's';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    el.style.width = (6 + Math.random() * 8) + 'px';
+    el.style.height = (6 + Math.random() * 8) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

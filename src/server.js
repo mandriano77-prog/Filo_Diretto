@@ -148,6 +148,17 @@ app.get('/play/:serial_number', (req, res) => {
   res.sendFile(path.join(__dirname, 'play', 'index.html'));
 });
 
+// ─── Gamification game pages ──────────────────────────────────
+app.get('/game/quiz/:serial_number', (req, res) => {
+  res.sendFile(path.join(__dirname, 'game', 'quiz.html'));
+});
+app.get('/game/memory/:serial_number', (req, res) => {
+  res.sendFile(path.join(__dirname, 'game', 'memory.html'));
+});
+app.get('/game/puzzle/:serial_number', (req, res) => {
+  res.sendFile(path.join(__dirname, 'game', 'puzzle.html'));
+});
+
 // ─── Direct Save — skip landing, serve .pkpass immediately ──────────────
 // URL: /save/{slug}/{campaignId}?utm_source=instagram&utm_medium=story&...
 // For social/digital ads: ad CTA → this URL → iOS opens pass preview → done
@@ -348,7 +359,7 @@ app.get('/save/:slug/:campaignId?', async (req, res) => {
 // Short URL: /:slug serves the landing page for that brand
 app.get('/:slug', (req, res, next) => {
   const slug = req.params.slug;
-  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health', 'privacy', 'play', 'save'].includes(slug)) {
+  if (slug.includes('.') || ['api', 'dashboard', 'landing', 'debug', 'health', 'privacy', 'play', 'save', 'game'].includes(slug)) {
     return next();
   }
   res.sendFile(path.join(__dirname, 'landing', 'index.html'));
