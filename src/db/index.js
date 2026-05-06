@@ -904,13 +904,13 @@ async function seedAdminUser() {
     const existing = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
     if (existing.rows.length === 0) {
       await createUser({
-        email: 'admin@nudj.studio',
-        password: 'Nudj2026!',
+        email: 'admin@ads2wallet.com',
+        password: 'Ads2Wallet2026!',
         name: 'Admin',
         role: 'admin',
         brand_id: null
       });
-      console.log('✓ Seeded default admin user: admin@nudj.studio / Nudj2026!');
+      console.log('✓ Seeded default admin user: admin@ads2wallet.com / Ads2Wallet2026!');
     }
   } catch(e) { console.log('Admin seed note:', e.message); }
 }

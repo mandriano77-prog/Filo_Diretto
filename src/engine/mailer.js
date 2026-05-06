@@ -15,8 +15,8 @@ function getResend() {
   return null;
 }
 
-const getFromEmail = () => process.env.FROM_EMAIL || 'noreply@nudj.studio';
-const getFromName = () => process.env.FROM_NAME || 'Nudj';
+const getFromEmail = () => process.env.FROM_EMAIL || 'noreply@ads2wallet.com';
+const getFromName = () => process.env.FROM_NAME || 'Ads2Wallet';
 
 /**
  * Send welcome email after signup
@@ -215,7 +215,7 @@ async function sendUserInviteEmail({ to, name, password, role, brandName, dashbo
   const result = await resend.emails.send({
     from: `${fromName} <${fromEmail}>`,
     to: [to],
-    subject: `Il tuo accesso alla dashboard Nudj`,
+    subject: `Il tuo accesso alla dashboard Ads2Wallet`,
     html
   });
 
@@ -378,7 +378,7 @@ async function sendScratchEmail({ to, name, brandName, brandColor, scratchUrl, c
 
     <div style="text-align:center;padding:24px 0 0;">
       <p style="color:#444;font-size:11px;margin:0;">
-        Powered by Nudj
+        Powered by Ads2Wallet
       </p>
     </div>
 
