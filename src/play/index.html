@@ -111,7 +111,19 @@ async function init() {
       return showError(err.error || 'Errore caricamento');
     }
     gameInfo = await res.json();
-    renderForm();
+
+    // If player already registered (previous play), skip form
+    if (gameInfo.registered_player) {
+      playerData = {
+        player_first_name: gameInfo.registered_player.player_first_name,
+        player_last_name: gameInfo.registered_player.player_last_name,
+        player_email: gameInfo.registered_player.player_email,
+        player_phone: gameInfo.registered_player.player_phone
+      };
+      renderGame();
+    } else {
+      renderForm();
+    }
   } catch (e) { showError('Errore di connessione'); }
 }
 

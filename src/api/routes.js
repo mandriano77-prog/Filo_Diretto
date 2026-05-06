@@ -2036,6 +2036,19 @@ router.get('/play/:serial_number/info', async (req, res) => {
     const playCount = await countPlaysForUser(activeCampaign.id, serial_number);
     const canPlay = !activeCampaign.max_plays_per_user || playCount < activeCampaign.max_plays_per_user;
 
+    // Check if this serial already has player data from a previous play
+    let registeredPlayer = null;
+    const { pool } = require('../db');
+    const prevPlay = await pool.query(
+      `SELECT player_first_name, player_last_name, player_email, player_phone
+       FROM instant_win_plays WHERE serial_number = $1 AND player_email IS NOT NULL
+       ORDER BY played_at DESC LIMIT 1`,
+      [serial_number]
+    );
+    if (prevPlay.rows.length > 0) {
+      registeredPlayer = prevPlay.rows[0];
+    }
+
     res.json({
       campaign_id: activeCampaign.id,
       game_type: activeCampaign.game_type,
@@ -2048,7 +2061,8 @@ router.get('/play/:serial_number/info', async (req, res) => {
       plays_remaining: activeCampaign.max_plays_per_user
         ? Math.max(0, activeCampaign.max_plays_per_user - playCount)
         : null,
-      config: activeCampaign.config || {}
+      config: activeCampaign.config || {},
+      registered_player: registeredPlayer
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
