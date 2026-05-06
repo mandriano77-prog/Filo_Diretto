@@ -1140,7 +1140,7 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 
 router.post('/push/send', async (req, res) => {
   try {
-    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id } = req.body;
+    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
 
     console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
@@ -1192,6 +1192,24 @@ router.post('/push/send', async (req, res) => {
             config.stripOverride = iwCampaign.strip_base64;
           }
           console.log(`[PUSH] Instant Win injected: campaign=${iwCampaign.id}, game=${iwCampaign.game_type}`);
+        }
+      }
+
+      // Gamification: inject game link into pass back field
+      if (gamification_id) {
+        const gamCampaign = await getGamificationCampaign(gamification_id);
+        if (gamCampaign && gamCampaign.status === 'active') {
+          const gameLabels = { quiz: 'Quiz', memory: 'Memory Match', puzzle: 'Puzzle' };
+          config.gamificationActive = {
+            campaign_id: gamCampaign.id,
+            label: gamCampaign.push_message || gamCampaign.name || 'Gioca ora!',
+            game_type: gamCampaign.game_type
+          };
+          // If campaign has a strip image, inject it
+          if (gamCampaign.strip_base64) {
+            config.stripOverride = gamCampaign.strip_base64;
+          }
+          console.log(`[PUSH] Gamification injected: campaign=${gamCampaign.id}, game=${gamCampaign.game_type}`);
         }
       }
 

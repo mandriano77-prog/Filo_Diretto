@@ -299,6 +299,20 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
+  // 2c. GAMIFICATION LINK — auto-injected when a gamification campaign is active
+  if (brandConfig.gamificationActive && instance.serial_number) {
+    const gameTypeRoutes = { quiz: 'quiz', memory: 'memory', puzzle: 'puzzle' };
+    const gameRoute = gameTypeRoutes[brandConfig.gamificationActive.game_type] || 'quiz';
+    const gameUrl = `${baseUrl}/game/${gameRoute}/${instance.serial_number}`;
+    const gamLabel = brandConfig.gamificationActive.label || 'Gioca ora!';
+    orderedBackFields.push({
+      key: 'gamification_link',
+      label: '',
+      value: gamLabel,
+      attributedValue: `<a href="${gameUrl}">${gamLabel}</a>`
+    });
+  }
+
   // 3. REGOLAMENTO — from brand backContent OR template fields
   const backContent = brandConfig.backContent || {};
   const tplRegolamento = (!Array.isArray(tplFields) && tplFields.regolamento) || '';
