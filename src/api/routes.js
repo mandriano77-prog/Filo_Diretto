@@ -455,6 +455,15 @@ router.delete('/devices/:deviceLibraryId/registrations/:passTypeId/:serialNumber
     const pass = await getPassBySerial(serialNumber);
     if (pass) {
       await logEvent({ pass_id: pass.id, brand_id: pass.brand_id, event_type: 'pass_removed', device_id: deviceLibraryId });
+      if (pass.device_source === 'apple') {
+        const { rows } = await pool.query(
+          'SELECT COUNT(*)::int AS c FROM device_registrations WHERE serial_number = $1',
+          [serialNumber]
+        );
+        if (rows[0].c === 0) {
+          await updatePassInstance(pass.id, { device_id: null, device_source: null });
+        }
+      }
     }
 
     res.status(200).send();
@@ -2450,7 +2459,11 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
     const passObject = googleWallet.buildPassObject(brand, template, instance, instance.customer_data);
 
     await googleWallet.createPassObjectOnServer(passObject);
-    await updatePassInstance(instance.id, { google_wallet_object_id: passObject.id });
+    await updatePassInstance(instance.id, {
+      google_wallet_object_id: passObject.id,
+      google_wallet_saved: false,
+      google_installed_at: null
+    });
 
     const saveLink = googleWallet.generateSaveLink(passObject);
 

@@ -633,6 +633,8 @@ async function updatePassInstance(id, data) {
   if (data.google_wallet_object_id !== undefined) { p++; updates.push(`google_wallet_object_id = $${p}`); values.push(data.google_wallet_object_id); }
   if (data.google_wallet_saved !== undefined) { p++; updates.push(`google_wallet_saved = $${p}`); values.push(!!data.google_wallet_saved); }
   if (data.google_installed_at !== undefined) { p++; updates.push(`google_installed_at = $${p}`); values.push(data.google_installed_at); }
+  if (data.device_id !== undefined) { p++; updates.push(`device_id = $${p}`); values.push(data.device_id); }
+  if (data.device_source !== undefined) { p++; updates.push(`device_source = $${p}`); values.push(data.device_source); }
   if (updates.length === 0) return getPassInstance(id);
   updates.push('last_updated = NOW()');
   p++; values.push(id);
@@ -1381,7 +1383,10 @@ async function updateGoogleWalletStatus(objectId, installed) {
       );
     } else {
       await pool.query(
-        `UPDATE pass_instances SET google_wallet_saved = FALSE, google_installed_at = NULL, last_updated = NOW() WHERE google_wallet_object_id = $1`,
+        `UPDATE pass_instances SET google_wallet_saved = FALSE, google_installed_at = NULL,
+          device_id = CASE WHEN device_source = 'google' THEN NULL ELSE device_id END,
+          device_source = CASE WHEN device_source = 'google' THEN NULL ELSE device_source END,
+          last_updated = NOW() WHERE google_wallet_object_id = $1`,
         [objectId]
       );
     }
