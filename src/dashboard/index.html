@@ -1332,6 +1332,7 @@ function syncBrandUrl() {
 // ==================== BRAND THEMING ====================
 function applyBrandTheme() {
     if (!brandId) {
+        currentBrandSlug = '';
         // Reset to default NUDJ colors
         const root = document.documentElement.style;
         root.setProperty('--bg', '#0D0B1A');
@@ -1357,6 +1358,7 @@ function applyBrandTheme() {
         console.log('[Theme] Applying:', { bg, fg, lbl, fromConfig: !!c.backgroundColor });
         // Update brand name in header and page title
         const name = brand.name || 'Ads2Wallet';
+        currentBrandSlug = brand.slug || '';
         document.getElementById('headerBrandTitle').textContent = name;
         document.title = name + ' — Ads2Wallet';
         // Derive palette from brand colors
@@ -1615,6 +1617,7 @@ async function loadPasses() {
     if (campaignFilter) url += `&campaign_id=${campaignFilter}`;
     const res = await fetch(url);
     const passes = await res.json();
+    window._lastPassesForExport = passes;
     const el = document.getElementById('passesContent');
 
     // Update campaign filter dropdown
@@ -1639,6 +1642,9 @@ async function loadPasses() {
     </div>`;
 
     el.innerHTML = statsHtml + `
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+            <button type="button" class="btn small sec" onclick="downloadPassesTableCsv()">Scarica tabella (CSV)</button>
+        </div>
         <div style="overflow-x:auto;">
         <table class="table">
             <thead><tr>
@@ -1652,7 +1658,6 @@ async function loadPasses() {
                 <th>Referrer</th>
                 <th>Stato</th>
                 <th>Scaricato</th>
-                <th>Installato il</th>
                 <th>Azioni</th>
             </tr></thead>
             <tbody>${passes.map(p => {
@@ -1664,8 +1669,12 @@ async function loadPasses() {
                 const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
                 const utmStr = utmParts.length ? utmParts.join(' / ') : '-';
                 const refDisplay = p.referrer_url ? shortenUrl(p.referrer_url) : '-';
+                const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
+                const installCellInner = isInstalled
+                    ? `<span title="Pass installato nel Wallet" style="color:var(--green);font-size:16px;line-height:1;">&#9745;</span><span style="font-size:11px;color:var(--text);">${installDateStr ? esc(installDateStr) : '<span style="opacity:0.5">—</span>'}</span>`
+                    : `<span title="Solo scaricato" style="opacity:0.35;font-size:16px;line-height:1;">&#9744;</span><span style="font-size:11px;opacity:0.45;">—</span>`;
                 return `<tr>
-                    <td style="text-align:center;font-size:16px;">${isInstalled ? '<span title="Pass installato nel Wallet" style="color:var(--green);">&#9745;</span>' : '<span title="Solo scaricato" style="opacity:0.3;">&#9744;</span>'}</td>
+                    <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
                     <td style="text-align:center;font-size:16px;">${isReachable ? '<span title="Push token attivo" style="color:var(--green);">&#128276;</span>' : '<span title="Non raggiungibile" style="opacity:0.3;">&#128263;</span>'}</td>
                     <td style="text-align:center;font-size:12px;">${p.push_count > 0 ? (() => {
                         const statusIcon = p.last_push_status === 'delivered' ? '<span style="color:var(--green);" title="Ultima push consegnata">&#10004;</span>' : '<span style="color:#ff6b6b;" title="' + esc(p.last_push_status || 'errore') + '">&#10006;</span>';
@@ -1679,7 +1688,6 @@ async function loadPasses() {
                     <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.referrer_url||'')}">${esc(refDisplay)}</td>
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
-                    <td style="font-size:11px;">${p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '<span style="opacity:0.3">-</span>'}</td>
                     <td style="display:flex;gap:4px;">
                         <button class="btn small sec" onclick="downloadPass('${p.id}')" title="Scarica .pkpass">DL</button>
                         <button class="btn small danger" onclick="deletePassInstance('${p.id}')" title="Elimina pass">&#10005;</button>
@@ -1689,6 +1697,70 @@ async function loadPasses() {
         </table>
         </div>
     `;
+}
+
+function csvEscapeCell(v) {
+    const s = v == null ? '' : String(v);
+    if (/[";\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+}
+
+function downloadPassesTableCsv() {
+    const passes = window._lastPassesForExport;
+    if (!passes || !passes.length) {
+        alert('Nessun pass da esportare. Apri la sezione Pass e attendi il caricamento.');
+        return;
+    }
+    const sep = ';';
+    const headers = [
+        'Installato',
+        'Data installazione',
+        'Raggiungibile push',
+        'Push',
+        'Device ID',
+        'Sorgente',
+        'Campagna',
+        'UTM',
+        'OS / Browser',
+        'Referrer',
+        'Stato',
+        'Scaricato (creato)'
+    ];
+    const rows = passes.map(p => {
+        const camp = campaignsCache.find(c => c.id === p.campaign_id);
+        const utm = p.utm || {};
+        const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
+        const isInstalled = !!p.device_id;
+        const isReachable = !!p.push_token;
+        const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it-IT') : '';
+        let pushStr = '-';
+        if (p.push_count > 0) {
+            pushStr = [String(p.push_count) + 'x', p.last_push_status || '', p.last_push_at ? new Date(p.last_push_at).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' ');
+        }
+        const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : '';
+        return [
+            isInstalled ? 'Sì' : 'No',
+            installDateStr,
+            isReachable ? 'Sì' : 'No',
+            pushStr,
+            p.device_id || '',
+            src,
+            camp ? camp.name : '',
+            utmParts.join(' / '),
+            parseUserAgent(p.user_agent),
+            p.referrer_url || '',
+            p.status || '',
+            p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : ''
+        ].map(csvEscapeCell).join(sep);
+    });
+    const csv = '\uFEFF' + headers.map(csvEscapeCell).join(sep) + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    const slug = (currentBrandSlug || brandId || 'brand').replace(/[^\w\-]/gi, '-');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pass-${slug}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
 }
 
 function parseUserAgent(ua) {
