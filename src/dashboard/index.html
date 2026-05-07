@@ -153,6 +153,8 @@
 <div class="layout" id="mainLayout">
     <div class="sidebar">
         <div class="logo">Ads2Wallet<small>by Underdogs Group</small></div>
+        <div class="nav-label">Dashboard</div>
+        <div class="nav-item active" onclick="nav('welcome')">Inizio</div>
         <div class="nav-label">Brand</div>
         <div class="nav-item" onclick="nav('brand-identity')">Identità</div>
         <div class="nav-item" onclick="nav('media-library')">Media Library</div>
@@ -160,7 +162,7 @@
         <div class="nav-item" onclick="nav('pass-wizard')">Crea Pass</div>
         <div class="nav-item" onclick="nav('passes')">Pass Emessi</div>
         <div class="nav-label">Comunicazione</div>
-        <div class="nav-item active" onclick="nav('campaigns')">Campagne</div>
+        <div class="nav-item" onclick="nav('campaigns')">Campagne</div>
         <div class="nav-item" onclick="nav('push')">Push Notification</div>
         <div class="nav-label">Engagement</div>
         <div class="nav-item" onclick="nav('instant-win')">Instant Win</div>
@@ -189,8 +191,19 @@
 
         <div class="content">
 
+            <!-- WELCOME -->
+            <div id="welcome" class="section active">
+                <div class="sec-title">Benvenuto</div>
+                <p style="font-size:14px;color:var(--text2);max-width:560px;line-height:1.55;margin-bottom:16px;">
+                    Seleziona un brand dal menu in alto per gestire campagne, pass Apple Wallet e Google Wallet, push e analytics.
+                </p>
+                <p style="font-size:13px;color:var(--text2);max-width:560px;line-height:1.5;">
+                    Oppure apri <strong>Identità</strong> per creare un nuovo brand prima di selezionarlo qui.
+                </p>
+            </div>
+
             <!-- CAMPAIGNS -->
-            <div id="campaigns" class="section active">
+            <div id="campaigns" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                     <div class="sec-title" style="margin-bottom:0">Campagne</div>
                     <button class="btn" onclick="openCampaignModal()">+ Nuova Campagna</button>
@@ -246,7 +259,7 @@
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
                 <div class="sec-title">Push &amp; Notifiche</div>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing.</p>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Le push verso il pass usano <strong>Apple Push (APNs)</strong> per i pass installati su Apple Wallet; i pass solo Google Wallet non ricevono queste notifiche.</p>
 
                 <!-- Sub-tab navigation -->
                 <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
@@ -1118,6 +1131,20 @@
     </div>
 </div>
 
+<!-- Pass detail (Vedi pass) -->
+<div id="passDetailModal" class="modal">
+    <div class="modal-content" style="max-width:560px;">
+        <button class="modal-close" onclick="closeModal('passDetailModal')">&times;</button>
+        <div class="modal-header">Dettaglio pass</div>
+        <div id="passDetailBody" style="font-size:13px;line-height:1.55;color:var(--text);"></div>
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn small" id="passDetailDlBtn" title="Scarica pass Apple Wallet (.pkpass)">Apple · .pkpass</button>
+            <button type="button" class="btn small sec" id="passDetailGwBtn" title="Apri &quot;Aggiungi a Google Wallet&quot;">Google Wallet</button>
+            <button type="button" class="btn small sec" onclick="closeModal('passDetailModal')">Chiudi</button>
+        </div>
+    </div>
+</div>
+
 <!-- User Modal -->
 <div id="userModal" class="modal">
     <div class="modal-content">
@@ -1148,7 +1175,9 @@ let currentBrandName = '';
 let currentBrandSlug = '';
 let campaignsCache = [];
 const LAST_BRAND_KEY = 'ads2wallet:lastBrandId';
-const BRAND_CACHE_TTL_MS = 10000;
+const BRAND_CACHE_TTL_MS = 45000;
+/** Sections reachable without selecting a brand */
+const SECTIONS_NO_BRAND = new Set(['welcome', 'users', 'brand-identity']);
 const brandDataCache = new Map();
 
 // ==================== INIT ====================
@@ -1188,21 +1217,36 @@ function updateNavState() {
 }
 
 function nav(id) {
+    if (id === 'welcome' && brandId) id = 'campaigns';
+    if (!brandId && !SECTIONS_NO_BRAND.has(id)) {
+        toast('Seleziona un brand dall\'elenco in alto');
+        return;
+    }
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(id)?.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if (event && event.target) {
-        event.target.classList.add('active');
-    } else {
-        const navItem = Array.from(document.querySelectorAll('.nav-item'))
-            .find(n => (n.getAttribute('onclick') || '').includes(`'${id}'`));
-        if (navItem) navItem.classList.add('active');
-    }
+    const navItem = Array.from(document.querySelectorAll('.nav-item'))
+        .find(n => (n.getAttribute('onclick') || '').includes(`'${id}'`));
+    if (navItem) navItem.classList.add('active');
     const loaders = {
+        welcome: () => {},
         campaigns: loadCampaigns,
         passes: loadPasses,
         templates: loadTemplates,
-        push: () => { loadPushHistory(); loadScheduledPush(); loadPushCampaignSelect(); loadSchedCampaignSelect(); loadPushIwSelect(); loadPushGamSelect(); loadGeofencing(); loadStripPromos(); },
+        push: () => {
+            loadPushHistory();
+            loadScheduledPush();
+            const rest = () => {
+                loadPushCampaignSelect();
+                loadSchedCampaignSelect();
+                loadPushIwSelect();
+                loadPushGamSelect();
+                loadGeofencing();
+                loadStripPromos();
+            };
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(rest, { timeout: 1500 });
+            else setTimeout(rest, 50);
+        },
         analytics: loadAnalytics,
         'pass-design': loadPassDesign,
         'brand-identity': loadBrandIdentity,
@@ -1217,11 +1261,12 @@ function nav(id) {
 }
 
 function getActiveSectionId() {
-    return document.querySelector('.section.active')?.id || 'campaigns';
+    return document.querySelector('.section.active')?.id || 'welcome';
 }
 
 function refreshActiveSection() {
-    const activeId = getActiveSectionId();
+    let activeId = getActiveSectionId();
+    if (brandId && activeId === 'welcome') activeId = 'campaigns';
     nav(activeId);
 }
 
@@ -1265,27 +1310,16 @@ async function loadBrands() {
     });
     sel.appendChild(frag);
 
-    const urlBrand = new URLSearchParams(window.location.search).get('brand_id');
-    const lastBrand = localStorage.getItem(LAST_BRAND_KEY);
-    const fromUrl = urlBrand && brands.find(b => b.id === urlBrand);
-    const fromLast = !fromUrl && lastBrand && brands.find(b => b.id === lastBrand);
-    const keepCurrent = !fromUrl && !fromLast && brandId && brands.find(b => b.id === brandId);
+    const urlBrandParam = new URLSearchParams(window.location.search).get('brand_id');
+    const urlMatch = urlBrandParam && brands.find(b => String(b.id) === String(urlBrandParam));
+    const inSession = brandId && brands.find(b => String(b.id) === String(brandId));
 
-    if (fromUrl) {
-        sel.value = fromUrl.id;
-        brandId = fromUrl.id;
-    } else if (fromLast) {
-        sel.value = fromLast.id;
-        brandId = fromLast.id;
-    } else if (keepCurrent) {
-        sel.value = keepCurrent.id;
-        brandId = keepCurrent.id;
-    } else if (brands.length > 0) {
-        sel.value = brands[0].id;
-        brandId = brands[0].id;
-    } else {
-        brandId = null;
-    }
+    let nextId = null;
+    if (urlMatch) nextId = urlMatch.id;
+    else if (inSession) nextId = inSession.id;
+
+    sel.value = nextId ? nextId : '';
+    brandId = nextId || null;
 
     updateNavState();
     if (brandId) {
@@ -1294,28 +1328,37 @@ async function loadBrands() {
         syncBrandUrl();
         applyBrandTheme();
         await refreshOverview();
-        refreshActiveSection();
+        let sid = getActiveSectionId();
+        if (sid === 'welcome') sid = 'campaigns';
+        nav(sid);
     } else {
         currentBrandName = '';
         localStorage.removeItem(LAST_BRAND_KEY);
+        syncBrandUrl();
         applyBrandTheme();
-        refreshActiveSection();
+        nav('welcome');
     }
 }
 
 function changeBrand() {
-    brandId = document.getElementById('brandSelector').value;
     const sel = document.getElementById('brandSelector');
+    brandId = sel.value || null;
     currentBrandName = brandId ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
     applyBrandTheme();
     updateNavState();
     if (!brandId) {
         localStorage.removeItem(LAST_BRAND_KEY);
+        syncBrandUrl();
+        nav('welcome');
         return;
     }
     localStorage.setItem(LAST_BRAND_KEY, brandId);
     syncBrandUrl();
-    refreshOverview().then(() => refreshActiveSection());
+    refreshOverview().then(() => {
+        let sid = getActiveSectionId();
+        if (sid === 'welcome') sid = 'campaigns';
+        nav(sid);
+    });
 }
 
 function syncBrandUrl() {
@@ -1351,11 +1394,9 @@ function applyBrandTheme() {
     }
     fetch(`${API}/brands/${brandId}`).then(r => r.json()).then(brand => {
         const c = brand.config || {};
-        console.log('[Theme] Brand config:', JSON.stringify(c));
         const bg = c.backgroundColor || '#0D0B1A';
         const fg = c.foregroundColor || '#FFFFFF';
         const lbl = c.labelColor || '#00D4AA';
-        console.log('[Theme] Applying:', { bg, fg, lbl, fromConfig: !!c.backgroundColor });
         // Update brand name in header and page title
         const name = brand.name || 'Ads2Wallet';
         currentBrandSlug = brand.slug || '';
@@ -1632,13 +1673,15 @@ async function loadPasses() {
 
     // Stats bar
     const installed = passes.filter(p => p.device_id).length;
-    const reachable = passes.filter(p => p.push_token).length;
+    const applePushReachable = passes.filter(p => p.push_token).length;
+    const googleWalletSaved = passes.filter(p => !!p.google_wallet_saved).length;
     const statsHtml = `<div class="stats-grid" style="margin-bottom:16px;">
-        <div class="stat-card"><div class="stat-label">Pass Totali</div><div class="stat-value">${passes.length}</div></div>
-        <div class="stat-card"><div class="stat-label">Installati</div><div class="stat-value">${installed}</div></div>
-        <div class="stat-card"><div class="stat-label">Raggiungibili (push)</div><div class="stat-value">${reachable}</div></div>
-        <div class="stat-card"><div class="stat-label">Conv. Install</div><div class="stat-value">${passes.length > 0 ? ((installed/passes.length)*100).toFixed(0) : 0}%</div></div>
-        <div class="stat-card"><div class="stat-label">Push Inviati</div><div class="stat-value">${passes.filter(p => p.push_count > 0).length}</div></div>
+        <div class="stat-card"><div class="stat-label">Pass totali</div><div class="stat-value">${passes.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Installati (wallet)</div><div class="stat-value">${installed}</div></div>
+        <div class="stat-card"><div class="stat-label">Push Apple (token)</div><div class="stat-value">${applePushReachable}</div></div>
+        <div class="stat-card"><div class="stat-label">Google Wallet salvati</div><div class="stat-value">${googleWalletSaved}</div></div>
+        <div class="stat-card"><div class="stat-label">Conv. install</div><div class="stat-value">${passes.length > 0 ? ((installed/passes.length)*100).toFixed(0) : 0}%</div></div>
+        <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${passes.filter(p => p.push_count > 0).length}</div></div>
     </div>`;
 
     el.innerHTML = statsHtml + `
@@ -1648,48 +1691,68 @@ async function loadPasses() {
         <div style="overflow-x:auto;">
         <table class="table">
             <thead><tr>
+                <th>Scaricato</th>
                 <th>Installato</th>
-                <th>Raggiungibile</th>
-                <th>Push</th>
+                <th title="Apple: token push registrato. Google: salvato in Wallet (GW), link pronto ma non salvato (GW°), oppure assente">Apple push · Google</th>
+                <th title="Storico notifiche inviate via Apple Push (APNs)">Push (APNs)</th>
                 <th>Device ID</th>
                 <th>Campagna</th>
                 <th>UTM</th>
                 <th>OS / Browser</th>
                 <th>Referrer</th>
                 <th>Stato</th>
-                <th>Scaricato</th>
                 <th>Azioni</th>
             </tr></thead>
             <tbody>${passes.map(p => {
                 const camp = campaignsCache.find(c => c.id === p.campaign_id);
                 const utm = p.utm || {};
                 const isInstalled = !!p.device_id;
-                const isReachable = !!p.push_token;
+                const applePushOn = !!p.push_token;
+                const googleSaved = !!p.google_wallet_saved;
+                const googlePending = !!(p.google_wallet_object_id && !p.google_wallet_saved);
                 const osInfo = parseUserAgent(p.user_agent);
                 const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
                 const utmStr = utmParts.length ? utmParts.join(' / ') : '-';
                 const refDisplay = p.referrer_url ? shortenUrl(p.referrer_url) : '-';
                 const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
+                const installTitle = !isInstalled ? 'Non installato in Apple/Google Wallet'
+                    : p.device_source === 'google' ? 'Salvato in Google Wallet'
+                    : p.device_source === 'apple' ? 'Installato in Apple Wallet'
+                    : 'Installato nel wallet';
                 const installCellInner = isInstalled
-                    ? `<span title="Pass installato nel Wallet" style="color:var(--green);font-size:16px;line-height:1;">&#9745;</span><span style="font-size:11px;color:var(--text);">${installDateStr ? esc(installDateStr) : '<span style="opacity:0.5">—</span>'}</span>`
-                    : `<span title="Solo scaricato" style="opacity:0.35;font-size:16px;line-height:1;">&#9744;</span><span style="font-size:11px;opacity:0.45;">—</span>`;
+                    ? `<span title="${installTitle}" style="color:var(--green);font-size:16px;line-height:1;">&#9745;</span><span style="font-size:11px;color:var(--text);">${installDateStr ? esc(installDateStr) : '<span style="opacity:0.5">—</span>'}</span>`
+                    : `<span title="Solo generato / link inviato, non salvato nel wallet" style="opacity:0.35;font-size:16px;line-height:1;">&#9744;</span><span style="font-size:11px;opacity:0.45;">—</span>`;
+                let walletReachHtml = '<span style="display:inline-flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">';
+                walletReachHtml += applePushOn
+                    ? '<span title="Push Apple: token registrato (APNs)" style="color:var(--green);font-size:15px;">&#128276;</span>'
+                    : '<span title="Push Apple: nessun token" style="opacity:0.28;font-size:15px;">&#128263;</span>';
+                if (googleSaved) {
+                    walletReachHtml += '<span title="Google Wallet: pass salvato dall\'utente" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(0,212,170,0.15);">GW</span>';
+                } else if (googlePending) {
+                    walletReachHtml += '<span title="Oggetto Google creato: link disponibile, utente non ha ancora salvato" style="font-size:11px;font-weight:700;color:var(--text2);padding:2px 6px;border-radius:4px;border:1px solid var(--border);">GW°</span>';
+                } else {
+                    walletReachHtml += '<span title="Nessun oggetto Google Wallet per questo pass" style="opacity:0.25;font-size:11px;">—</span>';
+                }
+                walletReachHtml += '</span>';
                 return `<tr>
+                    <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
                     <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
-                    <td style="text-align:center;font-size:16px;">${isReachable ? '<span title="Push token attivo" style="color:var(--green);">&#128276;</span>' : '<span title="Non raggiungibile" style="opacity:0.3;">&#128263;</span>'}</td>
+                    <td style="text-align:center;font-size:14px;">${walletReachHtml}</td>
                     <td style="text-align:center;font-size:12px;">${p.push_count > 0 ? (() => {
-                        const statusIcon = p.last_push_status === 'delivered' ? '<span style="color:var(--green);" title="Ultima push consegnata">&#10004;</span>' : '<span style="color:#ff6b6b;" title="' + esc(p.last_push_status || 'errore') + '">&#10006;</span>';
+                        const statusIcon = p.last_push_status === 'delivered' ? '<span style="color:var(--green);" title="Ultima push APNs consegnata">&#10004;</span>' : '<span style="color:#ff6b6b;" title="' + esc(p.last_push_status || 'errore') + '">&#10006;</span>';
                         const pushDate = p.last_push_at ? new Date(p.last_push_at).toLocaleDateString('it') : '';
-                        return statusIcon + ' <span style="font-size:10px;opacity:0.6;" title="' + p.push_count + ' push inviate">' + p.push_count + 'x · ' + pushDate + '</span>';
-                    })() : '<span style="opacity:0.3;">-</span>'}</td>
+                        return statusIcon + ' <span style="font-size:10px;opacity:0.6;" title="' + esc(String(p.push_count)) + ' push APNs inviate">' + p.push_count + 'x · ' + pushDate + '</span>';
+                    })() : '<span style="opacity:0.3;" title="Nessuna push APNs inviata">-</span>'}</td>
                     <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : '') + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
                     <td>${camp ? esc(camp.name) : '<span style="opacity:0.3">-</span>'}</td>
                     <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(utmParts.join(' / '))}">${esc(utmStr)}</td>
                     <td style="font-size:11px;">${esc(osInfo)}</td>
                     <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.referrer_url||'')}">${esc(refDisplay)}</td>
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
-                    <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
-                    <td style="display:flex;gap:4px;">
-                        <button class="btn small sec" onclick="downloadPass('${p.id}')" title="Scarica .pkpass">DL</button>
+                    <td style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button type="button" class="btn small sec" onclick="viewPassDetail('${p.id}')" title="Apri dettaglio pass">Vedi pass</button>
+                        <button class="btn small sec" onclick="downloadPass('${p.id}')" title="Scarica Apple Wallet (.pkpass)">Apple</button>
+                        <button class="btn small sec" onclick="openGoogleWalletSaveLink('${p.id}')" title="Apri Aggiungi a Google Wallet">GW</button>
                         <button class="btn small danger" onclick="deletePassInstance('${p.id}')" title="Elimina pass">&#10005;</button>
                     </td>
                 </tr>`;
@@ -1713,35 +1776,42 @@ function downloadPassesTableCsv() {
     }
     const sep = ';';
     const headers = [
+        'Scaricato (creato)',
         'Installato',
         'Data installazione',
-        'Raggiungibile push',
-        'Push',
+        'Push Apple (token registrato)',
+        'Google Wallet',
+        'Push APNs (storico)',
         'Device ID',
-        'Sorgente',
+        'Sorgente device',
         'Campagna',
         'UTM',
         'OS / Browser',
         'Referrer',
-        'Stato',
-        'Scaricato (creato)'
+        'Stato'
     ];
     const rows = passes.map(p => {
         const camp = campaignsCache.find(c => c.id === p.campaign_id);
         const utm = p.utm || {};
         const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
         const isInstalled = !!p.device_id;
-        const isReachable = !!p.push_token;
+        const applePushOn = !!p.push_token;
         const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it-IT') : '';
         let pushStr = '-';
         if (p.push_count > 0) {
             pushStr = [String(p.push_count) + 'x', p.last_push_status || '', p.last_push_at ? new Date(p.last_push_at).toLocaleDateString('it-IT') : ''].filter(Boolean).join(' ');
         }
+        let googleWalletCsv = '';
+        if (p.google_wallet_saved) googleWalletCsv = 'Salvato';
+        else if (p.google_wallet_object_id) googleWalletCsv = 'Link pronto (non salvato)';
         const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : '';
+        const scaricato = p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : '';
         return [
+            scaricato,
             isInstalled ? 'Sì' : 'No',
             installDateStr,
-            isReachable ? 'Sì' : 'No',
+            applePushOn ? 'Sì' : 'No',
+            googleWalletCsv,
             pushStr,
             p.device_id || '',
             src,
@@ -1749,8 +1819,7 @@ function downloadPassesTableCsv() {
             utmParts.join(' / '),
             parseUserAgent(p.user_agent),
             p.referrer_url || '',
-            p.status || '',
-            p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : ''
+            p.status || ''
         ].map(csvEscapeCell).join(sep);
     });
     const csv = '\uFEFF' + headers.map(csvEscapeCell).join(sep) + '\n' + rows.join('\n');
@@ -1765,23 +1834,25 @@ function downloadPassesTableCsv() {
 
 function parseUserAgent(ua) {
     if (!ua) return '-';
-    // Extract OS
     let os = '-';
-    if (ua.includes('iPhone')) os = 'iPhone';
-    else if (ua.includes('iPad')) os = 'iPad';
-    else if (ua.includes('Android')) os = 'Android';
-    else if (ua.includes('Mac OS')) os = 'Mac';
+    if (ua.includes('iPhone')) {
+        os = 'iPhone';
+        const iosMatch = ua.match(/OS (\d+[_\.]\d+)/);
+        if (iosMatch) os += ' ' + iosMatch[1].replace('_', '.');
+    } else if (ua.includes('iPad')) {
+        os = 'iPad';
+        const iosMatch = ua.match(/OS (\d+[_\.]\d+)/);
+        if (iosMatch) os += ' ' + iosMatch[1].replace('_', '.');
+    } else if (ua.includes('Android')) {
+        const androidMatch = ua.match(/Android (\d+[.\d]*)/);
+        os = androidMatch ? 'Android ' + androidMatch[1] : 'Android';
+        const modelMatch = ua.match(/; ([^;)]+)\) AppleWebKit/);
+        if (modelMatch) os += ' (' + modelMatch[1].trim() + ')';
+    } else if (ua.includes('Mac OS')) os = 'Mac';
     else if (ua.includes('Windows')) os = 'Windows';
     else if (ua.includes('Linux')) os = 'Linux';
-    // Extract iOS version
-    const iosMatch = ua.match(/OS (\d+[_\.]\d+)/);
-    if (iosMatch) os += ' ' + iosMatch[1].replace('_', '.');
-    // Extract browser
-    const androidMatch = ua.match(/Android (\d+[.\d]*)/);
-        if (androidMatch) os = 'Android ' + androidMatch[1];
-        const modelMatch = ua.match(/; ([^;)]+)\) AppleWebKit/);
-        if (modelMatch && ua.includes('Android')) os += ' (' + modelMatch[1].trim() + ')';
-        let browser = '';
+
+    let browser = '';
     if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
     else if (ua.includes('Chrome')) browser = 'Chrome';
     else if (ua.includes('Firefox')) browser = 'Firefox';
@@ -1796,8 +1867,75 @@ function shortenUrl(url) {
     } catch(e) { return url.substring(0,30); }
 }
 
+async function viewPassDetail(id) {
+    try {
+        const row = (window._lastPassesForExport || []).find(pp => pp.id === id);
+        const res = await fetch(`${API}/passes/${id}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+        const p = await res.json();
+        const installDateVal = row?.install_date || p.install_date;
+        const installLbl = installDateVal ? new Date(installDateVal).toLocaleString('it-IT') : '—';
+        const camp = campaignsCache.find(c => c.id === p.campaign_id);
+        const fv = p.field_values && typeof p.field_values === 'object' ? JSON.stringify(p.field_values, null, 2) : String(p.field_values || '—');
+        const utm = p.utm && typeof p.utm === 'object' ? JSON.stringify(p.utm, null, 2) : String(p.utm || '—');
+        const gwSavedLbl = p.google_wallet_saved ? 'Sì — salvato in Google Wallet' : 'No';
+        const gwInstalledAtLbl = p.google_installed_at ? esc(new Date(p.google_installed_at).toLocaleString('it-IT')) : '—';
+        let gwLinkStatus = '—';
+        if (p.google_wallet_saved) gwLinkStatus = 'Salvato';
+        else if (p.google_wallet_object_id) gwLinkStatus = 'Oggetto creato — usa il pulsante per aprire “Aggiungi a Google Wallet”';
+        else gwLinkStatus = 'Usa il pulsante Google Wallet per creare l\'oggetto e ottenere il link';
+
+        document.getElementById('passDetailBody').innerHTML = `
+            <p><strong>Serial</strong><br><code style="font-size:11px;">${esc(p.serial_number || '')}</code></p>
+            <p><strong>ID interno</strong><br><code style="font-size:10px;word-break:break-all;">${esc(p.id)}</code></p>
+            <p><strong>Template</strong><br>${esc(p.template_id || '')}</p>
+            <p><strong>Campagna</strong><br>${camp ? esc(camp.name) : '—'}</p>
+            <p><strong>Stato</strong><br>${esc(p.status || '')}</p>
+            <p><strong>Scaricato (creato)</strong><br>${p.created_at ? esc(new Date(p.created_at).toLocaleString('it-IT')) : '—'}</p>
+            <p><strong>Installato nel wallet</strong><br>${esc(installLbl)}</p>
+            <p><strong>Device / sorgente</strong><br>${esc(row?.device_id || p.device_id || '—')} ${(row?.device_source || p.device_source) ? '(' + esc(row.device_source || p.device_source) + ')' : ''}</p>
+            <p><strong>Google Wallet — salvato</strong><br>${esc(gwSavedLbl)}</p>
+            <p><strong>Google Wallet — salvato il</strong><br>${gwInstalledAtLbl}</p>
+            <p><strong>Google Wallet — object ID</strong><br>${esc(p.google_wallet_object_id || '—')}</p>
+            <p><strong>Google Wallet — stato link</strong><br>${esc(gwLinkStatus)}</p>
+            <p><strong>Push Apple (APNs)</strong><br>${typeof p.push_count === 'number' ? p.push_count : 0} · ultimo: ${p.last_push_at ? esc(new Date(p.last_push_at).toLocaleString('it-IT')) : '—'} (${esc(p.last_push_status || '—')})</p>
+            <p><strong>OS / browser (landing)</strong><br>${esc(parseUserAgent(p.user_agent))}</p>
+            <p><strong>Referrer</strong><br>${p.referrer_url ? '<span style="word-break:break-all;">' + esc(p.referrer_url) + '</span>' : '—'}</p>
+            <p><strong>Campi template (field_values)</strong></p>
+            <pre style="font-size:11px;overflow:auto;max-height:140px;background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border);">${esc(fv)}</pre>
+            <p><strong>UTM</strong></p>
+            <pre style="font-size:11px;overflow:auto;max-height:100px;background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border);">${esc(utm)}</pre>`;
+        document.getElementById('passDetailDlBtn').onclick = () => downloadPass(id);
+        document.getElementById('passDetailGwBtn').onclick = () => openGoogleWalletSaveLink(id);
+        document.getElementById('passDetailModal').classList.add('active');
+    } catch (err) {
+        console.error('viewPassDetail', err);
+        alert('Impossibile caricare il pass: ' + (err.message || err));
+    }
+}
+
 function downloadPass(id) {
     window.open(`${API}/passes/${id}/download`, '_blank');
+}
+
+async function openGoogleWalletSaveLink(passId) {
+    try {
+        const res = await fetch(`${API}/google-wallet/pass/${passId}`);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 501) {
+            toast('Google Wallet non configurato sul server');
+            return;
+        }
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        if (data.save_link) {
+            window.open(data.save_link, '_blank');
+            toast('Apri il link per aggiungere il pass a Google Wallet');
+        } else {
+            toast('Link non disponibile');
+        }
+    } catch (e) {
+        toast('Errore: ' + (e.message || e));
+    }
 }
 
 async function deletePassInstance(id) {
@@ -3544,9 +3682,9 @@ async function saveBrandIdentity() {
         const newBrand = await res.json();
         if (newBrand.id) {
             brandId = newBrand.id;
+            syncBrandUrl();
             toast('Brand creato!');
             await loadBrands();
-            document.getElementById('brandSelector').value = brandId;
         } else { toast('Errore creazione brand'); return; }
     } else {
         // UPDATE existing brand
