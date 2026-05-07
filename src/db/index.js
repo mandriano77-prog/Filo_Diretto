@@ -1,12 +1,21 @@
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
-// Use DATABASE_URL from Railway (or local dev)
+function dbUrlNeedsFlexibleSsl(url) {
+  if (!url) return false;
+  return (
+    url.includes('railway.app') ||
+    url.includes('ondigitalocean.com') ||
+    /\bsslmode=require\b/i.test(url)
+  );
+}
+
+// DATABASE_URL — managed Postgres on DigitalOcean, Railway-style hosts, etc.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway')
+  ssl: dbUrlNeedsFlexibleSsl(process.env.DATABASE_URL)
     ? { rejectUnauthorized: false }
-    : false
+    : false,
 });
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Schema Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
@@ -621,6 +630,9 @@ async function updatePassInstance(id, data) {
   if (data.status) { p++; updates.push(`status = $${p}`); values.push(data.status); }
   if (data.device_token !== undefined) { p++; updates.push(`device_token = $${p}`); values.push(data.device_token); }
   if (data.field_values) { p++; updates.push(`field_values = $${p}`); values.push(JSON.stringify(data.field_values)); }
+  if (data.google_wallet_object_id !== undefined) { p++; updates.push(`google_wallet_object_id = $${p}`); values.push(data.google_wallet_object_id); }
+  if (data.google_wallet_saved !== undefined) { p++; updates.push(`google_wallet_saved = $${p}`); values.push(!!data.google_wallet_saved); }
+  if (data.google_installed_at !== undefined) { p++; updates.push(`google_installed_at = $${p}`); values.push(data.google_installed_at); }
   if (updates.length === 0) return getPassInstance(id);
   updates.push('last_updated = NOW()');
   p++; values.push(id);
