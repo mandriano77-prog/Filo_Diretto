@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS scheduled_push (
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   campaign_id TEXT REFERENCES campaigns(id),
+  channel TEXT DEFAULT 'apple',
   schedule_type TEXT NOT NULL DEFAULT 'once',
   schedule_time TEXT NOT NULL DEFAULT '09:00',
   schedule_days TEXT DEFAULT '',
@@ -313,6 +314,7 @@ async function getDb() {
     // push_log Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS sent_count INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
 
     // scheduled_push Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
@@ -323,6 +325,7 @@ async function getDb() {
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS update_pass BOOLEAN DEFAULT true`).catch(()=>{});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
 
     // events Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS device_id TEXT`).catch(()=>{});
@@ -783,12 +786,12 @@ async function getCampaignAnalytics(brandId) {
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Push Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 async function logPush(data) {
-  const { brand_id, title, message, campaign_id = null, sent_count = 0 } = data;
+  const { brand_id, title, message, campaign_id = null, sent_count = 0, channel = 'apple' } = data;
   if (!brand_id || !title || !message) throw new Error('Brand ID, title, and message are required');
   const result = await pool.query(
-    `INSERT INTO push_log (brand_id, title, message, campaign_id, sent_count) VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, brand_id, title, message, campaign_id, sent_count, created_at`,
-    [brand_id, title, message, campaign_id, sent_count]
+    `INSERT INTO push_log (brand_id, title, message, campaign_id, sent_count, channel) VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, brand_id, title, message, campaign_id, sent_count, channel, created_at`,
+    [brand_id, title, message, campaign_id, sent_count, channel]
   );
   return result.rows[0];
 }
@@ -812,14 +815,14 @@ async function clearPushHistory(brandId) {
 
 async function createScheduledPush(data) {
   const id = data.id || uuidv4();
-  const { brand_id, title, message, campaign_id = null, schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
+  const { brand_id, title, message, campaign_id = null, channel = 'apple', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
   if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
   await pool.query(
-    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
+    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
   );
-  return { id, brand_id, title, message, campaign_id, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
+  return { id, brand_id, title, message, campaign_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
 }
 
 async function listScheduledPush(brand_id) {
@@ -836,7 +839,7 @@ async function updateScheduledPush(id, data) {
   const fields = [];
   const values = [id];
   let idx = 2;
-  for (const key of ['title', 'message', 'campaign_id', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
+  for (const key of ['title', 'message', 'campaign_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
     if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
   }
   if (fields.length === 0) return getScheduledPush(id);

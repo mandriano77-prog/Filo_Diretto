@@ -144,6 +144,16 @@
         .user-badge:hover { color: var(--teal); }
         .user-badge .role-tag { background: var(--purple); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; }
         .chart-placeholder { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+        .analytics-toolbar { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+        .analytics-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .analytics-chip { padding:6px 10px; font-size:12px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; }
+        .analytics-chip.active { border-color: var(--teal); color: var(--teal); background: rgba(0,212,170,0.14); }
+        .analytics-chip:hover { border-color: var(--teal); color: var(--teal); }
+        @media (max-width: 980px) {
+            .analytics-toolbar { align-items:stretch; }
+            .analytics-actions { width:100%; }
+            #analyticsTrendRange { flex:1; min-width:140px !important; }
+        }
         .mp-filter { padding: 6px 12px; margin-right: 6px; margin-bottom: 6px; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; }
         .mp-filter:hover { border-color: var(--teal); color: var(--teal); }
         .mp-filter.active { background: var(--teal); color: var(--bg); border-color: var(--teal); }
@@ -280,7 +290,7 @@
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
                 <div class="sec-title">Push &amp; Notifiche</div>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Le push verso il pass usano <strong>Apple Push (APNs)</strong> per i pass installati su Apple Wallet; i pass solo Google Wallet non ricevono queste notifiche.</p>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Nella push diretta puoi scegliere il canale: <strong>Apple (APNs)</strong>, <strong>Google Wallet</strong> o entrambi.</p>
 
                 <!-- Sub-tab navigation -->
                 <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
@@ -296,6 +306,14 @@
                             <label class="form-label">Campagna target</label>
                             <select id="pushCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Canale invio</label>
+                            <select id="pushChannel">
+                                <option value="apple">Apple Wallet (APNs)</option>
+                                <option value="google">Google Wallet</option>
+                                <option value="both">Apple + Google</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -372,6 +390,14 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label class="form-label">Canale invio</label>
+                            <select id="schedChannel">
+                                <option value="apple">Apple Wallet (APNs)</option>
+                                <option value="google">Google Wallet</option>
+                                <option value="both">Apple + Google</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label class="form-label">Orario</label>
                             <input type="time" id="schedTime" value="09:00">
                         </div>
@@ -419,6 +445,14 @@
                     </div>
 
                     <div class="push-card" style="margin-top:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Canale aggiornamento</label>
+                            <select id="geoChannel" style="max-width:280px;">
+                                <option value="apple">Apple Wallet (APNs)</option>
+                                <option value="google">Google Wallet</option>
+                                <option value="both">Apple + Google</option>
+                            </select>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Distanza massima di rilevamento (metri)</label>
                             <input type="number" id="geoMaxDistance" value="500" min="100" max="5000" step="100" style="width:120px;">
@@ -929,6 +963,46 @@
             <div id="analytics" class="section">
                 <div class="sec-title">Analytics</div>
                 <div class="stats-grid" id="analyticsStats"></div>
+                <div class="form-row" style="margin-bottom:16px;">
+                    <div class="card" style="margin-bottom:0;">
+                        <div class="analytics-toolbar">
+                            <div class="sec-title" style="font-size:16px;margin-bottom:0;">Trend</div>
+                            <div class="analytics-actions">
+                                <select id="analyticsTrendRange" onchange="onAnalyticsTrendChange()" style="width:auto;min-width:110px;">
+                                    <option value="7">Ultimi 7 giorni</option>
+                                    <option value="14" selected>Ultimi 14 giorni</option>
+                                    <option value="30">Ultimi 30 giorni</option>
+                                </select>
+                                <button type="button" class="analytics-chip" id="analyticsMetricBothBtn" onclick="setAnalyticsTrendMetric('both')">Download+Install</button>
+                                <button type="button" class="analytics-chip" id="analyticsMetricDownloadBtn" onclick="setAnalyticsTrendMetric('download')">Download</button>
+                                <button type="button" class="analytics-chip" id="analyticsMetricInstallBtn" onclick="setAnalyticsTrendMetric('install')">Install</button>
+                                <button type="button" class="btn small sec" onclick="exportAnalyticsChart('trend','png')">PNG</button>
+                                <button type="button" class="btn small sec" onclick="exportAnalyticsChart('trend','svg')">SVG</button>
+                            </div>
+                        </div>
+                        <div id="analyticsTrendChart"></div>
+                    </div>
+                    <div class="card" style="margin-bottom:0;">
+                        <div class="analytics-toolbar">
+                            <div class="sec-title" style="font-size:16px;margin-bottom:0;">Installazioni per wallet</div>
+                            <div class="analytics-actions">
+                                <button type="button" class="btn small sec" onclick="exportAnalyticsChart('wallet','png')">PNG</button>
+                                <button type="button" class="btn small sec" onclick="exportAnalyticsChart('wallet','svg')">SVG</button>
+                            </div>
+                        </div>
+                        <div id="analyticsWalletSplit"></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:16px;">
+                    <div class="analytics-toolbar">
+                        <div class="sec-title" style="font-size:16px;margin-bottom:0;">Top campagne per conversione</div>
+                        <div class="analytics-actions">
+                            <button type="button" class="btn small sec" onclick="exportAnalyticsChart('top','png')">PNG</button>
+                            <button type="button" class="btn small sec" onclick="exportAnalyticsChart('top','svg')">SVG</button>
+                        </div>
+                    </div>
+                    <div id="analyticsTopCampaigns"></div>
+                </div>
                 <div class="sec-title" style="font-size:18px;">Performance per Campagna</div>
                 <table class="table" id="campaignAnalyticsTable">
                     <thead><tr><th>Campagna</th><th>Download</th><th>Install</th><th>Conv. %</th><th>UTM Source</th><th>Stato</th></tr></thead>
@@ -1193,6 +1267,8 @@ const brandDataCache = new Map();
 let passPageIndex = 0;
 let passHasNextPage = false;
 let passSearchQuery = '';
+let analyticsTrendDays = 14;
+let analyticsTrendMetric = 'both';
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1705,15 +1781,13 @@ async function loadPasses(resetPage = false) {
 
     // Stats bar
     const installed = filteredPasses.filter(p => p.device_id).length;
-    const applePushReachable = filteredPasses.filter(p => p.push_token).length;
-    const googleWalletSaved = filteredPasses.filter(p => !!p.google_wallet_saved).length;
+    const reachableWallet = filteredPasses.filter(p => !!p.push_token || !!p.google_wallet_saved).length;
+    const pushSent = filteredPasses.filter(p => p.push_count > 0).length;
     const statsHtml = `<div class="stats-grid" style="margin-bottom:16px;">
         <div class="stat-card"><div class="stat-label">Pass visibili</div><div class="stat-value">${filteredPasses.length}</div></div>
         <div class="stat-card"><div class="stat-label">Installati (wallet)</div><div class="stat-value">${installed}</div></div>
-        <div class="stat-card"><div class="stat-label">Push Apple (token)</div><div class="stat-value">${applePushReachable}</div></div>
-        <div class="stat-card"><div class="stat-label">Google Wallet salvati</div><div class="stat-value">${googleWalletSaved}</div></div>
-        <div class="stat-card"><div class="stat-label">Conv. install</div><div class="stat-value">${filteredPasses.length > 0 ? ((installed/filteredPasses.length)*100).toFixed(0) : 0}%</div></div>
-        <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${filteredPasses.filter(p => p.push_count > 0).length}</div></div>
+        <div class="stat-card"><div class="stat-label">Raggiungibili (Apple o Google)</div><div class="stat-value">${reachableWallet}</div></div>
+        <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${pushSent}</div></div>
     </div>`;
 
     el.innerHTML = statsHtml + `
@@ -1791,8 +1865,6 @@ async function loadPasses(resetPage = false) {
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
                     <td style="display:flex;gap:4px;flex-wrap:wrap;">
                         <button type="button" class="btn small sec" onclick="viewPassDetail('${p.id}')" title="Apri dettaglio pass">Vedi pass</button>
-                        <button class="btn small sec" onclick="downloadPass('${p.id}')" title="Scarica Apple Wallet (.pkpass)">Apple</button>
-                        <button class="btn small sec" onclick="openGoogleWalletSaveLink('${p.id}')" title="Apri Aggiungi a Google Wallet">GW</button>
                         <button class="btn small danger" onclick="deletePassInstance('${p.id}')" title="Elimina pass">&#10005;</button>
                     </td>
                 </tr>`;
@@ -2005,7 +2077,12 @@ async function openGoogleWalletSaveLink(passId) {
 }
 
 async function deletePassInstance(id) {
-    if (!confirm('Eliminare questo pass? L\'azione è irreversibile.')) return;
+    if (!confirm('Eliminare questo pass?')) return;
+    const guard = prompt('Conferma definitiva: scrivi ELIMINA per procedere.');
+    if (guard !== 'ELIMINA') {
+        toast('Eliminazione annullata');
+        return;
+    }
     try {
         const res = await fetch(`${API}/passes/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Errore eliminazione');
@@ -2465,6 +2542,7 @@ async function sendImmediatePush() {
     const title = document.getElementById('pushTitle').value;
     const message = document.getElementById('pushMessage').value;
     const campaignId = document.getElementById('pushCampaignTarget').value || null;
+    const channel = document.getElementById('pushChannel').value || 'apple';
     const updatePass = document.getElementById('pushUpdatePass').checked;
     const changeStrip = document.getElementById('pushChangeStrip').checked;
 
@@ -2491,7 +2569,7 @@ async function sendImmediatePush() {
         });
     }
 
-    const body = { brand_id: brandId, title, message, update_pass: updatePass };
+    const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (campaignId) body.campaign_id = campaignId;
     const iwId = document.getElementById('pushInstantWin').value;
     if (iwId) body.instant_win_id = iwId;
@@ -2500,11 +2578,16 @@ async function sendImmediatePush() {
     const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) { alert('Errore push: ' + data.error); return; }
-    let msg = `Push inviata a ${data.sent}/${data.total} dispositivi`;
+    const apnsSent = data.sent_apns ?? data.sent ?? 0;
+    const apnsTotal = data.total_apns ?? data.total ?? 0;
+    const gwSynced = data.google?.updated ?? 0;
+    let msg = `Invio completato.\nAPNs: ${apnsSent}/${apnsTotal}`;
+    if (data.google && data.google.skipped) msg += `\nGoogle Wallet: non configurato`;
+    else msg += `\nGoogle Wallet: ${gwSynced} aggiornati`;
     if (data.apns_results && data.apns_results.length > 0) {
         const fails = data.apns_results.filter(r => !r.success);
         if (fails.length > 0) msg += `\n\nErrori APNs:\n` + fails.map(f => `${f.token}: ${f.reason || f.error || 'unknown'}`).join('\n');
-        else msg += ' APNs OK';
+        else msg += '\nAPNs OK';
     }
     alert(msg);
     document.getElementById('pushTitle').value = '';
@@ -2529,13 +2612,14 @@ async function createScheduledPush() {
     const message = document.getElementById('schedMessage').value;
     const campaignId = document.getElementById('schedCampaignTarget').value || null;
     const updatePass = document.getElementById('schedUpdatePass').checked;
+    const channel = document.getElementById('schedChannel').value || 'apple';
     const schedType = document.getElementById('schedType').value;
     const time = document.getElementById('schedTime').value || '09:00';
 
     if (!title || !message) return alert('Compila titolo e messaggio');
     if (!brandId) return alert('Seleziona un brand');
 
-    const body = { brand_id: brandId, title, message, update_pass: updatePass, schedule_type: schedType, time };
+    const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
     if (campaignId) body.campaign_id = campaignId;
     if (schedType === 'once') {
         body.date = document.getElementById('schedDate').value;
@@ -2560,13 +2644,14 @@ async function loadScheduledPush() {
     if (!list.length) { el.innerHTML = '<p style="color:var(--text2)">Nessuna notifica programmata.</p>'; return; }
     el.innerHTML = list.map(s => {
         const typeLabel = s.schedule_type === 'once' ? 'Una tantum' : s.schedule_type === 'daily' ? 'Giornaliera' : 'Settimanale';
+        const channelLabel = s.channel === 'both' ? 'Apple+Google' : s.channel === 'google' ? 'Google' : 'Apple';
         return `
         <div class="card">
             <div class="card-row">
                 <div class="card-info">
                     <div class="card-title">${esc(s.title)}</div>
                     <div class="card-desc">${esc(s.message)}</div>
-                    <div class="card-meta">${typeLabel} &middot; ${s.time || ''} ${s.active ? '' : '<span style="color:var(--orange);">(in pausa)</span>'}</div>
+                    <div class="card-meta">${typeLabel} &middot; ${channelLabel} &middot; ${s.schedule_time || ''} ${s.active ? '' : '<span style="color:var(--orange);">(in pausa)</span>'}</div>
                 </div>
                 <div class="card-actions">
                     <button class="btn small ${s.active?'purple':'sec'}" onclick="toggleScheduled('${s.id}',${!s.active})">${s.active?'Pausa':'Attiva'}</button>
@@ -2654,6 +2739,7 @@ async function loadGeofencing() {
         const data = await res.json();
         geoLocations = data.locations || [];
         document.getElementById('geoMaxDistance').value = data.maxDistance || 500;
+        document.getElementById('geoChannel').value = data.channel || 'apple';
         renderGeoLocations();
     } catch (e) { console.error('Load geofencing error:', e); }
 }
@@ -2667,6 +2753,7 @@ async function saveGeofencing() {
         if (!loc.relevantText) return alert(`POI #${i+1}: inserisci il messaggio lock screen`);
     }
     const maxDistance = parseInt(document.getElementById('geoMaxDistance').value) || 500;
+    const channel = document.getElementById('geoChannel').value || 'apple';
     const statusEl = document.getElementById('geoSaveStatus');
     const btn = document.getElementById('geoSaveBtn');
     btn.disabled = true;
@@ -2676,11 +2763,12 @@ async function saveGeofencing() {
         const res = await fetch(`${API}/brands/${brandId}/geofencing`, {
             method: 'PUT',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ locations: geoLocations, maxDistance })
+            body: JSON.stringify({ locations: geoLocations, maxDistance, channel })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. ${data.pushes_sent || 0} pass aggiornati via push.`;
+        const gwUpdated = data.google?.updated || 0;
+        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} aggiornamenti · Google: ${gwUpdated} aggiornamenti.`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato!');
     } catch (e) {
@@ -2698,9 +2786,10 @@ async function loadPushHistory() {
     const el = document.getElementById('pushHistory');
     if (!logs.length) { el.innerHTML = '<p style="color:var(--text2)">Nessuna notifica inviata.</p>'; return; }
     el.innerHTML = `<table class="table">
-        <thead><tr><th>Data</th><th>Titolo</th><th>Messaggio</th><th>Inviati</th></tr></thead>
+        <thead><tr><th>Data</th><th>Canale</th><th>Titolo</th><th>Messaggio</th><th>Inviati</th></tr></thead>
         <tbody>${logs.map(l => `<tr>
             <td style="font-size:12px;">${new Date(l.sent_at||l.created_at).toLocaleString('it')}</td>
+            <td>${l.channel === 'both' ? 'Apple+Google' : l.channel === 'google' ? 'Google' : 'Apple'}</td>
             <td>${esc(l.title)}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.message)}</td>
             <td>${l.sent_count||0}</td>
@@ -3137,9 +3226,10 @@ async function deleteGamCampaign(id) {
 // ==================== ANALYTICS ====================
 async function loadAnalytics() {
     if (!brandId) return;
-    const [analytics, campaigns] = await Promise.all([
+    const [analytics, campaigns, passes] = await Promise.all([
         fetchCachedJson(`${API}/analytics/${brandId}`, { headers: { ...getAuthHeaders() } }),
-        fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } })
+        fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } }),
+        fetchCachedJson(`${API}/passes?brand_id=${brandId}&limit=600`, { headers: { ...getAuthHeaders() } })
     ]);
 
     const totalDL = campaigns.reduce((s,c) => s + (c.total_downloads||0), 0);
@@ -3152,6 +3242,11 @@ async function loadAnalytics() {
         <div class="stat-card"><div class="stat-label">Device Registrati</div><div class="stat-value">${analytics.deviceCount||0}</div></div>
         <div class="stat-card"><div class="stat-label">Campagne</div><div class="stat-value">${campaigns.length}</div></div>
     `;
+    const rangeSel = document.getElementById('analyticsTrendRange');
+    if (rangeSel) rangeSel.value = String(analyticsTrendDays);
+    renderAnalyticsTrendChart(Array.isArray(passes) ? passes : []);
+    renderAnalyticsWalletSplit(Array.isArray(passes) ? passes : []);
+    renderAnalyticsTopCampaigns(campaigns);
 
     const tbody = document.querySelector('#campaignAnalyticsTable tbody');
     if (!campaigns.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2)">Nessuna campagna</td></tr>'; return; }
@@ -3166,6 +3261,215 @@ async function loadAnalytics() {
             <td><span class="badge ${c.active?'active':'inactive'}">${c.active?'Attiva':'Pausa'}</span></td>
         </tr>`;
     }).join('');
+}
+
+function renderAnalyticsTrendChart(passes) {
+    const el = document.getElementById('analyticsTrendChart');
+    if (!el) return;
+    const days = analyticsTrendDays;
+    const dayKeys = [];
+    const labels = [];
+    const downloads = [];
+    const installs = [];
+    const byDay = new Map();
+    const fmtDay = d => d.toISOString().slice(0, 10);
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        const key = fmtDay(d);
+        dayKeys.push(key);
+        labels.push(d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }));
+        byDay.set(key, { dl: 0, in: 0 });
+    }
+    for (const p of passes) {
+        if (p.created_at) {
+            const k = String(p.created_at).slice(0, 10);
+            if (byDay.has(k)) byDay.get(k).dl += 1;
+        }
+        if (p.install_date) {
+            const k = String(p.install_date).slice(0, 10);
+            if (byDay.has(k)) byDay.get(k).in += 1;
+        }
+    }
+    for (const key of dayKeys) {
+        downloads.push(byDay.get(key).dl);
+        installs.push(byDay.get(key).in);
+    }
+    const activeDownload = analyticsTrendMetric === 'both' || analyticsTrendMetric === 'download';
+    const activeInstall = analyticsTrendMetric === 'both' || analyticsTrendMetric === 'install';
+    const activeValues = [];
+    if (activeDownload) activeValues.push(...downloads);
+    if (activeInstall) activeValues.push(...installs);
+    const maxVal = Math.max(1, ...activeValues);
+    const width = 560;
+    const height = 180;
+    const left = 28;
+    const bottom = 22;
+    const plotW = width - left - 10;
+    const plotH = height - bottom - 10;
+    const step = dayKeys.length > 1 ? plotW / (dayKeys.length - 1) : plotW;
+    const point = (idx, val) => `${(left + idx * step).toFixed(2)},${(10 + (plotH - (val / maxVal) * plotH)).toFixed(2)}`;
+    const dlPath = downloads.map((v, i) => `${i === 0 ? 'M' : 'L'} ${point(i, v)}`).join(' ');
+    const inPath = installs.map((v, i) => `${i === 0 ? 'M' : 'L'} ${point(i, v)}`).join(' ');
+    const xTicks = labels.filter((_, i) => i % 2 === 0).map((l, i) => {
+        const idx = i * 2;
+        const x = left + idx * step;
+        return `<text x="${x.toFixed(2)}" y="${height - 4}" font-size="10" fill="var(--text2)" text-anchor="middle">${l}</text>`;
+    }).join('');
+    el.innerHTML = `
+        <svg id="analyticsTrendSvg" viewBox="0 0 ${width} ${height}" width="100%" height="180" aria-label="Trend download/install">
+            <rect x="${left}" y="10" width="${plotW}" height="${plotH}" fill="rgba(255,255,255,0.02)" stroke="var(--border)"></rect>
+            ${activeDownload ? `<path d="${dlPath}" fill="none" stroke="var(--teal)" stroke-width="2.5"></path>` : ''}
+            ${activeInstall ? `<path d="${inPath}" fill="none" stroke="var(--purple)" stroke-width="2.5"></path>` : ''}
+            ${xTicks}
+        </svg>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);margin-top:6px;">
+            ${activeDownload ? '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--teal);border-radius:50%;display:inline-block;"></span>Download</span>' : ''}
+            ${activeInstall ? '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:var(--purple);border-radius:50%;display:inline-block;"></span>Install</span>' : ''}
+            <span style="margin-left:auto;color:var(--text2);">Max giorno: ${maxVal}</span>
+        </div>
+    `;
+    updateAnalyticsMetricButtons();
+}
+
+function renderAnalyticsWalletSplit(passes) {
+    const el = document.getElementById('analyticsWalletSplit');
+    if (!el) return;
+    const totalInstalled = passes.filter(p => !!p.device_id).length;
+    const apple = passes.filter(p => p.device_source === 'apple').length;
+    const google = passes.filter(p => p.device_source === 'google' || (!!p.google_wallet_saved && !p.device_source)).length;
+    const other = Math.max(0, totalInstalled - apple - google);
+    const total = Math.max(1, apple + google + other);
+    const seg = (v) => ((v / total) * 100).toFixed(1);
+    el.innerHTML = `
+        <div style="display:flex;height:14px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);">
+            <div style="width:${seg(apple)}%;background:#22c55e;" title="Apple ${apple}"></div>
+            <div style="width:${seg(google)}%;background:#3b82f6;" title="Google ${google}"></div>
+            <div style="width:${seg(other)}%;background:#a78bfa;" title="Altro ${other}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:12px;font-size:12px;color:var(--text2);">
+            <div>Apple Wallet: <strong style="color:var(--text)">${apple}</strong> (${seg(apple)}%)</div>
+            <div>Google Wallet: <strong style="color:var(--text)">${google}</strong> (${seg(google)}%)</div>
+            <div>Altro: <strong style="color:var(--text)">${other}</strong> (${seg(other)}%)</div>
+            <div style="margin-top:4px;">Installati totali: <strong style="color:var(--text)">${totalInstalled}</strong></div>
+        </div>
+    `;
+}
+
+function renderAnalyticsTopCampaigns(campaigns) {
+    const el = document.getElementById('analyticsTopCampaigns');
+    if (!el) return;
+    if (!campaigns.length) {
+        el.innerHTML = '<p style="color:var(--text2);font-size:13px;">Nessuna campagna disponibile.</p>';
+        return;
+    }
+    const ranked = [...campaigns]
+        .map(c => ({
+            ...c,
+            conv: c.total_downloads > 0 ? (c.total_installs / c.total_downloads) * 100 : 0
+        }))
+        .sort((a, b) => (b.conv - a.conv) || ((b.total_installs || 0) - (a.total_installs || 0)))
+        .slice(0, 5);
+    const maxConv = Math.max(1, ...ranked.map(r => r.conv));
+    el.innerHTML = ranked.map(r => {
+        const w = ((r.conv / maxConv) * 100).toFixed(1);
+        return `
+            <div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px;">
+                    <span style="color:var(--text);font-weight:600;">${esc(r.name)}</span>
+                    <span style="color:var(--text2);">${r.conv.toFixed(1)}% · ${r.total_installs||0}/${r.total_downloads||0}</span>
+                </div>
+                <div style="height:10px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);overflow:hidden;">
+                    <div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--teal),var(--purple));"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function onAnalyticsTrendChange() {
+    const sel = document.getElementById('analyticsTrendRange');
+    analyticsTrendDays = sel ? parseInt(sel.value || '14', 10) : 14;
+    loadAnalytics();
+}
+
+function setAnalyticsTrendMetric(metric) {
+    analyticsTrendMetric = metric;
+    loadAnalytics();
+}
+
+function updateAnalyticsMetricButtons() {
+    const map = {
+        both: 'analyticsMetricBothBtn',
+        download: 'analyticsMetricDownloadBtn',
+        install: 'analyticsMetricInstallBtn'
+    };
+    Object.entries(map).forEach(([k, id]) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.classList.toggle('active', k === analyticsTrendMetric);
+    });
+}
+
+function exportAnalyticsChart(type, format) {
+    const slug = (currentBrandSlug || brandId || 'brand').replace(/[^\w\-]/gi, '-');
+    const base = `analytics-${type}-${slug}-${new Date().toISOString().slice(0,10)}`;
+    if (type === 'trend') {
+        const svg = document.getElementById('analyticsTrendSvg');
+        if (!svg) return toast('Grafico trend non disponibile');
+        return exportSvgNode(svg, `${base}.${format}`, format);
+    }
+    const containerId = type === 'wallet' ? 'analyticsWalletSplit' : 'analyticsTopCampaigns';
+    const node = document.getElementById(containerId);
+    if (!node) return toast('Grafico non disponibile');
+    const width = Math.max(680, node.clientWidth || 680);
+    const height = Math.max(220, node.clientHeight + 20 || 220);
+    const html = node.innerHTML;
+    const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#fff;background:#1e1a36;padding:12px;box-sizing:border-box;width:${width}px;height:${height}px;">${html}</div></foreignObject></svg>`;
+    exportSvgText(svgText, `${base}.${format}`, format);
+}
+
+function exportSvgNode(svgNode, filename, format) {
+    const xml = new XMLSerializer().serializeToString(svgNode);
+    exportSvgText(xml, filename, format);
+}
+
+function exportSvgText(svgText, filename, format) {
+    if (format === 'svg') {
+        const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+        return downloadBlob(blob, filename);
+    }
+    const img = new Image();
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 900;
+        canvas.height = img.height || 300;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#1e1a36';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+            if (blob) downloadBlob(blob, filename.replace(/\.svg$/i, '.png'));
+            URL.revokeObjectURL(url);
+        }, 'image/png');
+    };
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        toast('Export PNG non riuscito');
+    };
+    img.src = url;
+}
+
+function downloadBlob(blob, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Export completato');
 }
 
 // ==================== PASS WIZARD ====================

@@ -72,7 +72,9 @@ function calculateNextRun(schedule) {
  * Execute a single scheduled push notification
  */
 async function executeScheduledPush(schedule, baseUrl) {
-  const { brand_id, title, message, target, update_pass } = schedule;
+  const { brand_id, title, message, target, update_pass, channel = 'apple' } = schedule;
+  const sendApple = channel === 'apple' || channel === 'both';
+  const sendGoogle = channel === 'google' || channel === 'both';
 
   console.log(`⏰ Executing scheduled push: "${title}" for brand ${brand_id}`);
 
@@ -119,7 +121,7 @@ async function executeScheduledPush(schedule, baseUrl) {
   }
 
   // Keep Google Wallet objects in sync when pass content changes.
-  if (update_pass && googleWallet.isConfigured()) {
+  if (update_pass && sendGoogle && googleWallet.isConfigured()) {
     try {
       const passes = await listPasses(brand_id);
       const syncedBrand = await getBrand(brand_id);
@@ -141,23 +143,26 @@ async function executeScheduledPush(schedule, baseUrl) {
   }
 
   // Send APNs push
-  const devices = await getDevicesForBrand(brand_id);
+  let devices = [];
   let sentCount = 0;
-  for (const device of devices) {
-    try {
-      const result = await sendPushUpdate(device.push_token);
-      if (result.success) sentCount++;
-    } catch (err) {
-      console.error(`Push failed for ${device.push_token.substring(0, 8)}:`, err.message);
+  if (sendApple) {
+    devices = await getDevicesForBrand(brand_id);
+    for (const device of devices) {
+      try {
+        const result = await sendPushUpdate(device.push_token);
+        if (result.success) sentCount++;
+      } catch (err) {
+        console.error(`Push failed for ${device.push_token.substring(0, 8)}:`, err.message);
+      }
     }
   }
 
   // Log
-  await logPush({ brand_id, title, message, target: target || 'all', sent_count: sentCount });
+  await logPush({ brand_id, title, message, target: target || 'all', sent_count: sentCount, channel });
   await logEvent({
     brand_id,
     event_type: 'scheduled_push_sent',
-    metadata: { title, sent_count: sentCount, passes_updated: passesUpdated, schedule_id: schedule.id }
+    metadata: { title, channel, sent_count: sentCount, passes_updated: passesUpdated, schedule_id: schedule.id }
   });
 
   console.log(`✓ Scheduled push sent: ${sentCount}/${devices.length} devices, ${passesUpdated} passes updated`);
