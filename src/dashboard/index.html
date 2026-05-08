@@ -180,8 +180,8 @@
 <div class="layout" id="mainLayout">
     <div class="sidebar">
         <div class="logo">Ads2Wallet<small>by Underdogs Group</small></div>
-        <div class="nav-label">Dashboard</div>
-        <div class="nav-item active" onclick="nav('welcome')">Inizio</div>
+        <div class="nav-label" id="navLabelDashboard">Dashboard</div>
+        <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
         <div class="nav-label">Brand</div>
         <div class="nav-item" onclick="nav('brand-identity')">Identità</div>
         <div class="nav-item" onclick="nav('media-library')">Media Library</div>
@@ -1311,6 +1311,7 @@ function updateNavState() {
     const role = currentUser?.role || 'admin';
     const isViewer = role === 'viewer';
     const isAdmin = role === 'admin';
+    const hasBrand = !!brandId;
 
     // Hide/show nav items based on role
     document.querySelectorAll('.nav-item').forEach(n => {
@@ -1322,6 +1323,12 @@ function updateNavState() {
             n.style.display = '';
         }
     });
+
+    // Hide Dashboard/Inizio once a brand is selected.
+    const dashboardLabel = document.getElementById('navLabelDashboard');
+    const welcomeItem = document.getElementById('navItemWelcome');
+    if (dashboardLabel) dashboardLabel.style.display = hasBrand ? 'none' : '';
+    if (welcomeItem) welcomeItem.style.display = hasBrand ? 'none' : '';
 
     // Hide all action buttons for viewer role
     document.querySelectorAll('[data-role-min]').forEach(el => {
