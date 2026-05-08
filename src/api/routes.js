@@ -1259,8 +1259,13 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 
 router.post('/push/send', async (req, res) => {
   try {
-    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id } = req.body;
+    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id, channel = 'apple' } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
+    if (!['apple', 'google', 'both'].includes(channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    }
+    const sendApple = channel === 'apple' || channel === 'both';
+    const sendGoogle = channel === 'google' || channel === 'both';
 
     console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
 
@@ -1269,24 +1274,40 @@ router.post('/push/send', async (req, res) => {
     const allPasses = await pool.query('SELECT DISTINCT brand_id FROM pass_instances');
     console.log(`[PUSH DEBUG] Total devices in DB: ${allDevices.rows[0].count} | Brand IDs in passes: ${JSON.stringify(allPasses.rows.map(r => r.brand_id))}`);
 
-    // Get all devices for this brand (optionally filter by campaign)
-    let devices;
-    if (campaign_id) {
-      const result = await pool.query(
-        `SELECT DISTINCT dr.push_token, dr.serial_number
-         FROM device_registrations dr
-         JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-         WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
-        [brand_id, campaign_id]
-      );
-      devices = result.rows;
-    } else {
-      devices = await getDevicesForBrand(brand_id);
+    // Get all targeted passes once (used by Apple and Google channels)
+    const passQuery = campaign_id
+      ? await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])
+      : await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id]);
+    const targetPasses = passQuery.rows;
+    const googleEligible = targetPasses.filter(p => p.google_wallet_object_id);
+
+    // Get Apple APNs devices only if requested
+    let devices = [];
+    if (sendApple) {
+      if (campaign_id) {
+        const result = await pool.query(
+          `SELECT DISTINCT dr.push_token, dr.serial_number
+           FROM device_registrations dr
+           JOIN pass_instances pi ON dr.serial_number = pi.serial_number
+           WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
+          [brand_id, campaign_id]
+        );
+        devices = result.rows;
+      } else {
+        devices = await getDevicesForBrand(brand_id);
+      }
     }
 
     console.log(`[PUSH DEBUG] Devices found for brand: ${devices.length}`);
-
-    if (devices.length === 0) return res.json({ sent: 0, message: 'Nessun device registrato', debug: { brand_id_sent: brand_id, total_devices_in_db: parseInt(allDevices.rows[0].count), brand_ids_in_passes: allPasses.rows.map(r => r.brand_id) } });
+    if ((!sendApple || devices.length === 0) && (!sendGoogle || googleEligible.length === 0)) {
+      return res.json({
+        sent_apns: 0,
+        total_apns: sendApple ? devices.length : 0,
+        google: { attempted: sendGoogle ? googleEligible.length : 0, updated: 0, errors: 0, skipped: !sendGoogle || !googleWallet.isConfigured() },
+        message: 'Nessun destinatario per i canali selezionati',
+        debug: { brand_id_sent: brand_id, total_devices_in_db: parseInt(allDevices.rows[0].count), brand_ids_in_passes: allPasses.rows.map(r => r.brand_id) }
+      });
+    }
 
     // Update pass content if requested
     if (update_pass !== false) {
@@ -1335,54 +1356,67 @@ router.post('/push/send', async (req, res) => {
       await updateBrand(brand_id, { config });
       console.log(`[PUSH] Updated brand.config.pushAnnouncement: "${title}: ${message}"`);
 
-      // Touch all affected passes to trigger Apple Wallet refresh
-      const passQuery = campaign_id
-        ? await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])
-        : await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id]);
-      for (const p of passQuery.rows) {
-        await touchPass(p.id);
+      // Touch affected passes only for Apple channel refresh
+      if (sendApple) {
+        for (const p of targetPasses) {
+          await touchPass(p.id);
+        }
       }
+    }
 
-      const googleSync = await syncGoogleWalletObjectsForPasses({
+    // Google Wallet channel push-like update/message
+    let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: !sendGoogle };
+    if (sendGoogle) {
+      const brand = await getBrand(brand_id);
+      googleSync = await syncGoogleWalletObjectsForPasses({
         brand,
-        passes: passQuery.rows,
+        passes: targetPasses,
         message
       });
       console.log('[GoogleWallet] Push sync', googleSync);
     }
 
-    // Send push to all devices ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ track per-pass status
-    let sentCount = 0;
+    // Apple APNs push — track per-pass status
+    let sentAppleCount = 0;
     const pushResults = [];
-    for (const device of devices) {
-      try {
-        const result = await sendPushUpdate(device.push_token);
-        console.log(`[PUSH] token=${device.push_token.substring(0,12)}... result=${JSON.stringify(result)}`);
-        pushResults.push({ token: device.push_token.substring(0,12) + '...', serial: device.serial_number, ...result });
-        if (result.success) sentCount++;
+    if (sendApple) {
+      for (const device of devices) {
+        try {
+          const result = await sendPushUpdate(device.push_token);
+          console.log(`[PUSH] token=${device.push_token.substring(0,12)}... result=${JSON.stringify(result)}`);
+          pushResults.push({ token: device.push_token.substring(0,12) + '...', serial: device.serial_number, ...result });
+          if (result.success) sentAppleCount++;
 
-        // Update per-pass push status
-        if (device.serial_number) {
-          const status = result.success ? 'delivered' : (result.reason || 'failed');
-          await pool.query(
-            `UPDATE pass_instances SET last_push_at = NOW(), last_push_status = $1, push_count = COALESCE(push_count, 0) + 1 WHERE serial_number = $2`,
-            [status, device.serial_number]
-          );
-        }
-      } catch (pushErr) {
-        console.error('Push error for token:', device.push_token, pushErr.message);
-        pushResults.push({ token: device.push_token.substring(0,12) + '...', success: false, reason: pushErr.message });
-        if (device.serial_number) {
-          await pool.query(
-            `UPDATE pass_instances SET last_push_at = NOW(), last_push_status = $1, push_count = COALESCE(push_count, 0) + 1 WHERE serial_number = $2`,
-            ['error: ' + pushErr.message.substring(0, 100), device.serial_number]
-          );
+          // Update per-pass push status
+          if (device.serial_number) {
+            const status = result.success ? 'delivered' : (result.reason || 'failed');
+            await pool.query(
+              `UPDATE pass_instances SET last_push_at = NOW(), last_push_status = $1, push_count = COALESCE(push_count, 0) + 1 WHERE serial_number = $2`,
+              [status, device.serial_number]
+            );
+          }
+        } catch (pushErr) {
+          console.error('Push error for token:', device.push_token, pushErr.message);
+          pushResults.push({ token: device.push_token.substring(0,12) + '...', success: false, reason: pushErr.message });
+          if (device.serial_number) {
+            await pool.query(
+              `UPDATE pass_instances SET last_push_at = NOW(), last_push_status = $1, push_count = COALESCE(push_count, 0) + 1 WHERE serial_number = $2`,
+              ['error: ' + pushErr.message.substring(0, 100), device.serial_number]
+            );
+          }
         }
       }
     }
 
-    await logPush({ brand_id, title, message, campaign_id, sent_count: sentCount });
-    res.json({ sent: sentCount, total: devices.length, apns_results: pushResults });
+    const sentCombined = sentAppleCount + (googleSync.updated || 0);
+    await logPush({ brand_id, title, message, campaign_id, sent_count: sentCombined, channel });
+    res.json({
+      sent_apns: sentAppleCount,
+      total_apns: sendApple ? devices.length : 0,
+      google: googleSync,
+      sent: sentCombined,
+      apns_results: pushResults
+    });
   } catch (err) {
     console.error('Push send error:', err);
     res.status(500).json({ error: err.message });
@@ -1425,6 +1459,9 @@ router.get('/push/scheduled', async (req, res) => {
 
 router.post('/push/scheduled', async (req, res) => {
   try {
+    if (req.body.channel && !['apple', 'google', 'both'].includes(req.body.channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    }
     const item = await createScheduledPush(req.body);
     res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1432,6 +1469,9 @@ router.post('/push/scheduled', async (req, res) => {
 
 router.put('/push/scheduled/:id', async (req, res) => {
   try {
+    if (req.body.channel && !['apple', 'google', 'both'].includes(req.body.channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    }
     const item = await updateScheduledPush(req.params.id, req.body);
     res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1451,13 +1491,18 @@ router.get('/brands/:id/geofencing', async (req, res) => {
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const locations = brand.config?.locations || [];
-    res.json({ locations, maxDistance: brand.config?.maxDistance || 500 });
+    res.json({ locations, maxDistance: brand.config?.maxDistance || 500, channel: brand.config?.geofencing_channel || 'apple' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.put('/brands/:id/geofencing', async (req, res) => {
   try {
-    const { locations, maxDistance } = req.body;
+    const { locations, maxDistance, channel = 'apple' } = req.body;
+    if (!['apple', 'google', 'both'].includes(channel)) {
+      return res.status(400).json({ error: 'channel non valido (apple|google|both)' });
+    }
+    const sendApple = channel === 'apple' || channel === 'both';
+    const sendGoogle = channel === 'google' || channel === 'both';
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const config = brand.config || {};
@@ -1469,6 +1514,7 @@ router.put('/brands/:id/geofencing', async (req, res) => {
       radius: parseInt(loc.radius) || 500
     }));
     if (maxDistance) config.maxDistance = parseInt(maxDistance);
+    config.geofencing_channel = channel;
     await updateBrand(req.params.id, { config });
 
     // Regenerate all active passes to include new locations
@@ -1479,17 +1525,29 @@ router.put('/brands/:id/geofencing', async (req, res) => {
       await touchPass(p.id);
     }
 
-    // Push update to all devices so they re-download the pass with new locations
-    const devices = await getDevicesForBrand(req.params.id);
+    // Push update to Apple devices so they re-download the pass with new locations
     let pushCount = 0;
-    for (const d of devices) {
-      try {
-        await sendPushUpdate(d.push_token);
-        pushCount++;
-      } catch (e) { console.error('Geofencing push error:', e.message); }
+    if (sendApple) {
+      const devices = await getDevicesForBrand(req.params.id);
+      for (const d of devices) {
+        try {
+          await sendPushUpdate(d.push_token);
+          pushCount++;
+        } catch (e) { console.error('Geofencing push error:', e.message); }
+      }
     }
 
-    res.json({ success: true, locations: config.locations, pushes_sent: pushCount });
+    let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: !sendGoogle };
+    if (sendGoogle) {
+      const passRows = await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [req.params.id]);
+      googleSync = await syncGoogleWalletObjectsForPasses({
+        brand: await getBrand(req.params.id),
+        passes: passRows.rows,
+        message: (config.locations && config.locations[0] && config.locations[0].relevantText) || 'Aggiornamento geolocalizzazione'
+      });
+    }
+
+    res.json({ success: true, channel, locations: config.locations, pushes_sent: pushCount, google: googleSync });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
