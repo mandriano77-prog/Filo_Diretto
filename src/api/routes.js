@@ -1789,18 +1789,19 @@ router.get('/media', async (req, res) => {
     const brand_id = req.query.brand_id;
     if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
     const type = req.query.type || 'all';
-    const items = await listMedia(brand_id, type);
+    const campaign_id = req.query.campaign_id || null;
+    const items = await listMedia(brand_id, type, campaign_id);
     res.json(items);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 router.post('/media', async (req, res) => {
   try {
-    let { brand_id, type, title, image_base64 } = req.body;
+    let { brand_id, campaign_id, type, title, image_base64 } = req.body;
     if (!brand_id || !image_base64) return res.status(400).json({ error: 'brand_id e image_base64 richiesti' });
     // Convert PDF to PNG if needed
     image_base64 = await pdfToPngIfNeeded(image_base64);
-    const item = await createMedia({ brand_id, type, title, image_base64 });
+    const item = await createMedia({ brand_id, campaign_id: campaign_id || null, type, title, image_base64 });
     res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

@@ -192,6 +192,7 @@ CREATE INDEX IF NOT EXISTS idx_ad_events_created ON ad_events(created_at);
 CREATE TABLE IF NOT EXISTS media (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
   type VARCHAR(20) NOT NULL DEFAULT 'generic',
   title VARCHAR(200),
   image_base64 TEXT NOT NULL,
@@ -200,6 +201,7 @@ CREATE TABLE IF NOT EXISTS media (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_media_brand ON media(brand_id);
+CREATE INDEX IF NOT EXISTS idx_media_campaign ON media(campaign_id);
 
 CREATE TABLE IF NOT EXISTS instant_win_campaigns (
   id TEXT PRIMARY KEY,
@@ -326,6 +328,8 @@ async function getDb() {
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS update_pass BOOLEAN DEFAULT true`).catch(()=>{});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
+    await pool.query(`ALTER TABLE media ADD COLUMN IF NOT EXISTS campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL`).catch(()=>{});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_media_campaign ON media(campaign_id)`).catch(()=>{});
 
     // events Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS device_id TEXT`).catch(()=>{});
@@ -997,20 +1001,25 @@ async function seedAdminUser() {
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Media Hub Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
-async function createMedia({ brand_id, type, title, image_base64, width, height }) {
+async function createMedia({ brand_id, campaign_id = null, type, title, image_base64, width, height }) {
   const id = uuidv4();
   await pool.query(
-    `INSERT INTO media (id, brand_id, type, title, image_base64, width, height) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [id, brand_id, type || 'generic', title || null, image_base64, width || null, height || null]
+    `INSERT INTO media (id, brand_id, campaign_id, type, title, image_base64, width, height) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [id, brand_id, campaign_id, type || 'generic', title || null, image_base64, width || null, height || null]
   );
-  return { id, brand_id, type, title, created_at: new Date().toISOString() };
+  return { id, brand_id, campaign_id, type, title, created_at: new Date().toISOString() };
 }
 
-async function listMedia(brand_id, type) {
-  let q = 'SELECT id, brand_id, type, title, width, height, created_at FROM media WHERE brand_id = $1';
+async function listMedia(brand_id, type, campaign_id) {
+  let q = `SELECT m.id, m.brand_id, m.campaign_id, c.name AS campaign_name, m.type, m.title, m.width, m.height, m.created_at
+           FROM media m
+           LEFT JOIN campaigns c ON c.id = m.campaign_id
+           WHERE m.brand_id = $1`;
   const params = [brand_id];
-  if (type && type !== 'all') { q += ' AND type = $2'; params.push(type); }
-  q += ' ORDER BY created_at DESC';
+  let idx = 2;
+  if (type && type !== 'all') { q += ` AND m.type = $${idx++}`; params.push(type); }
+  if (campaign_id) { q += ` AND m.campaign_id = $${idx++}`; params.push(campaign_id); }
+  q += ' ORDER BY m.created_at DESC';
   const { rows } = await pool.query(q, params);
   return rows;
 }
