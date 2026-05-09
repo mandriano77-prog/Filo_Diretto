@@ -201,7 +201,6 @@ CREATE TABLE IF NOT EXISTS media (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_media_brand ON media(brand_id);
-CREATE INDEX IF NOT EXISTS idx_media_campaign ON media(campaign_id);
 
 CREATE TABLE IF NOT EXISTS instant_win_campaigns (
   id TEXT PRIMARY KEY,
