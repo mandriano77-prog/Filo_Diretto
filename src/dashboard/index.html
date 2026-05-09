@@ -599,9 +599,27 @@
                         <button class="btn sec" style="color:#f66;border-color:#f66;" onclick="deleteAllMedia()">Svuota tutto</button>
                     </div>
                 </div>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Tutte le immagini del brand: logo, strip, background, creativi. Puoi riutilizzarle con un click.</p>
-                <div id="mediaGrid" class="strip-gallery">
-                    <p style="color:var(--text2)">Caricamento...</p>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Specifiche tecniche consigliate</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text2);">
+                        <div><strong style="color:var(--text)">Logo</strong>: PNG trasparente, max 320x100 px (1 solo logo attivo).</div>
+                        <div><strong style="color:var(--text)">Strip</strong>: PNG/JPG 750x246 px (puoi avere strip diverse per campagna).</div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;">
+                    <div class="card" style="margin:0;">
+                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Logo brand</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Normalmente unico. Cambialo solo in caso di rebranding.</p>
+                        <div id="mediaLogoBox"><p style="color:var(--text2)">Caricamento...</p></div>
+                    </div>
+                    <div class="card" style="margin:0;">
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                            <div class="sec-title" style="font-size:15px;margin:0;">Strip per campagna</div>
+                            <input id="mediaStripSearch" type="search" placeholder="Filtra per campagna/nome..." oninput="loadMediaLibrary()" style="max-width:220px;">
+                        </div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Mantieni più varianti e assegna un riferimento campagna nel nome.</p>
+                        <div id="mediaStripGrid" class="strip-gallery"><p style="color:var(--text2)">Caricamento...</p></div>
+                    </div>
                 </div>
             </div>
 
@@ -612,11 +630,15 @@
                     <div class="modal-header">Carica Immagine</div>
                     <div class="form-group">
                         <label class="form-label">Tipo</label>
-                        <select id="mediaUploadType">
+                        <select id="mediaUploadType" onchange="onMediaUploadTypeChange()">
                             <option value="strip">Strip Image</option>
                             <option value="logo">Logo</option>
                             <!-- Background Landing removed -->
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Campagna (opzionale, per strip)</label>
+                        <input type="text" id="mediaUploadCampaign" placeholder="es. Dealer Day 2026">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Nome (opzionale)</label>
@@ -625,8 +647,42 @@
                     <div class="form-group">
                         <label class="form-label">File immagine</label>
                         <input type="file" id="mediaUploadFile" accept="image/*,.pdf" style="font-size:12px;">
+                        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                            <button type="button" class="btn small sec" onclick="openMediaCropEditor()">Apri editor crop/resize</button>
+                            <span style="font-size:11px;color:var(--text2);">Ritaglia manualmente prima del salvataggio.</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:4px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;">
+                            <input type="checkbox" id="mediaUploadAutoFit" checked style="width:auto;accent-color:var(--teal);">
+                            <span>Adatta automaticamente alle specifiche (crop/resize)</span>
+                        </label>
+                        <div id="mediaUploadSpecHint" style="font-size:11px;color:var(--text2);margin-top:6px;">Spec target: 750x246 px (strip)</div>
                     </div>
                     <button class="btn" onclick="doMediaUpload()" style="width:100%;margin-top:8px;">Carica</button>
+                </div>
+            </div>
+
+            <!-- MEDIA CROP/RESIZE EDITOR -->
+            <div id="mediaCropModal" class="modal">
+                <div class="modal-content" style="max-width:760px;">
+                    <button class="modal-close" onclick="closeModal('mediaCropModal')">&times;</button>
+                    <div class="modal-header">Editor Crop & Resize</div>
+                    <p id="mediaCropSpecLabel" style="font-size:12px;color:var(--text2);margin-bottom:10px;">Target: 750x246 (strip)</p>
+                    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:320px;">
+                            <canvas id="mediaCropCanvas" width="750" height="246" style="width:100%;border:1px solid var(--border);border-radius:10px;background:#10101a;"></canvas>
+                        </div>
+                        <div style="width:220px;display:flex;flex-direction:column;gap:10px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Zoom</label>
+                                <input id="mediaCropZoom" type="range" min="0.3" max="3" step="0.01" value="1" oninput="onMediaCropZoomInput(this.value)">
+                            </div>
+                            <div style="font-size:11px;color:var(--text2);">Trascina l'immagine sul canvas per riposizionarla.</div>
+                            <button type="button" class="btn small sec" onclick="resetMediaCropEditor()">Reset</button>
+                            <button type="button" class="btn" onclick="applyMediaCropEditor()">Usa questo ritaglio</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -4210,23 +4266,212 @@ async function saveBrandIdentity() {
 // ==================== MEDIA LIBRARY ====================
 async function loadMediaLibrary() {
     if (!brandId) return;
-    const grid = document.getElementById('mediaGrid');
-    grid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
+    const logoBox = document.getElementById('mediaLogoBox');
+    const stripGrid = document.getElementById('mediaStripGrid');
+    const q = (document.getElementById('mediaStripSearch')?.value || '').trim().toLowerCase();
+    if (logoBox) logoBox.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
+    if (stripGrid) stripGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     try {
         const r = await fetch(`${API}/media?brand_id=${brandId}`);
         const items = await r.json();
-        if (!items.length) {
-            grid.innerHTML = '<p style="color:var(--text2)">Nessuna immagine. Carica una nuova immagine sopra.</p>';
-            return;
+        const logos = items.filter(it => it.type === 'logo');
+        const strips = items.filter(it => it.type === 'strip');
+
+        if (logoBox) {
+            if (!logos.length) {
+                logoBox.innerHTML = '<p style="color:var(--text2)">Nessun logo caricato.</p>';
+            } else {
+                const latestLogo = logos[0];
+                logoBox.innerHTML = `
+                    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                        <img src="/api/v1/media/${latestLogo.id}/image" style="width:140px;height:90px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);">
+                        <div style="flex:1;min-width:160px;">
+                            <div style="font-size:12px;font-weight:600;">${esc(latestLogo.title || 'Logo brand')}</div>
+                            <div style="font-size:11px;color:var(--text2);margin-top:4px;">Ultimo logo disponibile in libreria.</div>
+                            <button class="btn small danger" style="margin-top:8px;" onclick="deleteMediaItem('${latestLogo.id}')">Elimina logo</button>
+                        </div>
+                    </div>
+                `;
+            }
         }
-        grid.innerHTML = items.map(it => `
-            <div class="media-card" style="display:inline-block;width:140px;margin:8px;text-align:center;vertical-align:top">
-                <img src="/api/v1/media/${it.id}/image" style="width:120px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #333">
-                <div style="font-size:11px;color:#ccc;margin-top:4px">${it.title || it.type}</div>
-                <button onclick="deleteMediaItem('${it.id}')" style="font-size:10px;color:#f66;background:none;border:none;cursor:pointer;margin-top:2px">Elimina</button>
-            </div>
-        `).join('');
+
+        if (stripGrid) {
+            const filteredStrips = q ? strips.filter(it => `${it.title || ''}`.toLowerCase().includes(q)) : strips;
+            if (!filteredStrips.length) {
+                stripGrid.innerHTML = '<p style="color:var(--text2)">Nessuna strip trovata.</p>';
+            } else {
+                stripGrid.innerHTML = filteredStrips.map(it => `
+                    <div class="media-card" style="display:inline-block;width:150px;margin:8px;text-align:center;vertical-align:top">
+                        <img src="/api/v1/media/${it.id}/image" style="width:130px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #333">
+                        <div style="font-size:11px;color:#ccc;margin-top:4px;min-height:30px;">${esc(it.title || 'Strip')}</div>
+                        <button onclick="deleteMediaItem('${it.id}')" style="font-size:10px;color:#f66;background:none;border:none;cursor:pointer;margin-top:2px">Elimina</button>
+                    </div>
+                `).join('');
+            }
+        }
     } catch (err) { console.error('loadMediaLibrary error:', err); }
+}
+
+function onMediaUploadTypeChange() {
+    const type = document.getElementById('mediaUploadType')?.value || 'strip';
+    const hint = document.getElementById('mediaUploadSpecHint');
+    if (!hint) return;
+    hint.textContent = type === 'logo'
+        ? 'Spec target: max 320x100 px (logo)'
+        : 'Spec target: 750x246 px (strip)';
+}
+
+let mediaCropState = {
+    image: null,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    startOffsetX: 0,
+    startOffsetY: 0
+};
+let mediaUploadEditedBase64 = null;
+
+function getMediaTargetConfig(type) {
+    return type === 'logo'
+        ? { w: 320, h: 100, mode: 'contain', bg: 'rgba(0,0,0,0)' }
+        : { w: 750, h: 246, mode: 'cover', bg: '#0b0b0b' };
+}
+
+function bindMediaCropCanvasEvents() {
+    const canvas = document.getElementById('mediaCropCanvas');
+    if (!canvas || canvas.dataset.bound === '1') return;
+    canvas.dataset.bound = '1';
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (!mediaCropState.image) return;
+        mediaCropState.dragging = true;
+        mediaCropState.dragStartX = e.clientX;
+        mediaCropState.dragStartY = e.clientY;
+        mediaCropState.startOffsetX = mediaCropState.offsetX;
+        mediaCropState.startOffsetY = mediaCropState.offsetY;
+    });
+    window.addEventListener('mouseup', () => { mediaCropState.dragging = false; });
+    window.addEventListener('mousemove', (e) => {
+        if (!mediaCropState.dragging) return;
+        mediaCropState.offsetX = mediaCropState.startOffsetX + (e.clientX - mediaCropState.dragStartX);
+        mediaCropState.offsetY = mediaCropState.startOffsetY + (e.clientY - mediaCropState.dragStartY);
+        drawMediaCropCanvas();
+    });
+}
+
+async function openMediaCropEditor() {
+    const file = document.getElementById('mediaUploadFile')?.files?.[0];
+    const type = document.getElementById('mediaUploadType')?.value || 'strip';
+    if (!file) return toast('Seleziona prima un file');
+    try {
+        const img = await fileToImage(file);
+        const cfg = getMediaTargetConfig(type);
+        const canvas = document.getElementById('mediaCropCanvas');
+        const spec = document.getElementById('mediaCropSpecLabel');
+        if (!canvas) return;
+        canvas.width = cfg.w;
+        canvas.height = cfg.h;
+        if (spec) spec.textContent = type === 'logo' ? 'Target: 320x100 (logo)' : 'Target: 750x246 (strip)';
+
+        mediaCropState.image = img;
+        mediaCropState.zoom = 1;
+        mediaCropState.offsetX = 0;
+        mediaCropState.offsetY = 0;
+        document.getElementById('mediaCropZoom').value = '1';
+        bindMediaCropCanvasEvents();
+        drawMediaCropCanvas();
+        document.getElementById('mediaCropModal').classList.add('active');
+    } catch (err) {
+        toast('Impossibile aprire editor: ' + err.message);
+    }
+}
+
+function onMediaCropZoomInput(value) {
+    mediaCropState.zoom = parseFloat(value || '1');
+    drawMediaCropCanvas();
+}
+
+function drawMediaCropCanvas() {
+    const canvas = document.getElementById('mediaCropCanvas');
+    const img = mediaCropState.image;
+    if (!canvas || !img) return;
+    const type = document.getElementById('mediaUploadType')?.value || 'strip';
+    const cfg = getMediaTargetConfig(type);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = cfg.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const baseScale = cfg.mode === 'cover'
+        ? Math.max(canvas.width / img.width, canvas.height / img.height)
+        : Math.min(canvas.width / img.width, canvas.height / img.height);
+    const scale = baseScale * mediaCropState.zoom;
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const dx = (canvas.width - drawW) / 2 + mediaCropState.offsetX;
+    const dy = (canvas.height - drawH) / 2 + mediaCropState.offsetY;
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+}
+
+function resetMediaCropEditor() {
+    mediaCropState.zoom = 1;
+    mediaCropState.offsetX = 0;
+    mediaCropState.offsetY = 0;
+    const zoom = document.getElementById('mediaCropZoom');
+    if (zoom) zoom.value = '1';
+    drawMediaCropCanvas();
+}
+
+function applyMediaCropEditor() {
+    const canvas = document.getElementById('mediaCropCanvas');
+    if (!canvas) return;
+    mediaUploadEditedBase64 = canvas.toDataURL('image/png').split(',')[1];
+    closeModal('mediaCropModal');
+    toast('Ritaglio applicato');
+}
+
+async function fileToImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('Immagine non valida'));
+            img.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error('Errore lettura file'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function normalizeMediaForUpload(file, type) {
+    const img = await fileToImage(file);
+    const cfg = getMediaTargetConfig(type);
+    const canvas = document.createElement('canvas');
+    canvas.width = cfg.w;
+    canvas.height = cfg.h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = cfg.bg;
+    ctx.fillRect(0, 0, cfg.w, cfg.h);
+
+    const srcRatio = img.width / img.height;
+    const dstRatio = cfg.w / cfg.h;
+    let drawW;
+    let drawH;
+    if (cfg.mode === 'cover') {
+        drawW = srcRatio > dstRatio ? img.width * (cfg.h / img.height) : cfg.w;
+        drawH = srcRatio > dstRatio ? cfg.h : img.height * (cfg.w / img.width);
+    } else {
+        drawW = srcRatio > dstRatio ? cfg.w : img.width * (cfg.h / img.height);
+        drawH = srcRatio > dstRatio ? img.height * (cfg.w / img.width) : cfg.h;
+    }
+    const dx = (cfg.w - drawW) / 2;
+    const dy = (cfg.h - drawH) / 2;
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+    return canvas.toDataURL('image/png').split(',')[1];
 }
 
 // ==================== MEDIA PICKER ====================
@@ -4292,6 +4537,13 @@ async function mpUpload() {
 }
 
 function openMediaUpload() {
+    mediaUploadEditedBase64 = null;
+    const fileInput = document.getElementById('mediaUploadFile');
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.onchange = () => { mediaUploadEditedBase64 = null; };
+    }
+    onMediaUploadTypeChange();
     document.getElementById('mediaUploadModal').classList.add('active');
 }
 
@@ -4302,24 +4554,40 @@ async function doMediaUpload() {
     const typeSelect = document.getElementById('mediaUploadType');
     const file = fileInput?.files?.[0];
     if (!file) return toast('Seleziona un file');
-    const reader = new FileReader();
-    reader.onload = async () => {
-        const base64 = reader.result.split(',')[1];
-        try {
-            const titleInput = document.getElementById('mediaUploadName');
-            const title = titleInput?.value?.trim() || file.name;
-            await fetch(`${API}/media`, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ brand_id: bid, type: typeSelect?.value || 'generic', title, image_base64: base64 })
+    const type = typeSelect?.value || 'generic';
+    const campaign = (document.getElementById('mediaUploadCampaign')?.value || '').trim();
+    const autoFit = !!document.getElementById('mediaUploadAutoFit')?.checked;
+    try {
+        let base64;
+        if (mediaUploadEditedBase64) {
+            base64 = mediaUploadEditedBase64;
+        } else if (autoFit && (type === 'strip' || type === 'logo')) {
+            base64 = await normalizeMediaForUpload(file, type);
+        } else {
+            base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = () => reject(new Error('Errore lettura file'));
+                reader.readAsDataURL(file);
             });
-            toast('Media caricato!');
-            fileInput.value = '';
-            closeModal('mediaUploadModal');
-            loadMediaLibrary();
-        } catch (err) { toast('Errore upload: ' + err.message); }
-    };
-    reader.readAsDataURL(file);
+        }
+        const titleInput = document.getElementById('mediaUploadName');
+        const rawTitle = titleInput?.value?.trim() || file.name;
+        const title = campaign ? `[${campaign}] ${rawTitle}` : rawTitle;
+        await fetch(`${API}/media`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ brand_id: bid, type, title, image_base64: base64 })
+        });
+        toast('Media caricato!');
+        fileInput.value = '';
+        if (titleInput) titleInput.value = '';
+        const campaignInput = document.getElementById('mediaUploadCampaign');
+        if (campaignInput) campaignInput.value = '';
+        mediaUploadEditedBase64 = null;
+        closeModal('mediaUploadModal');
+        loadMediaLibrary();
+    } catch (err) { toast('Errore upload: ' + err.message); }
 }
 
 async function deleteMediaItem(id) {
