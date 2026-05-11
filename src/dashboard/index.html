@@ -597,9 +597,6 @@
 
                 <!-- TAB 3: Geofencing -->
                 <div id="pushPanel_geofencing" class="push-panel" style="display:none;">
-                    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Per ogni <strong>POI</strong> il testo è il messaggio Apple sulla <strong>lock screen</strong> (<code>relevantText</code>). Lo <strong>stesso testo del primo POI</strong> che ha un messaggio viene anche messo <strong>sul pass</strong> (campo ausiliario in basso) quando salvi — così la tessera si aggiorna senza una seconda schermata. Strip e layout: <strong>Design pass</strong>. Indirizzi da <strong>OpenStreetMap</strong> (Nominatim).</p>
-                    <p style="font-size:11px;color:var(--orange);margin:-8px 0 16px;opacity:.95;">Policy Nominatim: non più di circa <strong>1 richiesta al secondo</strong> per progetto — la dashboard rallenta automaticamente le ricerche consecutive; digitando lentamente eviti blocchi temporanei (429).</p>
-
                     <div class="push-card" style="margin-top:0;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                             <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
@@ -624,24 +621,9 @@
                         <div class="form-group">
                             <label class="form-label">Distanza massima di rilevamento (metri)</label>
                             <input type="number" id="geoMaxDistance" value="500" min="100" max="5000" step="100" style="width:120px;">
-                            <span style="font-size:11px;color:var(--text2);margin-left:8px;">Default: 500m. Apple consiglia max 10 locations per pass.</span>
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="saveGeofencing()" id="geoSaveBtn">&#128205; Salva e Aggiorna Pass</button>
                         <p id="geoSaveStatus" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:center;"></p>
-                    </div>
-
-                    <div class="push-card" style="margin-top:16px;padding:16px;background:rgba(0,200,150,.06);border:1px solid rgba(0,200,150,.2);">
-                        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--teal);">Come funziona il Geofencing Wallet</div>
-                        <ul style="font-size:12px;color:var(--text2);margin:0;padding-left:16px;line-height:1.8;">
-                            <li>Posizione e messaggio finiscono nel <code>pass.json</code> del wallet (lat/lon da indirizzo OpenStreetMap)</li>
-                            <li>iOS controlla la prossimità in background — zero batteria, zero server</li>
-                            <li>Quando l'utente è nel raggio, il pass appare sulla lock screen</li>
-                            <li>Il messaggio POI è <strong>relevantText</strong> Apple (lock screen). Il server <strong>duplica</strong> il testo del <strong>primo POI</strong> con messaggio anche in <strong>campo ausiliario</strong> sul pass (stesso valore per tutti i possessori)</li>
-                            <li>Dopo «Salva e aggiorna pass»: su iPhone apri il pass in Wallet e <strong>tira giù</strong> per scaricare il <code>.pkpass</code> aggiornato</li>
-                            <li>Strip / immagini: <strong>Design pass</strong></li>
-                            <li>Massimo <strong>10 locations</strong> per pass (limite Apple)</li>
-                            <li>Dopo il salvataggio, tutti i pass attivi vengono aggiornati via push</li>
-                        </ul>
                     </div>
                 </div>
 
@@ -3692,8 +3674,7 @@ function renderGeoLocations() {
             ${coordsDetails}
             <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label">Messaggio lock screen (solo Apple Wallet, vicino al POI)</label>
-                <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo" aria-describedby="geoRelevantHint_${i}">
-                <p id="geoRelevantHint_${i}" style="font-size:11px;color:var(--text2);margin:6px 0 0;line-height:1.45;">Lock screen Apple. Il <strong>primo POI</strong> con messaggio viene anche copiato in <strong>basso sul pass</strong> (ausiliario) dopo <strong>Salva e Aggiorna Pass</strong> + pull-to-refresh su iPhone.</p>
+                <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
             </div>
         </div>
         `;
@@ -3747,7 +3728,7 @@ async function saveGeofencing() {
         const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
         statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
-        toast('Geofencing salvato! Su iPhone: apri il pass in Wallet e tira giù per aggiornare.');
+        toast('Geofencing salvato.');
         await loadGeofencing();
     } catch (e) {
         statusEl.textContent = 'Errore: ' + e.message;
