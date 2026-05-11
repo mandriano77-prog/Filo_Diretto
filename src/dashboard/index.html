@@ -145,7 +145,7 @@
         /* Viewer role: hide all create/edit/delete buttons */
         body.role-viewer .btn:not(.sec):not([onclick*="nav("]):not([onclick*="wzGoStep"]):not([onclick*="wzCopy"]):not([onclick*="wzNewPass"]) { display: none !important; }
         body.role-viewer .btn.danger { display: none !important; }
-        body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
+        body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector):not(#dashboardProductLine), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
         body.role-viewer .viewer-badge { display: inline-block; background: var(--purple); color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-left: 8px; }
         .user-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
         .user-badge:hover { color: var(--teal); }
@@ -327,7 +327,7 @@
 
 <div class="layout" id="mainLayout" style="display:none;">
     <div class="sidebar">
-        <div class="logo">Ads2Wallet<small>by Underdogs Group</small></div>
+        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small>by Underdogs Group</small></div>
         <div class="nav-label" id="navLabelDashboard">Dashboard</div>
         <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
         <div class="nav-label">Brand</div>
@@ -351,7 +351,7 @@
         <div class="nav-item" onclick="nav('users')">Utenti</div>
 
         <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text2);">Ads2Wallet<br>by Underdogs Group</div>
+            <div style="font-size:11px; color:var(--text2);"><span class="chrome-product-title">Ads2Wallet</span><br>by Underdogs Group</div>
         </div>
     </div>
 
@@ -367,6 +367,12 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
+                <select class="brand-sel" id="dashboardProductLine" title="Tema interfaccia per linea prodotto (non modifica i colori del pass)" onchange="onDashboardProductLineChange()">
+                    <option value="ads">Ads</option>
+                    <option value="hr">HR</option>
+                    <option value="engage">Engage</option>
+                    <option value="live">Live</option>
+                </select>
                 <select class="brand-sel" id="brandSelector" onchange="changeBrand()">
                     <option value="">Seleziona Brand</option>
                 </select>
@@ -1744,6 +1750,7 @@ let analyticsDateTo = '';
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
+    initDashboardProductTheme();
     const pw = document.getElementById('loginPassword');
     if (pw) {
         pw.addEventListener('keydown', (e) => {
@@ -1969,57 +1976,110 @@ function syncBrandUrl() {
     history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
 }
 
-// ==================== BRAND THEMING ====================
+// ==================== PRODUCT SHELL THEME (2wallet lines) ====================
+// UI shell uses fixed palettes per product line; pass colors in brand.config stay for the pass only.
+const PRODUCT_LINE_STORAGE_KEY = '2wallet_product_line';
+const VALID_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
+const PRODUCT_DISPLAY_TITLES = { ads: 'Ads2Wallet', hr: 'HR2Wallet', engage: 'Engage2Wallet', live: 'Live2Wallet' };
+const PRODUCT_THEMES = {
+    ads: { bg: '#0D0B1A', accent: '#00D4AA', purple: '#B794F4', text: '#FFFFFF', onAccent: '#0a0a0f' },
+    hr: { bg: '#0c1524', accent: '#38bdf8', purple: '#7dd3fc', text: '#f0f9ff', onAccent: '#0a1622' },
+    engage: { bg: '#15121f', accent: '#a78bfa', purple: '#c4b5fd', text: '#faf5ff', onAccent: '#120f1a' },
+    live: { bg: '#1a0f12', accent: '#fb7185', purple: '#fda4af', text: '#fff1f2', onAccent: '#160a0d' },
+};
+
+function getDashboardProductLine() {
+    try {
+        const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
+        if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
+    } catch (_) {}
+    try {
+        const qp = new URLSearchParams(window.location.search).get('product');
+        if (qp && VALID_PRODUCT_LINES.includes(qp)) return qp;
+    } catch (_) {}
+    const h = (window.location.hostname || '').toLowerCase();
+    const first = h.split('.')[0] || '';
+    if (['hr', 'engage', 'live', 'ads'].includes(first)) return first;
+    if (h.includes('hr2wallet')) return 'hr';
+    if (h.includes('engage2wallet')) return 'engage';
+    if (h.includes('live2wallet')) return 'live';
+    if (h.includes('ads2wallet')) return 'ads';
+    return 'ads';
+}
+
+function syncChromeProductTitles(line) {
+    const title = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
+    document.querySelectorAll('.chrome-product-title').forEach((el) => { el.textContent = title; });
+}
+
+function applyProductShellTheme(line) {
+    const T = PRODUCT_THEMES[line] || PRODUCT_THEMES.ads;
+    const root = document.documentElement.style;
+    root.setProperty('--bg', T.bg);
+    root.setProperty('--bg2', lightenHex(T.bg, 14));
+    root.setProperty('--bg3', lightenHex(T.bg, 26));
+    root.setProperty('--teal', T.accent);
+    root.setProperty('--purple', T.purple);
+    root.setProperty('--text', T.text);
+    root.setProperty('--text2', adjustAlpha(T.text, 0.62));
+    root.setProperty('--border', adjustAlpha(T.text, 0.14));
+    const accent = T.accent;
+    const onA = T.onAccent;
+    const ring = adjustAlpha(accent, 0.22);
+    const style = document.getElementById('brandThemeStyle');
+    if (style) {
+        style.textContent =
+            `input:focus,select:focus,textarea:focus{border-color:${accent}!important;box-shadow:0 0 0 2px ${ring}!important;}` +
+            ` .nav-item.active{background:${accent}!important;color:${onA}!important;}` +
+            ` .badge.active{background:${adjustAlpha(accent, 0.22)}!important;color:${accent}!important;}` +
+            ` .btn:not(.sec):not(.danger):not(.purple){background:${accent};color:${onA};}`;
+    }
+}
+
+function initDashboardProductTheme() {
+    const line = getDashboardProductLine();
+    applyProductShellTheme(line);
+    syncChromeProductTitles(line);
+    const plSel = document.getElementById('dashboardProductLine');
+    if (plSel) plSel.value = line;
+}
+
+function onDashboardProductLineChange() {
+    const sel = document.getElementById('dashboardProductLine');
+    const v = sel && sel.value;
+    if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
+    applyBrandTheme();
+}
+
+// ==================== BRAND THEMING (header only; shell = product theme) ====================
 function applyBrandTheme() {
+    const line = getDashboardProductLine();
+    applyProductShellTheme(line);
+    syncChromeProductTitles(line);
+    const plSel = document.getElementById('dashboardProductLine');
+    if (plSel) plSel.value = line;
+
+    const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
     const headerBrandName = document.getElementById('headerBrandName');
     const headerBrandLogo = document.getElementById('headerBrandLogo');
     if (!brandId) {
         currentBrandSlug = '';
-        // Reset to default NUDJ colors
-        const root = document.documentElement.style;
-        root.setProperty('--bg', '#0D0B1A');
-        root.setProperty('--bg2', lightenHex('#0D0B1A', 12));
-        root.setProperty('--bg3', lightenHex('#0D0B1A', 22));
-        root.setProperty('--teal', '#00D4AA');
-        root.setProperty('--purple', adjustAlpha('#00D4AA', 0.7));
-        root.setProperty('--text', '#FFFFFF');
-        root.setProperty('--text2', adjustAlpha('#FFFFFF', 0.6));
-        root.setProperty('--border', adjustAlpha('#FFFFFF', 0.12));
-        const style = document.getElementById('brandThemeStyle');
-        if (style) style.textContent = '';
-        if (headerBrandName) headerBrandName.textContent = 'Ads2Wallet';
+        if (headerBrandName) headerBrandName.textContent = productTitle;
         if (headerBrandLogo) {
             headerBrandLogo.style.display = 'none';
             headerBrandLogo.removeAttribute('src');
         }
-        document.title = 'Ads2Wallet';
+        document.title = productTitle + ' — by Underdogs Group';
         return;
     }
     const targetBrandId = brandId;
     fetch(`${API}/brands/${brandId}`).then(r => r.json()).then(brand => {
         if (brandId !== targetBrandId) return;
-        const c = brand.config || {};
-        const bg = c.backgroundColor || '#0D0B1A';
-        const fg = c.foregroundColor || '#FFFFFF';
-        const lbl = c.labelColor || '#00D4AA';
-        // Update brand name in header and page title
-        const name = brand.name || 'Ads2Wallet';
+        const name = brand.name || productTitle;
         currentBrandSlug = brand.slug || '';
         if (headerBrandName) headerBrandName.textContent = name;
-        document.title = name + ' — Ads2Wallet';
-        // Derive palette from brand colors
-        const root = document.documentElement.style;
-        root.setProperty('--bg', bg);
-        root.setProperty('--bg2', lightenHex(bg, 12));
-        root.setProperty('--bg3', lightenHex(bg, 22));
-        root.setProperty('--teal', lbl);
-        root.setProperty('--purple', adjustAlpha(lbl, 0.7));
-        root.setProperty('--text', fg);
-        root.setProperty('--text2', adjustAlpha(fg, 0.6));
-        root.setProperty('--border', adjustAlpha(fg, 0.12));
-        // Update focus ring + active nav item color
-        const style = document.getElementById('brandThemeStyle');
-        if (style) style.textContent = `input:focus,select:focus,textarea:focus{border-color:${lbl}!important;box-shadow:0 0 0 2px ${lbl}22!important;} .nav-item.active{background:${lbl}!important;color:${bg}!important;} .badge.active{background:${lbl}33!important;color:${lbl}!important;} .btn:not(.sec):not(.danger):not(.purple){background:${lbl};color:${bg};}`;
+        document.title = name + ' — ' + productTitle;
 
         // Load brand logo for the header (fallback to text-only if missing).
         if (headerBrandLogo) {
@@ -2040,7 +2100,7 @@ function applyBrandTheme() {
                     headerBrandLogo.removeAttribute('src');
                 });
         }
-    }).catch(()=>{});
+    }).catch(() => {});
 }
 
 function lightenHex(hex, amount) {
@@ -5178,7 +5238,7 @@ async function saveBrandIdentity() {
         await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json', ...getAuthHeaders()}, body: JSON.stringify({ name, slug, config: mergedConfig }) });
         toast('Identità brand salvata!');
     }
-    applyBrandTheme(config);
+    applyBrandTheme();
     loadBrandIdentity();
 }
 
