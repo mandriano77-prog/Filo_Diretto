@@ -1164,9 +1164,9 @@
 
             <!-- LEADS DATABASE -->
             <div id="leads" class="section">
-                <div class="sec-title">Database Leads</div>
+                <div class="sec-title" data-menu-key="leads_page_title" data-menu-default="Lista contatti">Lista contatti</div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
-                    <p style="color:var(--text2);font-size:13px;">Contatti raccolti tramite Instant Win e registrazioni pass.</p>
+                    <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="text" id="leadsSearch" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
                         <button class="btn" onclick="exportLeadsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
@@ -1988,19 +1988,51 @@ const PRODUCT_THEMES = {
     live: { bg: '#1a0f12', accent: '#fb7185', purple: '#fda4af', text: '#fff1f2', onAccent: '#160a0d' },
 };
 
+const PRODUCT_MENU_DEFAULTS = {
+    nav_leads: 'Leads',
+    leads_page_title: 'Lista contatti',
+    leads_page_blurb: 'Elenco delle persone collegate ai pass di questo brand.',
+    leads_stat_total: 'Contatti totali',
+    leads_stat_device: 'Con device registrato',
+    leads_stat_phone: 'Con telefono',
+    leads_stat_email: 'Con email',
+    leads_empty: 'Nessun contatto registrato',
+    leads_export_empty: 'Nessun contatto da esportare',
+    leads_load_error: 'Errore caricamento dati',
+};
+
 const PRODUCT_MENU_COPY = {
     ads: {},
     live: {},
-    hr: { nav_leads: 'People' },
-    engage: { nav_leads: 'Customer' },
+    hr: {
+        nav_leads: 'People',
+        leads_page_title: 'Dipendenti',
+        leads_page_blurb: 'Elenco dei dipendenti: nominativi, contatti e pass associati al brand.',
+        leads_stat_total: 'Dipendenti totali',
+        leads_empty: 'Nessun dipendente registrato',
+        leads_export_empty: 'Nessun dipendente da esportare',
+    },
+    engage: {
+        nav_leads: 'Customer',
+        leads_page_title: 'Clienti',
+        leads_page_blurb: 'Elenco dei clienti: nominativi, contatti e pass associati al brand.',
+        leads_stat_total: 'Clienti totali',
+        leads_empty: 'Nessun cliente registrato',
+        leads_export_empty: 'Nessun cliente da esportare',
+    },
 };
 
+function getMergedProductMenuCopy(line) {
+    return { ...PRODUCT_MENU_DEFAULTS, ...(PRODUCT_MENU_COPY[line] || {}) };
+}
+
 function applyProductMenuCopy(line) {
-    const copy = PRODUCT_MENU_COPY[line] || {};
+    const copy = getMergedProductMenuCopy(line);
     document.querySelectorAll('[data-menu-key]').forEach((el) => {
         const k = el.getAttribute('data-menu-key');
         if (!k) return;
-        if (copy[k]) el.textContent = copy[k];
+        const v = copy[k];
+        if (v != null && String(v) !== '') el.textContent = v;
         else if (el.dataset && el.dataset.menuDefault) el.textContent = el.dataset.menuDefault;
     });
 }
@@ -2068,6 +2100,7 @@ function onDashboardProductLineChange() {
     if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
     try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
     applyBrandTheme();
+    if (brandId && getActiveSectionId() === 'leads') loadLeads();
 }
 
 // ==================== BRAND THEMING (header only; shell = product theme) ====================
@@ -4066,6 +4099,7 @@ let allLeads = [];
 
 async function loadLeads() {
     if (!brandId) return;
+    const mc = getMergedProductMenuCopy(getDashboardProductLine());
     try {
         const res = await fetch(`${API}/brands/${brandId}/leads`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error('Failed to load leads');
@@ -4074,24 +4108,25 @@ async function loadLeads() {
 
         // Stats
         document.getElementById('leadsStats').innerHTML = `
-            <div class="stat-card"><div class="stat-num">${data.total_leads || 0}</div><div class="stat-label">Lead totali</div></div>
-            <div class="stat-card"><div class="stat-num">${data.with_device || 0}</div><div class="stat-label">Con device registrato</div></div>
-            <div class="stat-card"><div class="stat-num">${data.with_phone || 0}</div><div class="stat-label">Con telefono</div></div>
-            <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">Con email</div></div>
+            <div class="stat-card"><div class="stat-num">${data.total_leads || 0}</div><div class="stat-label">${esc(mc.leads_stat_total)}</div></div>
+            <div class="stat-card"><div class="stat-num">${data.with_device || 0}</div><div class="stat-label">${esc(mc.leads_stat_device)}</div></div>
+            <div class="stat-card"><div class="stat-num">${data.with_phone || 0}</div><div class="stat-label">${esc(mc.leads_stat_phone)}</div></div>
+            <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">${esc(mc.leads_stat_email)}</div></div>
         `;
 
         renderLeadsTable(allLeads);
     } catch(e) {
         console.error('loadLeads error:', e);
         document.getElementById('leadsTable').querySelector('tbody').innerHTML =
-            '<tr><td colspan="9" style="color:var(--text2);text-align:center;">Errore caricamento leads</td></tr>';
+            `<tr><td colspan="7" style="color:var(--text2);text-align:center;">${esc(mc.leads_load_error)}</td></tr>`;
     }
 }
 
 function renderLeadsTable(leads) {
+    const mc = getMergedProductMenuCopy(getDashboardProductLine());
     const tbody = document.getElementById('leadsTable').querySelector('tbody');
     if (!leads.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text2);text-align:center;">Nessun lead registrato</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text2);text-align:center;">${esc(mc.leads_empty)}</td></tr>`;
         return;
     }
     tbody.innerHTML = leads.map(l => `<tr>
@@ -4118,7 +4153,8 @@ function filterLeads() {
 }
 
 function exportLeadsCSV() {
-    if (!allLeads.length) return toast('Nessun lead da esportare');
+    const mc = getMergedProductMenuCopy(getDashboardProductLine());
+    if (!allLeads.length) return toast(mc.leads_export_empty);
     const header = 'Nome,Cognome,Email,Telefono,Device ID,Pass ID,Data registrazione';
     const rows = allLeads.map(l => [
         l.player_first_name || '', l.player_last_name || '', l.player_email || '',
