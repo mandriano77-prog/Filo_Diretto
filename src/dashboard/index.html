@@ -145,7 +145,7 @@
         /* Viewer role: hide all create/edit/delete buttons */
         body.role-viewer .btn:not(.sec):not([onclick*="nav("]):not([onclick*="wzGoStep"]):not([onclick*="wzCopy"]):not([onclick*="wzNewPass"]) { display: none !important; }
         body.role-viewer .btn.danger { display: none !important; }
-        body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
+        body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector):not(#dashboardProductLine), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
         body.role-viewer .viewer-badge { display: inline-block; background: var(--purple); color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-left: 8px; }
         .user-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
         .user-badge:hover { color: var(--teal); }
@@ -327,7 +327,7 @@
 
 <div class="layout" id="mainLayout" style="display:none;">
     <div class="sidebar">
-        <div class="logo">Ads2Wallet<small>by Underdogs Group</small></div>
+        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small>by Underdogs Group</small></div>
         <div class="nav-label" id="navLabelDashboard">Dashboard</div>
         <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
         <div class="nav-label">Brand</div>
@@ -351,7 +351,7 @@
         <div class="nav-item" onclick="nav('users')">Utenti</div>
 
         <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text2);">Ads2Wallet<br>by Underdogs Group</div>
+            <div style="font-size:11px; color:var(--text2);"><span class="chrome-product-title">Ads2Wallet</span><br>by Underdogs Group</div>
         </div>
     </div>
 
@@ -367,6 +367,12 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
+                <select class="brand-sel" id="dashboardProductLine" title="Tema interfaccia per linea prodotto (non modifica i colori del pass)" onchange="onDashboardProductLineChange()">
+                    <option value="ads">Ads</option>
+                    <option value="hr">HR</option>
+                    <option value="engage">Engage</option>
+                    <option value="live">Live</option>
+                </select>
                 <select class="brand-sel" id="brandSelector" onchange="changeBrand()">
                     <option value="">Seleziona Brand</option>
                 </select>
@@ -597,9 +603,6 @@
 
                 <!-- TAB 3: Geofencing -->
                 <div id="pushPanel_geofencing" class="push-panel" style="display:none;">
-                    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Per ogni <strong>POI</strong> il testo è il messaggio Apple sulla <strong>lock screen</strong> (<code>relevantText</code>). Lo <strong>stesso testo del primo POI</strong> che ha un messaggio viene anche messo <strong>sul pass</strong> (campo ausiliario in basso) quando salvi — così la tessera si aggiorna senza una seconda schermata. Strip e layout: <strong>Design pass</strong>. Indirizzi da <strong>OpenStreetMap</strong> (Nominatim).</p>
-                    <p style="font-size:11px;color:var(--orange);margin:-8px 0 16px;opacity:.95;">Policy Nominatim: non più di circa <strong>1 richiesta al secondo</strong> per progetto — la dashboard rallenta automaticamente le ricerche consecutive; digitando lentamente eviti blocchi temporanei (429).</p>
-
                     <div class="push-card" style="margin-top:0;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                             <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
@@ -624,24 +627,9 @@
                         <div class="form-group">
                             <label class="form-label">Distanza massima di rilevamento (metri)</label>
                             <input type="number" id="geoMaxDistance" value="500" min="100" max="5000" step="100" style="width:120px;">
-                            <span style="font-size:11px;color:var(--text2);margin-left:8px;">Default: 500m. Apple consiglia max 10 locations per pass.</span>
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="saveGeofencing()" id="geoSaveBtn">&#128205; Salva e Aggiorna Pass</button>
                         <p id="geoSaveStatus" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:center;"></p>
-                    </div>
-
-                    <div class="push-card" style="margin-top:16px;padding:16px;background:rgba(0,200,150,.06);border:1px solid rgba(0,200,150,.2);">
-                        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--teal);">Come funziona il Geofencing Wallet</div>
-                        <ul style="font-size:12px;color:var(--text2);margin:0;padding-left:16px;line-height:1.8;">
-                            <li>Posizione e messaggio finiscono nel <code>pass.json</code> del wallet (lat/lon da indirizzo OpenStreetMap)</li>
-                            <li>iOS controlla la prossimità in background — zero batteria, zero server</li>
-                            <li>Quando l'utente è nel raggio, il pass appare sulla lock screen</li>
-                            <li>Il messaggio POI è <strong>relevantText</strong> Apple (lock screen). Il server <strong>duplica</strong> il testo del <strong>primo POI</strong> con messaggio anche in <strong>campo ausiliario</strong> sul pass (stesso valore per tutti i possessori)</li>
-                            <li>Dopo «Salva e aggiorna pass»: su iPhone apri il pass in Wallet e <strong>tira giù</strong> per scaricare il <code>.pkpass</code> aggiornato</li>
-                            <li>Strip / immagini: <strong>Design pass</strong></li>
-                            <li>Massimo <strong>10 locations</strong> per pass (limite Apple)</li>
-                            <li>Dopo il salvataggio, tutti i pass attivi vengono aggiornati via push</li>
-                        </ul>
                     </div>
                 </div>
 
@@ -1762,6 +1750,7 @@ let analyticsDateTo = '';
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
+    initDashboardProductTheme();
     const pw = document.getElementById('loginPassword');
     if (pw) {
         pw.addEventListener('keydown', (e) => {
@@ -1987,57 +1976,110 @@ function syncBrandUrl() {
     history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
 }
 
-// ==================== BRAND THEMING ====================
+// ==================== PRODUCT SHELL THEME (2wallet lines) ====================
+// UI shell uses fixed palettes per product line; pass colors in brand.config stay for the pass only.
+const PRODUCT_LINE_STORAGE_KEY = '2wallet_product_line';
+const VALID_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
+const PRODUCT_DISPLAY_TITLES = { ads: 'Ads2Wallet', hr: 'HR2Wallet', engage: 'Engage2Wallet', live: 'Live2Wallet' };
+const PRODUCT_THEMES = {
+    ads: { bg: '#0D0B1A', accent: '#00D4AA', purple: '#B794F4', text: '#FFFFFF', onAccent: '#0a0a0f' },
+    hr: { bg: '#0c1524', accent: '#38bdf8', purple: '#7dd3fc', text: '#f0f9ff', onAccent: '#0a1622' },
+    engage: { bg: '#15121f', accent: '#a78bfa', purple: '#c4b5fd', text: '#faf5ff', onAccent: '#120f1a' },
+    live: { bg: '#1a0f12', accent: '#fb7185', purple: '#fda4af', text: '#fff1f2', onAccent: '#160a0d' },
+};
+
+function getDashboardProductLine() {
+    try {
+        const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
+        if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
+    } catch (_) {}
+    try {
+        const qp = new URLSearchParams(window.location.search).get('product');
+        if (qp && VALID_PRODUCT_LINES.includes(qp)) return qp;
+    } catch (_) {}
+    const h = (window.location.hostname || '').toLowerCase();
+    const first = h.split('.')[0] || '';
+    if (['hr', 'engage', 'live', 'ads'].includes(first)) return first;
+    if (h.includes('hr2wallet')) return 'hr';
+    if (h.includes('engage2wallet')) return 'engage';
+    if (h.includes('live2wallet')) return 'live';
+    if (h.includes('ads2wallet')) return 'ads';
+    return 'ads';
+}
+
+function syncChromeProductTitles(line) {
+    const title = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
+    document.querySelectorAll('.chrome-product-title').forEach((el) => { el.textContent = title; });
+}
+
+function applyProductShellTheme(line) {
+    const T = PRODUCT_THEMES[line] || PRODUCT_THEMES.ads;
+    const root = document.documentElement.style;
+    root.setProperty('--bg', T.bg);
+    root.setProperty('--bg2', lightenHex(T.bg, 14));
+    root.setProperty('--bg3', lightenHex(T.bg, 26));
+    root.setProperty('--teal', T.accent);
+    root.setProperty('--purple', T.purple);
+    root.setProperty('--text', T.text);
+    root.setProperty('--text2', adjustAlpha(T.text, 0.62));
+    root.setProperty('--border', adjustAlpha(T.text, 0.14));
+    const accent = T.accent;
+    const onA = T.onAccent;
+    const ring = adjustAlpha(accent, 0.22);
+    const style = document.getElementById('brandThemeStyle');
+    if (style) {
+        style.textContent =
+            `input:focus,select:focus,textarea:focus{border-color:${accent}!important;box-shadow:0 0 0 2px ${ring}!important;}` +
+            ` .nav-item.active{background:${accent}!important;color:${onA}!important;}` +
+            ` .badge.active{background:${adjustAlpha(accent, 0.22)}!important;color:${accent}!important;}` +
+            ` .btn:not(.sec):not(.danger):not(.purple){background:${accent};color:${onA};}`;
+    }
+}
+
+function initDashboardProductTheme() {
+    const line = getDashboardProductLine();
+    applyProductShellTheme(line);
+    syncChromeProductTitles(line);
+    const plSel = document.getElementById('dashboardProductLine');
+    if (plSel) plSel.value = line;
+}
+
+function onDashboardProductLineChange() {
+    const sel = document.getElementById('dashboardProductLine');
+    const v = sel && sel.value;
+    if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
+    applyBrandTheme();
+}
+
+// ==================== BRAND THEMING (header only; shell = product theme) ====================
 function applyBrandTheme() {
+    const line = getDashboardProductLine();
+    applyProductShellTheme(line);
+    syncChromeProductTitles(line);
+    const plSel = document.getElementById('dashboardProductLine');
+    if (plSel) plSel.value = line;
+
+    const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
     const headerBrandName = document.getElementById('headerBrandName');
     const headerBrandLogo = document.getElementById('headerBrandLogo');
     if (!brandId) {
         currentBrandSlug = '';
-        // Reset to default NUDJ colors
-        const root = document.documentElement.style;
-        root.setProperty('--bg', '#0D0B1A');
-        root.setProperty('--bg2', lightenHex('#0D0B1A', 12));
-        root.setProperty('--bg3', lightenHex('#0D0B1A', 22));
-        root.setProperty('--teal', '#00D4AA');
-        root.setProperty('--purple', adjustAlpha('#00D4AA', 0.7));
-        root.setProperty('--text', '#FFFFFF');
-        root.setProperty('--text2', adjustAlpha('#FFFFFF', 0.6));
-        root.setProperty('--border', adjustAlpha('#FFFFFF', 0.12));
-        const style = document.getElementById('brandThemeStyle');
-        if (style) style.textContent = '';
-        if (headerBrandName) headerBrandName.textContent = 'Ads2Wallet';
+        if (headerBrandName) headerBrandName.textContent = productTitle;
         if (headerBrandLogo) {
             headerBrandLogo.style.display = 'none';
             headerBrandLogo.removeAttribute('src');
         }
-        document.title = 'Ads2Wallet';
+        document.title = productTitle + ' — by Underdogs Group';
         return;
     }
     const targetBrandId = brandId;
     fetch(`${API}/brands/${brandId}`).then(r => r.json()).then(brand => {
         if (brandId !== targetBrandId) return;
-        const c = brand.config || {};
-        const bg = c.backgroundColor || '#0D0B1A';
-        const fg = c.foregroundColor || '#FFFFFF';
-        const lbl = c.labelColor || '#00D4AA';
-        // Update brand name in header and page title
-        const name = brand.name || 'Ads2Wallet';
+        const name = brand.name || productTitle;
         currentBrandSlug = brand.slug || '';
         if (headerBrandName) headerBrandName.textContent = name;
-        document.title = name + ' — Ads2Wallet';
-        // Derive palette from brand colors
-        const root = document.documentElement.style;
-        root.setProperty('--bg', bg);
-        root.setProperty('--bg2', lightenHex(bg, 12));
-        root.setProperty('--bg3', lightenHex(bg, 22));
-        root.setProperty('--teal', lbl);
-        root.setProperty('--purple', adjustAlpha(lbl, 0.7));
-        root.setProperty('--text', fg);
-        root.setProperty('--text2', adjustAlpha(fg, 0.6));
-        root.setProperty('--border', adjustAlpha(fg, 0.12));
-        // Update focus ring + active nav item color
-        const style = document.getElementById('brandThemeStyle');
-        if (style) style.textContent = `input:focus,select:focus,textarea:focus{border-color:${lbl}!important;box-shadow:0 0 0 2px ${lbl}22!important;} .nav-item.active{background:${lbl}!important;color:${bg}!important;} .badge.active{background:${lbl}33!important;color:${lbl}!important;} .btn:not(.sec):not(.danger):not(.purple){background:${lbl};color:${bg};}`;
+        document.title = name + ' — ' + productTitle;
 
         // Load brand logo for the header (fallback to text-only if missing).
         if (headerBrandLogo) {
@@ -2058,7 +2100,7 @@ function applyBrandTheme() {
                     headerBrandLogo.removeAttribute('src');
                 });
         }
-    }).catch(()=>{});
+    }).catch(() => {});
 }
 
 function lightenHex(hex, amount) {
@@ -3692,8 +3734,7 @@ function renderGeoLocations() {
             ${coordsDetails}
             <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label">Messaggio lock screen (solo Apple Wallet, vicino al POI)</label>
-                <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo" aria-describedby="geoRelevantHint_${i}">
-                <p id="geoRelevantHint_${i}" style="font-size:11px;color:var(--text2);margin:6px 0 0;line-height:1.45;">Lock screen Apple. Il <strong>primo POI</strong> con messaggio viene anche copiato in <strong>basso sul pass</strong> (ausiliario) dopo <strong>Salva e Aggiorna Pass</strong> + pull-to-refresh su iPhone.</p>
+                <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
             </div>
         </div>
         `;
@@ -3747,7 +3788,7 @@ async function saveGeofencing() {
         const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
         statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
-        toast('Geofencing salvato! Su iPhone: apri il pass in Wallet e tira giù per aggiornare.');
+        toast('Geofencing salvato.');
         await loadGeofencing();
     } catch (e) {
         statusEl.textContent = 'Errore: ' + e.message;
@@ -5197,7 +5238,7 @@ async function saveBrandIdentity() {
         await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json', ...getAuthHeaders()}, body: JSON.stringify({ name, slug, config: mergedConfig }) });
         toast('Identità brand salvata!');
     }
-    applyBrandTheme(config);
+    applyBrandTheme();
     loadBrandIdentity();
 }
 
