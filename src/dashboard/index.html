@@ -612,6 +612,30 @@
                     </div>
 
                     <div class="push-card" style="margin-top:16px;">
+                        <div style="font-weight:700;font-size:14px;color:var(--text1);margin-bottom:8px;">Facciata pass (con «Salva e Aggiorna Pass»)</div>
+                        <p style="font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">Stesso contenuto per <strong>tutti</strong> i possessori del pass (non diverso per ogni POI — limite Apple). Strip e testo qui sotto aggiornano il brand e vengono inclusi nel <code>.pkpass</code> al prossimo download.</p>
+                        <div class="form-row" style="gap:12px;flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1;min-width:140px;">
+                                <label class="form-label">Etichetta campo (max 16)</label>
+                                <input type="text" id="geoFaceLabel" maxlength="16" placeholder="es. PROMO" style="max-width:220px;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label">Testo sulla tessera (campo ausiliario)</label>
+                            <textarea id="geoFaceMessage" rows="2" maxlength="120" placeholder="es. Oggi doppi punti in negozio" style="width:100%;max-width:520px;resize:vertical;"></textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <label class="form-label">Immagine strip (opzionale)</label>
+                            <input type="file" id="geoStripFile" accept="image/*,.pdf" style="font-size:12px;" onchange="onGeoStripFile(this)">
+                            <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">PNG/JPG o PDF. Se non scegli un file, la strip resta quella già impostata in Design pass.</p>
+                        </div>
+                        <div id="geoStripPreviewWrap" style="display:none;margin-bottom:8px;">
+                            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Anteprima strip attuale / nuova</div>
+                            <img id="geoStripPreview" alt="" style="max-height:72px;border-radius:8px;border:1px solid var(--border);object-fit:cover;">
+                        </div>
+                    </div>
+
+                    <div class="push-card" style="margin-top:16px;">
                         <div class="form-group">
                             <label class="form-label">Canale aggiornamento</label>
                             <select id="geoChannel" style="max-width:280px;">
@@ -637,7 +661,7 @@
                             <li>iOS controlla la prossimità in background — zero batteria, zero server</li>
                             <li>Quando l'utente è nel raggio, il pass appare sulla lock screen</li>
                             <li>Il <strong>relevantText</strong> è l’unico testo extra per POI che Apple espone: <strong>solo lock screen</strong>, non cambia strip né campi sulla facciata del pass</li>
-                            <li>Per immagine o testi sulla tessera: <strong>Design pass</strong> / campi membro; dopo “Salva e aggiorna pass” il <code>.pkpass</code> include anche quelli</li>
+                            <li>Per immagine o testo aggiuntivo sulla tessera puoi usare il blocco <strong>Facciata pass</strong> qui sopra (stesso valore per tutti) oppure <strong>Design pass</strong>; dopo «Salva e aggiorna pass» il <code>.pkpass</code> include gli aggiornamenti</li>
                             <li>Massimo <strong>10 locations</strong> per pass (limite Apple)</li>
                             <li>Dopo il salvataggio, tutti i pass attivi vengono aggiornati via push</li>
                         </ul>
@@ -3467,6 +3491,41 @@ async function geoNomThrottle() {
 }
 
 let geoLocations = [];
+/** @type {string|null} */
+let geoStripPendingBase64 = null;
+let geoStripPreviewObjectUrl = null;
+
+function revokeGeoStripObjectUrl() {
+    if (geoStripPreviewObjectUrl) {
+        try { URL.revokeObjectURL(geoStripPreviewObjectUrl); } catch (_) {}
+        geoStripPreviewObjectUrl = null;
+    }
+}
+
+function onGeoStripFile(input) {
+    geoStripPendingBase64 = null;
+    const wrap = document.getElementById('geoStripPreviewWrap');
+    const img = document.getElementById('geoStripPreview');
+    if (!input || !input.files || !input.files[0]) {
+        if (wrap) wrap.style.display = 'none';
+        return;
+    }
+    const f = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+        const dataUrl = /** @type {string} */ (reader.result);
+        geoStripPendingBase64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+        revokeGeoStripObjectUrl();
+        geoStripPreviewObjectUrl = URL.createObjectURL(f);
+        if (img) {
+            img.src = geoStripPreviewObjectUrl;
+            img.style.display = 'block';
+        }
+        if (wrap) wrap.style.display = 'block';
+    };
+    reader.onerror = () => toast('Lettura file strip non riuscita');
+    reader.readAsDataURL(f);
+}
 let geoSearchTimers = {};
 let geoSearchResultsForIdx = {};
 
@@ -3710,6 +3769,33 @@ async function loadGeofencing() {
         }));
         document.getElementById('geoMaxDistance').value = data.maxDistance || 500;
         document.getElementById('geoChannel').value = data.channel || 'apple';
+        const fl = document.getElementById('geoFaceLabel');
+        const fm = document.getElementById('geoFaceMessage');
+        const sf = document.getElementById('geoStripFile');
+        if (fl) fl.value = data.geofencingFaceLabel || '';
+        if (fm) fm.value = data.geofencingFaceMessage || '';
+        if (sf) sf.value = '';
+        geoStripPendingBase64 = null;
+        revokeGeoStripObjectUrl();
+        const wrap = document.getElementById('geoStripPreviewWrap');
+        const img = document.getElementById('geoStripPreview');
+        if (data.hasStrip) {
+            try {
+                const sr = await fetch(`${API}/brands/${brandId}/strip`);
+                if (sr.ok) {
+                    const blob = await sr.blob();
+                    revokeGeoStripObjectUrl();
+                    geoStripPreviewObjectUrl = URL.createObjectURL(blob);
+                    if (img) {
+                        img.src = geoStripPreviewObjectUrl;
+                        img.style.display = 'block';
+                    }
+                    if (wrap) wrap.style.display = 'block';
+                } else if (wrap) wrap.style.display = 'none';
+            } catch (_) {
+                if (wrap) wrap.style.display = 'none';
+            }
+        } else if (wrap) wrap.style.display = 'none';
         renderGeoLocations();
         enrichGeoAddressesFromCoords();
     } catch (e) { console.error('Load geofencing error:', e); }
@@ -3729,16 +3815,22 @@ async function saveGeofencing() {
     }
     const maxDistance = parseInt(document.getElementById('geoMaxDistance').value) || 500;
     const channel = document.getElementById('geoChannel').value || 'apple';
+    const faceLabelEl = document.getElementById('geoFaceLabel');
+    const faceMessageEl = document.getElementById('geoFaceMessage');
+    const faceLabel = faceLabelEl ? faceLabelEl.value.trim() : '';
+    const faceMessage = faceMessageEl ? faceMessageEl.value.trim() : '';
     const statusEl = document.getElementById('geoSaveStatus');
     const btn = document.getElementById('geoSaveBtn');
     btn.disabled = true;
     statusEl.textContent = 'Salvataggio e aggiornamento pass in corso...';
     statusEl.style.color = 'var(--teal)';
     try {
+        const payload = { locations: geoLocations, maxDistance, channel, faceLabel, faceMessage };
+        if (geoStripPendingBase64) payload.strip_base64 = geoStripPendingBase64;
         const res = await fetch(`${API}/brands/${brandId}/geofencing`, {
             method: 'PUT',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ locations: geoLocations, maxDistance, channel })
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -3747,6 +3839,10 @@ async function saveGeofencing() {
         statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato!');
+        geoStripPendingBase64 = null;
+        const sf2 = document.getElementById('geoStripFile');
+        if (sf2) sf2.value = '';
+        await loadGeofencing();
     } catch (e) {
         statusEl.textContent = 'Errore: ' + e.message;
         statusEl.style.color = 'var(--red)';
