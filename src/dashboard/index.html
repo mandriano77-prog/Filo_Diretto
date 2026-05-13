@@ -148,6 +148,45 @@
         body.role-viewer input:not([readonly]):not([type="search"]), body.role-viewer select:not(#brandSelector):not(#dashboardProductLine), body.role-viewer textarea { pointer-events: none; opacity: 0.6; }
         body.role-viewer .viewer-badge { display: inline-block; background: var(--purple); color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; margin-left: 8px; }
         body.role-viewer #waiBtn, body.role-viewer #waiOverlay { display: none !important; }
+        .wai-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #00D4AA;
+            color: #0a0a0a;
+            border: none;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            z-index: 10050;
+            box-shadow: 0 4px 20px rgba(0, 212, 170, 0.35);
+            font-family: inherit;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.1;
+            padding: 0;
+        }
+        .wai-fab:hover { filter: brightness(1.05); }
+        .wai-panel {
+            display: none;
+            position: fixed;
+            bottom: 92px;
+            right: 24px;
+            width: min(400px, calc(100vw - 32px));
+            max-height: 80vh;
+            background: #111;
+            border: 1px solid rgba(0, 212, 170, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 10049;
+            font-family: inherit;
+            overflow: hidden;
+        }
         .user-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); cursor: pointer; }
         .user-badge:hover { color: var(--teal); }
         .user-badge .role-tag { background: var(--purple); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; font-weight: 600; }
@@ -545,6 +584,7 @@
                             <textarea id="pushAssistantPrompt" rows="3" placeholder="es. Ogni lunedì alle 9 manda una push per augurare buon inizio settimana" style="resize:vertical;"></textarea>
                         </div>
                         <button class="btn" id="pushAssistantPlanBtn" style="width:100%;font-weight:700;margin-top:4px;" onclick="planPushAssistant()">Analizza richiesta</button>
+                        <button type="button" class="btn sec" style="width:100%;margin-top:8px;" onclick="toggleWaiOverlay(true)">Apri assistente W.AI</button>
                         <div id="pushAssistantPreview" style="display:none;margin-top:16px;padding:14px;border:1px dashed var(--border);border-radius:10px;background:var(--surface);"></div>
                     </div>
                     <div class="push-card">
@@ -1514,6 +1554,20 @@
 
 <div id="toastEl" class="toast"></div>
 
+<button type="button" id="waiBtn" class="wai-fab" onclick="toggleWaiOverlay()" aria-label="Apri assistente W.AI" title="Assistente W.AI">W.AI</button>
+
+<div id="waiOverlay" class="wai-panel" aria-label="Pannello W.AI">
+  <div style="padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between;">
+    <span style="font-size:15px; font-weight:700; color:#00D4AA;">W.AI</span>
+    <span style="font-size:11px; color:#666;">Claude Opus 4.6</span>
+  </div>
+  <div style="padding:16px 20px;">
+    <textarea id="waiPrompt" rows="3" placeholder="Scrivi cosa vuoi fare..." style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f4ede2; padding:12px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+    <button type="button" id="waiSendBtn" onclick="askWai()" style="width:100%; margin-top:8px; padding:10px; background:#00D4AA; color:#0a0a0a; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">Chiedi a W.AI</button>
+  </div>
+  <div id="waiPreview" style="display:none; padding:0 20px 16px;"></div>
+</div>
+
 <script>
 const API = '/api/v1';
 const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
@@ -1590,6 +1644,20 @@ function syncAuthUi() {
         slot.style.display = 'none';
         emailEl.textContent = '';
         roleEl.textContent = '';
+    }
+    syncWaiUi();
+}
+
+function syncWaiUi() {
+    const btn = document.getElementById('waiBtn');
+    const overlay = document.getElementById('waiOverlay');
+    const main = document.getElementById('mainLayout');
+    const loggedIn = !!currentUser && main && main.style.display !== 'none';
+    const canUse = loggedIn && currentUser.role !== 'viewer';
+    if (btn) btn.style.display = canUse ? 'flex' : 'none';
+    if (overlay && !canUse) {
+        overlay.style.display = 'none';
+        waiDraft = null;
     }
 }
 
@@ -1813,6 +1881,7 @@ function updateNavState() {
     document.body.classList.toggle('role-viewer', isViewer);
     document.body.classList.toggle('role-manager', role === 'manager');
     document.body.classList.toggle('role-admin', isAdmin);
+    syncWaiUi();
 }
 
 function nav(id) {
@@ -5939,10 +6008,17 @@ async function deleteUser(id) {
 // ==================== W.AI ====================
 let waiDraft = null;
 
-function toggleWaiOverlay() {
+function toggleWaiOverlay(forceOpen) {
     const el = document.getElementById('waiOverlay');
     if (!el) return;
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : (el.style.display === 'none' || !el.style.display);
+    el.style.display = shouldOpen ? 'block' : 'none';
+    if (!shouldOpen) {
+        const preview = document.getElementById('waiPreview');
+        if (preview) preview.style.display = 'none';
+    }
 }
 
 async function askWai() {
@@ -6064,45 +6140,6 @@ function fileToBase64(file) {
 }
 
 </script>
-
-<button id="waiBtn" onclick="toggleWaiOverlay()"
-  style="position:fixed; bottom:24px; right:24px; width:52px; height:52px;
-  border-radius:50%; background:#00D4AA; color:#0a0a0a; border:none;
-  font-size:16px; font-weight:800; cursor:pointer; z-index:9999;
-  box-shadow:0 4px 20px rgba(0,212,170,0.3); font-family:inherit;">
-  W.AI
-</button>
-
-<div id="waiOverlay" style="display:none; position:fixed; bottom:88px;
-  right:24px; width:min(400px, calc(100vw - 32px)); max-height:80vh; background:#111;
-  border:1px solid rgba(0,212,170,0.2); border-radius:16px;
-  box-shadow:0 20px 60px rgba(0,0,0,0.5); z-index:9998;
-  font-family:inherit; overflow:hidden;">
-
-  <div style="padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.06);
-    display:flex; align-items:center; justify-content:space-between;">
-    <span style="font-size:15px; font-weight:700; color:#00D4AA;">W.AI</span>
-    <span style="font-size:11px; color:#666;">Claude Opus 4.6</span>
-  </div>
-
-  <div style="padding:16px 20px;">
-    <textarea id="waiPrompt" rows="3"
-      placeholder="Scrivi cosa vuoi fare..."
-      style="width:100%; background:rgba(255,255,255,0.04);
-      border:1px solid rgba(255,255,255,0.08); border-radius:10px;
-      color:#f4ede2; padding:12px; font-size:13px; resize:vertical;
-      font-family:inherit; box-sizing:border-box;"></textarea>
-    <button id="waiSendBtn" onclick="askWai()"
-      style="width:100%; margin-top:8px; padding:10px;
-      background:#00D4AA; color:#0a0a0a; border:none;
-      border-radius:8px; font-weight:700; font-size:13px;
-      cursor:pointer; font-family:inherit;">
-      Chiedi a W.AI
-    </button>
-  </div>
-
-  <div id="waiPreview" style="display:none; padding:0 20px 16px;"></div>
-</div>
 
 </body>
 </html>

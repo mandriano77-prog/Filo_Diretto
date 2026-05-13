@@ -1,22 +1,22 @@
 // AI Copywriter — Anthropic Claude (preferred when configured) or Google Gemini
 // Produces catchy, conversion-focused text for Ads2Wallet
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const { getAnthropicApiKey, getGeminiApiKey } = require('./env-ai');
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
 
 function preferredAiProvider() {
   const explicit = String(process.env.AI_PROVIDER || '').trim().toLowerCase();
   if (explicit === 'anthropic' || explicit === 'gemini') return explicit;
-  if (ANTHROPIC_API_KEY) return 'anthropic';
-  if (GEMINI_API_KEY) return 'gemini';
+  if (getAnthropicApiKey()) return 'anthropic';
+  if (getGeminiApiKey()) return 'gemini';
   return null;
 }
 
 // ─── Gemini REST helper ────────────────────────────────────────────
 async function callGemini(systemPrompt, userPrompt) {
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY non configurata');
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) throw new Error('GEMINI_API_KEY non configurata');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -24,7 +24,7 @@ async function callGemini(systemPrompt, userPrompt) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-goog-api-key': GEMINI_API_KEY
+      'x-goog-api-key': geminiApiKey
     },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
@@ -55,13 +55,14 @@ async function callGemini(systemPrompt, userPrompt) {
 
 // ─── Anthropic REST helper (fallback) ──────────────────────────────
 async function callAnthropic(systemPrompt, userPrompt, maxTokens) {
-  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY non configurata');
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY non disponibile nel processo Node. Impostala nelle variabili del servizio (Railway) e ridistribuisci.');
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
@@ -89,8 +90,8 @@ async function callAI(systemPrompt, userPrompt, maxTokens) {
   const errors = [];
 
   for (const name of providers) {
-    if (name === 'anthropic' && !ANTHROPIC_API_KEY) continue;
-    if (name === 'gemini' && !GEMINI_API_KEY) continue;
+    if (name === 'anthropic' && !getAnthropicApiKey()) continue;
+    if (name === 'gemini' && !getGeminiApiKey()) continue;
     try {
       if (name === 'anthropic') {
         console.log(`[ai-copy] Using Anthropic Claude (${ANTHROPIC_MODEL})`);

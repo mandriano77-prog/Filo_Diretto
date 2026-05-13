@@ -2,16 +2,21 @@
 // Cron, push pianificate e `new Date(y,m,d,H,M)` nel processo Node — sempre ora italiana.
 process.env.TZ = 'Europe/Rome';
 
+const path = require('path');
+try {
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+} catch (_) {}
+
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const path = require('path');
 const fs = require('fs');
 const { getDb } = require('./db');
 const apiRoutes = require('./api/routes');
 const debugSignRoutes = require('./api/debug-sign');
 const { startScheduler } = require('./engine/scheduler');
 const { runStripPromoCheck } = require('./engine/strip-promo');
+const { isAnthropicConfigured } = require('./engine/env-ai');
 
 // Load certificates: prefer FILE-BASED certs (from repo), fallback to env vars
 function loadCerts() {
@@ -110,13 +115,23 @@ app.use('/api/v1', apiRoutes);
 app.use('/debug', debugSignRoutes);
 
 // Static pages
+app.get(['/dashboard', '/dashboard/'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
+});
 app.use('/landing', express.static(path.join(__dirname, 'landing')));
 app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 
 // Health check + wallet debug
 const BUILD_VERSION = '3.0.0-' + Date.now();
 app.get('/health', async (req, res) => {
-  const base = { status: 'ok', product: 'ads2wallet', version: BUILD_VERSION, timestamp: new Date().toISOString() };
+  const base = {
+    status: 'ok',
+    product: 'ads2wallet',
+    version: BUILD_VERSION,
+    timestamp: new Date().toISOString(),
+    ai: { anthropic_configured: isAnthropicConfigured() }
+  };
   if (req.query.wallet) {
     try {
       const { pool } = require('./db');
@@ -390,6 +405,7 @@ getDb().then(db => {
     console.log('  Health: http://localhost:' + PORT + '/health');
     console.log('  API:    http://localhost:' + PORT + '/api/v1');
     console.log('  TZ:     ' + process.env.TZ);
+    console.log('  AI:     Anthropic ' + (isAnthropicConfigured() ? 'configurata' : 'NON configurata nel processo Node'));
 
     // Start push notification scheduler (absolute URLs in scheduled jobs)
     const baseUrl =

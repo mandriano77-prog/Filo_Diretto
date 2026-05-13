@@ -7,9 +7,9 @@ const {
   listStripPromos
 } = require('../db');
 const { extractJSON } = require('./ai-copy');
+const { getAnthropicApiKey } = require('./env-ai');
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const WAI_MODEL = 'claude-opus-4-6';
+const WAI_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-6';
 
 const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
@@ -127,15 +127,16 @@ function buildUserMessage(prompt, context) {
 }
 
 async function callWai(systemPrompt, userMessage) {
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY non configurata');
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY non disponibile nel processo Node. Impostala nelle variabili del servizio (Railway) e ridistribuisci.');
   }
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
