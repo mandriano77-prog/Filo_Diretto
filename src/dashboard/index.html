@@ -5927,6 +5927,12 @@ function toggleWaiOverlay(forceOpen) {
     }
 }
 
+function waiShouldAutoGenerateStrip(data) {
+    return data?.intent === 'strip.generate'
+        && data?.type === 'create'
+        && !!(data?.payload?.prompt_en || data?.preview?.details?.prompt_en);
+}
+
 async function askWai() {
     if (!brandId) return alert('Seleziona un brand');
     if (currentUser?.role === 'viewer') return alert('Permessi insufficienti (solo lettura)');
@@ -5952,6 +5958,10 @@ async function askWai() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return alert(data.error || 'Errore W.AI');
         waiDraft = data;
+        if (waiShouldAutoGenerateStrip(data)) {
+            await waiHandleStripGenerate(data.payload);
+            return;
+        }
         renderWaiPreview(data);
     } finally {
         if (btn) {
@@ -5978,6 +5988,7 @@ function renderWaiPreview(data) {
     } else {
         const details = data.preview?.details || {};
         const isStripGenerate = data.intent === 'strip.generate';
+        const isPushIntent = String(data.intent || '').startsWith('push.');
         const promptEn = details.prompt_en || data.payload?.prompt_en || '';
         const detailsHtml = Object.entries(details)
             .filter(([k]) => !(isStripGenerate && k === 'prompt_en'))
@@ -5988,12 +5999,16 @@ function renderWaiPreview(data) {
             ? `<div style="margin:8px 0;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);font-size:11px;color:#aaa;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${esc(promptEn)}</div>`
             : '';
         const confirmLabel = isStripGenerate ? 'Genera immagine' : 'Conferma';
+        const pushHint = isPushIntent
+            ? '<div style="margin-top:8px;font-size:11px;color:#999;line-height:1.45;">Le push sono solo testo. Per una strip AI descrivi la scena da generare (es. «genera strip estiva con cocktail»).</div>'
+            : '';
 
         box.innerHTML = `
             <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Anteprima</div>
             <p style="font-size:13px;color:#00D4AA;margin-bottom:8px;">${esc(data.preview?.summary || '')}</p>
             ${promptBox}
             <div style="margin-bottom:8px;">${detailsHtml}</div>
+            ${pushHint}
             ${warnHtml}
             <div style="display:flex;gap:8px;margin-top:12px;">
                 <button onclick="confirmWai()" style="flex:1;padding:8px;background:#00D4AA;color:#0a0a0a;
@@ -6029,10 +6044,16 @@ async function waiHandleStripGenerate(payload) {
     const stripPreview = document.getElementById('wai-strip-preview');
     const img = document.getElementById('wai-strip-img');
     const nameInput = document.getElementById('wai-strip-name');
+    const sendBtn = document.getElementById('waiSendBtn');
+    const sendPrevLabel = sendBtn ? sendBtn.textContent : '';
     if (stripPreview) stripPreview.style.display = 'none';
     if (preview) {
         preview.style.display = 'block';
         preview.innerHTML = '<div style="font-size:13px;color:#ccc;line-height:1.6;">Generazione immagine in corso... (10-20 secondi)</div>';
+    }
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Generazione immagine...';
     }
 
     try {
@@ -6057,11 +6078,19 @@ async function waiHandleStripGenerate(payload) {
             preview.style.display = 'none';
             preview.innerHTML = '';
         }
-        if (stripPreview) stripPreview.style.display = 'block';
+        if (stripPreview) {
+            stripPreview.style.display = 'block';
+            stripPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     } catch (err) {
         if (preview) {
             preview.style.display = 'block';
             preview.innerHTML = `<div style="font-size:13px;color:#f5a623;line-height:1.6;">${esc(err.message || 'Errore generazione strip')}</div>`;
+        }
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = sendPrevLabel || 'Chiedi a W.AI';
         }
     }
 }

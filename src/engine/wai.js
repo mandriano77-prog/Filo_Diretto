@@ -97,6 +97,7 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 ### push.send
 - Come push.schedule ma senza scheduling. Esecuzione immediata.
 - title + message obbligatori. Se non specificati, genera e metti warning.
+- Non genera immagini: per una strip visiva usa strip.generate.
 
 ### reward.create
 - name: nome del reward (es. "Caffè gratis")
@@ -117,7 +118,8 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - win_probability: 0.0-1.0 (default 0.1 se non specificato)
 
 ### strip.generate — Generazione immagine strip con AI
-Quando il manager chiede di creare, generare o cambiare l'immagine strip del pass, usa l'intent strip.generate.
+Quando il manager chiede di creare, generare o cambiare l'immagine strip del pass, usa l'intent strip.generate con type "create".
+Non usare push.schedule o push.send per richieste di immagini.
 Traduci la descrizione italiana in prompt_en in inglese per Flux 1.1 Pro.
 Regole prompt_en: scena fotografica panoramica, includi "wide panoramic composition, no text, no watermarks, no logos, no UI elements", includi "photorealistic commercial photography" o "editorial photography", 30-60 parole, non inventare prodotti non menzionati.
 Stili: commercial_photo (default), lifestyle, food, minimal, seasonal, abstract.
@@ -275,10 +277,15 @@ function validateWaiResponse(raw, brandId) {
   }
 
   const intent = String(raw.intent || 'unknown').trim();
-  const type = String(raw.type || 'system').trim();
+  let type = String(raw.type || 'system').trim();
   const preview = normalizePreview(raw);
   const answer = String(raw.answer || preview.summary || '').trim();
   const payload = normalizePayload(intent, raw.payload, brandId);
+  const hasExecutablePayload = payload && typeof payload === 'object' && Object.keys(payload).length > 0;
+
+  if (EXECUTABLE_INTENTS.has(intent) && hasExecutablePayload) {
+    type = 'create';
+  }
 
   if (!preview.summary && answer) preview.summary = answer;
 
