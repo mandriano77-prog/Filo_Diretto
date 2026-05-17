@@ -454,7 +454,7 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
-                <select class="brand-sel" id="dashboardProductLine" title="Tema interfaccia per linea prodotto (non modifica i colori del pass)" onchange="onDashboardProductLineChange()">
+                <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
                     <option value="ads">Ads</option>
                     <option value="hr">HR</option>
                     <option value="engage">Engage</option>
@@ -725,7 +725,7 @@
             <!-- BRAND IDENTITY -->
             <div id="brand-identity" class="section">
                 <div class="sec-title">Identità Brand</div>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:20px;">Profilo del brand: identità visiva, settore e home page. Queste impostazioni vengono ereditate dal pass.</p>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:20px;">Profilo del brand: settore e home page. I colori del pass sono fissi (tema piattaforma).</p>
 
                 <div class="card">
                     <div class="sec-title" style="font-size:16px;">Informazioni</div>
@@ -754,48 +754,6 @@
                             <input type="url" id="biHomepage" placeholder="es. https://www.brand.com">
                         </div>
                     </div>
-                </div>
-
-                <div class="card" style="margin-top:16px;">
-                    <div class="sec-title" style="font-size:16px;">Logo</div>
-                    <div style="display:flex;align-items:flex-start;gap:20px;">
-                        <div id="biLogoPreview" style="width:120px;height:120px;border-radius:12px;background:var(--bg3);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
-                            <span style="color:var(--text2);font-size:11px;">Nessun logo</span>
-                        </div>
-                        <div style="flex:1;">
-                            <input type="file" id="biLogoFile" accept="image/png,image/jpeg,image/webp,.pdf" style="font-size:12px;" onchange="previewBiLogo(this)">
-                            <div style="font-size:11px;color:var(--text2);margin-top:4px;">PNG trasparente, max 320x100px</div>
-                            <div id="biLogoStatus" style="font-size:12px;margin-top:6px;color:var(--teal);display:none;"></div>
-                            <div style="display:flex;gap:8px;margin-top:10px;">
-                                <button class="btn small" id="biLogoUploadBtn" onclick="uploadBiLogo()">Carica Logo</button>
-                                <button class="btn small danger" onclick="deleteBiLogo()" id="biLogoDeleteBtn" style="display:none;">Elimina</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card" style="margin-top:16px;">
-                    <div class="sec-title" style="font-size:16px;">Colori</div>
-                    <div class="form-row">
-                        <div class="form-group"><label class="form-label">Sfondo</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biBgPick" value="#0D0B1A" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biBg').value=this.value"><input type="text" id="biBg" value="#0D0B1A" onchange="document.getElementById('biBgPick').value=this.value"></div>
-                        </div>
-                        <div class="form-group"><label class="form-label">Testo</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biFgPick" value="#FFFFFF" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biFg').value=this.value"><input type="text" id="biFg" value="#FFFFFF" onchange="document.getElementById('biFgPick').value=this.value"></div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label class="form-label">Accent / Label</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biAccPick" value="#00D4AA" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biAcc').value=this.value"><input type="text" id="biAcc" value="#00D4AA" onchange="document.getElementById('biAccPick').value=this.value"></div>
-                        </div>
-                        <div class="form-group"><label class="form-label">Anteprima</label>
-                            <div style="display:flex;gap:4px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
-                                <div id="biCpBg" style="flex:2;background:#0D0B1A;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#FFF;">BG</div>
-                                <div id="biCpAcc" style="flex:1;background:#00D4AA;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000;">ACC</div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- AI Palette removed -->
                 </div>
 
                 <div style="display:flex;gap:10px;margin-top:24px;">
@@ -1632,6 +1590,7 @@
 const API = '/api/v1';
 const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
 let brandId = null;
+let brandsListCache = [];
 function getAuthHeaders() {
     const t = localStorage.getItem(AUTH_TOKEN_KEY);
     const h = {};
@@ -2178,16 +2137,7 @@ async function loadBrands() {
     const res = await fetch(`${API}/brands`, { headers: { ...getAuthHeaders() } });
     if (!res.ok) return;
     const brands = await res.json();
-    const sel = document.getElementById('brandSelector');
-    sel.innerHTML = '<option value="">Seleziona Brand</option>';
-    const frag = document.createDocumentFragment();
-    brands.forEach(b => {
-        const o = document.createElement('option');
-        o.value = b.id;
-        o.textContent = b.name;
-        frag.appendChild(o);
-    });
-    sel.appendChild(frag);
+    brandsListCache = brands;
 
     const urlBrandParam = new URLSearchParams(window.location.search).get('brand_id');
     const urlMatch = urlBrandParam && brands.find(b => String(b.id) === String(urlBrandParam));
@@ -2207,8 +2157,14 @@ async function loadBrands() {
     else if (storedMatch) nextId = storedMatch.id;
     else if (singleBrandAuto) nextId = brands[0].id;
 
-    sel.value = nextId ? nextId : '';
     brandId = nextId || null;
+    if (brandId) {
+        const b = brands.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brands);
+    const sel = document.getElementById('brandSelector');
+    if (sel) sel.value = brandId ? brandId : '';
 
     updateNavState();
     if (brandId) {
@@ -2234,6 +2190,13 @@ function changeBrand() {
     const sel = document.getElementById('brandSelector');
     brandId = sel.value || null;
     currentBrandName = brandId ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
+    if (brandId) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brandsListCache);
+    if (sel) sel.value = brandId || '';
+    syncProductLineSelector();
     applyBrandTheme();
     updateNavState();
     if (!brandId) {
@@ -2327,7 +2290,13 @@ function applyProductMenuCopy(line) {
     });
 }
 
-function getDashboardProductLine() {
+function getBrandProductLine(brand) {
+    const pl = brand?.config?.product_line;
+    if (pl && VALID_PRODUCT_LINES.includes(pl)) return pl;
+    return 'ads';
+}
+
+function getUnscopedDashboardProductLine() {
     try {
         const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
         if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
@@ -2344,6 +2313,55 @@ function getDashboardProductLine() {
     if (h.includes('live2wallet')) return 'live';
     if (h.includes('ads2wallet')) return 'ads';
     return 'ads';
+}
+
+function persistDashboardProductLine(line) {
+    if (!line || !VALID_PRODUCT_LINES.includes(line)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, line); } catch (_) {}
+}
+
+function getDashboardProductLine() {
+    if (brandId && brandsListCache.length) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) return getBrandProductLine(b);
+    }
+    return getUnscopedDashboardProductLine();
+}
+
+function populateBrandSelector(brands) {
+    const sel = document.getElementById('brandSelector');
+    if (!sel) return;
+    const activeLine = getDashboardProductLine();
+    const filtered = (brands || []).filter((b) => getBrandProductLine(b) === activeLine);
+    const keepId = brandId && filtered.some((b) => String(b.id) === String(brandId)) ? brandId : null;
+    sel.innerHTML = '<option value="">Seleziona Brand</option>';
+    const frag = document.createDocumentFragment();
+    filtered.forEach((b) => {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.name;
+        frag.appendChild(o);
+    });
+    sel.appendChild(frag);
+    if (keepId) sel.value = keepId;
+    else if (brandId) {
+        brandId = null;
+        currentBrandName = '';
+        try { localStorage.removeItem(LAST_BRAND_KEY); } catch (_) {}
+        syncBrandUrl();
+    }
+}
+
+function syncProductLineSelector() {
+    const plSel = document.getElementById('dashboardProductLine');
+    if (!plSel) return;
+    const line = getDashboardProductLine();
+    plSel.value = line;
+    const locked = !!brandId;
+    plSel.disabled = locked;
+    plSel.title = locked
+        ? `Linea prodotto: ${PRODUCT_DISPLAY_TITLES[line] || line} (fissa per questo brand)`
+        : 'Seleziona la linea per filtrare i brand disponibili';
 }
 
 function syncChromeProductTitles(line) {
@@ -2380,17 +2398,22 @@ function initDashboardProductTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 }
 
 function onDashboardProductLineChange() {
+    if (brandId) {
+        syncProductLineSelector();
+        toast('Deseleziona il brand per cambiare linea prodotto (Ads, HR, Engage, Live)');
+        return;
+    }
     const sel = document.getElementById('dashboardProductLine');
     const v = sel && sel.value;
     if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
-    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
+    persistDashboardProductLine(v);
+    populateBrandSelector(brandsListCache);
     applyBrandTheme();
-    if (brandId && getActiveSectionId() === 'leads') loadLeads();
+    if (getActiveSectionId() === 'leads') loadLeads();
 }
 
 // ==================== BRAND THEMING (header only; shell = product theme) ====================
@@ -2399,8 +2422,7 @@ function applyBrandTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 
     const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
     const headerBrandName = document.getElementById('headerBrandName');
@@ -5396,15 +5418,15 @@ async function wzDeleteTemplate(id) {
 }
 
 // ==================== BRAND IDENTITY ====================
+const BRAND_PASS_FIXED_COLORS = {
+    backgroundColor: '#0D0B1A',
+    foregroundColor: '#FFFFFF',
+    labelColor: '#00D4AA'
+};
+
 async function loadBrandIdentity() {
     if (!brandId) {
-        // No brand yet — show empty form for creation
         ['biName','biSlug','biSettore','biHomepage'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-        document.getElementById('biBg').value = '#0D0B1A'; document.getElementById('biBgPick').value = '#0D0B1A';
-        document.getElementById('biFg').value = '#FFFFFF'; document.getElementById('biFgPick').value = '#FFFFFF';
-        document.getElementById('biAcc').value = '#00D4AA'; document.getElementById('biAccPick').value = '#00D4AA';
-        const logoPreview = document.getElementById('biLogoPreview');
-        if (logoPreview) logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
         return;
     }
     const res = await fetch(`${API}/brands/${brandId}`);
@@ -5414,161 +5436,20 @@ async function loadBrandIdentity() {
     document.getElementById('biSlug').value = brand.slug || '';
     document.getElementById('biSettore').value = c.settore || '';
     document.getElementById('biHomepage').value = c.homepage || '';
-    document.getElementById('biBg').value = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biBgPick').value = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biFg').value = c.foregroundColor || '#FFFFFF';
-    document.getElementById('biFgPick').value = c.foregroundColor || '#FFFFFF';
-    document.getElementById('biAcc').value = c.labelColor || '#00D4AA';
-    document.getElementById('biAccPick').value = c.labelColor || '#00D4AA';
-    // Color preview
-    document.getElementById('biCpBg').style.background = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biCpAcc').style.background = c.labelColor || '#00D4AA';
-    // Logo preview — load from server via fetch (needs auth headers)
-    const logoPreview = document.getElementById('biLogoPreview');
-    const logoDeleteBtn = document.getElementById('biLogoDeleteBtn');
-    const logoStatus = document.getElementById('biLogoStatus');
-    document.getElementById('biLogoFile').value = '';
-    logoStatus.style.display = 'none';
-    try {
-        const logoRes = await fetch(`${API}/brands/${brandId}/logo?t=${Date.now()}`, { headers: getAuthHeaders() });
-        if (logoRes.ok) {
-            const blob = await logoRes.blob();
-            const url = URL.createObjectURL(blob);
-            logoPreview.innerHTML = '';
-            logoPreview.style.border = '2px solid var(--border)';
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-            logoPreview.appendChild(img);
-            logoDeleteBtn.style.display = 'inline-block';
-            console.log('[Brand Identity] Logo caricato dal server');
-        } else {
-            logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
-            logoPreview.style.border = '2px dashed var(--border)';
-            logoDeleteBtn.style.display = 'none';
-            console.log('[Brand Identity] Nessun logo trovato');
-        }
-    } catch(e) {
-        logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
-        logoPreview.style.border = '2px dashed var(--border)';
-        logoDeleteBtn.style.display = 'none';
-    }
-    // Landing link removed
-}
-
-function previewBiLogo(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    console.log('[Logo] File selezionato:', file.name, file.type, file.size + 'B');
-    const status = document.getElementById('biLogoStatus');
-    status.style.display = 'block';
-    status.style.color = 'var(--teal)';
-    status.textContent = 'File selezionato: ' + file.name;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const preview = document.getElementById('biLogoPreview');
-        preview.style.border = '2px solid var(--teal)';
-        preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;">`;
-        console.log('[Logo] Preview caricata OK');
-    };
-    reader.onerror = () => {
-        status.style.color = 'var(--red)';
-        status.textContent = 'Errore lettura file';
-    };
-    reader.readAsDataURL(file);
-}
-
-async function uploadBiLogo() {
-    if (!brandId) return toast('Nessun brand selezionato');
-    const fileInput = document.getElementById('biLogoFile');
-    const file = fileInput.files[0];
-    if (!file) return toast('Seleziona prima un file immagine');
-    const btn = document.getElementById('biLogoUploadBtn');
-    const status = document.getElementById('biLogoStatus');
-    btn.disabled = true; btn.textContent = 'Caricando...';
-    status.style.display = 'block';
-    status.style.color = 'var(--teal)';
-    status.textContent = 'Upload in corso...';
-    try {
-        // Read file as base64
-        const base64 = await new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result.split(',')[1]);
-            r.onerror = () => reject(new Error('Errore lettura file'));
-            r.readAsDataURL(file);
-        });
-        console.log('[Logo] Base64 length:', base64.length);
-        const res = await fetch(`${API}/brands/${brandId}/logo`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-            body: JSON.stringify({ logo_base64: base64 })
-        });
-        const resData = await res.json().catch(() => ({}));
-        console.log('[Logo] Upload response:', res.status, resData);
-        if (!res.ok) {
-            throw new Error(resData.error || 'Errore server ' + res.status);
-        }
-        status.style.color = 'var(--green)';
-        status.textContent = 'Logo salvato con successo!';
-        toast('Logo caricato!');
-        // Reload logo from server to confirm it persisted (use fetch with auth)
-        const verifyRes = await fetch(`${API}/brands/${brandId}/logo?t=${Date.now()}`, { headers: getAuthHeaders() });
-        const logoPreview = document.getElementById('biLogoPreview');
-        if (verifyRes.ok) {
-            const blob = await verifyRes.blob();
-            const url = URL.createObjectURL(blob);
-            logoPreview.innerHTML = '';
-            logoPreview.style.border = '2px solid var(--border)';
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-            logoPreview.appendChild(img);
-            document.getElementById('biLogoDeleteBtn').style.display = 'inline-block';
-            console.log('[Logo] Ricaricato da server OK');
-        } else {
-            status.style.color = 'var(--red)';
-            status.textContent = 'Upload OK ma logo non trovato sul server — riprova';
-            console.error('[Logo] Upload claimed success but GET /logo failed');
-        }
-    } catch(err) {
-        console.error('[Logo] Upload error:', err);
-        status.style.color = 'var(--red)';
-        status.textContent = 'Errore: ' + err.message;
-        toast('Errore: ' + err.message);
-    }
-    btn.disabled = false; btn.textContent = 'Carica Logo';
-}
-
-async function deleteBiLogo() {
-    if (!confirm('Eliminare il logo?')) return;
-    // Remove logos from brand config
-    const res = await fetch(`${API}/brands/${brandId}`);
-    const brand = await res.json();
-    const config = { ...(brand.config || {}) };
-    delete config.logos;
-    await fetch(`${API}/brands/${brandId}`, {
-        method: 'PUT',
-        headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-        body: JSON.stringify({ config })
-    });
-    toast('Logo eliminato');
-    loadBrandIdentity();
 }
 
 async function saveBrandIdentity() {
     const name = document.getElementById('biName').value.trim();
     if (!name) { toast('Inserisci il nome del brand'); return; }
     const config = {
-        backgroundColor: document.getElementById('biBg').value,
-        foregroundColor: document.getElementById('biFg').value,
-        labelColor: document.getElementById('biAcc').value,
         settore: document.getElementById('biSettore').value,
         homepage: document.getElementById('biHomepage').value.trim(),
     };
     const slug = document.getElementById('biSlug').value.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (!brandId) {
         // CREATE new brand
-        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config }) });
+        const productLine = getUnscopedDashboardProductLine();
+        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config: { ...BRAND_PASS_FIXED_COLORS, ...config, product_line: productLine } }) });
         const newBrand = await res.json();
         if (newBrand.id) {
             brandId = newBrand.id;

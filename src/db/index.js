@@ -355,6 +355,14 @@ async function getDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`).catch(()=>{});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_assistant_log_brand ON push_assistant_log(brand_id, created_at DESC)`).catch(()=>{});
+    // Brand product line (Ads / HR / Engage / Live) — legacy brands default to ads
+    await pool.query(`
+      UPDATE brands
+      SET config = COALESCE(config, '{}'::jsonb) || '{"product_line":"ads"}'::jsonb
+      WHERE config->>'product_line' IS NULL
+         OR config->>'product_line' = ''
+         OR NOT (config->>'product_line' IN ('ads', 'hr', 'engage', 'live'))
+    `).catch(() => {});
     await pool.query(`CREATE TABLE IF NOT EXISTS wai_log (
       id TEXT PRIMARY KEY,
       brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
