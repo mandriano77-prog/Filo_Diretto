@@ -1648,7 +1648,11 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 
 router.post('/push/send', async (req, res) => {
   try {
-    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id, channel = 'apple' } = req.body;
+    const {
+      brand_id, title, message, campaign_id, update_pass, field_values,
+      instant_win_id, gamification_id, channel = 'apple',
+      back_link_label, back_link_url
+    } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
     if (!requireBrandId(req, res, brand_id)) return;
     if (!assertPushChannel(channel)) {
@@ -1722,6 +1726,16 @@ router.post('/push/send', async (req, res) => {
       if (!instant_win_id) delete config.instantWinActive;
       if (!gamification_id) delete config.gamificationActive;
       if (!instant_win_id && !gamification_id) delete config.stripOverride;
+      const linkOutUrl = (back_link_url || '').trim();
+      if (linkOutUrl) {
+        config.pushLinkOut = {
+          label: (back_link_label || '').trim() || 'Scopri di più',
+          url: linkOutUrl,
+          ts: Date.now()
+        };
+      } else {
+        delete config.pushLinkOut;
+      }
 
       // Instant Win: inject play link into pass back field
       if (instant_win_id) {

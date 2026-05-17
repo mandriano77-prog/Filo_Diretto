@@ -1,4 +1,19 @@
-<!DOCTYPE html>
+                                <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Link 1: lascia vuoto (push / Instant Win / Gamification). Poi regolamento, link 2 e 3, contatti.</p>
+                                <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Link 1: lascia vuoto (push / Instant Win / Gamification). Poi regolamento, link 2 e 3, contatti.</p>
+                                <div class="form-row">
+                                    <div class="form-group"><label class="form-label">Link 1 — Testo (opz.)</label><input type="text" id="wzLink1Label" placeholder="Lascia vuoto se dinamico"></div>
+                                    <div class="form-group"><label class="form-label">Link 1 — URL (opz.)</label><input type="text" id="wzLink1Url" placeholder="https://..."></div>
+                                </div>
+                                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="wzRegolamento" rows="2" placeholder="Condizioni di utilizzo..."></textarea></div>
+                                <div class="form-row">
+                                    <div class="form-group"><label class="form-label">Link 2 — Testo</label><input type="text" id="wzLink2Label"></div>
+                                    <div class="form-group"><label class="form-label">Link 2 — URL</label><input type="text" id="wzLink2Url"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label class="form-label">Link 3 — Testo</label><input type="text" id="wzLink3Label"></div>
+                                    <div class="form-group"><label class="form-label">Link 3 — URL</label><input type="text" id="wzLink3Url"></div>
+                                </div>
+                                <div class="form-group"><label class="form-label">Contatti</label><textarea id="wzContatti" rows="2" placeholder="Email, telefono..."></textarea></div><!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -602,18 +617,26 @@
                             <p style="font-size:11px;color:var(--text2);margin:8px 0 0 24px;line-height:1.4;">Strip e asset grafici dal pass si gestiscono in <strong>Media Library</strong> / Design del pass — qui non sono necessari.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
+                            <label class="form-label">Link out — retro Link 1 (opzionale)</label>
+                            <div class="form-row">
+                                <input type="text" id="pushBackLinkLabel" placeholder="Testo link es. Scopri l'offerta" style="flex:1;">
+                                <input type="url" id="pushBackLinkUrl" placeholder="https://..." style="flex:1;">
+                            </div>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Se compilato, sostituisce il Link 1 sul retro fino alla prossima push. Ha priorità su Instant Win / Gamification.</p>
+                        </div>
+                        <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Instant Win (opzionale)</label>
                             <select id="pushInstantWin">
                                 <option value="">— Nessuna campagna Instant Win —</option>
                             </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, il link al gioco verrà inserito automaticamente nel retro di ogni pass.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Gamification (opzionale)</label>
                             <select id="pushGamification">
                                 <option value="">— Nessuna campagna Gamification —</option>
                             </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel retro di ogni pass.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
                     </div>
@@ -1430,16 +1453,18 @@
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Retro — Contenuti</div>
-                <div class="form-group"><label class="form-label">Link 1</label>
-                    <div class="form-row"><input type="text" id="tplLink1Label" placeholder="Label es. Sito Web" oninput="updatePassPreview()"><input type="text" id="tplLink1Url" placeholder="https://..." oninput="updatePassPreview()"></div>
+                <div class="form-group">
+                    <label class="form-label">Link 1 — variabile</label>
+                    <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Lascia vuoto nel template: viene usato da push (link out), Instant Win o Gamification. Compila solo per un link fisso permanente.</p>
+                    <div class="form-row"><input type="text" id="tplLink1Label" placeholder="Label (opzionale)" oninput="updatePassPreview()"><input type="text" id="tplLink1Url" placeholder="https://... (opzionale)" oninput="updatePassPreview()"></div>
                 </div>
+                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="tplRegolamento" rows="3" placeholder="Termini e condizioni dell'offerta..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
                 <div class="form-group"><label class="form-label">Link 2</label>
                     <div class="form-row"><input type="text" id="tplLink2Label" placeholder="Label es. Instagram" oninput="updatePassPreview()"><input type="text" id="tplLink2Url" placeholder="https://..." oninput="updatePassPreview()"></div>
                 </div>
                 <div class="form-group"><label class="form-label">Link 3</label>
                     <div class="form-row"><input type="text" id="tplLink3Label" placeholder="Label es. Prenota" oninput="updatePassPreview()"><input type="text" id="tplLink3Url" placeholder="https://..." oninput="updatePassPreview()"></div>
                 </div>
-                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="tplRegolamento" rows="3" placeholder="Termini e condizioni dell'offerta..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
                 <div class="form-group"><label class="form-label">Contatti</label><textarea id="tplContatti" rows="2" placeholder="Email, telefono, indirizzo..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
 
                 <button class="btn" onclick="saveTemplate()" style="margin-top:16px;">Salva Template</button>
@@ -3511,17 +3536,27 @@ function updatePassPreview() {
         aux.innerHTML = `<div class="pp-field"><div class="pp-field-label">${esc(auxLabel)}</div><div class="pp-field-value">${esc(auxValue)}</div></div>`;
     } else { aux.innerHTML = ''; }
 
-    // Back
+    // Back (ordine pass: link1 → regolamento → link2 → link3 → contatti)
     let backHtml = '';
-    for (let i = 1; i <= 3; i++) {
-        const lbl = document.getElementById('tplLink'+i+'Label').value.trim();
-        const url = document.getElementById('tplLink'+i+'Url').value.trim();
+    const addBackLink = (lbl, url) => {
         if (lbl || url) {
             backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl || 'LINK')}</div><div class="pp-back-field-value"><a href="#">${esc(url || lbl)}</a></div></div>`;
         }
-    }
+    };
+    addBackLink(
+        document.getElementById('tplLink1Label').value.trim(),
+        document.getElementById('tplLink1Url').value.trim()
+    );
     const reg = document.getElementById('tplRegolamento').value.trim();
     if (reg) backHtml += `<div class="pp-back-field"><div class="pp-back-field-value">${esc(reg).substring(0,120)}${reg.length>120?'...':''}</div></div>`;
+    addBackLink(
+        document.getElementById('tplLink2Label').value.trim(),
+        document.getElementById('tplLink2Url').value.trim()
+    );
+    addBackLink(
+        document.getElementById('tplLink3Label').value.trim(),
+        document.getElementById('tplLink3Url').value.trim()
+    );
     const cont = document.getElementById('tplContatti').value.trim();
     if (cont) backHtml += `<div class="pp-back-field"><div class="pp-back-field-value">${esc(cont)}</div></div>`;
 
@@ -3763,6 +3798,11 @@ async function sendImmediatePush() {
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification').value;
     if (gamId) body.gamification_id = gamId;
+    const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
+    if (backLinkUrl) {
+        body.back_link_url = backLinkUrl;
+        body.back_link_label = (document.getElementById('pushBackLinkLabel')?.value || '').trim();
+    }
     const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) { alert('Errore push: ' + data.error); return; }
@@ -3784,6 +3824,10 @@ async function sendImmediatePush() {
     alert(msg);
     document.getElementById('pushTitle').value = '';
     document.getElementById('pushMessage').value = '';
+    const pbl = document.getElementById('pushBackLinkLabel');
+    const pbu = document.getElementById('pushBackLinkUrl');
+    if (pbl) pbl.value = '';
+    if (pbu) pbu.value = '';
     loadPushHistory();
 }
 
@@ -5070,13 +5114,16 @@ function wzBuildPreview() {
 
     // Back
     let backHtml = '';
-    for (let i = 1; i <= 3; i++) {
+    const wzL1 = document.getElementById('wzLink1Label').value;
+    const wzU1 = document.getElementById('wzLink1Url').value;
+    if (wzL1||wzU1) backHtml += `<div class="pp-back-row"><span class="pp-back-label">${esc(wzL1)}</span><span class="pp-back-value">${esc(wzU1)}</span></div>`;
+    const reg = document.getElementById('wzRegolamento').value;
+    if (reg) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(reg.substring(0,80))}...</span></div>`;
+    for (let i = 2; i <= 3; i++) {
         const l = document.getElementById('wzLink'+i+'Label').value;
         const u = document.getElementById('wzLink'+i+'Url').value;
         if (l||u) backHtml += `<div class="pp-back-row"><span class="pp-back-label">${esc(l)}</span><span class="pp-back-value">${esc(u)}</span></div>`;
     }
-    const reg = document.getElementById('wzRegolamento').value;
-    if (reg) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(reg.substring(0,80))}...</span></div>`;
     const cont = document.getElementById('wzContatti').value;
     if (cont) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(cont)}</span></div>`;
     document.getElementById('wzPpBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Nessun contenuto retro</div>';

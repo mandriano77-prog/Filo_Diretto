@@ -315,9 +315,40 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // ── BACK FIELDS (order: Novita → Links → Regolamento → Contatti) ──
+  // ── BACK FIELDS (order: Novità → Link 1 → Regolamento → Link 2 → Link 3 → Contatti) ──
 
-  // 1. NOVITA — full push message
+  function makeBackLinkField(key, label, url) {
+    const field = {
+      key,
+      label: '',
+      value: label || url || ''
+    };
+    if (url) {
+      field.attributedValue = `<a href="${url}">${label || url}</a>`;
+    }
+    return field;
+  }
+
+  function resolveBackLink1(brandCfg, serialNumber) {
+    const pushOut = brandCfg.pushLinkOut;
+    if (pushOut?.url) {
+      return makeBackLinkField('link_0', pushOut.label || 'Scopri di più', pushOut.url);
+    }
+    if (brandCfg.instantWinActive && serialNumber) {
+      const playUrl = `${baseUrl}/play/${serialNumber}`;
+      const iwLabel = brandCfg.instantWinActive.label || 'Gioca e Vinci!';
+      return makeBackLinkField('link_0', iwLabel, playUrl);
+    }
+    if (brandCfg.gamificationActive && serialNumber) {
+      const gameTypeRoutes = { quiz: 'quiz', memory: 'memory', puzzle: 'puzzle' };
+      const gameRoute = gameTypeRoutes[brandCfg.gamificationActive.game_type] || 'quiz';
+      const gameUrl = `${baseUrl}/game/${gameRoute}/${serialNumber}`;
+      const gamLabel = brandCfg.gamificationActive.label || 'Gioca ora!';
+      return makeBackLinkField('link_0', gamLabel, gameUrl);
+    }
+    return null;
+  }
+
   const orderedBackFields = [];
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     orderedBackFields.push({
@@ -327,50 +358,12 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // 2. LINKS — source of truth is template fields.
-  // NOTE: legacy fallback to brandConfig.links caused stale "ghost" links
-  // to reappear on pass back fields even when not configured in template UI.
   const links = (!Array.isArray(tplFields) && Array.isArray(tplFields.links)) ? tplFields.links : [];
-  links.forEach((link, i) => {
-    if (!link.label && !link.url) return;
-    // attributedValue renders the clickable link in iOS.
-    // Label is left empty so only the tappable link text shows — no duplication.
-    const field = {
-      key: `link_${i}`,
-      label: '',
-      value: link.label || link.url || ''
-    };
-    if (link.url) {
-      field.attributedValue = `<a href="${link.url}">${link.label || link.url}</a>`;
-    }
-    orderedBackFields.push(field);
-  });
-
-  // 2b. INSTANT WIN LINK — auto-injected when a campaign is active
-  if (brandConfig.instantWinActive && instance.serial_number) {
-    const playUrl = `${baseUrl}/play/${instance.serial_number}`;
-    const iwLabel = brandConfig.instantWinActive.label || 'Gioca e Vinci!';
-    orderedBackFields.push({
-      key: 'instant_win_link',
-      label: '',
-      value: iwLabel,
-      attributedValue: `<a href="${playUrl}">${iwLabel}</a>`
-    });
-  }
-
-  // 2c. GAMIFICATION LINK — auto-injected when a gamification campaign is active
-  if (brandConfig.gamificationActive && instance.serial_number) {
-    const gameTypeRoutes = { quiz: 'quiz', memory: 'memory', puzzle: 'puzzle' };
-    const gameRoute = gameTypeRoutes[brandConfig.gamificationActive.game_type] || 'quiz';
-    const gameUrl = `${baseUrl}/game/${gameRoute}/${instance.serial_number}`;
-    const gamLabel = brandConfig.gamificationActive.label || 'Gioca ora!';
-    orderedBackFields.push({
-      key: 'gamification_link',
-      label: '',
-      value: gamLabel,
-      attributedValue: `<a href="${gameUrl}">${gamLabel}</a>`
-    });
-  }
+  const link1 = resolveBackLink1(brandConfig, instance.serial_number)
+    || (links[0] && (links[0].label || links[0].url)
+      ? makeBackLinkField('link_0', links[0].label, links[0].url)
+      : null);
+  if (link1) orderedBackFields.push(link1);
 
   // 3. REGOLAMENTO — from brand backContent OR template fields
   const backContent = brandConfig.backContent || {};
@@ -383,6 +376,12 @@ function generatePassJson(template, instance, brand, options = {}) {
       value: regolamento
     });
   }
+
+  [1, 2].forEach((idx) => {
+    const link = links[idx];
+    if (!link || (!link.label && !link.url)) return;
+    orderedBackFields.push(makeBackLinkField(`link_${idx}`, link.label, link.url));
+  });
 
   // 4. CONTATTI — from brand backContent OR template fields
   const tplContatti = (!Array.isArray(tplFields) && tplFields.contatti) || '';
