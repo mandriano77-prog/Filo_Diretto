@@ -6844,6 +6844,22 @@ async function refineWai() {
     }
 }
 
+function filterStaleAudienceWarnings(warnings) {
+    const block = [
+        /audience_behavior_30d/i, /30 giorni aggregat/i, /granularit/i,
+        /necessaria una query sul server/i, /non possono essere filtrati/i,
+        /dati disponibili nel contesto/i, /Query spec generata automaticamente/i
+    ];
+    return (warnings || []).filter((w) => !block.some((re) => re.test(String(w))));
+}
+
+function waiAudienceAnswerText(data) {
+    let text = String(data.answer || data.preview?.summary || '').trim();
+    text = text.replace(/\s*Esempi:\s*[^.]+\.?/gi, '').trim();
+    text = text.replace(/Possessori che corrispondono:\s*\d+\.?\s*/gi, '').trim();
+    return text;
+}
+
 function renderWaiAudienceQueryPreview(data, warnHtml) {
     const count = data.preview?.details?.member_count;
     const querySpec = data.payload?.query_spec || data.preview?.details?.query_spec;
@@ -6855,8 +6871,9 @@ function renderWaiAudienceQueryPreview(data, warnHtml) {
         : '';
     const samples = (data.preview?.details?.sample_members || []).slice(0, 5);
     const sampleLine = samples.length
-        ? `<div style="margin-top:8px;font-size:11px;color:#999;">Esempi: ${samples.map((m) => esc(m.email || m.name || m.serial_number || '')).filter(Boolean).join(' · ')}</div>`
+        ? `<div style="margin-top:8px;font-size:11px;color:#999;">Esempi (serial): ${samples.map((m) => esc(m.email || m.name || m.serial_number || '')).filter(Boolean).join(' · ')}</div>`
         : '';
+    const answerText = waiAudienceAnswerText(data);
     const canSave = !!querySpec;
     return `
         <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Segmento audience</div>
@@ -6864,7 +6881,7 @@ function renderWaiAudienceQueryPreview(data, warnHtml) {
             ? `<div style="font-size:28px;font-weight:700;color:#00D4AA;line-height:1.2;">${count}</div><div style="font-size:12px;color:#999;margin-bottom:8px;">possessori</div>`
             : ''}
         ${periodHtml}
-        <p style="font-size:13px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${esc(data.answer || data.preview?.summary || '')}</p>
+        ${answerText ? `<p style="font-size:13px;color:#ccc;line-height:1.6;">${esc(answerText)}</p>` : ''}
         ${sampleLine}
         ${warnHtml}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
@@ -6883,7 +6900,11 @@ function renderWaiPreview(data) {
         : '';
 
     if (data.intent === 'audience.query') {
-        box.innerHTML = renderWaiAudienceQueryPreview(data, warnHtml);
+        const audWarn = filterStaleAudienceWarnings(warnings);
+        const audWarnHtml = audWarn.length
+            ? `<div style="margin-top:8px;font-size:11px;color:#f5a623;line-height:1.45;">${audWarn.map((w) => esc(w)).join('<br>')}</div>`
+            : '';
+        box.innerHTML = renderWaiAudienceQueryPreview(data, audWarnHtml);
         box.style.display = 'block';
         return;
     }

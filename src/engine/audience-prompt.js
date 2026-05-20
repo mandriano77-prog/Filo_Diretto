@@ -78,10 +78,58 @@ function applySinceDaysToQuerySpec(spec, prompt) {
   };
 }
 
+const STALE_AUDIENCE_WARNING = [
+  /audience_behavior_30d/i,
+  /30 giorni aggregat/i,
+  /granularit[aà].*periodo/i,
+  /necessaria una query sul server/i,
+  /non possono essere filtrati/i,
+  /dati disponibili nel contesto/i,
+  /Query spec generata automaticamente/i,
+  /estratto da audience_behavior/i,
+  /filtro temporale.*server/i
+];
+
+function sanitizeAudienceQueryWarnings(warnings) {
+  return (Array.isArray(warnings) ? warnings : [])
+    .map((w) => String(w).trim())
+    .filter((w) => w && !STALE_AUDIENCE_WARNING.some((re) => re.test(w)));
+}
+
+const ACTION_LABELS = {
+  opened: 'apertura pass',
+  link_click: 'click su link retro',
+  installed: 'installazione pass',
+  instant_win_played: 'giocato instant win',
+  gamification_played: 'giocato gamification'
+};
+
+function buildAudienceQueryServerWarnings({ sinceDays, fromDate, toDate, behavior }) {
+  const lines = [
+    `Conteggio calcolato sul database · ultimi ${sinceDays} giorni (${fromDate} → ${toDate}).`
+  ];
+  if (behavior?.did_action) {
+    lines.push(`Filtro: ${ACTION_LABELS[behavior.did_action] || behavior.did_action}.`);
+  }
+  if (behavior?.did_action === 'opened') {
+    lines.push('Nota: "opened" = pass aperto dal Wallet (spesso dopo una push, ma non è il tap sulla notifica).');
+  }
+  return lines;
+}
+
+function formatAudienceQueryAnswer({ count, sinceDays, fromDate, toDate, behavior }) {
+  const action = behavior?.did_action ? (ACTION_LABELS[behavior.did_action] || behavior.did_action) : 'criteri richiesti';
+  return `${count} possessori negli ultimi ${sinceDays} giorni (${fromDate} → ${toDate}), filtro: ${action}.`;
+}
+
 module.exports = {
   TZ,
   stripAudiencePrefix,
   todayInTimezone,
   parseSinceDaysFromPrompt,
-  applySinceDaysToQuerySpec
+  applySinceDaysToQuerySpec,
+  sanitizeAudienceQueryWarnings,
+  buildAudienceQueryServerWarnings,
+  formatAudienceQueryAnswer,
+  ACTION_LABELS
 };

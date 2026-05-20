@@ -50,7 +50,12 @@ const {
   ALLOWED_EVENT_ACTIONS
 } = require('../engine/audiences');
 const { executeAudienceQuery, mergeSpecToAudienceRules } = require('../engine/audience-query');
-const { applySinceDaysToQuerySpec } = require('../engine/audience-prompt');
+const {
+  applySinceDaysToQuerySpec,
+  sanitizeAudienceQueryWarnings,
+  buildAudienceQueryServerWarnings,
+  formatAudienceQueryAnswer
+} = require('../engine/audience-prompt');
 const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } = require('../engine/holder-events');
 const { createPkpass } = require('../engine/passkit');
 const googleWallet = require('../engine/google-wallet');
@@ -3954,34 +3959,42 @@ router.post('/wai/ask', async (req, res) => {
         const userPrompt = String(followup || prompt || '').trim();
         const window = applySinceDaysToQuerySpec(audienceQuerySpec, userPrompt);
         audienceQuerySpec = window.spec;
-        if (window.overridden) {
-          proposal.preview.warnings = [
-            ...(proposal.preview.warnings || []),
-            `Finestra temporale corretta a ${window.sinceDays} giorni in base alla tua richiesta (non 30).`
-          ];
-        }
         if (!proposal.payload?.query_spec) proposal.payload = { ...(proposal.payload || {}), query_spec: audienceQuerySpec };
         else proposal.payload.query_spec = audienceQuerySpec;
         const result = await executeAudienceQuery(brand_id, audienceQuerySpec, { limit: 8, offset: 0 });
+        const sinceDays = window.sinceDays || audienceQuerySpec.behavior?.since_days;
+        const fromDate = window.fromDate;
+        const toDate = window.toDate;
         proposal.preview.details = {
           ...(proposal.preview.details || {}),
           member_count: result.count,
           sample_members: result.members,
           query_spec: audienceQuerySpec,
-          since_days: window.sinceDays || audienceQuerySpec.behavior?.since_days,
-          period_from: window.fromDate,
-          period_to: window.toDate
+          since_days: sinceDays,
+          period_from: fromDate,
+          period_to: toDate
         };
-        const segmentNote = String(audienceQuerySpec.description || '').trim();
-        const daysLabel = window.sinceDays ? ` (ultimi ${window.sinceDays} giorni)` : '';
-        proposal.preview.summary = segmentNote || `Segmento audience: ${result.count} possessori${daysLabel}`;
-        proposal.answer = [
-          segmentNote || `Ecco il segmento richiesto${daysLabel}.`,
-          `Possessori che corrispondono: ${result.count}.`,
-          result.members?.length
-            ? `Esempi: ${result.members.slice(0, 5).map((m) => m.email || m.serial_number || m.id).filter(Boolean).join(', ')}.`
-            : ''
-        ].filter(Boolean).join(' ').trim();
+        proposal.preview.summary = String(audienceQuerySpec.description || '').trim()
+          || `Segmento: ${result.count} possessori (ultimi ${sinceDays} giorni)`;
+        proposal.answer = sinceDays && fromDate && toDate
+          ? formatAudienceQueryAnswer({
+            count: result.count,
+            sinceDays,
+            fromDate,
+            toDate,
+            behavior: audienceQuerySpec.behavior
+          })
+          : `${result.count} possessori nel segmento.`;
+        if (sinceDays && fromDate && toDate) {
+          proposal.preview.warnings = buildAudienceQueryServerWarnings({
+            sinceDays,
+            fromDate,
+            toDate,
+            behavior: audienceQuerySpec.behavior
+          });
+        } else {
+          proposal.preview.warnings = sanitizeAudienceQueryWarnings(proposal.preview.warnings);
+        }
       } catch (qErr) {
         proposal.preview.warnings = [...(proposal.preview.warnings || []), qErr.message];
       }

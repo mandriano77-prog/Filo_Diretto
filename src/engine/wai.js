@@ -173,7 +173,8 @@ In preview.details includi description_it, prompt_en, style, dimensions "1125x43
 - Per "ha aperto il pass" → did_action: "opened".
 - Per "mai cliccato" / "non ha mai cliccato" / "senza click" → never_did_action: "link_click" (opzionale target_key per un link specifico). Non usare did_action insieme a never_did_action.
 - Per "aperto ma mai cliccato" → behavior: { did_action: "opened", never_did_action: "link_click", since_days: <giorni dalla richiesta> } — il motore applica entrambi i filtri.
-- answer: spiega il segmento in italiano (max 2 frasi). NON dire che il conteggio arriverà dopo: il server esegue la query e mette il numero in preview.details.member_count.
+- answer: una frase breve sul segmento. NON citare audience_behavior_30d, NON dire che servono altre query al server, NON elencare serial/email (il server mette gli esempi).
+- preview.warnings: lascia vuoto [] per audience.query — il server aggiunge le note dopo l'esecuzione.
 - type: "query" (non "create"). payload DEVE contenere query_spec completo.
 
 ### audience.create
@@ -414,10 +415,7 @@ function coerceAudiencePlatformQuery(prompt, raw) {
         },
         preview: {
           ...(raw.preview || {}),
-          warnings: [
-            ...(Array.isArray(raw.preview?.warnings) ? raw.preview.warnings : []),
-            'Query spec generata automaticamente dal testo — verifica i filtri prima di salvare.'
-          ]
+          warnings: Array.isArray(raw.preview?.warnings) ? raw.preview.warnings : []
         }
       };
     }
