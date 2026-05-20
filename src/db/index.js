@@ -1,22 +1,95 @@
+const dns = require('dns');
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const { randomBytes, createHash } = require('crypto');
 
+// Railway private mesh: prefer IPv4 first (avoids ETIMEDOUT on broken IPv6 paths).
+if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 function dbUrlNeedsFlexibleSsl(url) {
   if (!url) return false;
+  if (/\.railway\.internal\b/i.test(url)) return false;
   return (
     url.includes('railway.app') ||
+    url.includes('rlwy.net') ||
     url.includes('ondigitalocean.com') ||
     /\bsslmode=require\b/i.test(url)
   );
 }
 
-// DATABASE_URL — managed Postgres on DigitalOcean, Railway-style hosts, etc.
+function poolSslForUrl(url) {
+  return dbUrlNeedsFlexibleSsl(url) ? { rejectUnauthorized: false } : false;
+}
+
+/** Runtime DB URL: private Railway first; never fall back to DATABASE_PUBLIC_URL (egress fees). */
+function resolveDatabaseUrl() {
+  return String(
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_PRIVATE_URL ||
+    ''
+  ).trim();
+}
+
+function describeDatabaseTarget(url) {
+  if (!url) {
+    return { ok: false, message: 'DATABASE_URL mancante sul servizio app' };
+  }
+  try {
+    const normalized = url.replace(/^postgres:\/\//, 'postgresql://');
+    const u = new URL(normalized);
+    const host = u.hostname;
+    const privateRailway = /\.railway\.internal$/i.test(host);
+    const publicRailway = /(?:^|\.)railway\.app$/i.test(host) || /\.rlwy\.net$/i.test(host);
+    return {
+      ok: true,
+      host,
+      port: u.port || '5432',
+      database: (u.pathname || '/').replace(/^\//, '') || 'railway',
+      privateRailway,
+      publicRailway
+    };
+  } catch (err) {
+    return { ok: false, message: `DATABASE_URL non valida: ${err.message}` };
+  }
+}
+
+function logDatabaseConnectionInfo() {
+  const url = resolveDatabaseUrl();
+  const info = describeDatabaseTarget(url);
+  if (!info.ok) {
+    console.error(`✗ ${info.message}`);
+    if (process.env.RAILWAY_ENVIRONMENT) {
+      console.error('  Railway: imposta DATABASE_URL=${{NomeServizioPostgres.DATABASE_URL}} sul servizio app (rete privata).');
+    }
+    return info;
+  }
+  const mode = info.privateRailway
+    ? 'private (no egress)'
+    : info.publicRailway
+      ? 'PUBLIC — possibili costi egress'
+      : 'custom';
+  console.log(`DB connect → ${info.host}:${info.port}/${info.database} [${mode}]`);
+  if (info.publicRailway) {
+    console.warn(
+      '⚠ DATABASE_URL punta a un endpoint pubblico Railway. Usa ${{Postgres.DATABASE_URL}} (postgres.railway.internal) per evitare egress.'
+    );
+  }
+  if (process.env.DATABASE_PUBLIC_URL && !info.privateRailway) {
+    console.warn('⚠ Per il runtime non usare DATABASE_PUBLIC_URL: solo DATABASE_URL privata.');
+  }
+  return info;
+}
+
+const databaseUrl = resolveDatabaseUrl();
+const dbTargetInfo = logDatabaseConnectionInfo();
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: dbUrlNeedsFlexibleSsl(process.env.DATABASE_URL)
-    ? { rejectUnauthorized: false }
-    : false,
+  connectionString: databaseUrl,
+  ssl: dbTargetInfo.ok ? poolSslForUrl(databaseUrl) : false,
+  connectionTimeoutMillis: 15000,
+  max: Number(process.env.PGPOOL_MAX) > 0 ? Number(process.env.PGPOOL_MAX) : 10
 });
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Schema Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
