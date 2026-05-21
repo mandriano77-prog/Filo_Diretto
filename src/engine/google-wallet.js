@@ -144,12 +144,20 @@ async function getAccessToken() {
 function createSaveJWT(classObject, passObject) {
   if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
+  const rawHost =
+    (process.env.CUSTOM_DOMAIN && process.env.CUSTOM_DOMAIN.trim()) ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN && process.env.RAILWAY_PUBLIC_DOMAIN.trim()) ||
+    (process.env.APP_PUBLIC_DOMAIN && process.env.APP_PUBLIC_DOMAIN.trim()) ||
+    '';
+  const host = rawHost.replace(/^https?:\/\//i, '').replace(/\/+$/g, '');
+  const origin = host ? `https://${host}` : 'https://localhost';
+
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
     iss: SERVICE_ACCOUNT_JSON.client_email,
     aud: 'google',
-    origins: [],
+    origins: [origin],
     typ: 'savetowallet',
     iat: now,
     payload: {
@@ -182,7 +190,7 @@ function buildPassClass(brand, template) {
 
   const classObj = {
     id: classId,
-    reviewStatus: 'UNDER_REVIEW',
+    reviewStatus: 'DRAFT',
     issuerName: brand.name,
     programName: (template.name || brand.name || 'Loyalty Program').slice(0, 64)
   };
@@ -299,12 +307,20 @@ function generateSaveLinkLegacy(passObject) {
   console.warn('[GoogleWallet] generateSaveLinkLegacy() embeds only the object (old behaviour). Switch to generateSaveLink(brand, template, passObject).');
   if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
+  const rawHost =
+    (process.env.CUSTOM_DOMAIN && process.env.CUSTOM_DOMAIN.trim()) ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN && process.env.RAILWAY_PUBLIC_DOMAIN.trim()) ||
+    (process.env.APP_PUBLIC_DOMAIN && process.env.APP_PUBLIC_DOMAIN.trim()) ||
+    '';
+  const host = rawHost.replace(/^https?:\/\//i, '').replace(/\/+$/g, '');
+  const origin = host ? `https://${host}` : 'https://localhost';
+
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
     iss: SERVICE_ACCOUNT_JSON.client_email,
     aud: 'google',
-    origins: [],
+    origins: [origin],
     typ: 'savetowallet',
     iat: now,
     payload: { loyaltyObjects: [passObject] }
