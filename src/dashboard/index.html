@@ -32,8 +32,9 @@
         .header-brand-logo { width:32px; height:32px; border-radius:8px; object-fit:contain; border:1px solid var(--border); background:rgba(255,255,255,.04); display:none; }
         .brand-sel { padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 12px; max-width: 260px; }
         .content { flex: 1; overflow-y: auto; padding: 28px; }
-        .section { display: none; }
-        .section.active { display: block; }
+        .section { display: none !important; }
+        .section.active { display: block !important; }
+        body.modal-open .content { overflow: hidden; }
         .sec-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
         .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
@@ -377,13 +378,38 @@
 <body>
 
 <div id="loginGate" class="login-gate" role="dialog" aria-labelledby="loginTitle">
-    <div class="login-card card">
+    <div class="login-card card" id="loginPanel">
         <div class="sec-title" id="loginTitle">Accedi</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.45;">Dashboard Ads2Wallet — utenti abilitati: accedi con email e password.</p>
         <div id="loginError" class="login-error" role="alert"></div>
         <div class="form-group"><label class="form-label">Email</label><input type="email" id="loginEmail" autocomplete="username" placeholder="nome@azienda.it"></div>
         <div class="form-group"><label class="form-label">Password</label><input type="password" id="loginPassword" autocomplete="current-password"></div>
         <button type="button" class="btn" style="width:100%;margin-top:8px;" id="loginSubmitBtn" onclick="submitLogin()">Accedi</button>
+        <p style="margin-top:14px;text-align:center;font-size:12px;">
+            <button type="button" style="background:none;border:none;color:var(--teal);cursor:pointer;font-size:12px;padding:0;" onclick="showForgotPasswordPanel()">Password dimenticata?</button>
+        </p>
+    </div>
+    <div class="login-card card" id="forgotPasswordPanel" style="display:none;">
+        <div class="sec-title">Recupera password</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.45;">Inserisci l'email del tuo account. Ti invieremo un link valido per 1 ora.</p>
+        <div id="forgotPasswordError" class="login-error" role="alert"></div>
+        <div id="forgotPasswordSuccess" style="display:none;font-size:12px;color:var(--teal);margin-bottom:12px;line-height:1.45;"></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" id="forgotPasswordEmail" autocomplete="username" placeholder="nome@azienda.it"></div>
+        <button type="button" class="btn" style="width:100%;margin-top:8px;" id="forgotPasswordBtn" onclick="submitForgotPassword()">Invia link</button>
+        <p style="margin-top:14px;text-align:center;font-size:12px;">
+            <button type="button" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;" onclick="showLoginPanel()">Torna al login</button>
+        </p>
+    </div>
+    <div class="login-card card" id="resetPasswordPanel" style="display:none;">
+        <div class="sec-title">Nuova password</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.45;">Scegli una nuova password per il tuo account.</p>
+        <div id="resetPasswordError" class="login-error" role="alert"></div>
+        <div class="form-group"><label class="form-label">Nuova password</label><input type="password" id="resetPasswordNew" autocomplete="new-password" placeholder="Minimo 6 caratteri"></div>
+        <div class="form-group"><label class="form-label">Conferma password</label><input type="password" id="resetPasswordConfirm" autocomplete="new-password"></div>
+        <button type="button" class="btn" style="width:100%;margin-top:8px;" id="resetPasswordBtn" onclick="submitResetPassword()">Salva password</button>
+        <p style="margin-top:14px;text-align:center;font-size:12px;">
+            <button type="button" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:12px;padding:0;" onclick="showLoginPanel()">Torna al login</button>
+        </p>
     </div>
 </div>
 
@@ -406,6 +432,7 @@
         <div class="nav-item" onclick="nav('gamification')">Gamification</div>
         <div class="nav-label">Database</div>
         <div class="nav-item" onclick="nav('leads')" data-menu-key="nav_leads" data-menu-default="Leads">Leads</div>
+        <div class="nav-item" onclick="nav('audiences')">Audience</div>
         <div class="nav-label">Insights</div>
         <div class="nav-item" onclick="nav('analytics')">Analytics</div>
         <div class="nav-item" onclick="nav('activity-log')">Attività</div>
@@ -429,7 +456,7 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
-                <select class="brand-sel" id="dashboardProductLine" title="Tema interfaccia per linea prodotto (non modifica i colori del pass)" onchange="onDashboardProductLineChange()">
+                <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
                     <option value="ads">Ads</option>
                     <option value="hr">HR</option>
                     <option value="engage">Engage</option>
@@ -491,14 +518,31 @@
                 <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Logo, strip image e stile visivo del pass Apple Wallet.</p>
                 <div class="card">
                     <div class="sec-title" style="font-size:16px;">Immagini Pass</div>
+                    <p style="font-size:11px;color:var(--text2);margin-bottom:12px;">Carica da file o scegli dalla <strong>Media Library</strong> (immagini già ritagliate).</p>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Logo Pass (PNG, max 320x100)</label>
-                            <input type="file" id="bsLogoFile" accept="image/*,.pdf" style="font-size:12px;">
+                            <div id="bsLogoPreviewBox" style="min-height:40px;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                                <img id="bsLogoPreview" alt="Logo" style="display:none;max-height:40px;max-width:160px;border-radius:4px;">
+                                <span id="bsLogoPlaceholder" style="font-size:12px;color:var(--text2);">Nessun logo</span>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn small" onclick="pickMediaForPassDesign('logo')">Da Media Library</button>
+                                <button type="button" class="btn small sec" onclick="document.getElementById('bsLogoFile').click()">Upload file</button>
+                            </div>
+                            <input type="file" id="bsLogoFile" accept="image/*,.pdf" style="display:none;" onchange="onPassDesignFile(this,'logo')">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Strip Image (PNG, 750x246)</label>
-                            <input type="file" id="bsStripFile" accept="image/*,.pdf" style="font-size:12px;">
+                            <div id="bsStripPreviewBox" style="width:100%;max-width:360px;aspect-ratio:750/246;background:var(--bg3);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:8px;display:flex;align-items:center;justify-content:center;">
+                                <img id="bsStripPreview" alt="Strip" style="display:none;width:100%;height:100%;object-fit:cover;">
+                                <span id="bsStripPlaceholder" style="font-size:12px;color:var(--text2);">Nessuna strip</span>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn small" onclick="pickMediaForPassDesign('strip')">Da Media Library</button>
+                                <button type="button" class="btn small sec" onclick="document.getElementById('bsStripFile').click()">Upload file</button>
+                            </div>
+                            <input type="file" id="bsStripFile" accept="image/*,.pdf" style="display:none;" onchange="onPassDesignFile(this,'strip')">
                         </div>
                     </div>
                     <button class="btn" onclick="savePassDesign()" style="margin-top:12px;">Salva Immagini</button>
@@ -551,6 +595,12 @@
                             <select id="pushCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
+                        </div>                        <div class="form-group">
+                            <label class="form-label">Audience (opzionale)</label>
+                            <select id="pushAudienceTarget">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
+                            </select>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna. Crea segmenti in <strong>Audience</strong>.</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Canale invio</label>
@@ -571,24 +621,42 @@
                         </div>
                         <div class="form-group" style="margin-top:4px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                                <input type="checkbox" id="pushUpdatePass" checked style="width:auto;accent-color:var(--teal);">
+                                <input type="checkbox" id="pushUpdatePass" checked onchange="togglePushStripBlock()" style="width:auto;accent-color:var(--teal);">
                                 <span>Aggiorna contenuto pass (notifica visibile sul lock screen)</span>
                             </label>
-                            <p style="font-size:11px;color:var(--text2);margin:8px 0 0 24px;line-height:1.4;">Strip e asset grafici dal pass si gestiscono in <strong>Media Library</strong> / Design del pass — qui non sono necessari.</p>
+                        </div>
+                        <div id="pushStripBlock" class="form-group" style="margin-top:8px;">
+                            <label class="form-label">Strip per questa push (opzionale)</label>
+                            <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — non modifica la strip permanente del brand. Priorità su Instant Win / Gamification se selezioni entrambi.</p>
+                            <div id="pushStripPreview" style="width:100%;max-width:420px;aspect-ratio:750/246;background:var(--bg3);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:10px;display:flex;align-items:center;justify-content:center;">
+                                <span style="color:var(--text2);font-size:12px;">Nessuna strip — resta quella del pass</span>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn small" onclick="pushPickStripFromMedia()">Scegli da Media Library</button>
+                                <button type="button" class="btn small danger" id="pushStripClearBtn" onclick="pushClearStrip()" style="display:none;">Rimuovi strip</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:8px;">
+                            <label class="form-label">Link out — retro Link 1 (opzionale)</label>
+                            <div class="form-row">
+                                <input type="text" id="pushBackLinkLabel" placeholder="Testo link es. Scopri l'offerta" style="flex:1;">
+                                <input type="url" id="pushBackLinkUrl" placeholder="https://..." style="flex:1;">
+                            </div>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Se compilato, sostituisce il Link 1 sul retro fino alla prossima push. Ha priorità su Instant Win / Gamification.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Instant Win (opzionale)</label>
                             <select id="pushInstantWin">
                                 <option value="">— Nessuna campagna Instant Win —</option>
                             </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, il link al gioco verrà inserito automaticamente nel retro di ogni pass.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Gamification (opzionale)</label>
                             <select id="pushGamification">
                                 <option value="">— Nessuna campagna Gamification —</option>
                             </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel retro di ogni pass.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
                     </div>
@@ -603,6 +671,11 @@
                             <label class="form-label">Campagna target</label>
                             <select id="schedCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
+                            </select>
+                        </div>                        <div class="form-group">
+                            <label class="form-label">Audience (opzionale)</label>
+                            <select id="schedAudienceTarget">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -700,7 +773,7 @@
             <!-- BRAND IDENTITY -->
             <div id="brand-identity" class="section">
                 <div class="sec-title">Identità Brand</div>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:20px;">Profilo del brand: identità visiva, settore e home page. Queste impostazioni vengono ereditate dal pass.</p>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:20px;">Profilo del brand: settore e home page. I colori del pass sono fissi (tema piattaforma).</p>
 
                 <div class="card">
                     <div class="sec-title" style="font-size:16px;">Informazioni</div>
@@ -729,48 +802,6 @@
                             <input type="url" id="biHomepage" placeholder="es. https://www.brand.com">
                         </div>
                     </div>
-                </div>
-
-                <div class="card" style="margin-top:16px;">
-                    <div class="sec-title" style="font-size:16px;">Logo</div>
-                    <div style="display:flex;align-items:flex-start;gap:20px;">
-                        <div id="biLogoPreview" style="width:120px;height:120px;border-radius:12px;background:var(--bg3);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
-                            <span style="color:var(--text2);font-size:11px;">Nessun logo</span>
-                        </div>
-                        <div style="flex:1;">
-                            <input type="file" id="biLogoFile" accept="image/png,image/jpeg,image/webp,.pdf" style="font-size:12px;" onchange="previewBiLogo(this)">
-                            <div style="font-size:11px;color:var(--text2);margin-top:4px;">PNG trasparente, max 320x100px</div>
-                            <div id="biLogoStatus" style="font-size:12px;margin-top:6px;color:var(--teal);display:none;"></div>
-                            <div style="display:flex;gap:8px;margin-top:10px;">
-                                <button class="btn small" id="biLogoUploadBtn" onclick="uploadBiLogo()">Carica Logo</button>
-                                <button class="btn small danger" onclick="deleteBiLogo()" id="biLogoDeleteBtn" style="display:none;">Elimina</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card" style="margin-top:16px;">
-                    <div class="sec-title" style="font-size:16px;">Colori</div>
-                    <div class="form-row">
-                        <div class="form-group"><label class="form-label">Sfondo</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biBgPick" value="#0D0B1A" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biBg').value=this.value"><input type="text" id="biBg" value="#0D0B1A" onchange="document.getElementById('biBgPick').value=this.value"></div>
-                        </div>
-                        <div class="form-group"><label class="form-label">Testo</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biFgPick" value="#FFFFFF" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biFg').value=this.value"><input type="text" id="biFg" value="#FFFFFF" onchange="document.getElementById('biFgPick').value=this.value"></div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label class="form-label">Accent / Label</label>
-                            <div style="display:flex;gap:8px;align-items:center;"><input type="color" id="biAccPick" value="#00D4AA" style="width:40px;height:36px;padding:2px;cursor:pointer;" onchange="document.getElementById('biAcc').value=this.value"><input type="text" id="biAcc" value="#00D4AA" onchange="document.getElementById('biAccPick').value=this.value"></div>
-                        </div>
-                        <div class="form-group"><label class="form-label">Anteprima</label>
-                            <div style="display:flex;gap:4px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border);">
-                                <div id="biCpBg" style="flex:2;background:#0D0B1A;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#FFF;">BG</div>
-                                <div id="biCpAcc" style="flex:1;background:#00D4AA;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000;">ACC</div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- AI Palette removed -->
                 </div>
 
                 <div style="display:flex;gap:10px;margin-top:24px;">
@@ -978,20 +1009,21 @@
                                 <div style="margin-bottom:12px;">
                                     <div class="sec-title" style="font-size:16px;margin-bottom:0;">Retro Pass</div>
                                 </div>
+                                <p class="form-hint" style="font-size:11px;color:var(--text2);margin:0 0 12px;line-height:1.45;">Ordine sul pass: Link 1 (vuoto = push / Instant Win / Gamification) → regolamento → link 2 e 3 → contatti.</p>
                                 <div class="form-row">
-                                    <div class="form-group"><label class="form-label">Link 1 — Testo</label><input type="text" id="wzLink1Label" placeholder="es. Sito Web"></div>
-                                    <div class="form-group"><label class="form-label">Link 1 — URL</label><input type="text" id="wzLink1Url" placeholder="https://..."></div>
+                                    <div class="form-group"><label class="form-label">Link 1 — Testo (opz.)</label><input type="text" id="wzLink1Label" placeholder="es. Scopri l'offerta" oninput="wzUpdatePreview()"></div>
+                                    <div class="form-group"><label class="form-label">Link 1 — URL (opz.)</label><input type="text" id="wzLink1Url" placeholder="https://..." oninput="wzUpdatePreview()"></div>
+                                </div>
+                                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="wzRegolamento" rows="2" placeholder="Condizioni di utilizzo..." oninput="wzUpdatePreview()"></textarea></div>
+                                <div class="form-row">
+                                    <div class="form-group"><label class="form-label">Link 2 — Testo</label><input type="text" id="wzLink2Label" oninput="wzUpdatePreview()"></div>
+                                    <div class="form-group"><label class="form-label">Link 2 — URL</label><input type="text" id="wzLink2Url" oninput="wzUpdatePreview()"></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group"><label class="form-label">Link 2 — Testo</label><input type="text" id="wzLink2Label"></div>
-                                    <div class="form-group"><label class="form-label">Link 2 — URL</label><input type="text" id="wzLink2Url"></div>
+                                    <div class="form-group"><label class="form-label">Link 3 — Testo</label><input type="text" id="wzLink3Label" oninput="wzUpdatePreview()"></div>
+                                    <div class="form-group"><label class="form-label">Link 3 — URL</label><input type="text" id="wzLink3Url" oninput="wzUpdatePreview()"></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label class="form-label">Link 3 — Testo</label><input type="text" id="wzLink3Label"></div>
-                                    <div class="form-group"><label class="form-label">Link 3 — URL</label><input type="text" id="wzLink3Url"></div>
-                                </div>
-                                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="wzRegolamento" rows="2" placeholder="Condizioni di utilizzo..."></textarea></div>
-                                <div class="form-group"><label class="form-label">Contatti</label><textarea id="wzContatti" rows="2" placeholder="Email, telefono..."></textarea></div>
+                                <div class="form-group"><label class="form-label">Contatti</label><textarea id="wzContatti" rows="2" placeholder="Email, telefono..." oninput="wzUpdatePreview()"></textarea></div>
                             </div>
                         </div>
                     </div>
@@ -1002,16 +1034,30 @@
 
                 <!-- STEP 2: Creatività -->
                 <div id="wzStep2" class="wz-step">
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:16px;">Logo Pass</div>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Logo in alto a sinistra sul pass (PNG, max 320×100). Usa la Media Library dopo il ritaglio.</p>
+                        <div id="wzLogoPreviewBox" style="min-height:48px;margin-bottom:12px;display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
+                            <img id="wzLogoPreview" alt="Logo" style="display:none;max-height:44px;max-width:200px;object-fit:contain;">
+                            <span id="wzLogoPlaceholder" style="color:var(--text2);font-size:12px;">Nessun logo selezionato</span>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button type="button" class="btn small" onclick="wzPickFromMedia('logo')">Scegli da Media Library</button>
+                            <button type="button" class="btn small sec" onclick="wzUploadLogo()">Upload file</button>
+                            <button type="button" class="btn small danger" onclick="wzRemoveLogo()" id="wzLogoDeleteBtn" style="display:none;">Rimuovi</button>
+                        </div>
+                        <input type="file" id="wzLogoFile" accept="image/*,.pdf" style="display:none;" onchange="wzOnLogoFile(this)">
+                    </div>
                     <div class="card">
                         <div class="sec-title" style="font-size:16px;">Strip Image</div>
-                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">L'immagine principale del pass (750x246px). Scegli dalla Media Library o genera con AI.</p>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Immagine principale del pass (750×246). Scegli dalla Media Library dopo il ritaglio.</p>
                         <div id="wzStripPreview" style="width:100%;max-width:500px;aspect-ratio:750/246;background:var(--bg3);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:12px;display:flex;align-items:center;justify-content:center;">
                             <span style="color:var(--text2);font-size:12px;">Nessuna strip selezionata</span>
                         </div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn small" onclick="wzPickFromMedia('strip')">Scegli da Media Library</button>
-                            <button class="btn small sec" onclick="wzUploadStrip()">Upload</button>
-                            <button class="btn small danger" onclick="wzRemoveStrip()" id="wzStripDeleteBtn" style="display:none;">Elimina</button>
+                            <button type="button" class="btn small" onclick="wzPickFromMedia('strip')">Scegli da Media Library</button>
+                            <button type="button" class="btn small sec" onclick="wzUploadStrip()">Upload file</button>
+                            <button type="button" class="btn small danger" onclick="wzRemoveStrip()" id="wzStripDeleteBtn" style="display:none;">Rimuovi</button>
                         </div>
                         <input type="file" id="wzStripFile" accept="image/*,.pdf" style="display:none;" onchange="wzOnStripFile(this)">
                     </div>
@@ -1244,6 +1290,113 @@
                 </table>
             </div>
 
+            <!-- AUDIENCES -->
+                        <div id="audiences" class="section">
+                <div class="sec-title">Audience Platform</div>
+                <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Segmentazione possessori pass, statistiche di apertura e click sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
+                <button type="button" class="btn sec" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
+
+                <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
+                    <button type="button" class="aud-subtab active" id="audTab_overview" onclick="switchAudienceTab('overview')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--teal);margin-bottom:-2px;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;">Panoramica</button>
+                    <button type="button" class="aud-subtab" id="audTab_behavior" onclick="switchAudienceTab('behavior')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Comportamento</button>
+                    <button type="button" class="aud-subtab" id="audTab_saved" onclick="switchAudienceTab('saved')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Audience salvate</button>
+                </div>
+
+                <div id="audPanel_overview" class="aud-panel">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Possessori pass</div>
+                    <div class="stats-grid" id="audienceInsightsStats"></div>
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Pass per campagna</div>
+                        <div id="audienceCampaignBreakdown" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_behavior" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                        <select id="audBehaviorDays" onchange="loadAudienceBehavior()" style="width:auto;padding:6px 10px;">
+                            <option value="7">7 giorni</option>
+                            <option value="30" selected>30 giorni</option>
+                            <option value="90">90 giorni</option>
+                        </select>
+                        <button class="btn sec" onclick="exportHolderEventsCsv()">⬇ Export eventi CSV</button>
+                    </div>
+                    <div class="stats-grid" id="audienceBehaviorStats"></div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Funnel per link (retro pass)</div>
+                        <div id="audienceLinkFunnels" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Link più cliccati</div>
+                        <div id="audienceTopLinks" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="sec-title" style="font-size:15px;">Eventi recenti</div>
+                        <div id="audienceRecentEvents" style="max-height:280px;overflow:auto;font-size:12px;">—</div>
+                    </div>
+                </div>
+
+
+                <div id="audPanel_saved" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="font-size:16px;margin:0;">Le tue audience</div>
+                        <button class="btn" onclick="openAudienceEditor()">+ Nuova audience</button>
+                    </div>
+                    <div id="audiencesList" style="color:var(--text2);">Caricamento...</div>
+                </div>
+            </div>
+
+            <div id="audienceEditorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+                <div class="card" style="max-width:560px;width:100%;max-height:90vh;overflow:auto;margin:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="margin:0;font-size:18px;" id="audienceEditorTitle">Nuova audience</div>
+                        <button class="btn sec" onclick="closeAudienceEditor()">✕</button>
+                    </div>
+                    <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="audName"></div>
+                    <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="audDescription"></div>
+                    <div class="form-group"><label class="form-label">Campagna</label><select id="audCampaign"><option value="">Tutte</option></select></div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Stato</label><select id="audStatus"><option value="any">Qualsiasi</option><option value="active">Attivo</option><option value="inactive">Inattivo</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Wallet</label><select id="audWallet"><option value="any">Qualsiasi</option><option value="installed">Installato</option><option value="apple">Apple</option><option value="google">Google</option><option value="samsung">Samsung</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Push Apple</label><select id="audApplePush"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Email</label><select id="audHasEmail"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Telefono</label><select id="audHasPhone"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">UTM</label><input type="text" id="audUtmSource"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato dal</label><input type="date" id="audCreatedAfter"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato fino</label><input type="date" id="audCreatedBefore"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Instant Win</label><select id="audPlayedIw"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Gamification</label><select id="audPlayedGam"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="sec-title" style="font-size:14px;margin:12px 0 6px;">Comportamento</div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Tipo filtro</label>
+                            <select id="audBehaviorMode" onchange="onAudBehaviorModeChange()">
+                                <option value="">— Nessun filtro —</option>
+                                <option value="did">Ha fatto</option>
+                                <option value="never">Non ha mai fatto</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Azione</label><select id="audBehaviorAction">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Azione</label><select id="audBehaviorAction"><option value="">—</option><option value="opened">Aperto pass</option><option value="link_click">Click link retro</option><option value="installed">Installato</option><option value="instant_win_played">Instant Win</option><option value="gamification_played">Gamification</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Target key</label><input type="text" id="audBehaviorTargetKey" placeholder="link_0"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Giorni</label><input type="number" id="audBehaviorSinceDays" value="30" min="1" max="365"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Min count</label><input type="number" id="audBehaviorMinCount" value="1" min="1"></div>
+                    </div>
+                    <div style="background:var(--bg2);padding:12px;border-radius:8px;margin:12px 0;">Anteprima: <strong id="audPreviewCount">—</strong></div>
+                    <div style="display:flex;gap:8px;"><button class="btn sec" onclick="previewAudienceRules()">Anteprima</button><button class="btn" onclick="saveAudience()">Salva</button></div>
+                </div>
+            </div>
+
+
             <!-- ANALYTICS -->
             <div id="analytics" class="section">
                 <div class="sec-title">Analytics</div>
@@ -1413,6 +1566,9 @@
                     <div class="form-row" id="tplImgLogoRow">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Logo (PNG, max 320x100)</label>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('logo')">Da Media Library</button>
+                            </div>
                             <input type="file" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')" style="font-size:12px;">
                             <img id="tplImgLogoPreview" style="display:none;height:32px;margin-top:4px;border-radius:4px;">
                         </div>
@@ -1420,11 +1576,11 @@
                     <div class="form-row" id="tplImgStripRow">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Strip Image (PNG, 750x246)</label>
-                            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-                                <select id="tplStripPromoSelect" onchange="loadStripFromPromo()" style="flex:1;font-size:12px;">
-                                    <option value="">-- Scegli da Strip Promo --</option>
+                            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('strip')">Da Media Library</button>
+                                <select id="tplStripPromoSelect" onchange="loadStripFromPromo()" style="flex:1;min-width:140px;font-size:12px;">
+                                    <option value="">-- Strip Promo --</option>
                                 </select>
-                                <span style="font-size:11px;color:var(--text2);">oppure</span>
                             </div>
                             <input type="file" id="tplImgStrip" accept="image/*,.pdf" onchange="previewTplImage(this,'strip')" style="font-size:12px;">
                             <img id="tplImgStripPreview" style="display:none;width:100%;max-width:300px;margin-top:4px;border-radius:4px;">
@@ -1447,16 +1603,18 @@
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Retro — Contenuti</div>
-                <div class="form-group"><label class="form-label">Link 1</label>
-                    <div class="form-row"><input type="text" id="tplLink1Label" placeholder="Label es. Sito Web" oninput="updatePassPreview()"><input type="text" id="tplLink1Url" placeholder="https://..." oninput="updatePassPreview()"></div>
+                <div class="form-group">
+                    <label class="form-label">Link 1 — variabile</label>
+                    <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Lascia vuoto nel template: viene usato da push (link out), Instant Win o Gamification. Compila solo per un link fisso permanente.</p>
+                    <div class="form-row"><input type="text" id="tplLink1Label" placeholder="Label (opzionale)" oninput="updatePassPreview()"><input type="text" id="tplLink1Url" placeholder="https://... (opzionale)" oninput="updatePassPreview()"></div>
                 </div>
+                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="tplRegolamento" rows="3" placeholder="Termini e condizioni dell'offerta..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
                 <div class="form-group"><label class="form-label">Link 2</label>
                     <div class="form-row"><input type="text" id="tplLink2Label" placeholder="Label es. Instagram" oninput="updatePassPreview()"><input type="text" id="tplLink2Url" placeholder="https://..." oninput="updatePassPreview()"></div>
                 </div>
                 <div class="form-group"><label class="form-label">Link 3</label>
                     <div class="form-row"><input type="text" id="tplLink3Label" placeholder="Label es. Prenota" oninput="updatePassPreview()"><input type="text" id="tplLink3Url" placeholder="https://..." oninput="updatePassPreview()"></div>
                 </div>
-                <div class="form-group"><label class="form-label">Regolamento</label><textarea id="tplRegolamento" rows="3" placeholder="Termini e condizioni dell'offerta..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
                 <div class="form-group"><label class="form-label">Contatti</label><textarea id="tplContatti" rows="2" placeholder="Email, telefono, indirizzo..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
 
                 <button class="btn" onclick="saveTemplate()" style="margin-top:16px;">Salva Template</button>
@@ -1573,6 +1731,7 @@
   </div>
   <div class="wai-panel-body">
     <textarea id="waiPrompt" rows="3" placeholder="Scrivi cosa vuoi fare..." style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f4ede2; padding:12px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+    <p id="waiAudienceHint" style="display:none;margin:8px 0 0;font-size:11px;color:#999;line-height:1.45;">Modalità audience: segmenti possessori, aperture pass, click link, instant win. Puoi salvare il segmento come audience.</p>
     <button type="button" id="waiSendBtn" onclick="askWai()" style="width:100%; margin-top:8px; padding:10px; background:#00D4AA; color:#0a0a0a; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit;">Chiedi a W.AI</button>
     <div id="waiPreview" style="display:none;"></div>
     <div id="waiRefineGroup" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06);">
@@ -1580,13 +1739,15 @@
       <textarea id="waiRefinePrompt" rows="2" placeholder="es. imposta un cap massimo di 100 vincite" style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f4ede2; padding:10px 12px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
       <button type="button" id="waiRefineBtn" onclick="refineWai()" style="width:100%; margin-top:8px; padding:10px; background:rgba(255,255,255,0.06); color:#f4ede2; border:1px solid rgba(255,255,255,0.08); border-radius:8px; font-weight:600; font-size:12px; cursor:pointer; font-family:inherit;">Aggiorna proposta</button>
     </div>
+    <div id="waiPushStripStatus" style="display:none; font-size:12px; color:#999; margin-top:8px; line-height:1.45;"></div>
+    <div id="waiComboStepLabel" style="display:none; font-size:12px; font-weight:700; color:#f4ede2; margin-top:12px;"></div>
     <div id="wai-strip-preview" style="display:none; margin-top:12px;">
       <img id="wai-strip-img" alt="Anteprima strip generata" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.08);" />
       <div style="margin-top:12px;">
         <input id="wai-strip-name" type="text" placeholder="Nome per questa strip (es. Promo Estate 2026)"
           style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#f4ede2; border-radius:8px; font-size:13px; box-sizing:border-box; font-family:inherit;" />
       </div>
-      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+      <div data-wai-strip-save-row style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
         <button type="button" onclick="waiSaveStrip()" style="flex:1; min-width:120px; padding:10px; background:#00D4AA; color:#0a0a0a; border:none; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit;">
           Salva in libreria
         </button>
@@ -1605,6 +1766,7 @@
 const API = '/api/v1';
 const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
 let brandId = null;
+let brandsListCache = [];
 function getAuthHeaders() {
     const t = localStorage.getItem(AUTH_TOKEN_KEY);
     const h = {};
@@ -1613,6 +1775,13 @@ function getAuthHeaders() {
 }
 let authToken = null;
 let currentUser = null;
+let passwordResetToken = null;
+
+function isPublicAuthApiPath(pathname) {
+    return pathname.startsWith('/api/v1/auth/login')
+        || pathname.startsWith('/api/v1/auth/forgot-password')
+        || pathname.startsWith('/api/v1/auth/reset-password');
+}
 
 (function installAuthFetchInterceptor() {
     const _fetch = window.fetch.bind(window);
@@ -1621,7 +1790,7 @@ let currentUser = null;
         try {
             if (typeof input === 'string') {
                 const pathname = new URL(input, window.location.origin).pathname;
-                if (pathname.startsWith('/api/v1/') && !pathname.startsWith('/api/v1/auth/login')) {
+                if (pathname.startsWith('/api/v1/') && !isPublicAuthApiPath(pathname)) {
                     const ah = getAuthHeaders();
                     if (ah.Authorization) {
                         const headers = new Headers(effInit.headers || {});
@@ -1634,7 +1803,7 @@ let currentUser = null;
                 if (
                     u.origin === window.location.origin &&
                     u.pathname.startsWith('/api/v1/') &&
-                    !u.pathname.startsWith('/api/v1/auth/login')
+                    !isPublicAuthApiPath(u.pathname)
                 ) {
                     const ah = getAuthHeaders();
                     if (ah.Authorization && !input.headers.has('Authorization')) {
@@ -1657,7 +1826,7 @@ let currentUser = null;
         if (
             authedUi &&
             path.startsWith('/api/v1/') &&
-            !path.startsWith('/api/v1/auth/login') &&
+            !isPublicAuthApiPath(path) &&
             res.status === 401
         ) logout();
         return res;
@@ -1708,18 +1877,164 @@ function logout() {
     if (main) main.style.display = 'none';
     if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
     if (pw) pw.value = '';
+    showLoginPanel();
     syncAuthUi();
 }
 
-async function bootstrapSession() {
+function showLoginPanel() {
+    const login = document.getElementById('loginPanel');
+    const forgot = document.getElementById('forgotPasswordPanel');
+    const reset = document.getElementById('resetPasswordPanel');
+    if (login) login.style.display = 'block';
+    if (forgot) forgot.style.display = 'none';
+    if (reset) reset.style.display = 'none';
+}
+
+function showForgotPasswordPanel() {
+    const login = document.getElementById('loginPanel');
+    const forgot = document.getElementById('forgotPasswordPanel');
+    const reset = document.getElementById('resetPasswordPanel');
+    const err = document.getElementById('forgotPasswordError');
+    const ok = document.getElementById('forgotPasswordSuccess');
+    if (login) login.style.display = 'none';
+    if (forgot) forgot.style.display = 'block';
+    if (reset) reset.style.display = 'none';
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+    if (ok) { ok.textContent = ''; ok.style.display = 'none'; }
+    const email = document.getElementById('loginEmail')?.value?.trim();
+    const forgotEmail = document.getElementById('forgotPasswordEmail');
+    if (forgotEmail && email) forgotEmail.value = email;
+}
+
+function showResetPasswordPanel(token) {
+    passwordResetToken = token || passwordResetToken;
+    const login = document.getElementById('loginPanel');
+    const forgot = document.getElementById('forgotPasswordPanel');
+    const reset = document.getElementById('resetPasswordPanel');
+    const err = document.getElementById('resetPasswordError');
+    if (login) login.style.display = 'none';
+    if (forgot) forgot.style.display = 'none';
+    if (reset) reset.style.display = 'block';
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+}
+
+function initPasswordRecoveryFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('reset');
+    if (!token) return;
+    passwordResetToken = token;
     const gate = document.getElementById('loginGate');
     const main = document.getElementById('mainLayout');
+    if (gate) gate.style.display = 'flex';
+    if (main) main.style.display = 'none';
+    showResetPasswordPanel(token);
+    params.delete('reset');
+    const next = params.toString();
+    const clean = `${window.location.pathname}${next ? `?${next}` : ''}`;
+    window.history.replaceState({}, '', clean);
+}
+
+async function submitForgotPassword() {
+    const emailEl = document.getElementById('forgotPasswordEmail');
+    const errEl = document.getElementById('forgotPasswordError');
+    const okEl = document.getElementById('forgotPasswordSuccess');
+    const btn = document.getElementById('forgotPasswordBtn');
+    const email = emailEl?.value?.trim().toLowerCase() || '';
+    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    if (okEl) { okEl.style.display = 'none'; okEl.textContent = ''; }
+    if (!email) {
+        if (errEl) { errEl.textContent = 'Inserisci la tua email'; errEl.style.display = 'block'; }
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Invio…'; }
+    try {
+        const res = await fetch(`${API}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (errEl) {
+                errEl.textContent = data.error || 'Richiesta non riuscita';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+        if (okEl) {
+            okEl.textContent = data.message || 'Se l\'email è registrata, riceverai le istruzioni.';
+            okEl.style.display = 'block';
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Invia link'; }
+    }
+}
+
+async function submitResetPassword() {
+    const pwEl = document.getElementById('resetPasswordNew');
+    const confirmEl = document.getElementById('resetPasswordConfirm');
+    const errEl = document.getElementById('resetPasswordError');
+    const btn = document.getElementById('resetPasswordBtn');
+    const newPassword = pwEl?.value || '';
+    const confirmPassword = confirmEl?.value || '';
+    if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    if (!passwordResetToken) {
+        if (errEl) { errEl.textContent = 'Link non valido. Richiedi un nuovo recupero password.'; errEl.style.display = 'block'; }
+        return;
+    }
+    if (newPassword.length < 6) {
+        if (errEl) { errEl.textContent = 'Password minimo 6 caratteri'; errEl.style.display = 'block'; }
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        if (errEl) { errEl.textContent = 'Le password non coincidono'; errEl.style.display = 'block'; }
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvataggio…'; }
+    try {
+        const res = await fetch(`${API}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: passwordResetToken, new_password: newPassword })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (errEl) {
+                errEl.textContent = data.error || 'Reimpostazione non riuscita';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+        passwordResetToken = null;
+        if (pwEl) pwEl.value = '';
+        if (confirmEl) confirmEl.value = '';
+        showLoginPanel();
+        const loginErr = document.getElementById('loginError');
+        if (loginErr) {
+            loginErr.textContent = data.message || 'Password aggiornata. Puoi accedere.';
+            loginErr.style.display = 'block';
+            loginErr.style.color = 'var(--teal)';
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Salva password'; }
+    }
+}
+
+async function bootstrapSession() {
+    initPasswordRecoveryFromUrl();
+    const gate = document.getElementById('loginGate');
+    const main = document.getElementById('mainLayout');
+    if (passwordResetToken) {
+        syncAuthUi();
+        return;
+    }
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) {
         authToken = null;
         currentUser = null;
         if (gate) gate.style.display = 'flex';
         if (main) main.style.display = 'none';
+        showLoginPanel();
         syncAuthUi();
         return;
     }
@@ -1863,18 +2178,15 @@ let analyticsDateTo = '';
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
     initDashboardProductTheme();
-    const pw = document.getElementById('loginPassword');
-    if (pw) {
-        pw.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') submitLogin();
-        });
-    }
-    const em = document.getElementById('loginEmail');
-    if (em) {
-        em.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') submitLogin();
-        });
-    }
+    const bindEnter = (id, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') fn(); });
+    };
+    bindEnter('loginPassword', submitLogin);
+    bindEnter('loginEmail', submitLogin);
+    bindEnter('forgotPasswordEmail', submitForgotPassword);
+    bindEnter('resetPasswordNew', submitResetPassword);
+    bindEnter('resetPasswordConfirm', submitResetPassword);
     bootstrapSession();
 });
 
@@ -1923,8 +2235,15 @@ function nav(id) {
         toast('Seleziona un brand dall\'elenco in alto');
         return;
     }
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(id)?.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => {
+        s.classList.remove('active');
+        s.setAttribute('hidden', '');
+    });
+    const sectionEl = document.getElementById(id);
+    if (sectionEl) {
+        sectionEl.classList.add('active');
+        sectionEl.removeAttribute('hidden');
+    }
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navItem = Array.from(document.querySelectorAll('.nav-item'))
         .find(n => (n.getAttribute('onclick') || '').includes(`'${id}'`));
@@ -1937,9 +2256,11 @@ function nav(id) {
         push: () => {
             loadPushHistory();
             loadScheduledPush();
+            if (typeof togglePushStripBlock === 'function') togglePushStripBlock();
             const rest = () => {
                 loadPushCampaignSelect();
                 loadSchedCampaignSelect();
+                loadPushAudienceSelect();
                 loadPushIwSelect();
                 loadPushGamSelect();
                 loadGeofencing();
@@ -1956,6 +2277,7 @@ function nav(id) {
         'instant-win': loadInstantWin,
         'gamification': loadGamification,
         'leads': loadLeads,
+        audiences: loadAudiences,
         users: loadUsers
     };
     if (loaders[id]) loaders[id]();
@@ -1993,7 +2315,11 @@ function invalidateBrandCache() {
     }
 }
 
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+    if (!document.querySelector('.modal.active')) document.body.classList.remove('modal-open');
+}
 function toast(msg) { const t = document.getElementById('toastEl'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
 // ==================== BRANDS ====================
@@ -2001,16 +2327,7 @@ async function loadBrands() {
     const res = await fetch(`${API}/brands`, { headers: { ...getAuthHeaders() } });
     if (!res.ok) return;
     const brands = await res.json();
-    const sel = document.getElementById('brandSelector');
-    sel.innerHTML = '<option value="">Seleziona Brand</option>';
-    const frag = document.createDocumentFragment();
-    brands.forEach(b => {
-        const o = document.createElement('option');
-        o.value = b.id;
-        o.textContent = b.name;
-        frag.appendChild(o);
-    });
-    sel.appendChild(frag);
+    brandsListCache = brands;
 
     const urlBrandParam = new URLSearchParams(window.location.search).get('brand_id');
     const urlMatch = urlBrandParam && brands.find(b => String(b.id) === String(urlBrandParam));
@@ -2030,8 +2347,14 @@ async function loadBrands() {
     else if (storedMatch) nextId = storedMatch.id;
     else if (singleBrandAuto) nextId = brands[0].id;
 
-    sel.value = nextId ? nextId : '';
     brandId = nextId || null;
+    if (brandId) {
+        const b = brands.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brands);
+    const sel = document.getElementById('brandSelector');
+    if (sel) sel.value = brandId ? brandId : '';
 
     updateNavState();
     if (brandId) {
@@ -2057,6 +2380,13 @@ function changeBrand() {
     const sel = document.getElementById('brandSelector');
     brandId = sel.value || null;
     currentBrandName = brandId ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
+    if (brandId) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) persistDashboardProductLine(getBrandProductLine(b));
+    }
+    populateBrandSelector(brandsListCache);
+    if (sel) sel.value = brandId || '';
+    syncProductLineSelector();
     applyBrandTheme();
     updateNavState();
     if (!brandId) {
@@ -2150,7 +2480,13 @@ function applyProductMenuCopy(line) {
     });
 }
 
-function getDashboardProductLine() {
+function getBrandProductLine(brand) {
+    const pl = brand?.config?.product_line;
+    if (pl && VALID_PRODUCT_LINES.includes(pl)) return pl;
+    return 'ads';
+}
+
+function getUnscopedDashboardProductLine() {
     try {
         const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
         if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
@@ -2167,6 +2503,55 @@ function getDashboardProductLine() {
     if (h.includes('live2wallet')) return 'live';
     if (h.includes('ads2wallet')) return 'ads';
     return 'ads';
+}
+
+function persistDashboardProductLine(line) {
+    if (!line || !VALID_PRODUCT_LINES.includes(line)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, line); } catch (_) {}
+}
+
+function getDashboardProductLine() {
+    if (brandId && brandsListCache.length) {
+        const b = brandsListCache.find((x) => String(x.id) === String(brandId));
+        if (b) return getBrandProductLine(b);
+    }
+    return getUnscopedDashboardProductLine();
+}
+
+function populateBrandSelector(brands) {
+    const sel = document.getElementById('brandSelector');
+    if (!sel) return;
+    const activeLine = getDashboardProductLine();
+    const filtered = (brands || []).filter((b) => getBrandProductLine(b) === activeLine);
+    const keepId = brandId && filtered.some((b) => String(b.id) === String(brandId)) ? brandId : null;
+    sel.innerHTML = '<option value="">Seleziona Brand</option>';
+    const frag = document.createDocumentFragment();
+    filtered.forEach((b) => {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.name;
+        frag.appendChild(o);
+    });
+    sel.appendChild(frag);
+    if (keepId) sel.value = keepId;
+    else if (brandId) {
+        brandId = null;
+        currentBrandName = '';
+        try { localStorage.removeItem(LAST_BRAND_KEY); } catch (_) {}
+        syncBrandUrl();
+    }
+}
+
+function syncProductLineSelector() {
+    const plSel = document.getElementById('dashboardProductLine');
+    if (!plSel) return;
+    const line = getDashboardProductLine();
+    plSel.value = line;
+    const locked = !!brandId;
+    plSel.disabled = locked;
+    plSel.title = locked
+        ? `Linea prodotto: ${PRODUCT_DISPLAY_TITLES[line] || line} (fissa per questo brand)`
+        : 'Seleziona la linea per filtrare i brand disponibili';
 }
 
 function syncChromeProductTitles(line) {
@@ -2203,17 +2588,22 @@ function initDashboardProductTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 }
 
 function onDashboardProductLineChange() {
+    if (brandId) {
+        syncProductLineSelector();
+        toast('Deseleziona il brand per cambiare linea prodotto (Ads, HR, Engage, Live)');
+        return;
+    }
     const sel = document.getElementById('dashboardProductLine');
     const v = sel && sel.value;
     if (!v || !VALID_PRODUCT_LINES.includes(v)) return;
-    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, v); } catch (_) {}
+    persistDashboardProductLine(v);
+    populateBrandSelector(brandsListCache);
     applyBrandTheme();
-    if (brandId && getActiveSectionId() === 'leads') loadLeads();
+    if (getActiveSectionId() === 'leads') loadLeads();
 }
 
 // ==================== BRAND THEMING (header only; shell = product theme) ====================
@@ -2222,8 +2612,7 @@ function applyBrandTheme() {
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
     applyProductMenuCopy(line);
-    const plSel = document.getElementById('dashboardProductLine');
-    if (plSel) plSel.value = line;
+    syncProductLineSelector();
 
     const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
     const headerBrandName = document.getElementById('headerBrandName');
@@ -3159,6 +3548,7 @@ async function loadTemplates() {
 }
 
 function openTemplateModal() {
+    nav('templates');
     document.getElementById('templateEditId').value = '';
     document.getElementById('templateModalTitle').textContent = 'Nuovo Template';
     ['tplName','tplDescription','tplHeaderLabel','tplHeaderValue','tplSecLabel','tplSecValue','tplAuxLabel','tplAuxValue','tplLink1Label','tplLink1Url','tplLink2Label','tplLink2Url','tplLink3Label','tplLink3Url','tplRegolamento','tplContatti'].forEach(id => document.getElementById(id).value = '');
@@ -3167,11 +3557,13 @@ function openTemplateModal() {
     tplImageCache = {};
     document.getElementById('tplType').value = 'storeCard';
     document.getElementById('templateModal').classList.add('active');
+    document.body.classList.add('modal-open');
     populateStripPromoSelect();
     onPassTypeChange();
 }
 
 async function editTemplate(id) {
+    nav('templates');
     const res = await fetch(`${API}/templates/${id}`);
     const t = await res.json();
     document.getElementById('templateEditId').value = t.id;
@@ -3214,18 +3606,17 @@ async function editTemplate(id) {
         }
     });
     document.getElementById('templateModal').classList.add('active');
+    document.body.classList.add('modal-open');
     populateStripPromoSelect();
     onPassTypeChange();
 }
 
 async function saveTemplate() {
     const editId = document.getElementById('templateEditId').value;
-    const links = [];
-    for (let i = 1; i <= 3; i++) {
-        const label = document.getElementById('tplLink'+i+'Label').value.trim();
-        const url = document.getElementById('tplLink'+i+'Url').value.trim();
-        if (label || url) links.push({ label, url });
-    }
+    const links = [1, 2, 3].map(i => ({
+        label: document.getElementById('tplLink'+i+'Label').value.trim(),
+        url: document.getElementById('tplLink'+i+'Url').value.trim()
+    }));
     const body = {
         brand_id: brandId,
         name: document.getElementById('tplName').value,
@@ -3251,7 +3642,12 @@ async function saveTemplate() {
         await uploadTemplateImages(tplId);
     }
     closeModal('templateModal');
-    toast(editId ? 'Template aggiornato!' : 'Template creato!');
+    if (editId && saved.wallet_refresh) {
+        const wr = saved.wallet_refresh;
+        toast(`Template aggiornato — ${wr.passes_touched || 0} pass segnati, ${wr.push_sent || 0} notifiche Wallet`);
+    } else {
+        toast(editId ? 'Template aggiornato!' : 'Template creato!');
+    }
     invalidateBrandCache();
     loadTemplates();
 }
@@ -3312,17 +3708,27 @@ function updatePassPreview() {
         aux.innerHTML = `<div class="pp-field"><div class="pp-field-label">${esc(auxLabel)}</div><div class="pp-field-value">${esc(auxValue)}</div></div>`;
     } else { aux.innerHTML = ''; }
 
-    // Back
+    // Back (ordine pass: link1 → regolamento → link2 → link3 → contatti)
     let backHtml = '';
-    for (let i = 1; i <= 3; i++) {
-        const lbl = document.getElementById('tplLink'+i+'Label').value.trim();
-        const url = document.getElementById('tplLink'+i+'Url').value.trim();
+    const addBackLink = (lbl, url) => {
         if (lbl || url) {
             backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl || 'LINK')}</div><div class="pp-back-field-value"><a href="#">${esc(url || lbl)}</a></div></div>`;
         }
-    }
+    };
+    addBackLink(
+        document.getElementById('tplLink1Label').value.trim(),
+        document.getElementById('tplLink1Url').value.trim()
+    );
     const reg = document.getElementById('tplRegolamento').value.trim();
     if (reg) backHtml += `<div class="pp-back-field"><div class="pp-back-field-value">${esc(reg).substring(0,120)}${reg.length>120?'...':''}</div></div>`;
+    addBackLink(
+        document.getElementById('tplLink2Label').value.trim(),
+        document.getElementById('tplLink2Url').value.trim()
+    );
+    addBackLink(
+        document.getElementById('tplLink3Label').value.trim(),
+        document.getElementById('tplLink3Url').value.trim()
+    );
     const cont = document.getElementById('tplContatti').value.trim();
     if (cont) backHtml += `<div class="pp-back-field"><div class="pp-back-field-value">${esc(cont)}</div></div>`;
 
@@ -3458,7 +3864,7 @@ async function uploadTemplateImages(templateId) {
         if (tplImageCache[imgType]) {
             await fetch(`${API}/templates/${templateId}/images`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ image_type: imgType, image_base64: tplImageCache[imgType] })
             });
         }
@@ -3547,11 +3953,76 @@ async function loadSchedCampaignSelect() {
     campaignsCache.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
 }
 
+let audiencesCache = [];
+
+async function loadPushAudienceSelect() {
+    if (!brandId) return;
+    const ids = ['pushAudienceTarget', 'schedAudienceTarget'];
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/audiences`, { headers: getAuthHeaders() });
+        audiencesCache = res.ok ? await res.json() : [];
+    } catch (_) { audiencesCache = []; }
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">— Nessuna (usa campagna o tutti) —</option>';
+        audiencesCache.forEach(a => {
+            const o = document.createElement('option');
+            o.value = a.id;
+            o.textContent = `${a.name} (${a.member_count ?? '?'})`;
+            sel.appendChild(o);
+        });
+        if (cur) sel.value = cur;
+    });
+    const audSel = document.getElementById('audCampaign');
+    if (audSel && audSel.options.length <= 1 && campaignsCache.length) {
+        campaignsCache.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id; o.textContent = c.name;
+            audSel.appendChild(o);
+        });
+    }
+}
+
 // --- TAB 1: Push Immediata ---
+let pushStripMediaId = null;
+
+function togglePushStripBlock() {
+    const block = document.getElementById('pushStripBlock');
+    const on = document.getElementById('pushUpdatePass')?.checked;
+    if (block) block.style.display = on ? 'block' : 'none';
+}
+
+function pushPickStripFromMedia() {
+    if (!brandId) return toast('Seleziona un brand');
+    openMediaPicker((mediaId, imageUrl) => {
+        pushStripMediaId = mediaId;
+        const prev = document.getElementById('pushStripPreview');
+        if (prev) {
+            prev.innerHTML = `<img src="${imageUrl}" alt="Strip push" style="width:100%;height:100%;object-fit:cover;">`;
+        }
+        const clr = document.getElementById('pushStripClearBtn');
+        if (clr) clr.style.display = '';
+        toast('Strip selezionata per la push');
+    }, 'strip');
+}
+
+function pushClearStrip() {
+    pushStripMediaId = null;
+    const prev = document.getElementById('pushStripPreview');
+    if (prev) {
+        prev.innerHTML = '<span style="color:var(--text2);font-size:12px;">Nessuna strip — resta quella del pass</span>';
+    }
+    const clr = document.getElementById('pushStripClearBtn');
+    if (clr) clr.style.display = 'none';
+}
+
 async function sendImmediatePush() {
     const title = document.getElementById('pushTitle').value;
     const message = document.getElementById('pushMessage').value;
     const campaignId = document.getElementById('pushCampaignTarget').value || null;
+    const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
     const channel = document.getElementById('pushChannel').value || 'apple';
     const updatePass = document.getElementById('pushUpdatePass').checked;
 
@@ -3559,11 +4030,18 @@ async function sendImmediatePush() {
     if (!brandId) return alert('Seleziona un brand');
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
-    if (campaignId) body.campaign_id = campaignId;
+    if (audienceId) body.audience_id = audienceId;
+    else if (campaignId) body.campaign_id = campaignId;
     const iwId = document.getElementById('pushInstantWin').value;
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification').value;
     if (gamId) body.gamification_id = gamId;
+    const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
+    if (backLinkUrl) {
+        body.back_link_url = backLinkUrl;
+        body.back_link_label = (document.getElementById('pushBackLinkLabel')?.value || '').trim();
+    }
+    if (updatePass && pushStripMediaId) body.strip_media_id = pushStripMediaId;
     const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) { alert('Errore push: ' + data.error); return; }
@@ -3585,6 +4063,11 @@ async function sendImmediatePush() {
     alert(msg);
     document.getElementById('pushTitle').value = '';
     document.getElementById('pushMessage').value = '';
+    const pbl = document.getElementById('pushBackLinkLabel');
+    const pbu = document.getElementById('pushBackLinkUrl');
+    if (pbl) pbl.value = '';
+    if (pbu) pbu.value = '';
+    pushClearStrip();
     loadPushHistory();
 }
 
@@ -3599,6 +4082,7 @@ async function createScheduledPush() {
     const title = document.getElementById('schedTitle').value;
     const message = document.getElementById('schedMessage').value;
     const campaignId = document.getElementById('schedCampaignTarget').value || null;
+    const audienceId = document.getElementById('schedAudienceTarget')?.value || null;
     const updatePass = document.getElementById('schedUpdatePass').checked;
     const channel = document.getElementById('schedChannel').value || 'apple';
     const schedType = document.getElementById('schedType').value;
@@ -3608,7 +4092,8 @@ async function createScheduledPush() {
     if (!brandId) return alert('Seleziona un brand');
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
-    if (campaignId) body.campaign_id = campaignId;
+    if (audienceId) body.audience_id = audienceId;
+    else if (campaignId) body.campaign_id = campaignId;
     if (schedType === 'once') {
         body.date = document.getElementById('schedDate').value;
         if (!body.date) return alert('Seleziona una data');
@@ -4206,6 +4691,387 @@ async function deleteIwCampaign(id) {
         loadInstantWin();
     } catch(e) { toast('Errore di rete'); }
 }
+
+
+// ==================== AUDIENCES ====================
+
+function switchAudienceTab(tab) {
+    ['overview', 'behavior', 'saved'].forEach(t => {
+        const panel = document.getElementById('audPanel_' + t);
+        if (panel) panel.style.display = t === tab ? 'block' : 'none';
+        const btn = document.getElementById('audTab_' + t);
+        if (btn) {
+            const on = t === tab;
+            btn.style.borderBottomColor = on ? 'var(--teal)' : 'transparent';
+            btn.style.color = on ? 'var(--teal)' : 'var(--text2)';
+            btn.style.fontWeight = on ? '700' : '600';
+        }
+    });
+    if (tab === 'behavior') loadAudienceBehavior();
+    if (tab === 'saved' && !audiencesCache.length) loadAudiences();
+}
+
+let waiAudienceMode = false;
+
+function waiIsAudienceSectionActive() {
+    const sec = document.getElementById('audiences');
+    return !!(sec && sec.classList.contains('active'));
+}
+
+function waiShouldUseAudienceMode(prompt) {
+    if (waiAudienceMode || waiIsAudienceSectionActive()) return true;
+    return /\b(audience|segmento|segmenta|possessor|apert[oie]|notific|cliccat|link\s*[123]|instant\s*win|mai\s+cliccat)\b/i.test(String(prompt || ''));
+}
+
+function waiWrapAudiencePrompt(prompt) {
+    const p = String(prompt || '').trim();
+    if (!p || /^\[Audience platform\]/i.test(p)) return p;
+    return waiShouldUseAudienceMode(p) ? `[Audience platform] ${p}` : p;
+}
+
+function openWaiForAudience(prefill) {
+    if (!brandId) return toast('Seleziona un brand');
+    if (currentUser?.role === 'viewer') return toast('Permessi insufficienti (solo lettura)');
+    waiAudienceMode = true;
+    toggleWaiOverlay(true);
+    const ta = document.getElementById('waiPrompt');
+    if (ta) {
+        ta.placeholder = 'Es: chi ha aperto il pass negli ultimi 7 giorni, chi ha cliccato link 1…';
+        if (prefill) ta.value = prefill;
+        ta.focus();
+    }
+    const hint = document.getElementById('waiAudienceHint');
+    if (hint) hint.style.display = 'block';
+}
+
+function waiResetAudienceMode() {
+    waiAudienceMode = false;
+    const ta = document.getElementById('waiPrompt');
+    if (ta) ta.placeholder = 'Scrivi cosa vuoi fare...';
+    const hint = document.getElementById('waiAudienceHint');
+    if (hint) hint.style.display = 'none';
+}
+
+function onAudBehaviorModeChange() {
+    const mode = document.getElementById('audBehaviorMode')?.value;
+    const minEl = document.getElementById('audBehaviorMinCount');
+    const minWrap = minEl?.closest('.form-group');
+    if (minWrap) minWrap.style.display = mode === 'did' ? '' : 'none';
+}
+
+async function exportHolderEventsCsv() {
+    if (!brandId) return;
+    const days = document.getElementById('audBehaviorDays')?.value || 30;
+    const res = await fetch(`${API}/brands/${brandId}/holder-events/export?days=${days}`, { headers: getAuthHeaders() });
+    if (!res.ok) { toast('Export non riuscito'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `holder_events_${days}d.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV eventi esportato');
+}
+
+async function loadAudienceBehavior() {
+    if (!brandId) return;
+    try {
+        const days = document.getElementById('audBehaviorDays')?.value || 30;
+        const res = await fetch(`${API}/brands/${brandId}/audiences/insights?days=${days}`, { headers: getAuthHeaders() });
+        const data = res.ok ? await res.json() : {};
+        const b = data.behavior || {};
+        const f = b.funnel || {};
+        document.getElementById('audienceBehaviorStats').innerHTML = `
+            <div class="stat-num">${b.total_events ?? 0}</div><div class="stat-label">Eventi (${days} gg)</div>
+            <div class="stat-card"><div class="stat-num">${b.unique_holders_active ?? 0}<div class="stat-label">Possessori attivi</div></div>
+            <div class="stat-card"><div class="stat-num">${f.opened ?? 0}</div><div class="stat-label">Aperture pass</div></div>
+            <div class="stat-card"><div class="stat-num">${f.link_clicks ?? 0}</div><div class="stat-label">Click link retro</div></div>
+            <div class="stat-card"><div class="stat-num">${f.unique_clickers ?? 0}</div>Utenti unici click
+        `.replace(/<\/?motion[^>]*>/g, '');
+
+        const funnels = b.link_funnels || [];
+        document.getElementById('audienceLinkFunnels').innerHTML = funnels.length ? funnels.map(f => `
+            <div style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+                <strong>${esc(f.target_label || f.target_key)}</strong> <span style="color:var(--text2);font-size:11px;">(${esc(f.target_key)})</span>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;font-size:12px;text-align:center;">
+                    <div>${f.pass_holders}</div><div style="color:var(--text2);">Pass</div></div>
+                    <div><div style="font-weight:700;">${f.installed}</div><div style="color:var(--text2);">Install.</div></div>
+                    <div><div style="font-weight:700;">${f.opened}</div><div style="color:var(--text2);">Aperti</div></div>
+                    <div><div style="font-weight:700;">${f.unique_clickers}</div><div style="color:var(--text2);">Click unici</div></div>
+                    <div><div style="font-weight:700;">${f.ctr_from_opened_pct}%</div><div style="color:var(--text2);">CTR/Aperti</div></div>
+                </div>
+            </div>
+        `).join('') : '<span>Nessun click per link nel periodo. Rigenera i pass per attivare il tracking.</span>';
+
+        const links = b.top_link_clicks || [];
+        document.getElementById('audienceTopLinks').innerHTML = links.length ? links.map(l =>
+            `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+                <span>${esc(l.target_label || l.target_key || 'Link')} <span style="color:var(--text2);font-size:11px;">${esc((l.target_url || '').slice(0,40))}</span></span>
+                <strong>${l.clicks}</strong>
+            `
+        ).join('') : '<span>Nessun click registrato ancora. I nuovi pass tracciano i link del retro.</span>';
+
+        const evRes = await fetch(`${API}/brands/${brandId}/holder-events?limit=40`, { headers: getAuthHeaders() });
+        const events = evRes.ok ? await evRes.json() : [];
+        document.getElementById('audienceRecentEvents').innerHTML = events.length ? events.map(e =>
+            `<div style="padding:6px 0;border-bottom:1px solid var(--border);">
+                <span style="color:var(--teal);">${esc(e.event_action)}</span>
+                ${e.target_label ? ' · ' + esc(e.target_label) : ''}
+                <span style="float:right;color:var(--text2);">${e.created_at ? new Date(e.created_at).toLocaleString('it-IT') : ''}</span>
+            </div>`
+        ).join('') : 'Nessun evento';
+    } catch (e) {
+        console.error('loadAudienceBehavior', e);
+    }
+}
+
+async function waiSaveAudience() {
+    const qs = waiDraft?.payload?.query_spec || waiDraft?.preview?.details?.query_spec;
+    if (!qs) return toast('Esegui prima una query audience con W.AI');
+    const name = prompt('Nome per questa audience:', (waiDraft?.preview?.summary || 'Audience W.AI').slice(0, 60));
+    if (!name) return;
+    const sourcePrompt = document.getElementById('waiPrompt')?.value?.trim() || '';
+    const res = await fetch(`${API}/brands/${brandId}/audiences`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name,
+            description: waiDraft?.preview?.summary || waiDraft?.answer || '',
+            query_spec: qs,
+            source_prompt: sourcePrompt
+        })
+    });
+    const data = await res.json();
+    if (!res.ok) return toast(data.error || 'Errore salvataggio');
+    toast(`Audience salvata (${data.member_count} possessori)`);
+    dismissWai();
+    if (typeof switchAudienceTab === 'function') switchAudienceTab('saved');
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+let editingAudienceId = null;
+
+function triSelectVal(elId) {
+    const v = document.getElementById(elId)?.value;
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return null;
+}
+
+function collectAudienceRulesFromForm() {
+    const rules = {
+        campaign_id: document.getElementById('audCampaign')?.value || null,
+        status: document.getElementById('audStatus')?.value || 'any',
+        wallet: document.getElementById('audWallet')?.value || 'any',
+        has_apple_push: triSelectVal('audApplePush'),
+        has_email: triSelectVal('audHasEmail'),
+        has_phone: triSelectVal('audHasPhone'),
+        created_after: document.getElementById('audCreatedAfter')?.value || null,
+        created_before: document.getElementById('audCreatedBefore')?.value || null,
+        utm_source: (document.getElementById('audUtmSource')?.value || '').trim() || null,
+        played_instant_win: triSelectVal('audPlayedIw'),
+        played_gamification: triSelectVal('audPlayedGam')
+    };
+    if (!rules.campaign_id) delete rules.campaign_id;
+    if (rules.created_after) rules.created_after = new Date(rules.created_after + 'T00:00:00').toISOString();
+    if (rules.created_before) rules.created_before = new Date(rules.created_before + 'T23:59:59').toISOString();
+    const mode = document.getElementById('audBehaviorMode')?.value;
+    const action = document.getElementById('audBehaviorAction')?.value;
+    if (mode && action) {
+        rules.behavior = {
+            since_days: parseInt(document.getElementById('audBehaviorSinceDays')?.value, 10) || 30
+        };
+        if (mode === 'did') {
+            rules.behavior.did_action = action;
+            rules.behavior.min_count = parseInt(document.getElementById('audBehaviorMinCount')?.value, 10) || 1;
+        } else if (mode === 'never') {
+            rules.behavior.never_did_action = action;
+        }
+        const tk = (document.getElementById('audBehaviorTargetKey')?.value || '').trim();
+        if (tk) rules.behavior.target_key = tk;
+    }
+    return rules;
+}
+
+function fillAudienceForm(rules = {}) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+    set('audCampaign', rules.campaign_id || '');
+    set('audStatus', rules.status || 'any');
+    set('audWallet', rules.wallet || 'any');
+    const tri = (id, v) => set(id, v === true ? 'true' : v === false ? 'false' : '');
+    tri('audApplePush', rules.has_apple_push);
+    tri('audHasEmail', rules.has_email);
+    tri('audHasPhone', rules.has_phone);
+    tri('audPlayedIw', rules.played_instant_win);
+    tri('audPlayedGam', rules.played_gamification);
+    set('audUtmSource', rules.utm_source || '');
+    if (rules.created_after) {
+        const d = new Date(rules.created_after);
+        set('audCreatedAfter', d.toISOString().slice(0, 10));
+    } else set('audCreatedAfter', '');
+    if (rules.created_before) {
+        const d = new Date(rules.created_before);
+        set('audCreatedBefore', d.toISOString().slice(0, 10));
+    } else set('audCreatedBefore', '');
+    if (rules.behavior) {
+        const mode = rules.behavior.never_did_action ? 'never' : (rules.behavior.did_action ? 'did' : '');
+        set('audBehaviorMode', mode);
+        set('audBehaviorAction', rules.behavior.did_action || rules.behavior.never_did_action || '');
+        set('audBehaviorTargetKey', rules.behavior.target_key || '');
+        set('audBehaviorSinceDays', rules.behavior.since_days || 30);
+        set('audBehaviorMinCount', rules.behavior.min_count || 1);
+        onAudBehaviorModeChange();
+    } else {
+        set('audBehaviorMode', ''); set('audBehaviorAction', ''); set('audBehaviorTargetKey', '');
+        set('audBehaviorSinceDays', 30); set('audBehaviorMinCount', 1);
+        onAudBehaviorModeChange();
+    }
+}
+
+async function loadAudiences() {
+    if (!brandId) return;
+    await loadPushAudienceSelect();
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/audiences/insights`, { headers: getAuthHeaders() });
+        const ins = res.ok ? await res.json() : {};
+        document.getElementById('audienceInsightsStats').innerHTML = `
+            <div class="stat-card"><div class="stat-num">${ins.total_holders ?? 0}</div><div class="stat-label">Possessori pass</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.apple_push_reachable ?? 0}</div><div class="stat-label">Raggiungibili APNs</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.installed_any_wallet ?? 0}</div><div class="stat-label">Wallet installato</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.with_email ?? 0}</div><div class="stat-label">Con email</div></div>
+            <div class="stat-card"><div class="stat-num">${ins.new_last_7_days ?? 0}</div><div class="stat-label">Nuovi (7 gg)</div></div>
+        `;
+
+        const campEl = document.getElementById('audienceCampaignBreakdown');
+        const camps = ins.by_campaign || [];
+        campEl.innerHTML = camps.length ? camps.map(c =>
+            `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${esc(c.name || 'Senza nome')}</span><span>${c.pass_count} pass · ${c.apple_installs} Apple</span></div>`
+        ).join('') : '<span>Nessuna campagna con pass</span>';
+
+        const listRes = await fetch(`${API}/brands/${brandId}/audiences`, { headers: getAuthHeaders() });
+        const list = listRes.ok ? await listRes.json() : [];
+        audiencesCache = list;
+        renderAudiencesList(list);
+    } catch (e) {
+        console.error('loadAudiences', e);
+        document.getElementById('audiencesList').innerHTML = '<span style="color:var(--text2);">Errore caricamento audience</span>';
+    }
+}
+
+function renderAudiencesList(list) {
+    const el = document.getElementById('audiencesList');
+    if (!list.length) {
+        el.innerHTML = '<p style="color:var(--text2);font-size:13px;">Nessuna audience salvata. Crea un segmento con i filtri sui possessori del pass.</p>';
+        return;
+    }
+    el.innerHTML = `<table class="table"><thead><tr><th>Nome</th><th>Membri</th><th>Aggiornata</th><th></th></tr></thead><tbody>${
+        list.map(a => `<tr>
+            <td><strong>${esc(a.name)}</strong><br><span style="font-size:11px;color:var(--text2);">${esc(a.description || '')}</span></td>
+            <td>${a.member_count ?? '—'}</td>
+            <td style="font-size:12px;">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('it-IT') : '—'}</td>
+            <td style="white-space:nowrap;">
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="useAudienceInPush('${a.id}')">Push</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="exportAudienceCsv('${a.id}')">CSV</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;" onclick="editAudience('${a.id}')">Modifica</button>
+                <button class="btn sec" style="font-size:11px;padding:4px 8px;color:#e55;" onclick="deleteAudienceItem('${a.id}')">Elimina</button>
+            </td>
+        </tr>`).join('')
+    }</tbody></table>`;
+}
+
+function openAudienceEditor(id) {
+    editingAudienceId = id || null;
+    document.getElementById('audienceEditorTitle').textContent = id ? 'Modifica audience' : 'Nuova audience';
+    document.getElementById('audName').value = '';
+    document.getElementById('audDescription').value = '';
+    fillAudienceForm({});
+    document.getElementById('audPreviewCount').textContent = '—';
+    const modal = document.getElementById('audienceEditorModal');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    if (id) {
+        const a = audiencesCache.find(x => x.id === id);
+        if (a) {
+            document.getElementById('audName').value = a.name || '';
+            document.getElementById('audDescription').value = a.description || '';
+            fillAudienceForm(a.rules || {});
+            previewAudienceRules();
+        }
+    }
+}
+
+function closeAudienceEditor() {
+    document.getElementById('audienceEditorModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+    editingAudienceId = null;
+}
+
+function editAudience(id) { openAudienceEditor(id); }
+
+async function previewAudienceRules() {
+    if (!brandId) return;
+    const rules = collectAudienceRulesFromForm();
+    const res = await fetch(`${API}/brands/${brandId}/audiences/preview`, {
+        method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        document.getElementById('audPreviewCount').textContent = data.error || 'Errore';
+        return;
+    }
+    document.getElementById('audPreviewCount').textContent = String(data.count ?? 0);
+}
+
+async function saveAudience() {
+    if (!brandId) return;
+    const name = (document.getElementById('audName').value || '').trim();
+    if (!name) return toast("Inserisci un nome per l'audience");
+    const rules = collectAudienceRulesFromForm();
+    const body = { name, description: (document.getElementById('audDescription').value || '').trim(), rules };
+    const url = editingAudienceId ? `${API}/audiences/${editingAudienceId}` : `${API}/brands/${brandId}/audiences`;
+    const res = await fetch(url, {
+        method: editingAudienceId ? 'PUT' : 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error || 'Errore salvataggio');
+    toast('Audience salvata');
+    closeAudienceEditor();
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+async function deleteAudienceItem(id) {
+    if (!confirm('Eliminare questa audience?')) return;
+    const res = await fetch(`${API}/audiences/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); return toast(d.error || 'Errore'); }
+    toast('Audience eliminata');
+    loadAudiences();
+    loadPushAudienceSelect();
+}
+
+function useAudienceInPush(id) {
+    nav('push');
+    switchPushTab('immediate');
+    const sel = document.getElementById('pushAudienceTarget');
+    if (sel) sel.value = id;
+}
+
+async function exportAudienceCsv(id) {
+    const res = await fetch(`${API}/audiences/${id}/export`, { headers: getAuthHeaders() });
+    if (!res.ok) return toast('Export non riuscito');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `audience_${id}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV esportato');
+}
+
 
 // ==================== LEADS DATABASE ====================
 let allLeads = [];
@@ -4820,6 +5686,7 @@ function downloadBlob(blob, filename) {
 // ==================== PASS WIZARD ====================
 let wzCurrentStep = 1;
 let wzStripBase64 = null;
+let wzLogoBase64 = null;
 
 function wzGoStep(step) {
     wzCurrentStep = step;
@@ -4852,7 +5719,12 @@ function wzBuildPreview() {
     const aValue = document.getElementById('wzAuxValue').value;
 
     // Front
-    document.getElementById('wzPpLogo').textContent = brandName;
+    const wzPpLogo = document.getElementById('wzPpLogo');
+    if (wzLogoBase64) {
+        wzPpLogo.innerHTML = `<img src="data:image/png;base64,${wzLogoBase64}" style="height:20px;max-width:120px;object-fit:contain;" alt="">`;
+    } else {
+        wzPpLogo.textContent = brandName;
+    }
     document.getElementById('wzPpBackLogo').textContent = brandName;
     const hf = document.getElementById('wzPpHeaderField');
     hf.innerHTML = (hLabel||hValue) ? `<div class="pp-field-label">${esc(hLabel)}</div><div class="pp-field-value">${esc(hValue)}</div>` : '';
@@ -4867,17 +5739,23 @@ function wzBuildPreview() {
     if (wzStripBase64) {
         strip.style.backgroundImage = `url(data:image/png;base64,${wzStripBase64})`;
         strip.style.backgroundSize = 'cover';
+        strip.style.display = '';
+    } else {
+        strip.style.backgroundImage = '';
     }
 
     // Back
     let backHtml = '';
-    for (let i = 1; i <= 3; i++) {
+    const wzL1 = document.getElementById('wzLink1Label').value;
+    const wzU1 = document.getElementById('wzLink1Url').value;
+    if (wzL1||wzU1) backHtml += `<div class="pp-back-row"><span class="pp-back-label">${esc(wzL1)}</span><span class="pp-back-value">${esc(wzU1)}</span></div>`;
+    const reg = document.getElementById('wzRegolamento').value;
+    if (reg) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(reg.substring(0,80))}...</span></div>`;
+    for (let i = 2; i <= 3; i++) {
         const l = document.getElementById('wzLink'+i+'Label').value;
         const u = document.getElementById('wzLink'+i+'Url').value;
         if (l||u) backHtml += `<div class="pp-back-row"><span class="pp-back-label">${esc(l)}</span><span class="pp-back-value">${esc(u)}</span></div>`;
     }
-    const reg = document.getElementById('wzRegolamento').value;
-    if (reg) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(reg.substring(0,80))}...</span></div>`;
     const cont = document.getElementById('wzContatti').value;
     if (cont) backHtml += `<div class="pp-back-row"><span class="pp-back-value">${esc(cont)}</span></div>`;
     document.getElementById('wzPpBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Nessun contenuto retro</div>';
@@ -4895,21 +5773,71 @@ function wzBuildPreview() {
             <span style="font-weight:600;color:var(--text1);">Link retro</span><span>${backLinks} link</span>
             <span style="font-weight:600;color:var(--text1);">Regolamento</span><span>${hasReg ? 'Presente' : 'Non configurato'}</span>
             <span style="font-weight:600;color:var(--text1);">Contatti</span><span>${hasCont ? 'Presenti' : 'Non configurati'}</span>
+            <span style="font-weight:600;color:var(--text1);">Logo</span><span>${wzLogoBase64 ? '&#10003; Selezionato' : 'Nessuno'}</span>
             <span style="font-weight:600;color:var(--text1);">Strip</span><span>${wzStripBase64 ? '&#10003; Selezionata' : 'Nessuna'}</span>
         </div>
     `;
 }
 
+function wzSetLogoPreview(base64, previewUrl) {
+    wzLogoBase64 = base64;
+    const img = document.getElementById('wzLogoPreview');
+    const ph = document.getElementById('wzLogoPlaceholder');
+    const del = document.getElementById('wzLogoDeleteBtn');
+    if (img && previewUrl) {
+        img.src = previewUrl.startsWith('data:') ? previewUrl : previewUrl;
+        img.style.display = 'block';
+    }
+    if (ph) ph.style.display = 'none';
+    if (del) del.style.display = 'inline-block';
+}
+
+function wzSetStripPreview(base64, previewUrl) {
+    wzStripBase64 = base64;
+    const box = document.getElementById('wzStripPreview');
+    if (box) {
+        const src = previewUrl.startsWith('data:') ? previewUrl : previewUrl;
+        box.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" alt="">`;
+    }
+    const del = document.getElementById('wzStripDeleteBtn');
+    if (del) del.style.display = 'inline-block';
+}
+
+function wzUploadLogo() { document.getElementById('wzLogoFile').click(); }
 function wzUploadStrip() { document.getElementById('wzStripFile').click(); }
+
+function wzOnLogoFile(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const base64 = e.target.result.split(',')[1];
+        wzSetLogoPreview(base64, e.target.result);
+        window._wzSelectedLogo = null;
+        wzUpdatePreview();
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function wzRemoveLogo() {
+    wzLogoBase64 = null;
+    window._wzSelectedLogo = null;
+    const img = document.getElementById('wzLogoPreview');
+    const ph = document.getElementById('wzLogoPlaceholder');
+    if (img) { img.removeAttribute('src'); img.style.display = 'none'; }
+    if (ph) ph.style.display = '';
+    document.getElementById('wzLogoDeleteBtn').style.display = 'none';
+    document.getElementById('wzLogoFile').value = '';
+    wzUpdatePreview();
+}
 
 function wzOnStripFile(input) {
     if (!input.files || !input.files[0]) return;
     const reader = new FileReader();
     reader.onload = e => {
         const base64 = e.target.result.split(',')[1];
-        wzStripBase64 = base64;
-        document.getElementById('wzStripPreview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
-        document.getElementById('wzStripDeleteBtn').style.display = 'inline-block';
+        wzSetStripPreview(base64, e.target.result);
+        window._wzSelectedStrip = null;
+        wzUpdatePreview();
     };
     reader.readAsDataURL(input.files[0]);
 }
@@ -4925,6 +5853,7 @@ function wzCopyLanding() {
 }
 
 function wzNewPass() {
+    nav('pass-wizard');
     document.getElementById('wzPublishResult').style.display = 'none';
     document.getElementById('wzPublishBtn').style.display = '';
     loadPassWizard();
@@ -4958,25 +5887,76 @@ function wzDrawQR(canvas, text) {
 
 function wzRemoveStrip() {
     wzStripBase64 = null;
+    window._wzSelectedStrip = null;
     document.getElementById('wzStripPreview').innerHTML = '<span style="color:var(--text2);font-size:12px;">Nessuna strip selezionata</span>';
     document.getElementById('wzStripDeleteBtn').style.display = 'none';
     document.getElementById('wzStripFile').value = '';
+    wzUpdatePreview();
 }
 
 function wzPickFromMedia(target) {
-    openMediaPicker((mediaId, imageUrl) => {
-        // target could be 'strip', 'logo', 'background'
+    if (!brandId) return toast('Seleziona un brand');
+    openMediaPicker(async (mediaId, imageUrl) => {
+        const base64 = await fetchMediaImageBase64(mediaId);
+        const dataUrl = 'data:image/png;base64,' + base64;
         if (target === 'strip') {
-            document.getElementById('wzStripPreview').innerHTML = `<img src="${imageUrl}" style="width:100%;height:100%;object-fit:cover;">`;
-            document.getElementById('wzStripPreview').style.display = 'block';
-            // Store the mediaId for when publishing
+            wzSetStripPreview(base64, dataUrl);
             window._wzSelectedStrip = { mediaId, imageUrl };
+            toast('Strip dalla Media Library');
         } else if (target === 'logo') {
-            const logoEl = document.getElementById('wzLogoPreview');
-            if (logoEl) { logoEl.src = imageUrl; logoEl.style.display = 'block'; }
+            wzSetLogoPreview(base64, dataUrl);
             window._wzSelectedLogo = { mediaId, imageUrl };
+            toast('Logo dalla Media Library');
         }
-    }, target || 'strip');
+        wzUpdatePreview();
+    }, 'all');
+}
+
+async function tplPickFromMedia(imageType) {
+    if (!brandId) return toast('Seleziona un brand');
+    openMediaPicker(async (mediaId, imageUrl) => {
+        const base64 = await fetchMediaImageBase64(mediaId);
+        tplImageCache[imageType] = base64;
+        const cap = imageType.charAt(0).toUpperCase() + imageType.slice(1);
+        const preview = document.getElementById('tplImg' + cap + 'Preview');
+        if (preview) {
+            preview.src = 'data:image/png;base64,' + base64;
+            preview.style.display = 'block';
+        }
+        updatePassPreview();
+        toast((imageType === 'logo' ? 'Logo' : 'Strip') + ' dalla Media Library');
+    }, 'all');
+}
+
+async function wzApplyWizardImages(tplId) {
+    const types = [];
+    if (wzLogoBase64) types.push({ image_type: 'logo', image_base64: wzLogoBase64 });
+    if (wzStripBase64) types.push({ image_type: 'strip', image_base64: wzStripBase64 });
+    for (const u of types) {
+        const res = await fetch(`${API}/templates/${tplId}/images`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(u)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Errore upload ${u.image_type}`);
+        }
+    }
+    if (wzLogoBase64) {
+        await fetch(`${API}/brands/${brandId}/logo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ logo_base64: wzLogoBase64 })
+        });
+    }
+    if (wzStripBase64) {
+        await fetch(`${API}/brands/${brandId}/strip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ strip_base64: wzStripBase64 })
+        });
+    }
 }
 
 // AI strip functions removed
@@ -5053,12 +6033,10 @@ async function wzPublish() {
     const name = document.getElementById('wzName').value;
     if (!name) return toast('Inserisci un nome per il template');
 
-    const links = [];
-    for (let i = 1; i <= 3; i++) {
-        const label = document.getElementById('wzLink'+i+'Label').value.trim();
-        const url = document.getElementById('wzLink'+i+'Url').value.trim();
-        if (label || url) links.push({ label, url });
-    }
+    const links = [1, 2, 3].map(i => ({
+        label: document.getElementById('wzLink'+i+'Label').value.trim(),
+        url: document.getElementById('wzLink'+i+'Url').value.trim()
+    }));
 
     const body = {
         brand_id: brandId,
@@ -5087,16 +6065,16 @@ async function wzPublish() {
         const saved = await res.json();
         const tplId = editId || saved.id;
 
-        // Upload strip if selected
-        if (wzStripBase64 && tplId) {
-            await fetch(`${API}/brands/${brandId}/strip`, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-                body: JSON.stringify({ strip_base64: wzStripBase64 })
-            });
+        if (tplId && (wzStripBase64 || wzLogoBase64)) {
+            await wzApplyWizardImages(tplId);
         }
 
-        toast(editId ? 'Template aggiornato!' : 'Pass pubblicato!');
+        if (editId && saved.wallet_refresh) {
+            const wr = saved.wallet_refresh;
+            toast(`Template aggiornato — ${wr.passes_touched || 0} pass, ${wr.push_sent || 0} notifiche Wallet`);
+        } else {
+            toast(editId ? 'Template aggiornato!' : 'Pass pubblicato!');
+        }
 
         // Show QR + link for newly created template
         const tplIdFinal = tplId;
@@ -5123,6 +6101,9 @@ async function wzPublish() {
 
         window.wzEditingTemplateId = null;
         wzStripBase64 = null;
+        wzLogoBase64 = null;
+        window._wzSelectedStrip = null;
+        window._wzSelectedLogo = null;
         loadWzTemplates();
     } catch(e) { toast('Errore: ' + e.message); }
 }
@@ -5132,6 +6113,9 @@ function loadPassWizard() {
     window.wzEditingTemplateId = null;
     wzCurrentStep = 1;
     wzStripBase64 = null;
+    wzLogoBase64 = null;
+    window._wzSelectedStrip = null;
+    window._wzSelectedLogo = null;
     [1,2,3].forEach(s => {
         document.getElementById('wzStep'+s).classList.toggle('active', s === 1);
         document.getElementById('wzDot'+s).classList.toggle('active', s === 1);
@@ -5167,6 +6151,7 @@ async function loadWzTemplates() {
 }
 
 async function wzEditTemplate(id) {
+    nav('pass-wizard');
     try {
         const res = await fetch(`${API}/templates/${id}`, { headers: getAuthHeaders() });
         if (!res.ok) return toast('Errore caricamento template');
@@ -5202,6 +6187,19 @@ async function wzEditTemplate(id) {
         }
         document.getElementById('wzRegolamento').value = f.regolamento || '';
         document.getElementById('wzContatti').value = f.contatti || '';
+        const imgs = t.style?.images || {};
+        wzStripBase64 = null;
+        wzLogoBase64 = null;
+        if (imgs.strip) {
+            wzSetStripPreview(imgs.strip, 'data:image/png;base64,' + imgs.strip);
+        } else {
+            wzRemoveStrip();
+        }
+        if (imgs.logo) {
+            wzSetLogoPreview(imgs.logo, 'data:image/png;base64,' + imgs.logo);
+        } else {
+            wzRemoveLogo();
+        }
         // Store template ID for update instead of create
         window.wzEditingTemplateId = id;
         wzGoStep(1);
@@ -5219,15 +6217,15 @@ async function wzDeleteTemplate(id) {
 }
 
 // ==================== BRAND IDENTITY ====================
+const BRAND_PASS_FIXED_COLORS = {
+    backgroundColor: '#0D0B1A',
+    foregroundColor: '#FFFFFF',
+    labelColor: '#00D4AA'
+};
+
 async function loadBrandIdentity() {
     if (!brandId) {
-        // No brand yet — show empty form for creation
         ['biName','biSlug','biSettore','biHomepage'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-        document.getElementById('biBg').value = '#0D0B1A'; document.getElementById('biBgPick').value = '#0D0B1A';
-        document.getElementById('biFg').value = '#FFFFFF'; document.getElementById('biFgPick').value = '#FFFFFF';
-        document.getElementById('biAcc').value = '#00D4AA'; document.getElementById('biAccPick').value = '#00D4AA';
-        const logoPreview = document.getElementById('biLogoPreview');
-        if (logoPreview) logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
         return;
     }
     const res = await fetch(`${API}/brands/${brandId}`);
@@ -5237,161 +6235,20 @@ async function loadBrandIdentity() {
     document.getElementById('biSlug').value = brand.slug || '';
     document.getElementById('biSettore').value = c.settore || '';
     document.getElementById('biHomepage').value = c.homepage || '';
-    document.getElementById('biBg').value = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biBgPick').value = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biFg').value = c.foregroundColor || '#FFFFFF';
-    document.getElementById('biFgPick').value = c.foregroundColor || '#FFFFFF';
-    document.getElementById('biAcc').value = c.labelColor || '#00D4AA';
-    document.getElementById('biAccPick').value = c.labelColor || '#00D4AA';
-    // Color preview
-    document.getElementById('biCpBg').style.background = c.backgroundColor || '#0D0B1A';
-    document.getElementById('biCpAcc').style.background = c.labelColor || '#00D4AA';
-    // Logo preview — load from server via fetch (needs auth headers)
-    const logoPreview = document.getElementById('biLogoPreview');
-    const logoDeleteBtn = document.getElementById('biLogoDeleteBtn');
-    const logoStatus = document.getElementById('biLogoStatus');
-    document.getElementById('biLogoFile').value = '';
-    logoStatus.style.display = 'none';
-    try {
-        const logoRes = await fetch(`${API}/brands/${brandId}/logo?t=${Date.now()}`, { headers: getAuthHeaders() });
-        if (logoRes.ok) {
-            const blob = await logoRes.blob();
-            const url = URL.createObjectURL(blob);
-            logoPreview.innerHTML = '';
-            logoPreview.style.border = '2px solid var(--border)';
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-            logoPreview.appendChild(img);
-            logoDeleteBtn.style.display = 'inline-block';
-            console.log('[Brand Identity] Logo caricato dal server');
-        } else {
-            logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
-            logoPreview.style.border = '2px dashed var(--border)';
-            logoDeleteBtn.style.display = 'none';
-            console.log('[Brand Identity] Nessun logo trovato');
-        }
-    } catch(e) {
-        logoPreview.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nessun logo</span>';
-        logoPreview.style.border = '2px dashed var(--border)';
-        logoDeleteBtn.style.display = 'none';
-    }
-    // Landing link removed
-}
-
-function previewBiLogo(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    console.log('[Logo] File selezionato:', file.name, file.type, file.size + 'B');
-    const status = document.getElementById('biLogoStatus');
-    status.style.display = 'block';
-    status.style.color = 'var(--teal)';
-    status.textContent = 'File selezionato: ' + file.name;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const preview = document.getElementById('biLogoPreview');
-        preview.style.border = '2px solid var(--teal)';
-        preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;">`;
-        console.log('[Logo] Preview caricata OK');
-    };
-    reader.onerror = () => {
-        status.style.color = 'var(--red)';
-        status.textContent = 'Errore lettura file';
-    };
-    reader.readAsDataURL(file);
-}
-
-async function uploadBiLogo() {
-    if (!brandId) return toast('Nessun brand selezionato');
-    const fileInput = document.getElementById('biLogoFile');
-    const file = fileInput.files[0];
-    if (!file) return toast('Seleziona prima un file immagine');
-    const btn = document.getElementById('biLogoUploadBtn');
-    const status = document.getElementById('biLogoStatus');
-    btn.disabled = true; btn.textContent = 'Caricando...';
-    status.style.display = 'block';
-    status.style.color = 'var(--teal)';
-    status.textContent = 'Upload in corso...';
-    try {
-        // Read file as base64
-        const base64 = await new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result.split(',')[1]);
-            r.onerror = () => reject(new Error('Errore lettura file'));
-            r.readAsDataURL(file);
-        });
-        console.log('[Logo] Base64 length:', base64.length);
-        const res = await fetch(`${API}/brands/${brandId}/logo`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-            body: JSON.stringify({ logo_base64: base64 })
-        });
-        const resData = await res.json().catch(() => ({}));
-        console.log('[Logo] Upload response:', res.status, resData);
-        if (!res.ok) {
-            throw new Error(resData.error || 'Errore server ' + res.status);
-        }
-        status.style.color = 'var(--green)';
-        status.textContent = 'Logo salvato con successo!';
-        toast('Logo caricato!');
-        // Reload logo from server to confirm it persisted (use fetch with auth)
-        const verifyRes = await fetch(`${API}/brands/${brandId}/logo?t=${Date.now()}`, { headers: getAuthHeaders() });
-        const logoPreview = document.getElementById('biLogoPreview');
-        if (verifyRes.ok) {
-            const blob = await verifyRes.blob();
-            const url = URL.createObjectURL(blob);
-            logoPreview.innerHTML = '';
-            logoPreview.style.border = '2px solid var(--border)';
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
-            logoPreview.appendChild(img);
-            document.getElementById('biLogoDeleteBtn').style.display = 'inline-block';
-            console.log('[Logo] Ricaricato da server OK');
-        } else {
-            status.style.color = 'var(--red)';
-            status.textContent = 'Upload OK ma logo non trovato sul server — riprova';
-            console.error('[Logo] Upload claimed success but GET /logo failed');
-        }
-    } catch(err) {
-        console.error('[Logo] Upload error:', err);
-        status.style.color = 'var(--red)';
-        status.textContent = 'Errore: ' + err.message;
-        toast('Errore: ' + err.message);
-    }
-    btn.disabled = false; btn.textContent = 'Carica Logo';
-}
-
-async function deleteBiLogo() {
-    if (!confirm('Eliminare il logo?')) return;
-    // Remove logos from brand config
-    const res = await fetch(`${API}/brands/${brandId}`);
-    const brand = await res.json();
-    const config = { ...(brand.config || {}) };
-    delete config.logos;
-    await fetch(`${API}/brands/${brandId}`, {
-        method: 'PUT',
-        headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-        body: JSON.stringify({ config })
-    });
-    toast('Logo eliminato');
-    loadBrandIdentity();
 }
 
 async function saveBrandIdentity() {
     const name = document.getElementById('biName').value.trim();
     if (!name) { toast('Inserisci il nome del brand'); return; }
     const config = {
-        backgroundColor: document.getElementById('biBg').value,
-        foregroundColor: document.getElementById('biFg').value,
-        labelColor: document.getElementById('biAcc').value,
         settore: document.getElementById('biSettore').value,
         homepage: document.getElementById('biHomepage').value.trim(),
     };
     const slug = document.getElementById('biSlug').value.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (!brandId) {
         // CREATE new brand
-        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config }) });
+        const productLine = getUnscopedDashboardProductLine();
+        const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config: { ...BRAND_PASS_FIXED_COLORS, ...config, product_line: productLine } }) });
         const newBrand = await res.json();
         if (newBrand.id) {
             brandId = newBrand.id;
@@ -5644,6 +6501,23 @@ async function normalizeMediaForUpload(file, type) {
 }
 
 // ==================== MEDIA PICKER ====================
+/** Scarica immagine dalla Media Library come base64 (per pass / template). */
+async function fetchMediaImageBase64(mediaId) {
+    const res = await fetch(`${API}/media/${mediaId}/image`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Impossibile caricare il media');
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result;
+            const base64 = String(dataUrl).includes(',') ? String(dataUrl).split(',')[1] : String(dataUrl);
+            resolve(base64);
+        };
+        reader.onerror = () => reject(new Error('Errore lettura immagine'));
+        reader.readAsDataURL(blob);
+    });
+}
+
 let mpCallback = null;
 let mpCurrentFilter = 'all';
 
@@ -5682,8 +6556,15 @@ function mpFilter(type) {
   mpLoadItems();
 }
 
-function mpSelect(mediaId) {
-  if (mpCallback) mpCallback(mediaId, `/api/v1/media/${mediaId}/image`);
+async function mpSelect(mediaId) {
+  const imageUrl = `/api/v1/media/${mediaId}/image`;
+  if (mpCallback) {
+    try {
+      await mpCallback(mediaId, imageUrl);
+    } catch (err) {
+      toast(err.message || 'Errore selezione media');
+    }
+  }
   closeMediaPicker();
 }
 
@@ -5801,39 +6682,90 @@ async function deleteAllMedia() {
 }
 
 // ==================== PASS DESIGN ====================
+function setPassDesignPreview(kind, imageUrl) {
+    if (kind === 'logo') {
+        const img = document.getElementById('bsLogoPreview');
+        const ph = document.getElementById('bsLogoPlaceholder');
+        if (img) { img.src = imageUrl; img.style.display = 'block'; }
+        if (ph) ph.style.display = 'none';
+    } else {
+        const img = document.getElementById('bsStripPreview');
+        const ph = document.getElementById('bsStripPlaceholder');
+        if (img) { img.src = imageUrl; img.style.display = 'block'; }
+        if (ph) ph.style.display = 'none';
+    }
+}
+
+async function onPassDesignFile(input, kind) {
+    if (!input.files || !input.files[0]) return;
+    const b64 = await fileToBase64(input.files[0]);
+    const previewUrl = 'data:image/png;base64,' + b64;
+    setPassDesignPreview(kind, previewUrl);
+    input._pendingBase64 = b64;
+}
+
+async function pickMediaForPassDesign(kind) {
+    if (!brandId) return toast('Seleziona un brand');
+    openMediaPicker(async (mediaId, imageUrl) => {
+        const base64 = await fetchMediaImageBase64(mediaId);
+        const endpoint = kind === 'logo' ? 'logo' : 'strip';
+        const body = kind === 'logo' ? { logo_base64: base64 } : { strip_base64: base64 };
+        const res = await fetch(`${API}/brands/${brandId}/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Salvataggio fallito');
+        }
+        setPassDesignPreview(kind, 'data:image/png;base64,' + base64);
+        toast((kind === 'logo' ? 'Logo' : 'Strip') + ' salvato dal media');
+    }, 'all');
+}
+
 async function loadPassDesign() {
     if (!brandId) return;
     try {
-        const r = await fetch(`${API}/brands/${brandId}`, { headers: getAuthHeaders() });
-        const brand = await r.json();
-        const config = brand.config || {};
-        // AI style prompt removed
+        const logoRes = await fetch(`${API}/brands/${brandId}/logo?t=${Date.now()}`, { headers: getAuthHeaders() });
+        if (logoRes.ok) {
+            const blob = await logoRes.blob();
+            const url = URL.createObjectURL(blob);
+            setPassDesignPreview('logo', url);
+        }
+        const brandRes = await fetch(`${API}/brands/${brandId}`, { headers: getAuthHeaders() });
+        const brand = await brandRes.json();
+        const stripB64 = brand.config?.logos?.strip || brand.config?.strip_base64;
+        if (stripB64) {
+            setPassDesignPreview('strip', 'data:image/png;base64,' + stripB64);
+        }
     } catch(e) { console.error('Load pass design error:', e); }
 }
 
 async function savePassDesign() {
     if (!brandId) return;
-    // Upload logo if selected
-    const logoFile = document.getElementById('bsLogoFile').files[0];
-    if (logoFile) {
-        const logoB64 = await fileToBase64(logoFile);
+    let saved = false;
+    const logoFile = document.getElementById('bsLogoFile');
+    const stripFile = document.getElementById('bsStripFile');
+    if (logoFile?.files?.[0]) {
+        const logoB64 = logoFile._pendingBase64 || await fileToBase64(logoFile.files[0]);
         await fetch(`${API}/brands/${brandId}/logo`, {
             method: 'POST',
             headers: {'Content-Type':'application/json', ...getAuthHeaders()},
             body: JSON.stringify({ logo_base64: logoB64 })
         });
+        saved = true;
     }
-    // Upload strip if selected
-    const stripFile = document.getElementById('bsStripFile').files[0];
-    if (stripFile) {
-        const stripB64 = await fileToBase64(stripFile);
+    if (stripFile?.files?.[0]) {
+        const stripB64 = stripFile._pendingBase64 || await fileToBase64(stripFile.files[0]);
         await fetch(`${API}/brands/${brandId}/strip`, {
             method: 'POST',
             headers: {'Content-Type':'application/json', ...getAuthHeaders()},
             body: JSON.stringify({ strip_base64: stripB64 })
         });
+        saved = true;
     }
-    if (!logoFile && !stripFile) return toast('Seleziona almeno un file');
+    if (!saved) return toast('Seleziona un file o usa Media Library');
     toast('Immagini pass salvate!');
 }
 
@@ -5904,19 +6836,22 @@ async function deleteUser(id) {
 
 // ==================== W.AI ====================
 let waiDraft = null;
+let waiPushComboDraft = null;
+let waiComboStripSaved = false;
 let waiOriginalPrompt = '';
 let waiIntegrationTrace = '';
 let waiCurrentStripBase64 = null;
 let waiCurrentStripPayload = null;
 
 function waiBuildPreviousProposal() {
-    if (!waiDraft) return null;
+    const src = waiDraft || waiPushComboDraft;
+    if (!src) return null;
     return {
-        intent: waiDraft.intent,
-        type: waiDraft.type,
-        preview: waiDraft.preview,
-        payload: waiDraft.payload,
-        answer: waiDraft.answer || ''
+        intent: src.intent,
+        type: src.type,
+        preview: src.preview,
+        payload: src.payload,
+        answer: src.answer || ''
     };
 }
 
@@ -5940,7 +6875,7 @@ function waiSyncRefinementUi() {
     const label = document.getElementById('waiRefineLabel');
     const refine = document.getElementById('waiRefinePrompt');
     const btn = document.getElementById('waiRefineBtn');
-    const isStrip = waiDraft?.intent === 'strip.generate' || !!waiCurrentStripBase64;
+    const isStrip = waiIsComboStripStep() || waiDraft?.intent === 'strip.generate' || (!!waiCurrentStripBase64 && !waiIsComboPushStep());
     if (label) {
         label.textContent = isStrip
             ? 'Integra o correggi la scena da generare'
@@ -5967,6 +6902,7 @@ function waiShowRefinementUi() {
 function waiResetRefinementState() {
     waiOriginalPrompt = '';
     waiIntegrationTrace = '';
+    waiResetComboPushFlow();
     waiHideRefinementUi();
 }
 
@@ -5993,6 +6929,7 @@ function toggleWaiOverlay(forceOpen) {
         if (preview) preview.style.display = 'none';
         waiResetStripPreview();
         waiResetRefinementState();
+        waiResetAudienceMode();
     }
 }
 
@@ -6006,17 +6943,117 @@ function waiBuildStripPayload(data) {
     return {
         ...(data?.payload || {}),
         brand_id: data?.payload?.brand_id || brandId,
-        prompt_en: data?.payload?.prompt_en || data?.preview?.details?.prompt_en || ''
+        prompt_en: data?.payload?.prompt_en
+            || data?.payload?.strip_prompt_en
+            || data?.preview?.details?.prompt_en
+            || data?.preview?.details?.strip_prompt_en
+            || ''
     };
 }
 
+function waiDraftHasPushWithStrip(data) {
+    const intent = String(data?.intent || '');
+    if (intent !== 'push.send' && intent !== 'push.schedule') return false;
+    return !!(data?.payload?.strip_prompt_en || data?.preview?.details?.strip_prompt_en);
+}
+
+function waiIsComboStripStep() {
+    return !!waiPushComboDraft && !waiComboStripSaved;
+}
+
+function waiIsComboPushStep() {
+    return !!waiPushComboDraft && waiComboStripSaved;
+}
+
+function waiGetActiveDraft() {
+    return waiDraft || waiPushComboDraft;
+}
+
+function waiCanConfirm(data) {
+    if (!data) return false;
+    if (data.intent === 'audience.query') {
+        return !!(data.payload?.query_spec || data.preview?.details?.query_spec);
+    }
+    if (data.intent === 'strip.generate') {
+        return !!(data.payload?.prompt_en || data.preview?.details?.prompt_en);
+    }
+    if (data.intent === 'push.send' || data.intent === 'push.schedule') {
+        if (waiDraftHasPushWithStrip(data) && !waiIsComboPushStep() && !waiIsComboStripStep()) return true;
+        const p = data.payload || {};
+        const d = data.preview?.details || {};
+        return !!(
+            (p.title && p.message)
+            || (d.title && (d.message || d.message_it))
+        );
+    }
+    const p = data.payload || {};
+    return Object.keys(p).filter((k) => k !== 'brand_id').length > 0;
+}
+
+function waiResetComboPushFlow() {
+    waiPushComboDraft = null;
+    waiComboStripSaved = false;
+    const stepLabel = document.getElementById('waiComboStepLabel');
+    const status = document.getElementById('waiPushStripStatus');
+    if (stepLabel) { stepLabel.style.display = 'none'; stepLabel.textContent = ''; }
+    if (status) { status.style.display = 'none'; status.textContent = ''; }
+}
+
+function waiSetComboStepLabel(text) {
+    const stepLabel = document.getElementById('waiComboStepLabel');
+    if (stepLabel) {
+        stepLabel.textContent = text;
+        stepLabel.style.display = text ? 'block' : 'none';
+    }
+}
+
+async function waiStartComboPushStripFlow(data) {
+    waiPushComboDraft = data;
+    waiComboStripSaved = false;
+    waiDraft = null;
+    const preview = document.getElementById('waiPreview');
+    if (preview) {
+        preview.style.display = 'block';
+        preview.innerHTML = '<div style="font-size:13px;color:#ccc;line-height:1.6;">Step 1 di 2 — generazione strip...</div>';
+    }
+    waiSetComboStepLabel('Step 1 di 2 — Strip');
+    waiHideRefinementUi();
+    await waiHandleStripGenerate(waiBuildStripPayload(data), { mode: 'push-combo' });
+}
+
+function waiComboContinueToPush() {
+    if (!waiPushComboDraft) return;
+    if (!waiCurrentStripBase64) return alert('Genera prima la strip');
+    if (!waiComboStripSaved) return alert('Salva la strip in libreria prima di continuare');
+    waiDraft = waiPushComboDraft;
+    waiSetComboStepLabel('Step 2 di 2 — Push');
+    const status = document.getElementById('waiPushStripStatus');
+    if (status) {
+        status.style.display = 'block';
+        status.textContent = 'Strip salvata in libreria. Controlla titolo e messaggio, poi conferma l\'invio.';
+    }
+    const stripPreview = document.getElementById('wai-strip-preview');
+    if (stripPreview) stripPreview.style.display = 'none';
+    renderWaiPreview(waiDraft);
+    waiShowRefinementUi();
+}
+
 async function applyWaiAskResponse(data, { clearRefineField = false, regenerateStrip = false } = {}) {
-    waiDraft = data;
-    if (regenerateStrip && waiShouldAutoGenerateStrip(data)) {
+    if (regenerateStrip && waiShouldAutoGenerateStrip(data) && data.intent === 'strip.generate') {
+        waiDraft = data;
         waiHideRefinementUi();
         await waiHandleStripGenerate(waiBuildStripPayload(data));
         return;
     }
+    if (waiDraftHasPushWithStrip(data) && !waiIsComboPushStep()) {
+        if (clearRefineField) {
+            const refine = document.getElementById('waiRefinePrompt');
+            if (refine) refine.value = '';
+        }
+        await waiStartComboPushStripFlow(data);
+        return;
+    }
+    waiDraft = data;
     renderWaiPreview(data);
     waiShowRefinementUi();
     if (clearRefineField) {
@@ -6039,19 +7076,21 @@ async function askWai() {
     }
     const preview = document.getElementById('waiPreview');
     if (preview) preview.style.display = 'none';
+    waiResetComboPushFlow();
     waiResetStripPreview();
     waiHideRefinementUi();
     waiIntegrationTrace = '';
 
     try {
+        const routedPrompt = waiWrapAudiencePrompt(prompt);
         const res = await fetch(`${API}/wai/ask`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, brand_id: brandId })
+            body: JSON.stringify({ prompt: routedPrompt, brand_id: brandId })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return alert(data.error || 'Errore W.AI');
-        waiOriginalPrompt = prompt;
+        waiOriginalPrompt = routedPrompt;
         await applyWaiAskResponse(data);
     } finally {
         if (btn) {
@@ -6066,10 +7105,11 @@ async function refineWai() {
     if (currentUser?.role === 'viewer') return alert('Permessi insufficienti (solo lettura)');
     const followup = document.getElementById('waiRefinePrompt')?.value?.trim() || '';
     if (!followup) return alert('Scrivi cosa vuoi modificare o integrare');
-    if (!waiDraft) return alert('Nessuna proposta da aggiornare');
+    if (!waiDraft && !waiPushComboDraft) return alert('Nessuna proposta da aggiornare');
     const originalPrompt = waiOriginalPrompt || document.getElementById('waiPrompt')?.value?.trim() || '';
     if (!originalPrompt) return alert('Prompt originale mancante');
-    const wasStrip = waiDraft?.intent === 'strip.generate' || !!waiCurrentStripBase64;
+        const proposal = waiDraft || waiPushComboDraft;
+        const wasStrip = proposal?.intent === 'strip.generate' || !!waiCurrentStripBase64 || waiDraftHasPushWithStrip(proposal);
 
     const btn = document.getElementById('waiRefineBtn');
     const prevLabel = btn ? btn.textContent : '';
@@ -6084,7 +7124,7 @@ async function refineWai() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 brand_id: brandId,
-                prompt: originalPrompt,
+                prompt: waiWrapAudiencePrompt(originalPrompt),
                 followup,
                 previous_proposal: waiBuildPreviousProposal()
             })
@@ -6094,7 +7134,16 @@ async function refineWai() {
         waiIntegrationTrace = waiIntegrationTrace
             ? `${waiIntegrationTrace}\n${followup}`
             : followup;
-        const regenerateStrip = data.intent === 'strip.generate' && wasStrip;
+        if (waiPushComboDraft && !waiComboStripSaved && waiDraftHasPushWithStrip(data)) {
+            waiPushComboDraft = data;
+            waiComboStripSaved = false;
+            const followupStrip = data.payload?.strip_prompt_en || data.preview?.details?.strip_prompt_en;
+            if (followupStrip) {
+                await waiHandleStripGenerate(waiBuildStripPayload(data), { mode: 'push-combo' });
+            }
+            return;
+        }
+        const regenerateStrip = wasStrip && data.intent === 'strip.generate';
         await applyWaiAskResponse(data, { clearRefineField: true, regenerateStrip });
     } finally {
         if (btn) {
@@ -6102,6 +7151,51 @@ async function refineWai() {
             waiSyncRefinementUi();
         }
     }
+}
+
+function filterStaleAudienceWarnings(warnings) {
+    const block = [
+        /audience_behavior_30d/i, /30 giorni aggregat/i, /contesto disponibile/i, /copre solo aggregat/i,
+        /impossibile isolare/i, /senza query diretta/i, /query diretta al database/i, /granularit/i,
+        /necessaria una query sul server/i, /non possono essere filtrati/i, /dati disponibili nel contesto/i,
+        /Query spec generata automaticamente/i, /scheduled_sent/i, /batch di invio/i, /destinatari singol/i,
+        /stima/i, /media lineare/i, /aperture\/settimana/i, /eventi.*30/i
+    ];
+    return (warnings || []).filter((w) => !block.some((re) => re.test(String(w))));
+}
+
+function waiAudienceAnswerText(data) {
+    let text = String(data.answer || data.preview?.summary || '').trim();
+    text = text.replace(/Esempi:\s*[^\n]+/gi, '').trim();
+    text = text.replace(/Possessori che corrispondono:\s*\d+\.?\s*/gi, '').trim();
+    text = text.replace(/^Segmento da richiesta audience platform[^.]*\.\s*/i, '').trim();
+    return text;
+}
+
+function renderWaiAudienceQueryPreview(data, warnHtml) {
+    const count = data.preview?.details?.member_count;
+    const querySpec = data.payload?.query_spec || data.preview?.details?.query_spec;
+    const periodDays = data.preview?.details?.since_days || querySpec?.behavior?.since_days;
+    const periodFrom = data.preview?.details?.period_from;
+    const periodTo = data.preview?.details?.period_to;
+    const metricLabel = data.preview?.details?.metric_label || 'possessori';
+    const periodHtml = periodDays
+        ? `<div style="font-size:11px;color:#888;margin-bottom:6px;">Periodo: ultimi ${periodDays} giorni${periodFrom && periodTo ? ` (${periodFrom} → ${periodTo})` : ''}</div>`
+        : '';
+    const answerText = waiAudienceAnswerText(data);
+    const canSave = !!querySpec;
+    return `
+        <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Statistiche segmento</div>
+        ${count !== undefined && count !== null
+            ? `<div style="font-size:28px;font-weight:700;color:#00D4AA;line-height:1.2;">${count}</div><div style="font-size:12px;color:#999;margin-bottom:8px;">${esc(metricLabel)}</div>`
+            : ''}
+        ${periodHtml}
+        ${answerText ? `<p style="font-size:13px;color:#ccc;line-height:1.6;">${esc(answerText)}</p>` : ''}
+        ${warnHtml}
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            ${canSave ? `<button type="button" onclick="waiSaveAudience()" style="flex:1;min-width:140px;padding:8px;background:#00D4AA;color:#0a0a0a;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Salva come audience</button>` : ''}
+            <button type="button" onclick="dismissWai()" style="flex:1;min-width:100px;padding:8px;background:rgba(255,255,255,0.06);color:#999;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;cursor:pointer;">Chiudi</button>
+        </div>`;
 }
 
 function renderWaiPreview(data) {
@@ -6113,39 +7207,71 @@ function renderWaiPreview(data) {
         ? `<div style="margin-top:8px;font-size:11px;color:#f5a623;line-height:1.45;">${warnings.map((w) => esc(w)).join('<br>')}</div>`
         : '';
 
+    if (data.intent === 'audience.query') {
+        const audWarn = filterStaleAudienceWarnings(warnings);
+        const audWarnHtml = audWarn.length
+            ? `<div style="margin-top:8px;font-size:11px;color:#f5a623;line-height:1.45;">${audWarn.map((w) => esc(w)).join('<br>')}</div>`
+            : '';
+        box.innerHTML = renderWaiAudienceQueryPreview(data, audWarnHtml);
+        box.style.display = 'block';
+        return;
+    }
+
     if (isQuery) {
         box.innerHTML = `
             <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Risposta</div>
             <p style="font-size:13px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${esc(data.answer || data.preview?.summary || '')}</p>
-            ${warnHtml}`;
+            ${warnHtml}
+            <div style="margin-top:12px;">
+                <button type="button" onclick="dismissWai()" style="width:100%;padding:8px;background:rgba(255,255,255,0.06);color:#999;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;cursor:pointer;">Chiudi</button>
+            </div>`;
     } else {
         const details = data.preview?.details || {};
         const isStripGenerate = data.intent === 'strip.generate';
         const isPushIntent = String(data.intent || '').startsWith('push.');
         const promptEn = details.prompt_en || data.payload?.prompt_en || '';
+        const stripPromptEn = details.strip_prompt_en || data.payload?.strip_prompt_en || '';
+        const hasStripOnPush = isPushIntent && !!stripPromptEn && !waiIsComboStripStep();
+        const comboPushReady = waiIsComboPushStep();
         const detailsHtml = Object.entries(details)
-            .filter(([k]) => !(isStripGenerate && k === 'prompt_en'))
+            .filter(([k]) => !(isStripGenerate && k === 'prompt_en') && !(hasStripOnPush && k === 'strip_prompt_en'))
             .map(([k, v]) =>
                 `<div style="font-size:12px;color:#999;"><strong style="color:#ccc;">${esc(k)}:</strong> ${esc(String(v))}</div>`
             ).join('');
         const promptBox = isStripGenerate && promptEn
             ? `<div style="margin:8px 0;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);font-size:11px;color:#aaa;line-height:1.5;white-space:pre-wrap;word-break:break-word;">${esc(promptEn)}</div>`
             : '';
-        const confirmLabel = isStripGenerate ? 'Genera immagine' : 'Conferma';
-        const pushHint = isPushIntent
-            ? '<div style="margin-top:8px;font-size:11px;color:#999;line-height:1.45;">Le push sono solo testo. Per una strip AI descrivi la scena da generare (es. «genera strip estiva con cocktail»).</div>'
+        const stripPushBox = hasStripOnPush
+            ? `<div style="margin:8px 0;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);font-size:11px;color:#aaa;line-height:1.5;white-space:pre-wrap;word-break:break-word;"><strong style="color:#ccc;">Strip AI:</strong> ${esc(stripPromptEn)}</div>`
             : '';
+        const canConfirm = waiCanConfirm(data);
+        const confirmLabel = isStripGenerate
+            ? 'Genera immagine'
+            : (comboPushReady
+                ? (data.intent === 'push.schedule' ? 'Programma push' : 'Invia push')
+                : (hasStripOnPush
+                    ? 'Avvia flusso strip + push'
+                    : 'Conferma'));
+        const confirmDisabledAttr = canConfirm ? '' : ' disabled title="Proposta incompleta: chiedi a W.AI di aggiungere titolo e messaggio push"';
+        const pushHint = isPushIntent && !hasStripOnPush && !comboPushReady
+            ? '<div style="margin-top:8px;font-size:11px;color:#999;line-height:1.45;">Le push sono solo testo. Per una strip AI descrivi la scena da generare (es. «genera strip estiva con cocktail»).</div>'
+            : (comboPushReady
+                ? '<div style="margin-top:8px;font-size:11px;color:#999;line-height:1.45;">La strip è già in libreria e verrà applicata al pass all\'invio.</div>'
+                : (hasStripOnPush
+                    ? '<div style="margin-top:8px;font-size:11px;color:#999;line-height:1.45;">Prima anteprima strip e salvataggio in libreria, poi testo push e invio.</div>'
+                    : ''));
 
         box.innerHTML = `
             <div style="font-size:12px;font-weight:700;color:#f4ede2;margin-bottom:6px;">Anteprima</div>
             <p style="font-size:13px;color:#00D4AA;margin-bottom:8px;">${esc(data.preview?.summary || '')}</p>
             ${promptBox}
+            ${stripPushBox}
             <div style="margin-bottom:8px;">${detailsHtml}</div>
             ${pushHint}
             ${warnHtml}
             <div style="display:flex;gap:8px;margin-top:12px;">
-                <button onclick="confirmWai()" style="flex:1;padding:8px;background:#00D4AA;color:#0a0a0a;
-                    border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">${confirmLabel}</button>
+                <button onclick="confirmWai()"${confirmDisabledAttr} style="flex:1;padding:8px;background:${canConfirm ? '#00D4AA' : 'rgba(255,255,255,0.12)'};color:${canConfirm ? '#0a0a0a' : '#666'};
+                    border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:${canConfirm ? 'pointer' : 'not-allowed'};">${confirmLabel}</button>
                 <button onclick="dismissWai()" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);
                     color:#999;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:12px;
                     cursor:pointer;">Annulla</button>
@@ -6155,24 +7281,66 @@ function renderWaiPreview(data) {
 }
 
 async function confirmWai() {
-    if (!waiDraft?.payload || !Object.keys(waiDraft.payload).length) return alert('Nessuna azione da confermare');
-    if (waiDraft.intent === 'strip.generate') {
-        await waiHandleStripGenerate(waiBuildStripPayload(waiDraft));
+    const draft = waiGetActiveDraft();
+    if (draft?.intent === 'audience.query') return waiSaveAudience();
+    if (!waiCanConfirm(draft)) return alert('Nessuna azione da confermare. Integra titolo e messaggio push, poi usa «Aggiorna proposta».');
+    if (draft.intent === 'strip.generate') {
+        await waiHandleStripGenerate(waiBuildStripPayload(draft));
         return;
     }
-    const res = await fetch(`${API}/wai/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intent: waiDraft.intent, payload: waiDraft.payload, prompt: waiGetPromptTrace() })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return alert(data.error || 'Errore esecuzione');
-    toast(data.message || 'Azione completata');
-    dismissWai();
-    refreshDashboardSection(waiDraft.intent);
+    if (waiDraftHasPushWithStrip(draft) && !waiIsComboPushStep() && !waiIsComboStripStep()) {
+        await waiStartComboPushStripFlow(draft);
+        return;
+    }
+    const payload = { ...draft.payload, brand_id: draft.payload.brand_id || brandId };
+    if (waiIsComboStripStep()) {
+        return alert('Salva la strip in libreria prima di inviare la push');
+    }
+    const comboPushStrip = waiIsComboPushStep() || (waiDraftHasPushWithStrip(draft) && waiCurrentStripBase64);
+    if (comboPushStrip) {
+        if (!waiComboStripSaved && waiPushComboDraft) {
+            return alert('Salva la strip in libreria prima di inviare la push');
+        }
+        if (!waiCurrentStripBase64) {
+            return alert('Strip mancante. Ripeti il flusso da capo.');
+        }
+        payload.strip_base64 = waiCurrentStripBase64;
+        delete payload.strip_prompt_en;
+    }
+    const preview = document.getElementById('waiPreview');
+    const prevHtml = preview ? preview.innerHTML : '';
+    if (comboPushStrip && preview) {
+        preview.style.display = 'block';
+        preview.innerHTML = '<div style="font-size:13px;color:#ccc;line-height:1.6;">Invio push e aggiornamento pass in corso...</div>';
+    }
+    try {
+        const res = await fetch(`${API}/wai/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ intent: draft.intent, payload, prompt: waiGetPromptTrace() })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (preview && prevHtml) {
+                preview.innerHTML = prevHtml;
+                preview.style.display = 'block';
+            }
+            return alert(data.error || 'Errore esecuzione');
+        }
+        toast(data.message || 'Azione completata');
+        dismissWai();
+        refreshDashboardSection(draft.intent);
+    } catch (err) {
+        if (preview && prevHtml) {
+            preview.innerHTML = prevHtml;
+            preview.style.display = 'block';
+        }
+        alert(err.message || 'Errore esecuzione');
+    }
 }
 
-async function waiHandleStripGenerate(payload) {
+async function waiHandleStripGenerate(payload, { mode = 'library' } = {}) {
+    const pushCombo = mode === 'push-combo';
     const preview = document.getElementById('waiPreview');
     const stripPreview = document.getElementById('wai-strip-preview');
     const img = document.getElementById('wai-strip-img');
@@ -6180,10 +7348,15 @@ async function waiHandleStripGenerate(payload) {
     const sendBtn = document.getElementById('waiSendBtn');
     const sendPrevLabel = sendBtn ? sendBtn.textContent : '';
     if (stripPreview) stripPreview.style.display = 'none';
-    waiHideRefinementUi();
-    if (preview) {
+    if (!pushCombo) waiHideRefinementUi();
+    if (preview && !pushCombo) {
         preview.style.display = 'block';
         preview.innerHTML = '<div style="font-size:13px;color:#ccc;line-height:1.6;">Generazione immagine in corso... (10-20 secondi)</div>';
+    }
+    const statusElStart = document.getElementById('waiPushStripStatus');
+    if (statusElStart && pushCombo) {
+        statusElStart.style.display = 'block';
+        statusElStart.textContent = 'Generazione anteprima strip... (10-20 secondi)';
     }
     if (sendBtn) {
         sendBtn.disabled = true;
@@ -6208,15 +7381,27 @@ async function waiHandleStripGenerate(payload) {
         waiCurrentStripPayload = payload;
         if (img) img.src = `data:image/png;base64,${data.image_base64}`;
         if (nameInput) nameInput.value = '';
-        if (preview) {
+        if (pushCombo) {
+            if (preview) {
+                preview.style.display = 'none';
+                preview.innerHTML = '';
+            }
+        } else if (preview) {
             preview.style.display = 'none';
             preview.innerHTML = '';
         }
         if (stripPreview) {
             stripPreview.style.display = 'block';
+            const saveRow = stripPreview.querySelector('[data-wai-strip-save-row]');
+            if (saveRow) saveRow.style.display = 'flex';
             stripPreview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-        waiShowRefinementUi();
+        const statusEl = document.getElementById('waiPushStripStatus');
+        if (statusEl && pushCombo) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = 'Inserisci un nome e salva in libreria: poi passerai al testo della push.';
+        }
+        if (pushCombo) waiShowRefinementUi();
     } catch (err) {
         if (preview) {
             preview.style.display = 'block';
@@ -6249,6 +7434,12 @@ async function waiSaveStrip() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Salvataggio fallito');
         toast(data.message || `Strip "${name}" salvata`);
+        if (waiPushComboDraft) {
+            waiComboStripSaved = true;
+            waiComboContinueToPush();
+            refreshDashboardSection('strip.generate');
+            return;
+        }
         waiCancelStrip();
         dismissWai();
         refreshDashboardSection('strip.generate');
@@ -6258,16 +7449,25 @@ async function waiSaveStrip() {
 }
 
 async function waiRegenerateStrip() {
-    if (!waiCurrentStripPayload) return;
-    await waiHandleStripGenerate(waiCurrentStripPayload);
+    const payload = waiCurrentStripPayload || (waiPushComboDraft ? waiBuildStripPayload(waiPushComboDraft) : null);
+    if (!payload) return;
+    const mode = waiPushComboDraft && !waiComboStripSaved ? 'push-combo' : 'library';
+    await waiHandleStripGenerate(payload, { mode });
 }
 
 function waiCancelStrip() {
+    if (waiPushComboDraft) {
+        waiResetComboPushFlow();
+        const preview = document.getElementById('waiPreview');
+        if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+    }
     waiResetStripPreview();
 }
 
 function dismissWai() {
     waiDraft = null;
+    waiResetAudienceMode();
+    waiResetComboPushFlow();
     const preview = document.getElementById('waiPreview');
     const prompt = document.getElementById('waiPrompt');
     if (preview) {
@@ -6286,7 +7486,8 @@ function refreshDashboardSection(intent) {
         reward: () => { if (typeof loadRewards === 'function') loadRewards(); },
         member: () => { if (typeof loadMembers === 'function') loadMembers(); },
         campaign: () => { loadCampaigns(); },
-        strip: () => { loadStripPromos(); loadMediaLibrary(); }
+        strip: () => { loadStripPromos(); loadMediaLibrary(); },
+        audience: () => { loadAudiences(); loadPushAudienceSelect(); if (typeof loadAudienceBehavior === 'function') loadAudienceBehavior(); }
     };
     (refreshMap[prefix] || (() => {}))();
 }

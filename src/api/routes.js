@@ -8,14 +8,15 @@ const {
   createTemplate, getTemplate, listTemplates, updateTemplate, deleteTemplate,
   createCampaign, getCampaign, listCampaigns, updateCampaign, deleteCampaign,
   incrementCampaignDownloads, incrementCampaignInstalls,
-  createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, listPasses, deletePass,
+  createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesForTemplate, listPasses, deletePass,
   logEvent, listEvents,
-  registerDevice, getDevicesForPass, getDevicesForBrand, unregisterDevice, getSerialsForDevice,
+  registerDevice, getDevicesForPass, getDevicesForBrand, getDevicesForTemplate, unregisterDevice, getSerialsForDevice,
   getAnalytics, getCampaignAnalytics,
   logPush, listPushes, deletePush, clearPushHistory,
   createScheduledPush, listScheduledPush, getScheduledPush, updateScheduledPush, deleteScheduledPush, logPushAssistantInteraction, logWaiInteraction, listWaiLog,
   createStripPromo, listStripPromos, getStripPromo, updateStripPromo, deleteStripPromo,
   createUser, getUserByEmail, getUser, listUsers, updateUser, deleteUser, verifyPassword,
+  createPasswordResetToken, getPasswordResetUserByToken, markPasswordResetTokenUsed,
   createMedia, listMedia, getMedia, deleteMedia,
   logAdEvent, getAdStats, getAdTimeline,
   createCreativeAsset, getCreativeAsset, listCreativeAssets, deleteCreativeAsset,
@@ -31,8 +32,33 @@ const {
   updateSamsungWalletStatus,
   getPassBySamsungRefId,
   registerWalletCallbackEvent,
-  finalizeWalletCallbackEvent
+  finalizeWalletCallbackEvent,
+  createAudience,
+  getAudience,
+  listAudiences,
+  updateAudience,
+  deleteAudience
 } = require('../db');
+const {
+  getPassHoldersInsights,
+  countAudienceMembers,
+  listAudienceMembers,
+  normalizeRules,
+  hasActiveRules,
+  getTargetPassesForPush,
+  getAppleDevicesForAudience,
+  ALLOWED_EVENT_ACTIONS
+} = require('../engine/audiences');
+const { executeAudienceQuery, mergeSpecToAudienceRules } = require('../engine/audience-query');
+const {
+  resolveAudienceQueryWindow,
+  buildAudienceQueryServerWarnings,
+  formatAudienceQueryAnswer,
+  todayInTimezone,
+  dateDaysAgoInTimezone,
+  TZ
+} = require('../engine/audience-prompt');
+const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } = require('../engine/holder-events');
 const { createPkpass } = require('../engine/passkit');
 const googleWallet = require('../engine/google-wallet');
 const samsungWallet = require('../engine/samsung-wallet');
@@ -98,6 +124,22 @@ async function pdfToPngIfNeeded(base64Data) {
   }
 }
 
+/** Strip per push: media library id o base64 inline; verifica tenant. */
+async function resolvePushStripBase64({ brand_id, strip_media_id, strip_base64 }) {
+  if (strip_media_id) {
+    const media = await getMedia(strip_media_id);
+    if (!media || String(media.brand_id) !== String(brand_id)) {
+      throw new Error('Media strip non trovato o non appartiene al brand');
+    }
+    if (!media.image_base64) throw new Error('Media senza immagine');
+    return pdfToPngIfNeeded(media.image_base64);
+  }
+  if (strip_base64) {
+    return pdfToPngIfNeeded(strip_base64);
+  }
+  return null;
+}
+
 async function notifySamsungSavedPasses(passes) {
   return samsungWallet.notifySavedPassesUpdates(passes);
 }
@@ -152,6 +194,84 @@ router.post('/auth/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Errore login' });
+  }
+});
+
+const forgotPasswordBuckets = new Map();
+
+function enforceForgotPasswordRateLimit(key) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const max = 5;
+  const bucket = forgotPasswordBuckets.get(key) || [];
+  const recent = bucket.filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    const err = new Error('Troppe richieste. Riprova tra qualche minuto.');
+    err.status = 429;
+    throw err;
+  }
+  recent.push(now);
+  forgotPasswordBuckets.set(key, recent);
+}
+
+function buildDashboardPublicUrl(req, query = '') {
+  const domain = process.env.CUSTOM_DOMAIN || req.headers.host || 'localhost';
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+  const q = query ? (query.startsWith('?') ? query : `?${query}`) : '';
+  return `${proto}://${domain}/dashboard${q}`;
+}
+
+router.post('/auth/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email richiesta' });
+    enforceForgotPasswordRateLimit(email);
+
+    const generic = {
+      success: true,
+      message: 'Se l\'email è registrata, riceverai le istruzioni per reimpostare la password.'
+    };
+
+    const user = await getUserByEmail(email);
+    if (user) {
+      const token = await createPasswordResetToken(user.id);
+      const resetUrl = buildDashboardPublicUrl(req, `reset=${encodeURIComponent(token)}`);
+      try {
+        const { sendPasswordResetEmail } = require('../engine/mailer');
+        await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl });
+      } catch (emailErr) {
+        console.error('Password reset email failed:', emailErr.message);
+      }
+    }
+
+    res.json(generic);
+  } catch (err) {
+    if (err.status === 429) return res.status(429).json({ error: err.message });
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Errore richiesta recupero password' });
+  }
+});
+
+router.post('/auth/reset-password', async (req, res) => {
+  try {
+    const token = String(req.body.token || '').trim();
+    const newPassword = String(req.body.new_password || '');
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token e nuova password richiesti' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password minimo 6 caratteri' });
+    }
+
+    const row = await getPasswordResetUserByToken(token);
+    if (!row) return res.status(400).json({ error: 'Link non valido o scaduto' });
+
+    await updateUser(row.user_id, { password: newPassword });
+    await markPasswordResetTokenUsed(token);
+    res.json({ success: true, message: 'Password aggiornata. Puoi accedere.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: err.message || 'Errore reimpostazione password' });
   }
 });
 
@@ -798,6 +918,44 @@ router.get('/pixel/:campaign_id', async (req, res) => {
   res.send(PIXEL_1x1);
 });
 
+// Pass back-link click tracking (retro Wallet → redirect)
+router.get('/track/pass-link', async (req, res) => {
+  try {
+    const serial = String(req.query.sn || '').trim();
+    const destination = String(req.query.to || '').trim();
+    const key = String(req.query.key || 'link').trim();
+    const label = String(req.query.label || '').trim();
+    if (!destination) return res.status(400).send('Link non valido');
+    if (serial) {
+      const pass = await getPassBySerial(serial);
+      if (pass) {
+        const { logHolderEvent } = require('../engine/holder-events');
+        await logHolderEvent({
+          brand_id: pass.brand_id,
+          pass_id: pass.id,
+          serial_number: pass.serial_number,
+          event_category: 'link',
+          event_action: 'link_click',
+          target_type: 'pass_back_link',
+          target_key: key,
+          target_label: label || null,
+          target_url: destination,
+          metadata: {
+            user_agent: req.headers['user-agent'],
+            referer: req.headers.referer || req.headers.referrer
+          }
+        });
+      }
+    }
+    res.redirect(302, destination);
+  } catch (err) {
+    console.error('track/pass-link error:', err);
+    const fallback = String(req.query.to || '').trim();
+    if (fallback) return res.redirect(302, fallback);
+    res.status(400).send('Errore link');
+  }
+});
+
 // Click redirect + tracking
 router.get('/click/:campaign_id', async (req, res) => {
   try {
@@ -1381,7 +1539,18 @@ router.put('/templates/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Template non trovato' });
     if (!requireBrandId(req, res, existing.brand_id)) return;
     const template = await updateTemplate(req.params.id, req.body);
-    res.json(template);
+    const { touched } = await touchPassesForTemplate(req.params.id);
+    let wallet_push_sent = 0;
+    const devices = await getDevicesForTemplate(req.params.id);
+    for (const device of devices) {
+      try {
+        const result = await sendPushUpdate(device.push_token);
+        if (result.success) wallet_push_sent++;
+      } catch (pushErr) {
+        console.error('[Template] Wallet push error:', pushErr.message);
+      }
+    }
+    res.json({ ...template, wallet_refresh: { passes_touched: touched, push_sent: wallet_push_sent } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1569,7 +1738,12 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 
 router.post('/push/send', async (req, res) => {
   try {
-    const { brand_id, title, message, campaign_id, update_pass, field_values, instant_win_id, gamification_id, channel = 'apple' } = req.body;
+    const {
+      brand_id, title, message, campaign_id, audience_id, update_pass, field_values,
+      instant_win_id, gamification_id, channel = 'apple',
+      back_link_label, back_link_url,
+      strip_media_id, strip_base64
+    } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
     if (!requireBrandId(req, res, brand_id)) return;
     if (!assertPushChannel(channel)) {
@@ -1577,36 +1751,22 @@ router.post('/push/send', async (req, res) => {
     }
     const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
 
-    console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}"`);
+    console.log(`[PUSH DEBUG] brand_id from dashboard: "${brand_id}" | campaign_id: "${campaign_id || 'none'}" | audience_id: "${audience_id || 'none'}"`);
 
     // Debug: check what's in the DB
     const allDevices = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
     const allPasses = await pool.query('SELECT DISTINCT brand_id FROM pass_instances');
     console.log(`[PUSH DEBUG] Total devices in DB: ${allDevices.rows[0].count} | Brand IDs in passes: ${JSON.stringify(allPasses.rows.map(r => r.brand_id))}`);
 
-    // Get all targeted passes once (used by Apple and Google channels)
-    const passQuery = campaign_id
-      ? await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])
-      : await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id]);
-    const targetPasses = passQuery.rows;
+    const pushTargetOpts = { campaign_id, audience_id };
+    const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
     const googleEligible = targetPasses.filter(p => p.google_wallet_object_id);
     const samsungEligible = targetPasses.filter(p => p.samsung_wallet_ref_id && p.samsung_wallet_saved);
 
     // Get Apple APNs devices only if requested
     let devices = [];
     if (sendApple) {
-      if (campaign_id) {
-        const result = await pool.query(
-          `SELECT DISTINCT dr.push_token, dr.serial_number
-           FROM device_registrations dr
-           JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-           WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
-          [brand_id, campaign_id]
-        );
-        devices = result.rows;
-      } else {
-        devices = await getDevicesForBrand(brand_id);
-      }
+      devices = await getAppleDevicesForAudience(brand_id, pushTargetOpts);
     }
 
     console.log(`[PUSH DEBUG] Devices found for brand: ${devices.length}`);
@@ -1642,7 +1802,30 @@ router.post('/push/send', async (req, res) => {
       // If not selected in this request, clear old sticky values.
       if (!instant_win_id) delete config.instantWinActive;
       if (!gamification_id) delete config.gamificationActive;
-      if (!instant_win_id && !gamification_id) delete config.stripOverride;
+
+      let pushStripB64 = null;
+      try {
+        pushStripB64 = await resolvePushStripBase64({ brand_id, strip_media_id, strip_base64 });
+      } catch (stripErr) {
+        return res.status(400).json({ error: stripErr.message });
+      }
+      delete config.stripOverride;
+
+      const linkOutUrl = (back_link_url || '').trim();
+      if (linkOutUrl) {
+        config.pushLinkOut = {
+          label: (back_link_label || '').trim() || 'Scopri di più',
+          url: linkOutUrl,
+          ts: Date.now()
+        };
+      } else {
+        delete config.pushLinkOut;
+      }
+
+      if (pushStripB64) {
+        config.stripOverride = pushStripB64;
+        console.log('[PUSH] Strip override from media library / upload');
+      }
 
       // Instant Win: inject play link into pass back field
       if (instant_win_id) {
@@ -1653,8 +1836,7 @@ router.post('/push/send', async (req, res) => {
             label: iwCampaign.push_message || iwCampaign.name || 'Gioca e Vinci!',
             game_type: iwCampaign.game_type
           };
-          // If campaign has a strip image, inject it
-          if (iwCampaign.strip_base64) {
+          if (!pushStripB64 && iwCampaign.strip_base64) {
             config.stripOverride = iwCampaign.strip_base64;
           }
           console.log(`[PUSH] Instant Win injected: campaign=${iwCampaign.id}, game=${iwCampaign.game_type}`);
@@ -1670,8 +1852,7 @@ router.post('/push/send', async (req, res) => {
             label: gamCampaign.push_message || gamCampaign.name || 'Gioca ora!',
             game_type: gamCampaign.game_type
           };
-          // If campaign has a strip image, inject it
-          if (gamCampaign.strip_base64) {
+          if (!pushStripB64 && gamCampaign.strip_base64) {
             config.stripOverride = gamCampaign.strip_base64;
           }
           console.log(`[PUSH] Gamification injected: campaign=${gamCampaign.id}, game=${gamCampaign.game_type}`);
@@ -1988,6 +2169,203 @@ router.put('/brands/:id/geofencing', async (req, res) => {
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Analytics ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
+
+// ─── Audiences (pass holders segmentation) ─────────────────────────────────────
+
+router.get('/brands/:brand_id/audiences/insights', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const days = parseInt(req.query.days, 10) || 30;
+    const [insights, behavior] = await Promise.all([
+      getPassHoldersInsights(brand_id),
+      getHolderBehaviorInsights(brand_id, days)
+    ]);
+    res.json({ ...insights, behavior });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/holder-events', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const events = await listRecentHolderEvents(brand_id, {
+      limit: req.query.limit,
+      action: req.query.action || null
+    });
+    res.json(events);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/holder-events/export', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const days = parseInt(req.query.days, 10) || 30;
+    const rows = await exportHolderEvents(brand_id, {
+      days,
+      limit: req.query.limit,
+      action: req.query.action || null
+    });
+    const header = 'id,serial_number,event_category,event_action,target_key,target_label,target_url,pass_id,device_id,created_at';
+    const lines = rows.map((r) => [
+      r.id,
+      r.serial_number || '',
+      r.event_category || '',
+      r.event_action || '',
+      r.target_key || '',
+      (r.target_label || '').replace(/"/g, '""'),
+      (r.target_url || '').replace(/"/g, '""'),
+      r.pass_id || '',
+      r.device_id || '',
+      r.created_at ? new Date(r.created_at).toISOString() : ''
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="holder_events_${brand_id}_${days}d.csv"`);
+    res.send('\uFEFF' + [header, ...lines].join('\n'));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/audiences/event-actions', async (req, res) => {
+  try {
+    if (!requireBrandId(req, res, req.params.brand_id)) return;
+    res.json({ actions: [...ALLOWED_EVENT_ACTIONS] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences/query', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const result = await executeAudienceQuery(brand_id, req.body.spec || req.body);
+    res.json(result);
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/audiences', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const rows = await listAudiences(brand_id);
+    const enriched = await Promise.all(rows.map(async (a) => {
+      const count = await countAudienceMembers(brand_id, a.rules || {});
+      return { ...a, member_count: count };
+    }));
+    res.json(enriched);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const { name, description, rules, query_spec, source_prompt } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome audience obbligatorio' });
+    const normalized = query_spec
+      ? mergeSpecToAudienceRules(query_spec)
+      : normalizeRules(rules || {});
+    if (!hasActiveRules(normalized)) {
+      return res.status(400).json({ error: 'Seleziona almeno un filtro per l\'audience' });
+    }
+    const count = await countAudienceMembers(brand_id, normalized);
+    const row = await createAudience({
+      brand_id, name, description, rules: normalized,
+      query_spec: query_spec || { rules: normalized },
+      source_prompt: source_prompt || ''
+    });
+    await updateAudience(row.id, { cached_count: count });
+    res.json({ ...row, rules: normalized, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/brands/:brand_id/audiences/preview', async (req, res) => {
+  try {
+    const brand_id = req.params.brand_id;
+    if (!requireBrandId(req, res, brand_id)) return;
+    if (req.body.spec) {
+      const result = await executeAudienceQuery(brand_id, req.body.spec, { limit: 10, offset: 0 });
+      return res.json({ count: result.count, sample: result.members, rules: result.rules, spec: req.body.spec });
+    }
+    const rules = normalizeRules(req.body.rules || {});
+    const count = await countAudienceMembers(brand_id, rules);
+    const sample = await listAudienceMembers(brand_id, rules, { limit: 10, offset: 0 });
+    res.json({ count, sample, rules });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const count = await countAudienceMembers(row.brand_id, row.rules || {});
+    res.json({ ...row, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/audiences/:id', async (req, res) => {
+  try {
+    const prev = await getAudience(req.params.id);
+    if (!prev) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, prev.brand_id)) return;
+    const patch = { ...req.body };
+    if (patch.rules !== undefined) patch.rules = normalizeRules(patch.rules);
+    const row = await updateAudience(req.params.id, patch);
+    const rules = row.rules || {};
+    const count = await countAudienceMembers(row.brand_id, rules);
+    await updateAudience(row.id, { cached_count: count });
+    res.json({ ...row, member_count: count });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/audiences/:id', async (req, res) => {
+  try {
+    const prev = await getAudience(req.params.id);
+    if (!prev) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, prev.brand_id)) return;
+    await deleteAudience(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id/members', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const lim = parseInt(req.query.limit, 10) || 100;
+    const off = parseInt(req.query.offset, 10) || 0;
+    const count = await countAudienceMembers(row.brand_id, row.rules || {});
+    const members = await listAudienceMembers(row.brand_id, row.rules || {}, { limit: lim, offset: off });
+    res.json({ count, members });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/audiences/:id/export', async (req, res) => {
+  try {
+    const row = await getAudience(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Audience non trovata' });
+    if (!requireBrandId(req, res, row.brand_id)) return;
+    const members = await listAudienceMembers(row.brand_id, row.rules || {}, { limit: 5000, offset: 0 });
+    const header = 'Nome,Cognome,Email,Telefono,Serial,Campagna,Stato,Apple push,Google,Samsung,Creato';
+    const lines = members.map((m) => [
+      m.contact_first_name || '',
+      m.contact_last_name || '',
+      m.contact_email || '',
+      m.contact_phone || '',
+      m.serial_number || '',
+      m.campaign_name || '',
+      m.status || '',
+      m.has_apple_push ? 'si' : 'no',
+      m.google_wallet_saved ? 'si' : 'no',
+      m.samsung_wallet_saved ? 'si' : 'no',
+      m.created_at ? new Date(m.created_at).toISOString() : ''
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audience_${row.id}.csv"`);
+    res.send('\uFEFF' + [header, ...lines].join('\n'));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 router.get('/analytics/:brand_id', async (req, res) => {
   try {
@@ -3436,28 +3814,68 @@ function enforceWaiStripGenerateRateLimit(brandId) {
   waiStripGenerateBuckets.set(brandId, recent);
 }
 
+const WAI_STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
+const WAI_STRIP_GENERATE_WIDTH = 1125;
+const WAI_STRIP_GENERATE_HEIGHT = 432;
+
+async function generateWaiStripBase64({ brand_id, prompt_en }) {
+  const brand = await getBrand(brand_id);
+  if (!brand) throw new Error('Brand non trovato');
+  const stylePrompt = brand.config?.aiStylePrompt || null;
+  const imageUrl = await generateWithFal(
+    `${prompt_en}, promotional banner, wide aspect ratio`,
+    WAI_STRIP_GENERATE_WIDTH,
+    WAI_STRIP_GENERATE_HEIGHT,
+    WAI_STRIP_GENERATE_MODEL,
+    null,
+    stylePrompt
+  );
+  const imgResponse = await fetch(imageUrl);
+  if (!imgResponse.ok) throw new Error('Download immagine generata fallito');
+  const arrayBuf = await imgResponse.arrayBuffer();
+  return Buffer.from(arrayBuf).toString('base64');
+}
+
+async function applyGeneratedStripToBrand(brand_id, stripBase64) {
+  const brand = await getBrand(brand_id);
+  if (!brand) throw new Error('Brand non trovato');
+  const config = { ...(brand.config || {}) };
+  const logos = { ...(config.logos || {}) };
+  if (!logos.strip_default && logos.strip) logos.strip_default = logos.strip;
+  logos.strip = stripBase64;
+  config.logos = logos;
+  delete config.stripOverride;
+  await updateBrand(brand_id, { config });
+}
+
+async function maybeGenerateAndApplyWaiStrip(payload) {
+  const stripPrompt = String(payload?.strip_prompt_en || '').trim();
+  if (!stripPrompt) return null;
+  const stripBase64 = await generateWaiStripBase64({
+    brand_id: payload.brand_id,
+    prompt_en: stripPrompt
+  });
+  await applyGeneratedStripToBrand(payload.brand_id, stripBase64);
+  return stripBase64;
+}
+
 async function performImmediatePushForWai(payload) {
-  const { brand_id, title, message, campaign_id = null, update_pass = true, channel = 'apple' } = payload;
+  const { brand_id, title, message, campaign_id = null, audience_id = null, update_pass = true, channel = 'apple' } = payload;
   if (!assertPushChannel(channel)) throw new Error('channel non valido');
   const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
 
-  const targetPasses = campaign_id
-    ? (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1 AND campaign_id = $2', [brand_id, campaign_id])).rows
-    : (await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [brand_id])).rows;
+  const pushTargetOpts = { campaign_id, audience_id };
+  const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
 
   let devices = [];
   if (sendApple) {
-    if (campaign_id) {
-      devices = (await pool.query(
-        `SELECT DISTINCT dr.push_token, dr.serial_number
-         FROM device_registrations dr
-         JOIN pass_instances pi ON dr.serial_number = pi.serial_number
-         WHERE pi.brand_id = $1 AND pi.campaign_id = $2`,
-        [brand_id, campaign_id]
-      )).rows;
-    } else {
-      devices = await getDevicesForBrand(brand_id);
-    }
+    devices = await getAppleDevicesForAudience(brand_id, pushTargetOpts);
+  }
+
+  if (payload.strip_base64) {
+    await applyGeneratedStripToBrand(payload.brand_id, payload.strip_base64);
+  } else if (payload.strip_prompt_en) {
+    await maybeGenerateAndApplyWaiStrip(payload);
   }
 
   if (update_pass !== false) {
@@ -3497,6 +3915,13 @@ async function performImmediatePushForWai(payload) {
 const WAI_EXECUTORS = {
   'push.schedule': async (payload) => {
     const body = { ...payload };
+    if (body.strip_base64) {
+      await applyGeneratedStripToBrand(body.brand_id, body.strip_base64);
+      delete body.strip_base64;
+    } else if (body.strip_prompt_en) {
+      await maybeGenerateAndApplyWaiStrip(body);
+      delete body.strip_prompt_en;
+    }
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
       body.schedule_days = body.days.map((x) => String(x)).join(',');
     }
@@ -3504,11 +3929,15 @@ const WAI_EXECUTORS = {
     if (!nextRun) throw new Error('Data/orario non validi per la pianificazione');
     body.next_run_at = nextRun;
     const item = await createScheduledPush(body);
-    return { message: `Push programmata: ${payload.title}`, data: item };
+    const hadStrip = !!(payload.strip_base64 || payload.strip_prompt_en);
+    const stripNote = hadStrip ? ' Strip del pass già aggiornata.' : '';
+    return { message: `Push programmata: ${payload.title}.${stripNote}`, data: item, strip_updated: hadStrip };
   },
   'push.send': async (payload) => {
+    const hadStrip = !!(payload.strip_base64 || payload.strip_prompt_en);
     const data = await performImmediatePushForWai(payload);
-    return { message: `Push inviata: ${payload.title}`, data };
+    const stripNote = hadStrip ? ' Strip del pass aggiornata.' : '';
+    return { message: `Push inviata: ${payload.title}.${stripNote}`, data, strip_updated: hadStrip };
   },
   'campaign.create': async (payload) => {
     const item = await createInstantWinCampaign(payload);
@@ -3522,29 +3951,33 @@ const WAI_EXECUTORS = {
     return { message: `Strip promo '${payload.title}' creata`, data: item };
   },
   'strip.generate': async (payload) => {
-    const brand = await getBrand(payload.brand_id);
-    if (!brand) throw new Error('Brand non trovato');
-    const stylePrompt = brand.config?.aiStylePrompt || null;
-    const imageUrl = await generateWithFal(
-      `${payload.prompt_en}, promotional banner, wide aspect ratio`,
-      payload.width,
-      payload.height,
-      payload.model,
-      null,
-      stylePrompt
-    );
-    const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) throw new Error('Download immagine generata fallito');
-    const arrayBuf = await imgResponse.arrayBuffer();
-    const base64 = Buffer.from(arrayBuf).toString('base64');
+    const stripBase64 = await generateWaiStripBase64(payload);
     return {
       message: 'Immagine strip generata',
-      image_base64: base64,
-      image_url: imageUrl,
+      image_base64: stripBase64,
       prompt_used: payload.prompt_en,
       dimensions: `${payload.width}x${payload.height}`,
       needs_name: true
     };
+  },
+  'audience.create': async (payload) => {
+    const { brand_id, name, description = '', query_spec, rules, source_prompt = '' } = payload;
+    if (!name) throw new Error('Nome audience obbligatorio');
+    const normalized = query_spec
+      ? mergeSpecToAudienceRules(query_spec)
+      : normalizeRules(rules || payload);
+    if (!hasActiveRules(normalized)) throw new Error('Filtri audience non validi');
+    const count = await countAudienceMembers(brand_id, normalized);
+    const row = await createAudience({
+      brand_id,
+      name,
+      description,
+      rules: normalized,
+      query_spec: query_spec || { rules: normalized, behavior: normalized.behavior },
+      source_prompt
+    });
+    await updateAudience(row.id, { cached_count: count });
+    return { message: `Audience "${name}" creata (${count} possessori)`, data: { ...row, member_count: count } };
   }
 };
 
@@ -3561,6 +3994,54 @@ router.post('/wai/ask', async (req, res) => {
       followup,
       previousProposal: previous_proposal
     });
+    let audienceQuerySpec = proposal.payload?.query_spec || proposal.preview?.details?.query_spec;
+    if (proposal.intent === 'audience.query' && audienceQuerySpec) {
+      try {
+        const userPrompt = String(followup || prompt || '').trim();
+        const window = resolveAudienceQueryWindow(audienceQuerySpec, userPrompt);
+        audienceQuerySpec = window.spec;
+        if (!proposal.payload?.query_spec) proposal.payload = { ...(proposal.payload || {}), query_spec: audienceQuerySpec };
+        else proposal.payload.query_spec = audienceQuerySpec;
+        const result = await executeAudienceQuery(brand_id, audienceQuerySpec, { limit: 0, offset: 0 });
+        const sinceDays = window.sinceDays || audienceQuerySpec.behavior?.since_days;
+        let fromDate = window.fromDate;
+        let toDate = window.toDate;
+        if (sinceDays && (!fromDate || !toDate)) {
+          toDate = todayInTimezone(TZ);
+          fromDate = dateDaysAgoInTimezone(Number(sinceDays), TZ);
+        }
+        const answerLine =
+          sinceDays && fromDate && toDate
+            ? formatAudienceQueryAnswer({
+              count: result.count,
+              sinceDays,
+              fromDate,
+              toDate,
+              behavior: audienceQuerySpec.behavior
+            })
+            : `${result.count} possessori nel segmento.`;
+        proposal.preview.details = {
+          ...(proposal.preview.details || {}),
+          member_count: result.count,
+          sample_members: [],
+          metric_label:
+            audienceQuerySpec.behavior?.did_action === 'opened'
+              ? 'pass aperti (possessori distinti)'
+              : 'nel segmento',
+          query_spec: audienceQuerySpec,
+          since_days: sinceDays,
+          period_from: fromDate,
+          period_to: toDate
+        };
+        proposal.preview.summary = answerLine.slice(0, 280);
+        proposal.answer = answerLine;
+        proposal.preview.warnings = buildAudienceQueryServerWarnings({
+          behavior: audienceQuerySpec.behavior
+        });
+      } catch (qErr) {
+        proposal.preview.warnings = [...(proposal.preview.warnings || []), qErr.message];
+      }
+    }
     const loggedPrompt = String(followup || '').trim()
       ? `${String(prompt || '').trim()}\n\nIntegrazione:\n${String(followup || '').trim()}`
       : String(prompt || '').trim();
@@ -3590,6 +4071,9 @@ router.post('/wai/execute', async (req, res) => {
       return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
     }
     if (intent === 'strip.generate') enforceWaiStripGenerateRateLimit(payload.brand_id);
+    if ((intent === 'push.send' || intent === 'push.schedule') && payload.strip_prompt_en) {
+      enforceWaiStripGenerateRateLimit(payload.brand_id);
+    }
 
     const normalized = validateWaiResponse({ intent, type: 'create', payload, preview: { summary: '', details: {}, warnings: [] } }, payload.brand_id);
     const executor = WAI_EXECUTORS[intent];

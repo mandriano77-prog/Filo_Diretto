@@ -194,6 +194,62 @@ function normalizePassLocations(brandConfig) {
   return out;
 }
 
+/** Map template back-field keys to link slot index 0..2 (Link 1–3). */
+function backFieldLinkSlotIndex(key) {
+  const k = String(key || '').toLowerCase();
+  if (k === 'link1' || k === 'link_0' || k === 'link0') return 0;
+  if (k === 'link2' || k === 'link_1') return 1;
+  if (k === 'link3' || k === 'link_2') return 2;
+  return -1;
+}
+
+const TEMPLATE_LINK_FIELD_KEYS = new Set(['link1', 'link2', 'link3', 'link_0', 'link_1', 'link_2', 'link0']);
+
+/**
+ * Always three slots — empty middle links must not shift Link 3 into Link 2 position.
+ */
+function resolveTemplateLinkSlots(tplFields) {
+  const slots = [
+    { label: '', url: '' },
+    { label: '', url: '' },
+    { label: '', url: '' }
+  ];
+  if (!tplFields) return slots;
+
+  const put = (idx, label, url) => {
+    if (idx < 0 || idx > 2) return;
+    const l = label != null ? String(label).trim() : '';
+    const u = url != null ? String(url).trim() : '';
+    if (!l && !u) return;
+    slots[idx] = { label: l, url: u };
+  };
+
+  if (!Array.isArray(tplFields) && Array.isArray(tplFields.links)) {
+    tplFields.links.forEach((link, i) => {
+      if (i > 2 || !link) return;
+      put(i, link.label, link.url);
+    });
+    return slots;
+  }
+
+  if (!Array.isArray(tplFields) && Array.isArray(tplFields.backFields)) {
+    tplFields.backFields.forEach((bf) => {
+      const idx = backFieldLinkSlotIndex(bf.key);
+      if (idx >= 0) put(idx, bf.label, bf.value || bf.url);
+    });
+    return slots;
+  }
+
+  if (Array.isArray(tplFields)) {
+    tplFields.forEach((field) => {
+      if (field.type !== 'back') return;
+      const idx = backFieldLinkSlotIndex(field.key);
+      if (idx >= 0) put(idx, field.label, field.value);
+    });
+  }
+  return slots;
+}
+
 /**
  * Generate the pass.json content for Apple Wallet
  */
@@ -315,9 +371,57 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // ── BACK FIELDS (order: Novita → Links → Regolamento → Contatti) ──
+  // ── BACK FIELDS (order: Novità → Link 1 → Regolamento → Link 2 → Link 3 → Contatti) ──
 
-  // 1. NOVITA — full push message
+  function wrapTrackableBackLinkUrl(key, label, destinationUrl) {
+    if (!destinationUrl || !instance.serial_number) return destinationUrl;
+    if (/^(mailto:|tel:|javascript:)/i.test(destinationUrl)) return destinationUrl;
+    if (String(destinationUrl).includes('/track/pass-link')) return destinationUrl;
+    try {
+      const tracked = new URL(`${baseUrl}/api/track/pass-link`);
+      tracked.searchParams.set('sn', instance.serial_number);
+      tracked.searchParams.set('key', key);
+      tracked.searchParams.set('to', destinationUrl);
+      if (label) tracked.searchParams.set('label', label);
+      return tracked.toString();
+    } catch (_) {
+      return destinationUrl;
+    }
+  }
+
+  function makeBackLinkField(key, label, url) {
+    const trackedUrl = url ? wrapTrackableBackLinkUrl(key, label, url) : null;
+    const field = {
+      key,
+      label: '',
+      value: label || url || ''
+    };
+    if (trackedUrl) {
+      field.attributedValue = `<a href="${trackedUrl}">${label || url}</a>`;
+    }
+    return field;
+  }
+
+  function resolveBackLink1(brandCfg, serialNumber) {
+    const pushOut = brandCfg.pushLinkOut;
+    if (pushOut?.url) {
+      return makeBackLinkField('link_0', pushOut.label || 'Scopri di più', pushOut.url);
+    }
+    if (brandCfg.instantWinActive && serialNumber) {
+      const playUrl = `${baseUrl}/play/${serialNumber}`;
+      const iwLabel = brandCfg.instantWinActive.label || 'Gioca e Vinci!';
+      return makeBackLinkField('link_0', iwLabel, playUrl);
+    }
+    if (brandCfg.gamificationActive && serialNumber) {
+      const gameTypeRoutes = { quiz: 'quiz', memory: 'memory', puzzle: 'puzzle' };
+      const gameRoute = gameTypeRoutes[brandCfg.gamificationActive.game_type] || 'quiz';
+      const gameUrl = `${baseUrl}/game/${gameRoute}/${serialNumber}`;
+      const gamLabel = brandCfg.gamificationActive.label || 'Gioca ora!';
+      return makeBackLinkField('link_0', gamLabel, gameUrl);
+    }
+    return null;
+  }
+
   const orderedBackFields = [];
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     orderedBackFields.push({
@@ -327,50 +431,12 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
-  // 2. LINKS — source of truth is template fields.
-  // NOTE: legacy fallback to brandConfig.links caused stale "ghost" links
-  // to reappear on pass back fields even when not configured in template UI.
-  const links = (!Array.isArray(tplFields) && Array.isArray(tplFields.links)) ? tplFields.links : [];
-  links.forEach((link, i) => {
-    if (!link.label && !link.url) return;
-    // attributedValue renders the clickable link in iOS.
-    // Label is left empty so only the tappable link text shows — no duplication.
-    const field = {
-      key: `link_${i}`,
-      label: '',
-      value: link.label || link.url || ''
-    };
-    if (link.url) {
-      field.attributedValue = `<a href="${link.url}">${link.label || link.url}</a>`;
-    }
-    orderedBackFields.push(field);
-  });
-
-  // 2b. INSTANT WIN LINK — auto-injected when a campaign is active
-  if (brandConfig.instantWinActive && instance.serial_number) {
-    const playUrl = `${baseUrl}/play/${instance.serial_number}`;
-    const iwLabel = brandConfig.instantWinActive.label || 'Gioca e Vinci!';
-    orderedBackFields.push({
-      key: 'instant_win_link',
-      label: '',
-      value: iwLabel,
-      attributedValue: `<a href="${playUrl}">${iwLabel}</a>`
-    });
-  }
-
-  // 2c. GAMIFICATION LINK — auto-injected when a gamification campaign is active
-  if (brandConfig.gamificationActive && instance.serial_number) {
-    const gameTypeRoutes = { quiz: 'quiz', memory: 'memory', puzzle: 'puzzle' };
-    const gameRoute = gameTypeRoutes[brandConfig.gamificationActive.game_type] || 'quiz';
-    const gameUrl = `${baseUrl}/game/${gameRoute}/${instance.serial_number}`;
-    const gamLabel = brandConfig.gamificationActive.label || 'Gioca ora!';
-    orderedBackFields.push({
-      key: 'gamification_link',
-      label: '',
-      value: gamLabel,
-      attributedValue: `<a href="${gameUrl}">${gamLabel}</a>`
-    });
-  }
+  const linkSlots = resolveTemplateLinkSlots(tplFields);
+  const link1 = resolveBackLink1(brandConfig, instance.serial_number)
+    || (linkSlots[0].label || linkSlots[0].url
+      ? makeBackLinkField('link_0', linkSlots[0].label, linkSlots[0].url)
+      : null);
+  if (link1) orderedBackFields.push(link1);
 
   // 3. REGOLAMENTO — from brand backContent OR template fields
   const backContent = brandConfig.backContent || {};
@@ -383,6 +449,12 @@ function generatePassJson(template, instance, brand, options = {}) {
       value: regolamento
     });
   }
+
+  [1, 2].forEach((idx) => {
+    const link = linkSlots[idx];
+    if (!link.label && !link.url) return;
+    orderedBackFields.push(makeBackLinkField(`link_${idx}`, link.label, link.url));
+  });
 
   // 4. CONTATTI — from brand backContent OR template fields
   const tplContatti = (!Array.isArray(tplFields) && tplFields.contatti) || '';
@@ -397,9 +469,10 @@ function generatePassJson(template, instance, brand, options = {}) {
 
   // 5. Any remaining template back fields (fallback)
   backFields.forEach(f => {
-    // Skip if already covered by backContent
+    // Skip if already covered by backContent or link slots
     if (f.key === 'regolamento' && backContent.regolamento) return;
     if (f.key === 'contatti' && backContent.contatti) return;
+    if (TEMPLATE_LINK_FIELD_KEYS.has(String(f.key || '').toLowerCase())) return;
     orderedBackFields.push(f);
   });
 
@@ -737,10 +810,17 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using template-level logo');
   }
 
-  // Strip images — template → brand → default file → generated
+  // Strip images — push override → template → brand → default file → generated
   let stripBuffers;
   const defaultStripPath = path.join(__dirname, '..', '..', 'public', 'assets', 'default-strip.png');
-  if (tplImages.strip) {
+  const pushStripB64 = brandCfg.stripOverride;
+  if (pushStripB64) {
+    const rawStrip = Buffer.from(pushStripB64, 'base64');
+    const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
+    const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();
+    stripBuffers = { strip: strip1x, strip2x: strip2x };
+    console.log('✓ Using push strip override');
+  } else if (tplImages.strip) {
     const rawStrip = Buffer.from(tplImages.strip, 'base64');
     const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
     const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();

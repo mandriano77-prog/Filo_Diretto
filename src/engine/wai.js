@@ -7,6 +7,7 @@ const {
   listStripPromos,
   listMedia
 } = require('../db');
+const { parseSinceDaysFromPrompt, todayInTimezone, TZ } = require('./audience-prompt');
 const { extractJSON } = require('./ai-copy');
 const { getAnthropicApiKey } = require('./env-ai');
 const { pickWaiModel, formatModelLabel } = require('./ai-models');
@@ -16,7 +17,8 @@ const EXECUTABLE_INTENTS = new Set([
   'push.send',
   'campaign.create',
   'strip.create',
-  'strip.generate'
+  'strip.generate',
+  'audience.create'
 ]);
 
 const STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
@@ -58,11 +60,16 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - strip.create — Crea una strip promo (cambio immagine pass temporaneo)
 - strip.generate — Genera una nuova immagine strip con AI (Flux)
 
-### Lettura
+### Lettura / Audience platform
 - analytics.query — Rispondi a domande su metriche e performance
+- audience.query — Segmenta possessori del pass con filtri demografici + comportamentali (aperture, click link retro, giochi). Restituisci count nel answer e query_spec nel payload.
+- audience.insights — Sintesi engagement (click, aperture, funnel) usando audience_behavior_30d nel contesto
 - pass.count — Conta pass attivi/installati
 - push.history — Mostra storico push inviate
 - member.search — Cerca un membro per nome/email o conta per segmento
+
+### Audience salvate
+- audience.create — Crea audience salvata da query_spec (type create, eseguibile)
 
 ### Sistema
 - help — L'utente chiede cosa puoi fare. Rispondi con la lista delle capacità.
@@ -91,13 +98,15 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - title: max 60 char, incisivo, adatto a lock screen
 - message: max 180 char, completa il titolo, crea valore
 - channel: "apple" | "google" | "samsung" | "all" (default: apple)
+- Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
   Food: 11:30 o 18:00 | Retail: 10:00 o 17:00 | Generico: 10:00
 
 ### push.send
 - Come push.schedule ma senza scheduling. Esecuzione immediata.
 - title + message obbligatori. Se non specificati, genera e metti warning.
-- Non genera immagini: per una strip visiva usa strip.generate.
+- Se il manager chiede anche una nuova immagine strip del pass, NON usare strip.generate: resta su push.send o push.schedule e aggiungi strip_prompt_en (inglese Flux) nel payload.
+- update_pass deve restare true quando c'è una nuova strip, salvo diversa indicazione.
 
 ### reward.create
 - name: nome del reward (es. "Caffè gratis")
@@ -118,18 +127,60 @@ gamification, reward, strip promo. Il back office è su studio.ads2wallet.com.
 - win_probability: 0.0-1.0 (default 0.1 se non specificato)
 
 ### strip.generate — Generazione immagine strip con AI
-Quando il manager chiede di creare, generare o cambiare l'immagine strip del pass, usa l'intent strip.generate con type "create".
-Non usare push.schedule o push.send per richieste di immagini.
+Quando il manager chiede SOLO di creare, generare o salvare l'immagine strip del pass senza inviare o programmare una push, usa l'intent strip.generate con type "create".
+Se chiede anche push/notifica, usa push.send o push.schedule con strip_prompt_en.
 Traduci la descrizione italiana in prompt_en in inglese per Flux 1.1 Pro.
 Regole prompt_en: scena fotografica panoramica, includi "wide panoramic composition, no text, no watermarks, no logos, no UI elements", includi "photorealistic commercial photography" o "editorial photography", 30-60 parole, non inventare prodotti non menzionati.
 Stili: commercial_photo (default), lifestyle, food, minimal, seasonal, abstract.
 Nel payload: prompt_en, style_prompt null, width 1125, height 432, model "fal-ai/flux-pro/v1.1".
 In preview.details includi description_it, prompt_en, style, dimensions "1125x432 (@3x Apple Wallet)".
 
-### analytics.query / pass.count / push.history / member.search
+### analytics.query / audience.insights / pass.count / push.history / member.search
 - Usa i dati nel contesto brand per rispondere.
 - Metti la risposta nel campo "answer" in italiano.
 - Non inventare numeri — usa solo i dati forniti nel contesto.
+
+### audience.query
+- type: "query"
+- payload.query_spec schema (JSON, NO SQL):
+  {
+    "description": "testo breve del segmento",
+    "rules": {
+      "campaign_id": null,
+      "status": "any|active|inactive",
+      "wallet": "any|installed|apple|google|samsung",
+      "has_apple_push": true|false|null,
+      "has_email": true|false|null,
+      "has_phone": true|false|null,
+      "created_after": "ISO date|null",
+      "created_before": "ISO date|null",
+      "utm_source": "string|null",
+      "played_instant_win": true|false|null,
+      "played_gamification": true|false|null
+    },
+    "behavior": {
+      "did_action": "opened|link_click|installed|instant_win_played|gamification_played|...|null",
+      "never_did_action": "link_click|...|null",
+      "target_key": "link_0|link_1|link_2|null",
+      "since_days": <numero giorni richiesto dall'utente, es. 7 se dice "7gg" o "ultimi 7 giorni">,
+      "min_count": 1
+    }
+  }
+- OBBLIGATORIO: since_days deve essere uguale al periodo nella richiesta (7 → 7, 14 → 14). Mai usare 30 se l'utente chiede 7. Usa server_date nel contesto come "oggi".
+- audience_behavior_30d nel contesto è solo panoramica: NON usarlo come finestra della query né citarlo nel conteggio.
+- Usa solo event_action presenti in allowed_event_actions del contesto.
+- Per "ha cliccato link 1 / link out / retro" → did_action: "link_click", target_key: "link_0".
+- Per "ha aperto il pass" → did_action: "opened".
+- Per "mai cliccato" / "non ha mai cliccato" / "senza click" → never_did_action: "link_click" (opzionale target_key per un link specifico). Non usare did_action insieme a never_did_action.
+- Per "aperto ma mai cliccato" → behavior: { did_action: "opened", never_did_action: "link_click", since_days: <giorni dalla richiesta> } — il motore applica entrambi i filtri.
+- answer: una sola frase fint placeholder (es. "Segmento impostato.") — il server sostituisce con statistiche reali; NON elencare serial, email, stime da contesto LLM né disclaimer su 30 giorni.
+- preview.warnings: sempre [] per audience.query — zero testo qui.
+- type: "query" (non "create"). payload DEVE contenere query_spec completo.
+
+### audience.create
+- type: "create"
+- payload: { name, description, query_spec, source_prompt }
+- name obbligatorio; query_spec come audience.query
 
 ## Principi di copy per push
 1. BREVITÀ: ogni parola deve giustificare la sua presenza
@@ -195,7 +246,9 @@ function sanitizeStripPrompt(text) {
 }
 
 async function buildWaiContext(brandId) {
-  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos, mediaItems] = await Promise.all([
+  const { getHolderBehaviorInsights } = require('./holder-events');
+  const { ALLOWED_EVENT_ACTIONS } = require('./audiences');
+  const [brand, passStats, deviceStats, scheduled, pushHistory, campaigns, stripPromos, mediaItems, behavior30d] = await Promise.all([
     getBrand(brandId),
     pool.query('SELECT COUNT(*)::int AS total FROM pass_instances WHERE brand_id = $1', [brandId]),
     pool.query(
@@ -209,7 +262,8 @@ async function buildWaiContext(brandId) {
     listPushes(brandId),
     listInstantWinCampaigns(brandId),
     listStripPromos(brandId),
-    listMedia(brandId, 'strip')
+    listMedia(brandId, 'strip'),
+    getHolderBehaviorInsights(brandId, 30).catch(() => null)
   ]);
 
   if (!brand) throw new Error('Brand non trovato');
@@ -252,7 +306,13 @@ async function buildWaiContext(brandId) {
       title: s.title,
       start_date: s.start_date,
       end_date: s.end_date
-    }))
+    })),
+    allowed_event_actions: [...ALLOWED_EVENT_ACTIONS],
+    server_date: todayInTimezone(TZ),
+    server_timezone: TZ,
+    audience_behavior_30d: behavior30d,
+    audience_behavior_30d_note:
+      'Solo statistiche di panoramica (30 giorni). Per audience.query usa behavior.since_days dalla richiesta utente; il conteggio esatto è calcolato dal server su holder_events.'
   };
 }
 
@@ -278,6 +338,231 @@ function normalizePayload(intent, payload, brandId) {
   return next;
 }
 
+/** LLM sometimes puts push fields only in preview.details or mis-tags type as system. */
+function rehydratePushPayloadFromPreview(intent, payload, preview) {
+  if (intent !== 'push.send' && intent !== 'push.schedule') return false;
+  const details = preview?.details && typeof preview.details === 'object' ? preview.details : {};
+  const summary = String(preview?.summary || '');
+  if (!payload.title && details.title) payload.title = String(details.title).trim();
+  if (!payload.message && details.message) payload.message = String(details.message).trim();
+  if (!payload.message && details.message_it) payload.message = String(details.message_it).trim();
+  if (!payload.strip_prompt_en && details.strip_prompt_en) {
+    payload.strip_prompt_en = String(details.strip_prompt_en).trim();
+  }
+  if (intent === 'push.schedule') {
+    if (!payload.schedule_time && details.schedule_time) {
+      payload.schedule_time = String(details.schedule_time).trim();
+    }
+    if (!payload.schedule_time) {
+      const tm = summary.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
+      if (tm) payload.schedule_time = tm[0];
+    }
+    if (!payload.schedule_type && details.schedule_type) {
+      payload.schedule_type = details.schedule_type;
+    }
+    if (!payload.date && details.date) payload.date = String(details.date).trim();
+    if (Array.isArray(details.days) && details.days.length && !Array.isArray(payload.days)) {
+      payload.days = details.days;
+    }
+  }
+  return !!(payload.title && payload.message);
+}
+
+function hasMeaningfulExecutablePayload(intent, payload, preview) {
+  if (!payload || typeof payload !== 'object') return false;
+  const keys = Object.keys(payload).filter((k) => k !== 'brand_id');
+  if (!keys.length) return false;
+  if (intent === 'push.send' || intent === 'push.schedule') {
+    return rehydratePushPayloadFromPreview(intent, payload, preview);
+  }
+  return keys.length > 0;
+}
+
+function wantsPushAndStrip(prompt) {
+  const text = String(prompt || '').trim();
+  if (!text) return false;
+  const wantsPush = /\b(push|notifica|notifiche|avviso|avvisa|invia|manda|programma|schedula|pianifica|lock\s*screen)\b/i.test(text);
+  const wantsStrip = /\b(immagine|strip|banner|hero|visual|grafica|foto|facciata)\b/i.test(text)
+    || /\bgenera(?:\s+\w+){0,4}\s+strip\b/i.test(text)
+    || /\bstrip\s+(?:con|per|del|della)\b/i.test(text)
+    || /\b(aggiorna|nuova|cambia).{0,30}\bstrip\b/i.test(text);
+  return wantsPush && wantsStrip;
+}
+
+function inferStripPromptFromUserText(prompt) {
+  const text = String(prompt || '').trim();
+  if (!text) return '';
+  let visual = text
+    .replace(/\b(push|notifica|notifiche|avviso|avvisa|invia|manda|programma|schedula|pianifica|subito|ora|adesso|lock\s*screen|titolo|messaggio)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (visual.length < 12) visual = text;
+  return sanitizeStripPrompt(
+    `${visual}, wide panoramic composition, no text, no watermarks, no logos, no UI elements, photorealistic commercial photography`
+  );
+}
+
+function extractQuerySpec(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const payload = raw.payload && typeof raw.payload === 'object' ? raw.payload : {};
+  const details = raw.preview?.details && typeof raw.preview.details === 'object' ? raw.preview.details : {};
+  const qs = payload.query_spec || details.query_spec || payload;
+  if (qs?.rules || qs?.behavior || qs?.behavioral) return qs;
+  if (payload.rules || payload.behavior) {
+    return { description: payload.description || details.description, rules: payload.rules, behavior: payload.behavior };
+  }
+  return null;
+}
+
+function coerceAudiencePlatformQuery(prompt, raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  if (!/\[Audience platform\]/i.test(String(prompt || ''))) return raw;
+
+  const query_spec = extractQuerySpec(raw);
+  const intent = String(raw.intent || '').trim();
+
+  if (query_spec) {
+    return {
+      ...raw,
+      intent: 'audience.query',
+      type: 'query',
+      payload: { query_spec }
+    };
+  }
+
+  if (intent === 'audience.insights' || intent === 'analytics.query') {
+    const text = String(prompt || '').toLowerCase();
+    const since_days = parseSinceDaysFromPrompt(prompt) || 30;
+    let did_action = null;
+    if (/\b(notific|push|avvis)\w*/.test(text) || /\bapert\w*/.test(text)) did_action = 'opened';
+    if (/\bclic\w*/.test(text) || /\blink\b/.test(text)) did_action = 'link_click';
+    if (did_action) {
+      const behavior = { did_action, since_days, min_count: 1 };
+      const linkMatch = text.match(/link\s*([123])/);
+      if (did_action === 'link_click' && linkMatch) {
+        behavior.target_key = `link_${parseInt(linkMatch[1], 10) - 1}`;
+      }
+      return {
+        ...raw,
+        intent: 'audience.query',
+        type: 'query',
+        payload: {
+          query_spec: {
+            description: `Segmento da richiesta audience platform (${since_days} giorni)`,
+            rules: {},
+            behavior
+          }
+        },
+        preview: {
+          ...(raw.preview || {}),
+          warnings: Array.isArray(raw.preview?.warnings) ? raw.preview.warnings : []
+        }
+      };
+    }
+  }
+  return raw;
+}
+
+function coerceWaiProposal(prompt, raw) {
+  if (!raw || typeof raw !== 'object' || !wantsPushAndStrip(prompt)) return raw;
+
+  const preview = raw.preview && typeof raw.preview === 'object' ? raw.preview : {};
+  const details = preview.details && typeof preview.details === 'object' ? preview.details : {};
+  const payload = raw.payload && typeof raw.payload === 'object' ? { ...raw.payload } : {};
+  let promptEn = '';
+  try {
+    promptEn = sanitizeStripPrompt(
+      payload.strip_prompt_en
+      || payload.prompt_en
+      || details.strip_prompt_en
+      || details.prompt_en
+      || ''
+    );
+  } catch (_) {
+    promptEn = '';
+  }
+  if (!promptEn) {
+    try {
+      promptEn = inferStripPromptFromUserText(prompt);
+    } catch (_) {
+      promptEn = '';
+    }
+  }
+  if (!promptEn) return raw;
+
+  const intent = String(raw.intent || '');
+  if (!['strip.generate', 'push.send', 'push.schedule', 'unknown', 'help'].includes(intent)) {
+    return raw;
+  }
+  if ((intent === 'push.send' || intent === 'push.schedule') && payload.strip_prompt_en) {
+    return raw;
+  }
+
+  const text = String(prompt || '');
+  const wantsSchedule = /\b(programma|schedula|pianifica|ogni|settiman|luned|marted|mercoled|gioved|venerd|sabato|domenica|tantum)\b/i.test(text);
+  const wantsImmediate = /\b(subito|ora|immediat|adesso)\b/i.test(text);
+  const nextIntent = intent === 'push.schedule' || intent === 'push.send'
+    ? intent
+    : ((wantsSchedule && !wantsImmediate) ? 'push.schedule' : 'push.send');
+
+  const title = String(payload.title || details.title || 'Novità dal pass').trim().slice(0, 60);
+  const message = String(
+    payload.message
+    || details.message
+    || details.message_it
+    || preview.summary
+    || 'Scopri la novità nel tuo pass.'
+  ).trim().slice(0, 180);
+  const warnings = normalizeWarnings(preview.warnings);
+  if (intent === 'strip.generate') {
+    warnings.push('Proposta convertita in push con nuova strip AI.');
+  }
+
+  const nextPayload = {
+    ...payload,
+    title,
+    message,
+    channel: ['apple', 'google', 'samsung', 'all'].includes(payload.channel) ? payload.channel : 'all',
+    update_pass: payload.update_pass !== false,
+    strip_prompt_en: promptEn
+  };
+
+  if (nextIntent === 'push.schedule') {
+    nextPayload.schedule_type = ['once', 'daily', 'weekly'].includes(payload.schedule_type)
+      ? payload.schedule_type
+      : (wantsSchedule ? 'weekly' : 'once');
+    nextPayload.schedule_time = String(payload.schedule_time || details.schedule_time || '10:00').trim();
+    if (nextPayload.schedule_type === 'weekly') {
+      const days = Array.isArray(payload.days) ? payload.days : [];
+      nextPayload.days = days.length ? days : [1];
+    }
+    if (nextPayload.schedule_type === 'once' && !payload.date && !details.date) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      nextPayload.date = fallback.toISOString().slice(0, 10);
+      warnings.push('Data push una tantum non specificata: proposta per domani.');
+    }
+  }
+
+  return {
+    ...raw,
+    intent: nextIntent,
+    type: 'create',
+    payload: nextPayload,
+    preview: {
+      ...preview,
+      summary: preview.summary || `Push con nuova strip: ${title}`,
+      details: {
+        ...details,
+        title,
+        message,
+        strip_prompt_en: promptEn
+      },
+      warnings
+    }
+  };
+}
+
 function validateWaiResponse(raw, brandId) {
   if (!raw || typeof raw !== 'object') {
     throw new Error('Risposta W.AI non valida');
@@ -288,7 +573,7 @@ function validateWaiResponse(raw, brandId) {
   const preview = normalizePreview(raw);
   const answer = String(raw.answer || preview.summary || '').trim();
   const payload = normalizePayload(intent, raw.payload, brandId);
-  const hasExecutablePayload = payload && typeof payload === 'object' && Object.keys(payload).length > 0;
+  const hasExecutablePayload = hasMeaningfulExecutablePayload(intent, payload, preview);
 
   if (EXECUTABLE_INTENTS.has(intent) && hasExecutablePayload) {
     type = 'create';
@@ -307,11 +592,30 @@ function validateWaiResponse(raw, brandId) {
     };
   }
 
-  if (type === 'query' || type === 'system') {
-    if (!answer && intent === 'help') {
-      preview.summary = 'Posso programmare push, inviarle subito, creare campagne instant win, strip promo e generare immagini strip con AI, e rispondere su pass e analytics.';
+  if (intent === 'audience.query') {
+    const query_spec = extractQuerySpec({ ...raw, payload: raw.payload || payload, preview });
+    if (!query_spec) {
+      preview.warnings.push('Query audience incompleta: specifica filtri (es. aperti pass, click link) e riprova.');
     }
-    return { intent, type, preview, payload: {}, answer: answer || preview.summary };
+    return {
+      intent,
+      type: 'query',
+      preview,
+      payload: query_spec ? { query_spec } : {},
+      answer: answer || preview.summary
+    };
+  }
+
+  if (type === 'query' || type === 'system') {
+    if (EXECUTABLE_INTENTS.has(intent) && hasExecutablePayload) {
+      type = 'create';
+      preview.warnings.push('Proposta corretta: azione eseguibile (il modello aveva indicato type system/query).');
+    } else {
+      if (!answer && intent === 'help') {
+        preview.summary = 'Posso programmare push, inviarle subito, creare campagne instant win, strip promo e generare immagini strip con AI, e rispondere su pass e analytics.';
+      }
+      return { intent, type, preview, payload: {}, answer: answer || preview.summary };
+    }
   }
 
   if (!EXECUTABLE_INTENTS.has(intent)) {
@@ -319,27 +623,49 @@ function validateWaiResponse(raw, brandId) {
   }
 
   if (intent === 'push.schedule' || intent === 'push.send') {
-    payload.title = String(payload.title || '').trim().slice(0, 60);
-    payload.message = String(payload.message || '').trim().slice(0, 180);
+    rehydratePushPayloadFromPreview(intent, payload, preview);
+    payload.title = String(payload.title || preview.details?.title || '').trim().slice(0, 60);
+    payload.message = String(
+      payload.message || preview.details?.message || preview.details?.message_it || preview.summary || ''
+    ).trim().slice(0, 180);
     if (!payload.title || !payload.message) {
       throw new Error('Titolo e messaggio push obbligatori');
     }
     payload.channel = ['apple', 'google', 'samsung', 'all'].includes(payload.channel) ? payload.channel : 'apple';
     payload.update_pass = payload.update_pass !== false;
+    const stripPrompt = sanitizeStripPrompt(
+      payload.strip_prompt_en || preview.details?.strip_prompt_en || ''
+    );
+    if (stripPrompt) {
+      payload.strip_prompt_en = stripPrompt;
+      preview.details = { ...preview.details, strip_prompt_en: stripPrompt };
+      payload.update_pass = true;
+    } else {
+      delete payload.strip_prompt_en;
+    }
   }
 
   if (intent === 'push.schedule') {
-    payload.schedule_type = ['once', 'daily', 'weekly'].includes(payload.schedule_type) ? payload.schedule_type : 'weekly';
-    payload.schedule_time = String(payload.schedule_time || '10:00').trim();
+    payload.schedule_type = ['once', 'daily', 'weekly'].includes(payload.schedule_type)
+      ? payload.schedule_type
+      : (preview.details?.schedule_type && ['once', 'daily', 'weekly'].includes(preview.details.schedule_type)
+        ? preview.details.schedule_type
+        : 'weekly');
+    payload.schedule_time = String(
+      payload.schedule_time || preview.details?.schedule_time || '10:00'
+    ).trim();
     if (payload.schedule_type === 'weekly') {
       const days = Array.isArray(payload.days) ? payload.days : [];
       payload.days = [...new Set(days.filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))];
       if (!payload.days.length) payload.days = [1];
     }
     if (payload.schedule_type === 'once') {
-      payload.date = String(payload.date || '').trim();
+      payload.date = String(payload.date || preview.details?.date || '').trim();
       if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
-        throw new Error('Data obbligatoria per push una tantum');
+        const fallback = new Date();
+        fallback.setDate(fallback.getDate() + 1);
+        payload.date = fallback.toISOString().slice(0, 10);
+        preview.warnings.push('Data push una tantum non specificata: proposta per domani.');
       }
     }
   }
@@ -376,6 +702,20 @@ function validateWaiResponse(raw, brandId) {
     }
   }
 
+  if (intent === 'audience.create') {
+    payload.name = String(payload.name || '').trim();
+    if (!payload.name) throw new Error('Nome audience obbligatorio');
+    payload.description = String(payload.description || preview.summary || '').trim();
+    payload.source_prompt = String(payload.source_prompt || '').trim();
+    if (!payload.query_spec || typeof payload.query_spec !== 'object') {
+      payload.query_spec = {
+        description: preview.summary,
+        rules: payload.rules || {},
+        behavior: payload.behavior || null
+      };
+    }
+  }
+
   return { intent, type: 'create', preview, payload, answer: '' };
 }
 
@@ -396,7 +736,7 @@ async function askWai({ brandId, prompt, followup = '', previousProposal = null 
     buildUserMessage(trimmed, context, refinement),
     modelChoice.model
   );
-  const parsed = extractJSON(text);
+  const parsed = coerceWaiProposal(routingPrompt, coerceAudiencePlatformQuery(routingPrompt, extractJSON(text)));
   const proposal = validateWaiResponse(parsed, brandId);
   return {
     ...proposal,
@@ -414,5 +754,6 @@ module.exports = {
   buildUserMessage,
   callWai,
   askWai,
+  coerceWaiProposal,
   validateWaiResponse
 };
