@@ -204,7 +204,7 @@ function buildPassClass(brand, template) {
 
   const classObj = {
     id: classId,
-    reviewStatus: 'DRAFT',
+    reviewStatus: 'UNDER_REVIEW',
     issuerName: brand.name,
     programName: (template.name || brand.name || 'Loyalty Program').slice(0, 64)
   };
