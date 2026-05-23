@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ads2Wallet — by Underdogs Group</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <script src="/dashboard/boot.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -456,12 +457,14 @@
                     <span id="dashboardUserRole" class="role-tag"></span>
                     <button type="button" class="btn small sec" onclick="logout()">Esci</button>
                 </div>
-                <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
-                    <option value="ads">Ads</option>
-                    <option value="hr">HR</option>
-                    <option value="engage">Engage</option>
-                    <option value="live">Live</option>
-                </select>
+                <span id="dashboardProductLineWrap">
+                    <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
+                        <option value="ads">Ads</option>
+                        <option value="hr">HR</option>
+                        <option value="engage">Engage</option>
+                        <option value="live">Live</option>
+                    </select>
+                </span>
                 <select class="brand-sel" id="brandSelector" onchange="changeBrand()">
                     <option value="">Seleziona Brand</option>
                 </select>
@@ -2486,7 +2489,40 @@ function getBrandProductLine(brand) {
     return 'ads';
 }
 
+/** Titolo in header/sidebar (es. DASHBOARD_PRODUCT_TITLE=Filo Diretto su studio.filodiretto.app). */
+function getDashboardProductDisplayTitle(line) {
+    try {
+        const custom = window.__2WALLET_PRODUCT_TITLE__;
+        if (custom && String(custom).trim()) return String(custom).trim();
+    } catch (_) {}
+    const ln = line || getDashboardProductLine();
+    return PRODUCT_DISPLAY_TITLES[ln] || PRODUCT_DISPLAY_TITLES.ads;
+}
+
+/** Dominio o env deploy: dashboard fissata su una sola linea (es. hr.2wallet.app → HR). */
+function getLockedProductLine() {
+    try {
+        const envLock = window.__2WALLET_PRODUCT_LOCK__;
+        if (envLock && VALID_PRODUCT_LINES.includes(envLock)) return envLock;
+    } catch (_) {}
+    const h = (window.location.hostname || '').toLowerCase();
+    const sub = h.split('.')[0] || '';
+    if (h === 'studio.filodiretto.app') return 'hr';
+    if (h.includes('2wallet.app') && VALID_PRODUCT_LINES.includes(sub)) return sub;
+    if (h.includes('hr2wallet')) return 'hr';
+    if (h.includes('engage2wallet')) return 'engage';
+    if (h.includes('live2wallet')) return 'live';
+    if (h.includes('ads2wallet')) return 'ads';
+    return null;
+}
+
+function isProductLineLocked() {
+    return !!getLockedProductLine();
+}
+
 function getUnscopedDashboardProductLine() {
+    const locked = getLockedProductLine();
+    if (locked) return locked;
     try {
         const stored = localStorage.getItem(PRODUCT_LINE_STORAGE_KEY);
         if (stored && VALID_PRODUCT_LINES.includes(stored)) return stored;
@@ -2495,22 +2531,19 @@ function getUnscopedDashboardProductLine() {
         const qp = new URLSearchParams(window.location.search).get('product');
         if (qp && VALID_PRODUCT_LINES.includes(qp)) return qp;
     } catch (_) {}
-    const h = (window.location.hostname || '').toLowerCase();
-    const first = h.split('.')[0] || '';
-    if (['hr', 'engage', 'live', 'ads'].includes(first)) return first;
-    if (h.includes('hr2wallet')) return 'hr';
-    if (h.includes('engage2wallet')) return 'engage';
-    if (h.includes('live2wallet')) return 'live';
-    if (h.includes('ads2wallet')) return 'ads';
     return 'ads';
 }
 
 function persistDashboardProductLine(line) {
-    if (!line || !VALID_PRODUCT_LINES.includes(line)) return;
-    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, line); } catch (_) {}
+    const locked = getLockedProductLine();
+    const eff = locked || line;
+    if (!eff || !VALID_PRODUCT_LINES.includes(eff)) return;
+    try { localStorage.setItem(PRODUCT_LINE_STORAGE_KEY, eff); } catch (_) {}
 }
 
 function getDashboardProductLine() {
+    const locked = getLockedProductLine();
+    if (locked) return locked;
     if (brandId && brandsListCache.length) {
         const b = brandsListCache.find((x) => String(x.id) === String(brandId));
         if (b) return getBrandProductLine(b);
@@ -2544,18 +2577,24 @@ function populateBrandSelector(brands) {
 
 function syncProductLineSelector() {
     const plSel = document.getElementById('dashboardProductLine');
+    const wrap = document.getElementById('dashboardProductLineWrap');
+    const hostLock = isProductLineLocked();
+    if (wrap) wrap.style.display = hostLock ? 'none' : '';
     if (!plSel) return;
     const line = getDashboardProductLine();
     plSel.value = line;
-    const locked = !!brandId;
+    const locked = hostLock || !!brandId;
     plSel.disabled = locked;
-    plSel.title = locked
-        ? `Linea prodotto: ${PRODUCT_DISPLAY_TITLES[line] || line} (fissa per questo brand)`
-        : 'Seleziona la linea per filtrare i brand disponibili';
+    const displayTitle = getDashboardProductDisplayTitle(line);
+    plSel.title = hostLock
+        ? `${displayTitle} — dominio dedicato`
+        : (brandId
+            ? `Linea prodotto: ${displayTitle} (fissa per questo brand)`
+            : 'Seleziona la linea per filtrare i brand disponibili');
 }
 
 function syncChromeProductTitles(line) {
-    const title = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
+    const title = getDashboardProductDisplayTitle(line);
     document.querySelectorAll('.chrome-product-title').forEach((el) => { el.textContent = title; });
 }
 
@@ -2592,6 +2631,10 @@ function initDashboardProductTheme() {
 }
 
 function onDashboardProductLineChange() {
+    if (isProductLineLocked()) {
+        syncProductLineSelector();
+        return;
+    }
     if (brandId) {
         syncProductLineSelector();
         toast('Deseleziona il brand per cambiare linea prodotto (Ads, HR, Engage, Live)');
@@ -2614,7 +2657,7 @@ function applyBrandTheme() {
     applyProductMenuCopy(line);
     syncProductLineSelector();
 
-    const productTitle = PRODUCT_DISPLAY_TITLES[line] || PRODUCT_DISPLAY_TITLES.ads;
+    const productTitle = getDashboardProductDisplayTitle(line);
     const headerBrandName = document.getElementById('headerBrandName');
     const headerBrandLogo = document.getElementById('headerBrandLogo');
     if (!brandId) {
@@ -6247,7 +6290,7 @@ async function saveBrandIdentity() {
     const slug = document.getElementById('biSlug').value.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (!brandId) {
         // CREATE new brand
-        const productLine = getUnscopedDashboardProductLine();
+        const productLine = getLockedProductLine() || getUnscopedDashboardProductLine();
         const res = await fetch(`${API}/brands`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, slug, config: { ...BRAND_PASS_FIXED_COLORS, ...config, product_line: productLine } }) });
         const newBrand = await res.json();
         if (newBrand.id) {

@@ -114,6 +114,24 @@ app.get('/debug/wallet-check', async (req, res) => {
 app.use('/api/v1', apiRoutes);
 app.use('/debug', debugSignRoutes);
 
+// Dashboard boot: product line lock from deploy env (e.g. studio.filodiretto.app → DASHBOARD_PRODUCT_LINE=hr)
+const VALID_DASHBOARD_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
+function getDeployDashboardProductLine() {
+  const v = String(process.env.DASHBOARD_PRODUCT_LINE || '').trim().toLowerCase();
+  return VALID_DASHBOARD_PRODUCT_LINES.includes(v) ? v : null;
+}
+
+app.get('/dashboard/boot.js', (req, res) => {
+  const lock = getDeployDashboardProductLine();
+  const title = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
+  res.type('application/javascript');
+  res.set('Cache-Control', 'no-store');
+  res.send(
+    `window.__2WALLET_PRODUCT_LOCK__=${JSON.stringify(lock)};` +
+    `window.__2WALLET_PRODUCT_TITLE__=${JSON.stringify(title)};`
+  );
+});
+
 // Static pages
 app.get(['/dashboard', '/dashboard/'], (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -127,7 +145,7 @@ const BUILD_VERSION = '3.0.0-' + Date.now();
 app.get('/health', async (req, res) => {
   const base = {
     status: 'ok',
-    product: 'ads2wallet',
+    product: getDeployDashboardProductLine() || 'ads2wallet',
     version: BUILD_VERSION,
     timestamp: new Date().toISOString(),
     ai: {
