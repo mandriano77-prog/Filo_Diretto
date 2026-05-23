@@ -78,7 +78,7 @@ Pick one pattern (both work):
 2. **App** → GitHub repo → branch `main`.
 3. **Build command**: `npm install` (or default Nix/npm build).
 4. **Run command**: `npm start` or `node src/server.js` (match `package.json`).
-5. **Env vars**: set `DATABASE_URL`, `CUSTOM_DOMAIN`, `JWT_SECRET`, Apple/Resend/Google keys as needed.
+5. **Env vars**: set `DATABASE_URL`, `CUSTOM_DOMAIN`, `JWT_SECRET`, Apple/Resend/Google keys as needed. For a dedicated HR studio host (e.g. `studio.filodiretto.app`), set `CUSTOM_DOMAIN` to that hostname, `DASHBOARD_PRODUCT_LINE=hr`, optional `DASHBOARD_PRODUCT_TITLE` for white-label chrome; point only the `studio.*` DNS at this app (root domain can host a separate marketing site).
 6. Attach DB to app or paste `DATABASE_URL` from DB dashboard.
 7. Custom domain → point DNS → enable HTTPS (handled by App Platform).
 8. **Health check**: HTTP GET `/health` (or `/` behaviour you configure).

@@ -77,6 +77,22 @@ const os = require('os');
 
 const router = express.Router();
 
+const DEPLOY_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
+/** When set (e.g. hr on hr.2wallet.app), API only exposes brands for that product line. */
+function deployProductLineLock() {
+  const v = String(process.env.DASHBOARD_PRODUCT_LINE || '').trim().toLowerCase();
+  return DEPLOY_PRODUCT_LINES.includes(v) ? v : null;
+}
+function brandProductLine(brand) {
+  const pl = brand?.config?.product_line;
+  return DEPLOY_PRODUCT_LINES.includes(pl) ? pl : 'ads';
+}
+function brandAllowedOnDeploy(brand) {
+  const lock = deployProductLineLock();
+  if (!lock) return true;
+  return brandProductLine(brand) === lock;
+}
+
 /** Canali ammessi su API/dashboard (solo singoli + all). Legacy `both` resta nei record DB ma non è più selezionabile. */
 const PUSH_CHANNELS = ['apple', 'google', 'samsung', 'all'];
 function assertPushChannel(ch) {
@@ -1196,6 +1212,8 @@ router.get('/brands', async (req, res) => {
       if (u.brand_id) brands = brands.filter((b) => String(b.id) === String(u.brand_id));
       else brands = [];
     }
+    const lock = deployProductLineLock();
+    if (lock) brands = brands.filter((b) => brandProductLine(b) === lock);
     res.json(brands);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1203,7 +1221,12 @@ router.get('/brands', async (req, res) => {
 router.post('/brands', async (req, res) => {
   try {
     if (!requireAdmin(req, res)) return;
-    const brand = await createBrand(req.body);
+    const lock = deployProductLineLock();
+    const body = { ...req.body };
+    if (lock) {
+      body.config = { ...(body.config || {}), product_line: lock };
+    }
+    const brand = await createBrand(body);
     res.json(brand);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1213,6 +1236,7 @@ router.get('/brands/:id', async (req, res) => {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    if (!brandAllowedOnDeploy(brand)) return res.status(404).json({ error: 'Brand non trovato' });
     res.json(brand);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
