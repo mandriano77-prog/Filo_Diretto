@@ -23,13 +23,34 @@ function poolSslForUrl(url) {
   return dbUrlNeedsFlexibleSsl(url) ? { rejectUnauthorized: false } : false;
 }
 
+function isUnresolvedRailwayRef(value) {
+  return /^\$\{\{.+\}\}$/.test(String(value || '').trim());
+}
+
+/** Build URL when Railway injects PGHOST/PGUSER/... on the app service but DATABASE_URL was not referenced. */
+function buildDatabaseUrlFromPgEnv() {
+  const host = String(process.env.PGHOST || process.env.POSTGRES_HOST || '').trim();
+  if (!host) return '';
+  const port = String(process.env.PGPORT || process.env.POSTGRES_PORT || '5432').trim();
+  const user = String(process.env.PGUSER || process.env.POSTGRES_USER || 'postgres').trim();
+  const password = process.env.PGPASSWORD ?? process.env.POSTGRES_PASSWORD ?? '';
+  const database = String(process.env.PGDATABASE || process.env.POSTGRES_DB || 'railway').trim();
+  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(String(password))}@${host}:${port}/${database}`;
+}
+
 /** Runtime DB URL: private Railway first; never fall back to DATABASE_PUBLIC_URL (egress fees). */
 function resolveDatabaseUrl() {
-  return String(
+  let direct = String(
     process.env.DATABASE_URL ||
     process.env.DATABASE_PRIVATE_URL ||
     ''
   ).trim();
+  if (isUnresolvedRailwayRef(direct)) {
+    console.warn('⚠ DATABASE_URL è un riferimento Railway non risolto (letterale ${{...}}). Controlla il nome del servizio Postgres.');
+    direct = '';
+  }
+  if (direct) return direct;
+  return buildDatabaseUrlFromPgEnv();
 }
 
 function describeDatabaseTarget(url) {
@@ -60,8 +81,14 @@ function logDatabaseConnectionInfo() {
   const info = describeDatabaseTarget(url);
   if (!info.ok) {
     console.error(`✗ ${info.message}`);
-    if (process.env.RAILWAY_ENVIRONMENT) {
-      console.error('  Railway: imposta DATABASE_URL=${{NomeServizioPostgres.DATABASE_URL}} sul servizio app (rete privata).');
+    if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+      const svc = process.env.RAILWAY_SERVICE_NAME || 'FiloDiretto';
+      console.error(`  Railway (${svc}): Variables → DATABASE_URL = \${{Postgres.DATABASE_URL}}`);
+      console.error('  "Postgres" deve essere il nome esatto del servizio database nel progetto (case-sensitive).');
+      console.error('  Non impostare DATABASE_URL sul servizio Postgres — solo sul servizio Node/app.');
+      if (process.env.PGHOST) {
+        console.error(`  PGHOST=${process.env.PGHOST} è presente; DATABASE_URL resta vuoto — aggiungi il reference sopra.`);
+      }
     }
     return info;
   }
@@ -85,12 +112,15 @@ function logDatabaseConnectionInfo() {
 const databaseUrl = resolveDatabaseUrl();
 const dbTargetInfo = logDatabaseConnectionInfo();
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: dbTargetInfo.ok ? poolSslForUrl(databaseUrl) : false,
-  connectionTimeoutMillis: 15000,
-  max: Number(process.env.PGPOOL_MAX) > 0 ? Number(process.env.PGPOOL_MAX) : 10
-});
+/** Empty connectionString makes node-pg default to localhost:5432 — do not create a pool without a URL. */
+const pool = dbTargetInfo.ok
+  ? new Pool({
+      connectionString: databaseUrl,
+      ssl: poolSslForUrl(databaseUrl),
+      connectionTimeoutMillis: 15000,
+      max: Number(process.env.PGPOOL_MAX) > 0 ? Number(process.env.PGPOOL_MAX) : 10
+    })
+  : null;
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Schema Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 const SCHEMA = `
@@ -396,6 +426,13 @@ CREATE TABLE IF NOT EXISTS wallet_callback_events (
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Init Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 async function getDb() {
+  if (!pool) {
+    const railway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID;
+    const msg = railway
+      ? 'DATABASE_URL mancante sul servizio app Railway. Variables → DATABASE_URL = ${{Postgres.DATABASE_URL}} (nome servizio Postgres corretto).'
+      : 'DATABASE_URL mancante. Imposta DATABASE_URL in .env o nell\'hosting.';
+    throw new Error(msg);
+  }
   try {
     await pool.query(SCHEMA);
     console.log('Ã¢ÂÂ Database schema initialized (PostgreSQL Ã¢ÂÂ Ads2Wallet)');
