@@ -1,5 +1,25 @@
 # Filo Diretto UI Changelog
 
+## Phase 2 — Layout, sidebar, header (`feat(ui)`)
+
+### Added
+- `styles/filo-layout.css` — collapsible nav groups, breadcrumb header, avatar dropdown, W.AI FAB tooltip
+- Sidebar `<details class="nav-group">` with `localStorage` persistence (`filo_nav_group:*`)
+- Header breadcrumb: `{Brand} › {Sezione}`
+- Avatar menu: Profilo · Impostazioni · Esci (Filo light); inline legacy row on dark shell
+- W.AI: tooltip "Chiedi a W.AI", minimize/close panel actions, collapsed FAB state
+
+### Changed
+- Header restructured as `<header class="app-header">` with `.header-actions`
+- Brand selector styled via `.brand-sel--header` on Filo
+- Product line selector hidden on locked HR deploy (`data-filo-hidden`)
+- Sidebar footer uses `.sidebar-footer` (no inline styles)
+
+### Filo Diretto scope
+Layout rules apply when `html[data-shell="light"]` (HR deploy / `studio.filodiretto.app`). Dark shell retains compatible markup with legacy header/user row styling.
+
+---
+
 ## Phase 1 — Accessibility & semantics (`fix(a11y)`)
 
 ### Added
@@ -9,12 +29,8 @@
 - Sidebar as `<aside role="navigation">` with keyboard-accessible nav items
 
 ### Changed
-- Main section titles: `<div class="sec-title">` → `<h1 class="page-title">` (Identità, Media, Push, Analytics, …)
+- Main section titles: `<div class="sec-title">` → `<h1 class="page-title">`
 - Welcome sub-blocks → `<h2 class="block-title">`
-- Removed `!important` from light-theme nav/badge overrides (delegated to `filo-a11y.css`)
 
-### Filo Diretto scope
-Visual/a11y shell rules apply when `html[data-shell="light"]` (HR deploy / `studio.filodiretto.app`).
-
-### Next (Phase 2+)
-- Collapsible sidebar groups, breadcrumb header, `.c-*` components, empty states, danger zones.
+### Next (Phase 3+)
+- `.c-*` components, empty states, danger zones, push preview, analytics export, responsive tables, reduce inline styles.
