@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HR2Wallet · Il mio profilo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <h1 id="gate-title">Caricamento…</h1>
+    <p id="gate-message">Attendere.</p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span id="brand-name">Filodiretto</span>
+    </div>
+    <div class="user">
+      <div class="user-avatar" id="user-avatar">—</div>
+      <div class="user-name">
+        <span id="user-display-name">—</span>
+        <span class="small" id="user-subtitle">—</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="nav-label">Profilo</div>
+      <div class="nav-item active" data-page="card"><i data-lucide="credit-card"></i> La mia card</div>
+      <div class="nav-item" data-page="consensi"><i data-lucide="sliders-horizontal"></i> I miei consensi</div>
+      <div class="nav-item" data-page="dati"><i data-lucide="user"></i> I miei dati</div>
+      <div class="nav-item" data-page="push"><i data-lucide="bell"></i> Storico push</div>
+      <div class="sidebar-footer">
+        <span id="session-info">Sessione attiva</span><br>
+        <button type="button" class="exit-link" id="btn-exit">Esci</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="page active" data-page="card">
+        <div class="page-head">
+          <div class="breadcrumb">Profilo · La mia card</div>
+          <h1>La tua card aziendale.</h1>
+          <p>Il pass che hai installato nel wallet del tuo telefono e che ricevi sulla lock-screen.</p>
+        </div>
+        <div class="pass-mockup">
+          <div>
+            <div class="pass-brand" id="pass-brand">—</div>
+            <div class="pass-name" id="pass-name">—</div>
+            <div class="pass-role" id="pass-role">—</div>
+          </div>
+          <div class="pass-bottom">
+            <div>
+              <div style="opacity:.7;font-size:10px;text-transform:uppercase;letter-spacing:.1em">Badge ID</div>
+              <div style="font-weight:600;font-size:14px" id="pass-badge">—</div>
+            </div>
+            <div class="qr"><div class="qr-inner"></div></div>
+          </div>
+        </div>
+        <div class="pass-info-grid" id="pass-info-grid"></div>
+        <div style="margin-top:var(--space-6);display:flex;gap:var(--space-2);flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" id="btn-regenerate"><i data-lucide="refresh-cw"></i> Rigenera pass</button>
+          <button type="button" class="btn btn-secondary" id="btn-download"><i data-lucide="download"></i> Scarica pass</button>
+          <button type="button" class="btn btn-ghost" id="btn-wallet" style="margin-left:auto"><i data-lucide="external-link"></i> Apri Wallet</button>
+        </div>
+      </section>
+
+      <section class="page" data-page="consensi">
+        <div class="page-head">
+          <div class="breadcrumb">Profilo · Consensi</div>
+          <h1>I tuoi consensi.</h1>
+          <p>Decidi tu cosa ricevere. Puoi cambiare qualsiasi voce in qualsiasi momento, senza conseguenze sul tuo rapporto di lavoro.</p>
+        </div>
+        <div class="info-banner">
+          <i data-lucide="info"></i>
+          <div>Le <strong>comunicazioni di servizio</strong> (turni, sicurezza, formazione obbligatoria) non sono nell'elenco perché fanno parte del rapporto di lavoro. Le voci qui sotto sono <strong>facoltative</strong>.</div>
+        </div>
+        <div class="consent-list" id="consent-list"></div>
+        <p id="consent-status" style="color:var(--text-muted);font-size:var(--text-xs);margin-top:var(--space-4);text-align:center;"></p>
+      </section>
+
+      <section class="page" data-page="dati">
+        <div class="page-head">
+          <div class="breadcrumb">Profilo · Dati personali</div>
+          <h1>I tuoi dati.</h1>
+          <p>I dati che la tua azienda condivide con il servizio. Per modifiche, puoi esercitare i diritti previsti dal GDPR.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <h3>Anagrafica</h3>
+            <span class="meta" id="data-sync-meta">—</span>
+          </div>
+          <div class="data-grid" id="data-grid"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><h3>Esercita i tuoi diritti GDPR</h3></div>
+          <p style="margin:0 0 var(--space-4) 0;color:var(--text-secondary);font-size:var(--text-sm);" id="gdpr-intro">—</p>
+          <div class="actions-row" id="gdpr-actions"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><h3>Storico modifiche ai consensi</h3></div>
+          <div class="log" id="consent-log"></div>
+        </div>
+      </section>
+
+      <section class="page" data-page="push">
+        <div class="page-head">
+          <div class="breadcrumb">Profilo · Storico push</div>
+          <h1>Le push che hai ricevuto.</h1>
+          <p>Comunicazioni inviate dalla tua azienda al pass (broadcast brand + stato sul tuo dispositivo).</p>
+        </div>
+        <div class="pass-summary" id="pass-push-summary"></div>
+        <div class="filter-row" id="push-filters"></div>
+        <div class="card" style="padding:0 var(--space-5);">
+          <div class="push-list" id="push-list"></div>
+        </div>
+        <div class="danger-zone">
+          <h4>Disinstalla il pass</h4>
+          <p>Se rimuovi il pass dal tuo wallet smetterai di ricevere comunicazioni. I tuoi dati restano in azienda secondo le policy del datore di lavoro. Per cancellarli definitivamente usa <em>Richiedi cancellazione</em> in I miei dati.</p>
+          <button type="button" class="btn btn-danger" id="btn-uninstall"><i data-lucide="x-circle"></i> Disinstalla pass</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="portal.js"></script>
+</body>
+</html>

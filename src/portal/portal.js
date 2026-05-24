@@ -1,0 +1,673 @@
+(function () {
+  'use strict';
+
+  const PRIVACY_VERSION = '1.0';
+
+  const CONSENT_META = {
+    birthday: {
+      icon: 'gift',
+      title: 'Auguri di compleanno e ricorrenze',
+      desc: 'Push automatica il giorno del tuo compleanno e per anniversari aziendali (1 anno, 5 anni, 10 anni).'
+    },
+    welfare_geo: {
+      icon: 'map-pin',
+      title: 'Welfare territoriale geolocalizzato',
+      desc: 'Convenzioni vicino a te (palestre, eventi, ristoranti). La posizione è elaborata sul dispositivo, non sui nostri server.'
+    },
+    gamification: {
+      icon: 'trophy',
+      title: 'Iniziative engagement, quiz e classifiche',
+      desc: 'Quiz non obbligatori, sfide a punti, classifiche con nome e punteggio visibili al team. Premi opzionali.'
+    },
+    climate_survey: {
+      icon: 'message-square',
+      title: 'Sondaggi clima e indagini interne',
+      desc: 'Sondaggi sul clima aziendale, pulse survey, feedback su eventi. Le risposte sono trattate in forma aggregata e anonima.'
+    },
+    partner_offers: {
+      icon: 'store',
+      title: 'Comunicazioni di partner convenzionati',
+      desc: "Offerte e novità da partner commerciali esterni convenzionati con l'azienda."
+    }
+  };
+
+  const CONSENT_LABEL = Object.fromEntries(
+    Object.entries(CONSENT_META).map(([k, v]) => [k, v.title])
+  );
+
+  const GDPR_ACTIONS = [
+    {
+      type: 'portability',
+      icon: 'download',
+      title: 'Scarica i miei dati',
+      subtitle: 'Export JSON · art. 20 GDPR · ricevi via email entro 24 ore',
+      confirm: 'Inviare richiesta di export dei tuoi dati al DPO aziendale?'
+    },
+    {
+      type: 'rectification',
+      icon: 'edit-3',
+      title: 'Richiedi rettifica',
+      subtitle: 'Segnala un dato errato · art. 16 GDPR · risposta entro 30 giorni',
+      prompt: 'Descrivi quale dato è errato e la correzione richiesta:',
+      confirm: 'Inviare richiesta di rettifica al DPO?'
+    },
+    {
+      type: 'erasure',
+      icon: 'archive',
+      title: 'Richiedi cancellazione',
+      subtitle: "Diritto all'oblio · art. 17 GDPR · soggetto a obblighi di legge del datore",
+      confirm: 'Inviare richiesta di cancellazione? Potrebbe essere limitata da obblighi legali del datore.'
+    }
+  ];
+
+  let portalToken = new URLSearchParams(window.location.search).get('t') || '';
+  let profile = null;
+  let consents = [];
+  let pushHistory = null;
+  let consentLog = [];
+  let pushFilter = 'all';
+  let consentSaving = false;
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fv(key, alt) {
+    const f = profile?.field_values || {};
+    return f[key] ?? f[alt] ?? '';
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleDateString('it-IT', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch {
+      return '—';
+    }
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) +
+        ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '—';
+    }
+  }
+
+  function formatRelative(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const min = Math.round(diff / 60000);
+    if (min < 1) return 'adesso';
+    if (min < 60) return min + ' minuti fa';
+    const h = Math.round(min / 60);
+    if (h < 24) return h + ' ore fa';
+    const d = Math.round(h / 24);
+    return d + ' giorni fa';
+  }
+
+  function initials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join('');
+  }
+
+  function jwtHoursLeft(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      if (!payload.exp) return null;
+      return Math.max(0, Math.round((payload.exp * 1000 - Date.now()) / 3600000));
+    } catch {
+      return null;
+    }
+  }
+
+  function setToken(token) {
+    portalToken = token || '';
+    const u = new URL(window.location.href);
+    if (portalToken) u.searchParams.set('t', portalToken);
+    else u.searchParams.delete('t');
+    window.history.replaceState(null, '', u.pathname + u.search);
+  }
+
+  function showGate(title, message) {
+    $('#gate').classList.remove('hidden');
+    $('#app').classList.add('hidden');
+    $('#gate-title').textContent = title;
+    $('#gate-message').textContent = message;
+  }
+
+  function showApp() {
+    $('#gate').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  function apiUrl(path) {
+    const sep = path.includes('?') ? '&' : '?';
+    return '/api/v1/portal' + path + sep + 't=' + encodeURIComponent(portalToken);
+  }
+
+  async function apiJson(path, options) {
+    const res = await fetch(apiUrl(path), {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options?.headers || {})
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Errore di rete');
+    return data;
+  }
+
+  async function apiBlob(path, options) {
+    const res = await fetch(apiUrl(path), options);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Download non riuscito');
+    }
+    const newToken = res.headers.get('X-Portal-Token');
+    if (newToken) setToken(newToken);
+    return { blob: await res.blob(), filename: 'pass.pkpass' };
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  function renderHeader() {
+    const name = profile.display_name || 'Dipendente';
+    const dept = fv('reparto', 'department');
+    const level = fv('livello', 'level');
+    $('#brand-name').textContent = profile.brand?.name || 'Filodiretto';
+    $('#user-avatar').textContent = initials(name);
+    $('#user-display-name').textContent = name;
+    $('#user-subtitle').textContent = [dept, level].filter(Boolean).join(' · ') || '—';
+
+    const hours = jwtHoursLeft(portalToken);
+    $('#session-info').textContent =
+      hours != null ? 'Sessione attiva · scade tra ~' + hours + 'h' : 'Sessione attiva';
+  }
+
+  function renderCard() {
+    const name = profile.display_name || '—';
+    const dept = fv('reparto', 'department');
+    const level = fv('livello', 'level');
+    const sede = fv('sede', 'location');
+    const badge = fv('badge_id', 'matricola') || '—';
+
+    $('#pass-brand').textContent = profile.brand?.name || '—';
+    $('#pass-name').textContent = name;
+    $('#pass-role').textContent = [dept, level, sede].filter(Boolean).join(' · ') || '—';
+    $('#pass-badge').textContent = badge ? (String(badge).startsWith('#') ? badge : '#' + badge) : '—';
+
+    const tiles = [
+      { label: 'Sede', value: sede || '—' },
+      { label: 'Reparto', value: dept || '—' },
+      { label: 'Livello', value: level || '—' },
+      { label: 'Pass attivo da', value: formatDate(profile.install_date) }
+    ];
+
+    $('#pass-info-grid').innerHTML = tiles
+      .map(
+        (t) =>
+          '<div class="info-tile"><div class="label">' +
+          esc(t.label) +
+          '</div><div class="value">' +
+          esc(t.value) +
+          '</div></div>'
+      )
+      .join('');
+  }
+
+  function renderConsents() {
+    const list = $('#consent-list');
+    list.innerHTML = consents
+      .map((c) => {
+        const meta = CONSENT_META[c.consent_type] || {
+          icon: 'circle',
+          title: c.consent_type,
+          desc: ''
+        };
+        return (
+          '<div class="consent-row" data-type="' +
+          esc(c.consent_type) +
+          '">' +
+          '<div class="consent-icon"><i data-lucide="' +
+          esc(meta.icon) +
+          '"></i></div>' +
+          '<div class="consent-body">' +
+          '<div class="title-line"><span class="title">' +
+          esc(meta.title) +
+          '</span></div>' +
+          '<div class="desc">' +
+          esc(meta.desc) +
+          '</div>' +
+          '<div class="legal">Base giuridica: art. 6.1.a GDPR (consenso)</div>' +
+          '</div>' +
+          '<label class="switch">' +
+          '<input type="checkbox" data-consent="' +
+          esc(c.consent_type) +
+          '"' +
+          (c.granted ? ' checked' : '') +
+          (consentSaving ? ' disabled' : '') +
+          '>' +
+          '<span class="slider"></span></label></div>'
+        );
+      })
+      .join('');
+
+    list.querySelectorAll('input[data-consent]').forEach((input) => {
+      input.addEventListener('change', onConsentToggle);
+    });
+
+    const latest = consents
+      .map((c) => c.updated_at)
+      .filter(Boolean)
+      .sort()
+      .pop();
+    $('#consent-status').textContent = latest
+      ? 'Modifiche salvate automaticamente · ultima modifica ' + formatRelative(latest)
+      : 'Modifiche salvate automaticamente';
+  }
+
+  async function onConsentToggle(ev) {
+    const type = ev.target.getAttribute('data-consent');
+    const granted = ev.target.checked;
+    consentSaving = true;
+    renderConsents();
+    try {
+      await apiJson('/me/consents', {
+        method: 'PUT',
+        body: JSON.stringify({
+          consent_type: type,
+          granted,
+          privacy_policy_version: PRIVACY_VERSION
+        })
+      });
+      const data = await apiJson('/me');
+      consents = data.consents || [];
+      toast('Consenso aggiornato');
+      renderConsents();
+      loadConsentLog();
+    } catch (err) {
+      ev.target.checked = !granted;
+      toast(err.message);
+    } finally {
+      consentSaving = false;
+      renderConsents();
+      refreshIcons();
+    }
+  }
+
+  function renderDataGrid() {
+    const fields = [
+      { label: 'Nome e cognome', value: profile.display_name },
+      { label: 'Email aziendale', value: fv('email') },
+      {
+        label: 'Matricola',
+        value: fv('badge_id', 'matricola') || fv('matricola')
+      },
+      { label: 'Reparto', value: fv('reparto', 'department') },
+      { label: 'Sede', value: fv('sede', 'location') },
+      {
+        label: 'Data di assunzione',
+        value: fv('data_assunzione', 'hire_date') || formatDate(profile.install_date)
+      }
+    ];
+
+    $('#data-sync-meta').textContent =
+      'Pass attivo dal ' + formatDate(profile.install_date);
+    $('#gdpr-intro').textContent =
+      'Hai diritto di accedere, correggere, cancellare i tuoi dati. Le richieste vengono inoltrate al DPO aziendale (' +
+      (profile.brand?.name || 'azienda') +
+      ').';
+
+    $('#data-grid').innerHTML = fields
+      .map(
+        (f) =>
+          '<div class="data-field"><div class="label">' +
+          esc(f.label) +
+          '</div><div class="value">' +
+          esc(f.value || '—') +
+          '</div></div>'
+      )
+      .join('');
+
+    const actions = $('#gdpr-actions');
+    actions.innerHTML = GDPR_ACTIONS.map(
+      (a) =>
+        '<button type="button" class="action-link gdpr-btn" data-type="' +
+        esc(a.type) +
+        '">' +
+        '<div class="left">' +
+        '<div class="ico"><i data-lucide="' +
+        esc(a.icon) +
+        '"></i></div>' +
+        '<div class="text"><strong>' +
+        esc(a.title) +
+        '</strong><span>' +
+        esc(a.subtitle) +
+        '</span></div></div>' +
+        '<i data-lucide="chevron-right" class="arrow"></i></button>'
+    )
+      .join('');
+
+    actions.querySelectorAll('.gdpr-btn').forEach((btn) => {
+      btn.addEventListener('click', () => submitGdpr(btn.getAttribute('data-type')));
+    });
+  }
+
+  function renderConsentLog() {
+    const el = $('#consent-log');
+    if (!consentLog.length) {
+      el.innerHTML = '<div class="empty-state">Nessuna modifica ai consensi registrata.</div>';
+      return;
+    }
+    el.innerHTML = consentLog
+      .map((row) => {
+        const label = CONSENT_LABEL[row.consent_type] || row.consent_type;
+        const verb = row.action === 'granted' ? 'Attivato' : 'Disattivato';
+        return (
+          '<div class="log-item">' +
+          '<span class="time">' +
+          esc(formatDateTime(row.timestamp)) +
+          '</span>' +
+          '<span class="desc">' +
+          verb +
+          ' consenso <strong>"' +
+          esc(label) +
+          '"</strong></span></div>'
+        );
+      })
+      .join('');
+  }
+
+  function categorizePush(item) {
+    const text = ((item.title || '') + ' ' + (item.message || '')).toLowerCase();
+    if (/welfare|convenz|palestr|fit|sconto|map|geo/.test(text)) return 'welfare';
+    if (/quiz|compleann|engagement|sondag|pulse|game|trophy|gift/.test(text)) return 'engagement';
+    return 'service';
+  }
+
+  function renderPushHistory() {
+    const summary = pushHistory?.pass_summary;
+    const items = pushHistory?.brand_broadcasts || [];
+
+    if (summary) {
+      const status = summary.last_push_status || '—';
+      const when = summary.last_push_at ? formatDateTime(summary.last_push_at) : '—';
+      $('#pass-push-summary').innerHTML =
+        'Sul tuo dispositivo: <strong>' +
+        esc(String(summary.push_count || 0)) +
+        '</strong> push APNs · ultima: ' +
+        esc(when) +
+        ' (' +
+        esc(status) +
+        ')';
+    } else {
+      $('#pass-push-summary').textContent = '';
+    }
+
+    const filtered =
+      pushFilter === 'all' ? items : items.filter((i) => categorizePush(i) === pushFilter);
+
+    const counts = {
+      all: items.length,
+      service: items.filter((i) => categorizePush(i) === 'service').length,
+      engagement: items.filter((i) => categorizePush(i) === 'engagement').length,
+      welfare: items.filter((i) => categorizePush(i) === 'welfare').length
+    };
+
+    const filters = [
+      { id: 'all', label: 'Tutte' },
+      { id: 'service', label: 'Servizio' },
+      { id: 'engagement', label: 'Engagement' },
+      { id: 'welfare', label: 'Welfare' }
+    ];
+
+    $('#push-filters').innerHTML = filters
+      .map(
+        (f) =>
+          '<button type="button" class="filter-chip' +
+          (pushFilter === f.id ? ' active' : '') +
+          '" data-filter="' +
+          f.id +
+          '">' +
+          esc(f.label) +
+          ' · ' +
+          counts[f.id] +
+          '</button>'
+      )
+      .join('');
+
+    $('#push-filters').querySelectorAll('.filter-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        pushFilter = chip.getAttribute('data-filter');
+        renderPushHistory();
+        refreshIcons();
+      });
+    });
+
+    const list = $('#push-list');
+    if (!filtered.length) {
+      list.innerHTML = '<div class="empty-state">Nessuna push negli ultimi invii del brand.</div>';
+      return;
+    }
+
+    list.innerHTML = filtered
+      .map((p) => {
+        const cat = categorizePush(p);
+        const icon =
+          cat === 'welfare' ? 'map-pin' : cat === 'engagement' ? 'gift' : 'bell';
+        return (
+          '<div class="push-item">' +
+          '<div class="push-icon cat-' +
+          cat +
+          '"><i data-lucide="' +
+          icon +
+          '"></i></div>' +
+          '<div class="push-body">' +
+          '<div class="head"><span class="title">' +
+          esc(p.title) +
+          '</span><span class="time">' +
+          esc(formatDateTime(p.created_at)) +
+          '</span></div>' +
+          '<div class="text">' +
+          esc(p.message) +
+          '</div></div></div>'
+        );
+      })
+      .join('');
+  }
+
+  function refreshIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  function bindNavigation() {
+    $$('.nav-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        $$('.nav-item').forEach((n) => n.classList.remove('active'));
+        item.classList.add('active');
+        $$('.page').forEach((p) => {
+          p.classList.toggle('active', p.getAttribute('data-page') === page);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (page === 'push' && !pushHistory) loadPushHistory();
+        if (page === 'dati' && !consentLog.length) loadConsentLog();
+      });
+    });
+  }
+
+  async function loadConsentLog() {
+    try {
+      const data = await apiJson('/me/consent-log');
+      consentLog = data.log || [];
+      renderConsentLog();
+    } catch {
+      /* optional */
+    }
+  }
+
+  async function loadPushHistory() {
+    try {
+      pushHistory = await apiJson('/me/push-history');
+      renderPushHistory();
+      refreshIcons();
+    } catch (err) {
+      $('#push-list').innerHTML =
+        '<div class="empty-state">' + esc(err.message) + '</div>';
+    }
+  }
+
+  async function submitGdpr(type) {
+    const action = GDPR_ACTIONS.find((a) => a.type === type);
+    if (!action) return;
+    if (action.confirm && !window.confirm(action.confirm)) return;
+    let details = null;
+    if (action.prompt) {
+      details = window.prompt(action.prompt);
+      if (details == null) return;
+      if (!String(details).trim()) {
+        toast('Inserisci una descrizione');
+        return;
+      }
+    }
+    try {
+      await apiJson('/me/gdpr/' + type, {
+        method: 'POST',
+        body: JSON.stringify({ details })
+      });
+      toast('Richiesta inviata al DPO');
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  async function downloadPass(regenerate) {
+    const path = regenerate ? '/me/pass/regenerate' : '/me/pass/download';
+    const btn = regenerate ? $('#btn-regenerate') : $('#btn-download');
+    btn.disabled = true;
+    try {
+      const { blob } = await apiBlob(path, { method: regenerate ? 'POST' : 'GET' });
+      const slug = profile.brand?.slug || 'pass';
+      downloadBlob(blob, slug + '.pkpass');
+      toast(regenerate ? 'Pass rigenerato — installalo di nuovo' : 'Download avviato');
+      if (regenerate) {
+        const hours = jwtHoursLeft(portalToken);
+        if (hours != null) {
+          $('#session-info').textContent = 'Sessione attiva · scade tra ~' + hours + 'h';
+        }
+      }
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function bindActions() {
+    $('#btn-download').addEventListener('click', () => downloadPass(false));
+    $('#btn-regenerate').addEventListener('click', () => {
+      if (
+        window.confirm(
+          'Rigenerare il pass? I link precedenti al portale non funzioneranno più finché non installi il nuovo pass.'
+        )
+      ) {
+        downloadPass(true);
+      }
+    });
+    $('#btn-wallet').addEventListener('click', () => downloadPass(false));
+    $('#btn-exit').addEventListener('click', () => {
+      setToken('');
+      showGate('Sessione chiusa', 'Puoi riaprire il portale dal link sul retro del pass Wallet.');
+    });
+    $('#btn-uninstall').addEventListener('click', async () => {
+      if (
+        !window.confirm(
+          'Confermi di voler chiudere la sessione portale? Dovrai rimuovere il pass manualmente dal Wallet sul telefono.'
+        )
+      ) {
+        return;
+      }
+      try {
+        const data = await apiJson('/me/pass/uninstall', { method: 'POST', body: '{}' });
+        setToken('');
+        showGate('Pass e portale', data.message || 'Sessione revocata.');
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+  }
+
+  function renderAll() {
+    renderHeader();
+    renderCard();
+    renderConsents();
+    renderDataGrid();
+    renderConsentLog();
+    refreshIcons();
+  }
+
+  async function boot() {
+    if (!portalToken) {
+      showGate(
+        'Link richiesto',
+        'Apri questo portale dal link «Il mio profilo» sul retro del tuo pass Wallet.'
+      );
+      return;
+    }
+
+    showGate('Caricamento…', 'Recupero del profilo in corso.');
+    try {
+      const data = await apiJson('/me');
+      profile = data.profile;
+      consents = data.consents || [];
+      showApp();
+      renderAll();
+      bindNavigation();
+      bindActions();
+    } catch (err) {
+      showGate(
+        'Sessione scaduta',
+        err.message || 'Link non valido. Apri di nuovo il portale dal pass Wallet.'
+      );
+    }
+  }
+
+  boot();
+})();

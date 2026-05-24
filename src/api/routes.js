@@ -1791,7 +1791,8 @@ router.post('/passes/:id/regenerate', async (req, res) => {
     const pkpassBuffer = await createPkpass(template, pass, brand, {
       baseUrl,
       passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
-      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
+      teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID',
+      rotatePortalLink: true
     });
 
     res.set({
@@ -1803,7 +1804,6 @@ router.post('/passes/:id/regenerate', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Push Notifications ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 
 router.post('/push/send', async (req, res) => {
   try {
