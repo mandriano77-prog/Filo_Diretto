@@ -748,6 +748,87 @@ async function getDb() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_tokens_pass ON portal_tokens(pass_id)`).catch(() => {});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_tokens_hash ON portal_tokens(token_hash)`).catch(() => {});
 
+    // ── Filo Diretto HR: pass back, members, dynamic links ──
+    await pool.query(`CREATE TABLE IF NOT EXISTS members (
+      id TEXT PRIMARY KEY,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      pass_id TEXT REFERENCES pass_instances(id) ON DELETE SET NULL,
+      first_name TEXT,
+      last_name TEXT,
+      email TEXT,
+      employee_id VARCHAR(64),
+      department VARCHAR(128),
+      office_location VARCHAR(255),
+      hire_date DATE,
+      manager_name VARCHAR(128),
+      manager_email VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`).catch(() => {});
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_members_pass ON members(pass_id) WHERE pass_id IS NOT NULL`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_members_brand ON members(brand_id)`).catch(() => {});
+
+    await pool.query(`ALTER TABLE pass_templates ADD COLUMN IF NOT EXISTS back_fixed_link_label VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_templates ADD COLUMN IF NOT EXISTS back_fixed_link_url VARCHAR(512)`).catch(() => {});
+
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_label VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_url VARCHAR(512)`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_set_at TIMESTAMPTZ`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_expires_at TIMESTAMPTZ`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id) ON DELETE SET NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ`).catch(() => {});
+
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS hr_email VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS hr_phone VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS dpo_email VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS emergency_phone VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_resources JSONB DEFAULT '[]'::jsonb`).catch(() => {});
+    await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_documents JSONB DEFAULT '[]'::jsonb`).catch(() => {});
+
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS employee_id VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS department VARCHAR(128)`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS office_location VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS hire_date DATE`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS manager_name VARCHAR(128)`).catch(() => {});
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS manager_email VARCHAR(255)`).catch(() => {});
+
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS include_pass_link BOOLEAN DEFAULT false`).catch(() => {});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS pass_link_url VARCHAR(512)`).catch(() => {});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS pass_link_label VARCHAR(64)`).catch(() => {});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS pass_link_expires_at TIMESTAMPTZ`).catch(() => {});
+
+    await pool.query(`UPDATE pass_instances SET activated_at = created_at WHERE activated_at IS NULL`).catch(() => {});
+
+    await pool.query(`
+      INSERT INTO members (id, brand_id, pass_id, first_name, last_name, employee_id, department, office_location, manager_name, manager_email)
+      SELECT
+        gen_random_uuid()::text,
+        pi.brand_id,
+        pi.id,
+        NULLIF(TRIM(pi.field_values->>'nome'), ''),
+        NULLIF(TRIM(pi.field_values->>'cognome'), ''),
+        NULLIF(COALESCE(pi.field_values->>'matricola', pi.field_values->>'badge_id'), ''),
+        NULLIF(COALESCE(pi.field_values->>'department', pi.field_values->>'reparto'), ''),
+        NULLIF(COALESCE(pi.field_values->>'office_location', pi.field_values->>'sede'), ''),
+        NULLIF(TRIM(pi.field_values->>'manager_name'), ''),
+        NULLIF(TRIM(pi.field_values->>'manager_email'), '')
+      FROM pass_instances pi
+      WHERE NOT EXISTS (SELECT 1 FROM members m WHERE m.pass_id = pi.id)
+        AND (
+          pi.field_values->>'nome' IS NOT NULL
+          OR pi.field_values->>'first_name' IS NOT NULL
+          OR pi.field_values->>'matricola' IS NOT NULL
+          OR pi.field_values->>'badge_id' IS NOT NULL
+        )
+    `).catch(() => {});
+
+    await pool.query(`
+      UPDATE pass_instances pi
+      SET member_id = m.id
+      FROM members m
+      WHERE m.pass_id = pi.id AND pi.member_id IS NULL
+    `).catch(() => {});
+
     // Seed admin
     await seedAdminUser();
 
@@ -804,10 +885,31 @@ async function updateBrand(id, data) {
   const newSlug = data.slug || current.slug;
   let newConfig = current.config || {};
   if (data.config) newConfig = { ...newConfig, ...data.config };
-  await pool.query(
-    'UPDATE brands SET name = $1, slug = $2, config = $3, updated_at = NOW() WHERE id = $4',
-    [newName, newSlug, JSON.stringify(newConfig), id]
-  );
+
+  const sets = ['name = $1', 'slug = $2', 'config = $3', 'updated_at = NOW()'];
+  const vals = [newName, newSlug, JSON.stringify(newConfig)];
+  let idx = 4;
+
+  const scalarCols = ['hr_email', 'hr_phone', 'dpo_email', 'emergency_phone'];
+  for (const col of scalarCols) {
+    if (data[col] !== undefined) {
+      sets.push(`${col} = $${idx++}`);
+      vals.push(data[col] || null);
+    }
+  }
+  if (data.back_resources !== undefined) {
+    const arr = Array.isArray(data.back_resources) ? data.back_resources : [];
+    sets.push(`back_resources = $${idx++}`);
+    vals.push(JSON.stringify(arr.slice(0, 5)));
+  }
+  if (data.back_documents !== undefined) {
+    const arr = Array.isArray(data.back_documents) ? data.back_documents : [];
+    sets.push(`back_documents = $${idx++}`);
+    vals.push(JSON.stringify(arr.slice(0, 5)));
+  }
+
+  vals.push(id);
+  await pool.query(`UPDATE brands SET ${sets.join(', ')} WHERE id = $${idx}`, vals);
   return getBrand(id);
 }
 
@@ -819,6 +921,7 @@ async function deleteBrand(id) {
   await pool.query('DELETE FROM audiences WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM holder_events WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM pass_instances WHERE brand_id = $1', [id]);
+  await pool.query('DELETE FROM members WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM campaigns WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM strip_promos WHERE brand_id = $1', [id]);
   await pool.query('DELETE FROM pass_templates WHERE brand_id = $1', [id]);
@@ -830,16 +933,20 @@ async function deleteBrand(id) {
 
 async function createTemplate(data) {
   const id = data.id || uuidv4();
-  const { brand_id, name, pass_type = 'coupon', style = {}, fields = [], config = {} } = data;
+  const {
+    brand_id, name, pass_type = 'coupon', style = {}, fields = [], config = {},
+    back_fixed_link_label = null, back_fixed_link_url = null
+  } = data;
   if (!brand_id || !name) throw new Error('Brand ID and template name are required');
   const styleObj = typeof style === 'string' ? JSON.parse(style) : style;
   const fieldsObj = typeof fields === 'string' ? JSON.parse(fields) : fields;
   const configObj = typeof config === 'string' ? JSON.parse(config) : config;
   await pool.query(
-    `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj)]
+    `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config, back_fixed_link_label, back_fixed_link_url)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj), back_fixed_link_label, back_fixed_link_url]
   );
-  return { id, brand_id, name, pass_type, style: styleObj, fields: fieldsObj, config: configObj };
+  return { id, brand_id, name, pass_type, style: styleObj, fields: fieldsObj, config: configObj, back_fixed_link_label, back_fixed_link_url };
 }
 
 async function getTemplate(id) {
@@ -875,6 +982,8 @@ async function updateTemplate(id, data) {
   if (data.style !== undefined) { sets.push(`style = $${idx++}`); vals.push(JSON.stringify(data.style)); }
   if (data.fields !== undefined) { sets.push(`fields = $${idx++}`); vals.push(JSON.stringify(data.fields)); }
   if (data.config !== undefined) { sets.push(`config = $${idx++}`); vals.push(JSON.stringify(data.config)); }
+  if (data.back_fixed_link_label !== undefined) { sets.push(`back_fixed_link_label = $${idx++}`); vals.push(data.back_fixed_link_label || null); }
+  if (data.back_fixed_link_url !== undefined) { sets.push(`back_fixed_link_url = $${idx++}`); vals.push(data.back_fixed_link_url || null); }
   sets.push(`updated_at = NOW()`);
   vals.push(id);
   const result = await pool.query(
@@ -990,6 +1099,12 @@ async function updatePassInstance(id, data) {
   if (data.samsung_wallet_cc2 !== undefined) { p++; updates.push(`samsung_wallet_cc2 = $${p}`); values.push(data.samsung_wallet_cc2); }
   if (data.device_id !== undefined) { p++; updates.push(`device_id = $${p}`); values.push(data.device_id); }
   if (data.device_source !== undefined) { p++; updates.push(`device_source = $${p}`); values.push(data.device_source); }
+  if (data.member_id !== undefined) { p++; updates.push(`member_id = $${p}`); values.push(data.member_id); }
+  if (data.activated_at !== undefined) { p++; updates.push(`activated_at = $${p}`); values.push(data.activated_at); }
+  if (data.dynamic_link_label !== undefined) { p++; updates.push(`dynamic_link_label = $${p}`); values.push(data.dynamic_link_label); }
+  if (data.dynamic_link_url !== undefined) { p++; updates.push(`dynamic_link_url = $${p}`); values.push(data.dynamic_link_url); }
+  if (data.dynamic_link_set_at !== undefined) { p++; updates.push(`dynamic_link_set_at = $${p}`); values.push(data.dynamic_link_set_at); }
+  if (data.dynamic_link_expires_at !== undefined) { p++; updates.push(`dynamic_link_expires_at = $${p}`); values.push(data.dynamic_link_expires_at); }
   if (updates.length === 0) return getPassInstance(id);
   updates.push('last_updated = NOW()');
   p++; values.push(id);
@@ -1000,6 +1115,32 @@ async function updatePassInstance(id, data) {
 async function touchPass(id) {
   await pool.query('UPDATE pass_instances SET last_updated = NOW() WHERE id = $1', [id]);
   return { success: true };
+}
+
+async function getMemberForPass(passId) {
+  if (!passId) return null;
+  const byPass = await pool.query('SELECT * FROM members WHERE pass_id = $1 LIMIT 1', [passId]);
+  if (byPass.rows.length) return byPass.rows[0];
+  const pass = await getPassInstance(passId);
+  if (!pass?.member_id) return null;
+  const byId = await pool.query('SELECT * FROM members WHERE id = $1 LIMIT 1', [pass.member_id]);
+  return byId.rows[0] || null;
+}
+
+async function updatePassDynamicLinks(passIds, { label, url, expiresAt }) {
+  const ids = (passIds || []).filter(Boolean);
+  if (!ids.length || !url) return { updated: 0 };
+  const result = await pool.query(
+    `UPDATE pass_instances
+     SET dynamic_link_label = $1,
+         dynamic_link_url = $2,
+         dynamic_link_set_at = NOW(),
+         dynamic_link_expires_at = $3,
+         last_updated = NOW()
+     WHERE id = ANY($4::text[])`,
+    [label || 'AZIONE RICHIESTA', url, expiresAt || null, ids]
+  );
+  return { updated: result.rowCount || 0 };
 }
 
 async function touchPassesForTemplate(templateId) {
@@ -1233,14 +1374,24 @@ async function clearPushHistory(brandId) {
 
 async function createScheduledPush(data) {
   const id = data.id || uuidv4();
-  const { brand_id, title, message, campaign_id = null, audience_id = null, channel = 'apple', schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at } = data;
+  const {
+    brand_id, title, message, campaign_id = null, audience_id = null, channel = 'apple',
+    schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at,
+    include_pass_link = false, pass_link_url = null, pass_link_label = null, pass_link_expires_at = null
+  } = data;
   if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
   await pool.query(
-    `INSERT INTO scheduled_push (id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-    [id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at]
+    `INSERT INTO scheduled_push (
+       id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time,
+       schedule_days, update_pass, next_run_at, include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+    [id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, !!include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at]
   );
-  return { id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, active: true };
+  return {
+    id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time,
+    schedule_days, update_pass, next_run_at, include_pass_link: !!include_pass_link,
+    pass_link_url, pass_link_label, pass_link_expires_at, active: true
+  };
 }
 
 async function listScheduledPush(brand_id) {
@@ -1257,7 +1408,7 @@ async function updateScheduledPush(id, data) {
   const fields = [];
   const values = [id];
   let idx = 2;
-  for (const key of ['title', 'message', 'campaign_id', 'audience_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at']) {
+  for (const key of ['title', 'message', 'campaign_id', 'audience_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at', 'include_pass_link', 'pass_link_url', 'pass_link_label', 'pass_link_expires_at']) {
     if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
   }
   if (fields.length === 0) return getScheduledPush(id);
@@ -2073,6 +2224,8 @@ module.exports = {
   getPassBySerial,
   updatePassInstance,
   touchPass,
+  getMemberForPass,
+  updatePassDynamicLinks,
   touchPassesForTemplate,
   listPasses,
   deletePass,

@@ -9,6 +9,7 @@ const {
   createCampaign, getCampaign, listCampaigns, updateCampaign, deleteCampaign,
   incrementCampaignDownloads, incrementCampaignInstalls,
   createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesForTemplate, listPasses, deletePass,
+  getMemberForPass, updatePassDynamicLinks,
   logEvent, listEvents,
   registerDevice, getDevicesForPass, getDevicesForBrand, getDevicesForTemplate, unregisterDevice, getSerialsForDevice,
   getAnalytics, getCampaignAnalytics,
@@ -92,6 +93,42 @@ function brandAllowedOnDeploy(brand) {
   const lock = deployProductLineLock();
   if (!lock) return true;
   return brandProductLine(brand) === lock;
+}
+
+function assertHttpsUrl(url, fieldName = 'URL') {
+  const u = String(url || '').trim();
+  if (!u) return null;
+  if (!/^https:\/\/.+/i.test(u)) {
+    throw new Error(`${fieldName} deve iniziare con https://`);
+  }
+  return u;
+}
+
+function parsePassLinkFromPushBody(body, title) {
+  const explicitToggle = body.include_pass_link;
+  const urlRaw = (body.pass_link_url || body.back_link_url || '').trim();
+  const enabled = explicitToggle === true || (explicitToggle !== false && !!urlRaw);
+  if (!enabled || !urlRaw) return null;
+  const url = assertHttpsUrl(urlRaw, 'Link pass');
+  const label = String(body.pass_link_label || body.back_link_label || title || 'AZIONE RICHIESTA').trim().slice(0, 64);
+  let expiresAt = body.pass_link_expires_at || body.dynamic_link_expires_at || null;
+  if (!expiresAt) {
+    expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  }
+  return { label, url, expiresAt };
+}
+
+function validateBrandBackLinks(data) {
+  if (data.back_resources) {
+    for (const row of data.back_resources) {
+      if (row?.url) assertHttpsUrl(row.url, 'URL risorsa');
+    }
+  }
+  if (data.back_documents) {
+    for (const row of data.back_documents) {
+      if (row?.url) assertHttpsUrl(row.url, 'URL documento');
+    }
+  }
 }
 
 /** Comma-separated emails allowed to log in on this deploy (e.g. Filo Diretto → admin@nudj.studio). */
@@ -1300,9 +1337,10 @@ router.get('/brands/:id', async (req, res) => {
 router.put('/brands/:id', async (req, res) => {
   try {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    validateBrandBackLinks(req.body);
     const brand = await updateBrand(req.params.id, req.body);
     res.json(brand);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
 router.delete('/brands/:id', async (req, res) => {
@@ -1618,6 +1656,9 @@ router.put('/templates/:id', async (req, res) => {
     const existing = await getTemplate(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Template non trovato' });
     if (!requireBrandId(req, res, existing.brand_id)) return;
+    if (req.body.back_fixed_link_url) {
+      assertHttpsUrl(req.body.back_fixed_link_url, 'Link fisso fallback');
+    }
     const template = await updateTemplate(req.params.id, req.body);
     const { touched } = await touchPassesForTemplate(req.params.id);
     let wallet_push_sent = 0;
@@ -1822,6 +1863,7 @@ router.post('/push/send', async (req, res) => {
       brand_id, title, message, campaign_id, audience_id, update_pass, field_values,
       instant_win_id, gamification_id, channel = 'apple',
       back_link_label, back_link_url,
+      include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
       strip_media_id, strip_base64
     } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
@@ -1891,14 +1933,29 @@ router.post('/push/send', async (req, res) => {
       }
       delete config.stripOverride;
 
-      const linkOutUrl = (back_link_url || '').trim();
-      if (linkOutUrl) {
+      let passLink = null;
+      try {
+        passLink = parsePassLinkFromPushBody(
+          { include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_link_url, back_link_label },
+          title
+        );
+      } catch (linkErr) {
+        return res.status(400).json({ error: linkErr.message });
+      }
+
+      if (passLink) {
+        await updatePassDynamicLinks(targetPasses.map((p) => p.id), passLink);
+        console.log(`[PUSH] Dynamic pass link set on ${targetPasses.length} passes until ${passLink.expiresAt}`);
+      }
+
+      const linkOutUrl = (back_link_url || pass_link_url || '').trim();
+      if (linkOutUrl && !passLink) {
         config.pushLinkOut = {
-          label: (back_link_label || '').trim() || 'Scopri di più',
+          label: (back_link_label || pass_link_label || '').trim() || 'Scopri di più',
           url: linkOutUrl,
           ts: Date.now()
         };
-      } else {
+      } else if (!passLink) {
         delete config.pushLinkOut;
       }
 

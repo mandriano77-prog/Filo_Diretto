@@ -4,6 +4,12 @@ const path = require('path');
 const sharp = require('sharp');
 const archiver = require('archiver');
 const { Transform } = require('stream');
+const {
+  isHrPassBrand,
+  buildHrBackFields,
+  resolveMemberProfile,
+  resolveEmployeeIdForBarcode
+} = require('./pass-hr-back');
 
 /**
  * Generate SVG path for a letter using geometric shapes (no font dependency).
@@ -258,15 +264,15 @@ function resolvePassMatricola(instance, fv) {
 }
 
 /** QR identificativo — codifica serialNumber, altText nome · #matricola (placeholder badge). */
-function buildIdentifyingQrBarcode(instance) {
-  const fv = parsePassFieldValues(instance);
-  const name = resolvePassHolderName(instance, fv);
-  const matricola = resolvePassMatricola(instance, fv);
+function buildIdentifyingQrBarcode(instance, memberRow = null) {
+  const profile = resolveMemberProfile(memberRow, instance);
+  const name = profile.full_name || resolvePassHolderName(instance, parsePassFieldValues(instance));
+  const employeeId = resolveEmployeeIdForBarcode(memberRow, instance);
   return {
     format: 'PKBarcodeFormatQR',
     message: instance.serial_number || '',
     messageEncoding: 'iso-8859-1',
-    altText: `${name} · #${matricola}`.slice(0, 64)
+    altText: `${name} · #${employeeId}`.slice(0, 64)
   };
 }
 
@@ -323,7 +329,8 @@ function generatePassJson(template, instance, brand, options = {}) {
     baseUrl = 'http://localhost:3000',
     passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || `pass.com.nudj.${brand.slug}`,
     teamIdentifier = process.env.TEAM_IDENTIFIER || 'XXXXXXXXXX',
-    portalUrl = null
+    portalUrl = null,
+    member = null
   } = options;
 
   // Read colors from brand.config first, then template.style, then defaults
@@ -497,7 +504,17 @@ function generatePassJson(template, instance, brand, options = {}) {
   }
 
   const orderedBackFields = [];
-  if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
+  const useHrBack = isHrPassBrand(brand);
+
+  if (useHrBack) {
+    orderedBackFields.push(...buildHrBackFields({
+      brand,
+      template,
+      instance,
+      member,
+      brandConfig
+    }));
+  } else if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
     orderedBackFields.push({
       key: 'announcement_full',
       label: brandConfig.pushAnnouncement.title || 'NOVITÀ E PROMOZIONI',
@@ -505,6 +522,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
+  if (!useHrBack) {
   const linkSlots = resolveTemplateLinkSlots(tplFields);
   const link1 = resolveBackLink1(brandConfig, instance.serial_number)
     || (linkSlots[0].label || linkSlots[0].url
@@ -554,6 +572,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     if (TEMPLATE_LINK_FIELD_KEYS.has(String(f.key || '').toLowerCase())) return;
     orderedBackFields.push(f);
   });
+  }
 
   // ── Pass structure ────────────────────────────────────────────
   const structureKey = template.pass_type || 'storeCard';
@@ -564,7 +583,7 @@ function generatePassJson(template, instance, brand, options = {}) {
   if (auxiliaryFields.length > 0) passStructure.auxiliaryFields = auxiliaryFields;
   if (orderedBackFields.length > 0) passStructure.backFields = orderedBackFields;
 
-  const barcodePayload = buildIdentifyingQrBarcode(instance);
+  const barcodePayload = buildIdentifyingQrBarcode(instance, member);
 
   const passJson = {
     formatVersion: 1,
@@ -809,15 +828,28 @@ function signManifest(manifestJson, certPath, keyPath, wwdrPath) {
  * Create the complete .pkpass file
  */
 async function createPkpass(template, instance, brand, options = {}) {
+  const hrBrand = isHrPassBrand(brand);
   const {
     baseUrl = 'http://localhost:3000',
     certPath = path.join(__dirname, '../../certs/signerCert.pem'),
     keyPath = path.join(__dirname, '../../certs/signerKey.pem'),
     wwdrPath = path.join(__dirname, '../../certs/wwdr.pem'),
-    issuePortalLink = true,
+    issuePortalLink = !hrBrand,
     rotatePortalLink = false,
-    portalUrl: portalUrlOption = undefined
+    portalUrl: portalUrlOption = undefined,
+    member: memberOption = undefined
   } = options;
+
+  let member = memberOption;
+  if (member === undefined && instance?.id) {
+    try {
+      const { getMemberForPass } = require('../db');
+      member = await getMemberForPass(instance.id);
+    } catch (err) {
+      console.warn('[pass] member lookup skipped:', err.message);
+      member = null;
+    }
+  }
 
   let portalUrl = portalUrlOption;
   if (portalUrl === undefined && issuePortalLink && instance?.id) {
@@ -832,7 +864,7 @@ async function createPkpass(template, instance, brand, options = {}) {
   }
 
   // Generate pass.json
-  const passJson = generatePassJson(template, instance, brand, { ...options, baseUrl, portalUrl });
+  const passJson = generatePassJson(template, instance, brand, { ...options, baseUrl, portalUrl, member });
 
   // Generate images - use brand.config colors first, then template.style, then defaults
   const brandCfg = brand.config || {};

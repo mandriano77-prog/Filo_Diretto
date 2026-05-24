@@ -65,6 +65,7 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // Apple Wallet debug (public, no auth) — must be before debug router
 app.get('/debug/wallet-check', async (req, res) => {
