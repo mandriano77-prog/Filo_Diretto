@@ -13,6 +13,7 @@ const morgan = require('morgan');
 const fs = require('fs');
 const { getDb } = require('./db');
 const apiRoutes = require('./api/routes');
+const portalRoutes = require('./api/portal-routes');
 const debugSignRoutes = require('./api/debug-sign');
 const { startScheduler } = require('./engine/scheduler');
 const { runStripPromoCheck } = require('./engine/strip-promo');
@@ -112,7 +113,26 @@ app.get('/debug/wallet-check', async (req, res) => {
 
 // API routes
 app.use('/api/v1', apiRoutes);
+app.use('/api/v1/portal', portalRoutes);
 app.use('/debug', debugSignRoutes);
+
+// Employee portal (magic link SPA) — no cache on HTML
+app.get(['/portal', '/portal/'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const portalIndex = path.join(__dirname, 'portal', 'index.html');
+  if (fs.existsSync(portalIndex)) {
+    return res.sendFile(portalIndex);
+  }
+  res.status(503).send('Portale dipendente in preparazione.');
+});
+app.use(
+  '/portal',
+  (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  },
+  express.static(path.join(__dirname, 'portal'))
+);
 
 // Dashboard boot: product line lock from deploy env (e.g. studio.filodiretto.app → DASHBOARD_PRODUCT_LINE=hr)
 const VALID_DASHBOARD_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];

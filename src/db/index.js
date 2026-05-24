@@ -422,6 +422,55 @@ CREATE TABLE IF NOT EXISTS wallet_callback_events (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   processed_at TIMESTAMPTZ
 );
+
+-- Employee portal (passwordless magic link) — subject is pass_instances.id
+CREATE TABLE IF NOT EXISTS pass_consents (
+  id SERIAL PRIMARY KEY,
+  pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+  consent_type VARCHAR(64) NOT NULL,
+  granted BOOLEAN NOT NULL DEFAULT false,
+  granted_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  ip_address VARCHAR(64),
+  user_agent TEXT,
+  privacy_policy_version VARCHAR(32),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(pass_id, consent_type)
+);
+
+CREATE TABLE IF NOT EXISTS consent_log (
+  id SERIAL PRIMARY KEY,
+  pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+  consent_type VARCHAR(64) NOT NULL,
+  action VARCHAR(16) NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ip_address VARCHAR(64),
+  user_agent TEXT,
+  privacy_policy_version VARCHAR(32)
+);
+
+CREATE TABLE IF NOT EXISTS gdpr_requests (
+  id TEXT PRIMARY KEY,
+  pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+  brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+  request_type VARCHAR(32) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  details TEXT,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  resolved_by TEXT REFERENCES users(id),
+  resolution_notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS portal_tokens (
+  id SERIAL PRIMARY KEY,
+  pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+  token_hash VARCHAR(128) NOT NULL UNIQUE,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
+);
 `;
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Init Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
@@ -646,6 +695,58 @@ async function getDb() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_serial ON gamification_plays(serial_number)`).catch(()=>{});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_brand ON gamification_plays(brand_id)`).catch(()=>{});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_gam_plays_email ON gamification_plays(player_email)`).catch(()=>{});
+
+    // Employee portal tables (idempotent for existing deployments)
+    await pool.query(`CREATE TABLE IF NOT EXISTS pass_consents (
+      id SERIAL PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+      consent_type VARCHAR(64) NOT NULL,
+      granted BOOLEAN NOT NULL DEFAULT false,
+      granted_at TIMESTAMPTZ,
+      revoked_at TIMESTAMPTZ,
+      ip_address VARCHAR(64),
+      user_agent TEXT,
+      privacy_policy_version VARCHAR(32),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(pass_id, consent_type)
+    )`).catch(() => {});
+    await pool.query(`CREATE TABLE IF NOT EXISTS consent_log (
+      id SERIAL PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+      consent_type VARCHAR(64) NOT NULL,
+      action VARCHAR(16) NOT NULL,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ip_address VARCHAR(64),
+      user_agent TEXT,
+      privacy_policy_version VARCHAR(32)
+    )`).catch(() => {});
+    await pool.query(`CREATE TABLE IF NOT EXISTS gdpr_requests (
+      id TEXT PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      request_type VARCHAR(32) NOT NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      details TEXT,
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMPTZ,
+      resolved_by TEXT REFERENCES users(id),
+      resolution_notes TEXT
+    )`).catch(() => {});
+    await pool.query(`CREATE TABLE IF NOT EXISTS portal_tokens (
+      id SERIAL PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES pass_instances(id) ON DELETE CASCADE,
+      token_hash VARCHAR(128) NOT NULL UNIQUE,
+      issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      revoked_at TIMESTAMPTZ
+    )`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pass_consents_pass ON pass_consents(pass_id)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_consent_log_pass_ts ON consent_log(pass_id, timestamp DESC)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gdpr_requests_brand_status ON gdpr_requests(brand_id, status)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_gdpr_requests_pass ON gdpr_requests(pass_id, requested_at DESC)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_tokens_pass ON portal_tokens(pass_id)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_tokens_hash ON portal_tokens(token_hash)`).catch(() => {});
 
     // Seed admin
     await seedAdminUser();
@@ -2066,5 +2167,7 @@ module.exports = {
   updateSamsungWalletStatus,
   updatePassDeviceId,
   registerWalletCallbackEvent,
-  finalizeWalletCallbackEvent
+  finalizeWalletCallbackEvent,
+  // Employee portal (see src/db/portal.js)
+  ...require('./portal')
 };

@@ -257,7 +257,8 @@ function generatePassJson(template, instance, brand, options = {}) {
   const {
     baseUrl = 'http://localhost:3000',
     passTypeIdentifier = process.env.PASS_TYPE_IDENTIFIER || `pass.com.nudj.${brand.slug}`,
-    teamIdentifier = process.env.TEAM_IDENTIFIER || 'XXXXXXXXXX'
+    teamIdentifier = process.env.TEAM_IDENTIFIER || 'XXXXXXXXXX',
+    portalUrl = null
   } = options;
 
   // Read colors from brand.config first, then template.style, then defaults
@@ -467,11 +468,16 @@ function generatePassJson(template, instance, brand, options = {}) {
     });
   }
 
+  if (portalUrl) {
+    orderedBackFields.push(makeBackLinkField('portal_link', 'Il mio profilo', portalUrl));
+  }
+
   // 5. Any remaining template back fields (fallback)
   backFields.forEach(f => {
     // Skip if already covered by backContent or link slots
     if (f.key === 'regolamento' && backContent.regolamento) return;
     if (f.key === 'contatti' && backContent.contatti) return;
+    if (f.key === 'portal_link' && portalUrl) return;
     if (TEMPLATE_LINK_FIELD_KEYS.has(String(f.key || '').toLowerCase())) return;
     orderedBackFields.push(f);
   });
@@ -744,11 +750,26 @@ async function createPkpass(template, instance, brand, options = {}) {
     baseUrl = 'http://localhost:3000',
     certPath = path.join(__dirname, '../../certs/signerCert.pem'),
     keyPath = path.join(__dirname, '../../certs/signerKey.pem'),
-    wwdrPath = path.join(__dirname, '../../certs/wwdr.pem')
+    wwdrPath = path.join(__dirname, '../../certs/wwdr.pem'),
+    issuePortalLink = true,
+    rotatePortalLink = false,
+    portalUrl: portalUrlOption = undefined
   } = options;
 
+  let portalUrl = portalUrlOption;
+  if (portalUrl === undefined && issuePortalLink && instance?.id) {
+    try {
+      const { resolvePortalLinkForPass } = require('./portal-pass-link');
+      const link = await resolvePortalLinkForPass(instance.id, { rotate: rotatePortalLink });
+      portalUrl = link?.portal_url || null;
+    } catch (err) {
+      console.warn('[portal] pass back link skipped:', err.message);
+      portalUrl = null;
+    }
+  }
+
   // Generate pass.json
-  const passJson = generatePassJson(template, instance, brand, { baseUrl });
+  const passJson = generatePassJson(template, instance, brand, { ...options, baseUrl, portalUrl });
 
   // Generate images - use brand.config colors first, then template.style, then defaults
   const brandCfg = brand.config || {};
