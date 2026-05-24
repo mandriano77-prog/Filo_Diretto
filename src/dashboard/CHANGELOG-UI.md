@@ -7,25 +7,38 @@
 
 ### Utente
 - Sidebar allineata a un unico catalogo voci (`src/dashboard/lib/nav.js`).
-- **Identità** → **Identità Brand** (sidebar).
-- **Push Notification** → **Push & Notifiche** (sidebar).
-- **Leads / People / Dipendenti** → **Contatti** (HR e default Ads).
-- **Attività** → **Log Attività** (sidebar + H1).
-- **Audience Platform** → **Audience** (H1).
-- **Gestione Utenti** → **Utenti** (H1).
-- Tab browser Filo light: `Identità Brand · Filo Diretto` (senza brand intermedio).
+- **Identità** → **Identità Brand**; **Push Notification** → **Push & Notifiche**.
+- **Leads / People / Dipendenti** → **Contatti**; **Attività** → **Log Attività**.
+- **Audience Platform** → **Audience**; **Gestione Utenti** → **Utenti**.
+- Tab browser Filo light: `Identità Brand · Filo Diretto`.
 
 ### Tecnico
-- `src/dashboard/lib/nav.js` — single source of truth NAV.
-- `src/dashboard/lib/utils.js` — helper `cn()` per task futuri.
-- `src/dashboard/styles/tokens.css` — token brand/danger/shadcn aliases.
-- `data-section-id` su voci sidebar per sync automatica.
+- `src/dashboard/lib/nav.js`, `lib/utils.js`, `styles/tokens.css`, `data-section-id` sidebar.
+
+---
+
+## TASK 2–12 — Componenti UI (2026-05-24)
+
+### Utente
+- **PageHeader** uniforme su tutte le sezioni (titolo, descrizione, azioni).
+- **Empty state** illustrati su Campagne, Template, Pass, Instant Win, Gamification, Contatti, Audience, Log Attività.
+- **Conferme eliminazione** con dialog modale al posto del popup browser.
+- **Zona pericolosa** separata per eliminazione brand.
+- **Push & Notifiche**: tab con icone SVG (Immediata / Programmata / Geofencing) e dropzone strip.
+- **Sidebar mobile**: menu hamburger + drawer; gruppi collassabili ricordati in localStorage.
+- **Stat card**, tabelle e form con spacing e label sentence-case (shell light).
+- **W.AI FAB** con tooltip e focus visibile.
+
+### Tecnico
+```
+src/dashboard/
+  css/components/   page-header, empty-state, stat-card, data-table, form, dialog, danger-zone, tabs, dropzone, fab
+  css/layout.css    mobile sidebar sheet
+  js/main.js        ES module bootstrap
+  js/lib/nav.js     NAV (ESM, mirror di lib/nav.js)
+  js/components/    confirm-dialog, empty-state, page-header, sidebar
+```
 
 ### Decisioni
-- Nessuno scaffold Next.js: evita rewrite del monolite da 440k righe.
-- Product line **Engage/Live** mantiene override `data-menu-key` (Customer, ecc.).
-
-## Prossimi task (non ancora implementati)
-- TASK 2 PageHeader
-- TASK 5–6 Sidebar collapsible + AppHeader
-- TASK 3 EmptyState, 4 DangerZone, …
+- Nessuna dipendenza npm aggiuntiva; Lucide sostituito da SVG inline nei tab.
+- Logica API invariata; solo markup/CSS/UX client.
