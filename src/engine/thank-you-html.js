@@ -149,9 +149,8 @@ function thankYouStyles() {
 
 function thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl }) {
   const brand = escapeHtml(brandName);
-  const portalBtn = portalHref
-    ? `<a class="btn-primary" href="${escapeHtml(portalHref)}">Apri il mio profilo →</a>`
-    : '';
+  const portalTarget = portalHref && portalHref !== '#' ? portalHref : '#';
+  const portalBtn = `<a class="btn-primary" href="${escapeHtml(portalTarget)}"${portalTarget === '#' ? ' aria-disabled="true" onclick="return false;"' : ''}>Apri il mio profilo →</a>`;
   const downloadLink = passDownloadUrl
     ? `<a class="link-secondary" href="${escapeHtml(passDownloadUrl)}">Pass non installato? Scarica di nuovo</a>`
     : '';
@@ -161,10 +160,10 @@ function thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl }) {
       <span class="check" aria-hidden="true">&#10003;</span>
     </div>
     <h1>Benvenuto in ${brand}.</h1>
-    <p class="body-copy">Il pass è ora nel tuo wallet.<br>
+    <p class="body-copy lead">Il pass è ora nel tuo wallet.<br>
     Hai appena attivato il <strong>filo diretto</strong> con ${brand}: le comunicazioni arrivano direttamente sulla lock-screen del tuo iPhone — niente email, niente intranet.</p>
     <p class="muted">Puoi gestire cosa ricevere dal tuo profilo personale, in qualsiasi momento.</p>
-    <div class="cta-stack">
+    <div class="cta-stack actions">
       ${portalBtn}
       ${downloadLink}
     </div>`;
@@ -264,17 +263,9 @@ function renderSaveThankYouPage({
 </html>`;
 }
 
-async function resolvePortalHref(passId, brandId) {
-  try {
-    const { issuePortalToken } = require('./portal-auth');
-    const issued = await issuePortalToken(passId, brandId);
-    if (issued.portal_url) return issued.portal_url;
-    if (issued.token) return `/portal/?t=${encodeURIComponent(issued.token)}`;
-    return null;
-  } catch (err) {
-    console.warn('[thank-you] portal link unavailable:', err.message);
-    return null;
-  }
+function resolvePortalHref(_passId, _brandId) {
+  // TODO: attivare URL portale dipendente quando /portal/?t=TOKEN sarà in produzione HR
+  return '#';
 }
 
 module.exports = {

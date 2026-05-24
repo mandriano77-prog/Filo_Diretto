@@ -25,6 +25,7 @@
     })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/shared/theme.css">
     <link rel="stylesheet" href="/dashboard/styles/tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
@@ -1410,13 +1411,33 @@
                                 <button type="button" class="btn small danger" id="pushStripClearBtn" onclick="pushClearStrip()" style="display:none;">Rimuovi strip</button>
                             </div>
                         </div>
-                        <div class="form-group" style="margin-top:8px;">
-                            <label class="form-label">Link out — retro Link 1 (opzionale)</label>
+                        <motionmotiondiv class="form-group" style="margin-top:8px;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                                <input type="checkbox" id="pushIncludePassLink" onchange="togglePushPassLinkFields()" style="width:auto;accent-color:var(--accent);">
+                                <span>Includi link nel pass</span>
+                            </label>
+                        </div>
+                        <div id="pushPassLinkFields" style="display:none;margin-top:8px;">
+                            <div class="form-group">
+                                <label class="form-label">URL link (https://)</label>
+                                <input type="url" id="pushPassLinkUrl" placeholder="https://..." oninput="syncPushPassLinkLabel()">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Label del link (max 64)</label>
+                                <input type="text" id="pushPassLinkLabel" maxlength="64" placeholder="es. Compila il questionario">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Scadenza link</label>
+                                <input type="datetime-local" id="pushPassLinkExpires">
+                            </div>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Il link compare in cima al retro del pass fino alla scadenza (default 7 giorni).</p>
+                        </div>
+                        <div class="form-group" style="margin-top:8px;display:none;" id="pushLegacyLinkOut">
+                            <label class="form-label">Link out — retro Link 1 (legacy Ads)</label>
                             <div class="form-row">
                                 <input type="text" id="pushBackLinkLabel" placeholder="Testo link es. Scopri l'offerta" style="flex:1;">
                                 <input type="url" id="pushBackLinkUrl" placeholder="https://..." style="flex:1;">
                             </div>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Se compilato, sostituisce il Link 1 sul retro fino alla prossima push. Ha priorità su Instant Win / Gamification.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Instant Win (opzionale)</label>
@@ -2380,6 +2401,54 @@
                     </div>
                 </div>
 
+                <div id="hrPassBackEditor" style="display:none;">
+                    <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Retro Pass — Filo Diretto</div>
+
+                    <details class="hr-fieldset" open>
+                        <summary>0 — Link fisso fallback (opzionale)</summary>
+                        <p class="form-hint">Lascia vuoto nella maggior parte dei casi. Push e gamification scrivono dinamicamente il link variabile sul pass dei dipendenti. Compila qui SOLO se vuoi un link sempre visibile quando non c'è altro di attivo.</p>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label">Label (max 64)</label><input type="text" id="hrFixedLinkLabel" maxlength="64" placeholder="es. Crea ticket IT" oninput="updatePassPreview()"></div>
+                            <div class="form-group"><label class="form-label">URL https://</label><input type="url" id="hrFixedLinkUrl" placeholder="https://..." oninput="updatePassPreview()"></div>
+                        </div>
+                    </details>
+
+                    <details class="hr-fieldset">
+                        <summary>1 — Identità dipendente (auto)</summary>
+                        <p class="form-hint">Questi dati vengono auto-popolati dai dipendenti importati. Nessun input richiesto.</p>
+                    </details>
+
+                    <details class="hr-fieldset" open>
+                        <summary>2 — Contatti HR aziendali</summary>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label">People Operations email</label><input type="email" id="hrBrandEmail" placeholder="people@azienda.it"></div>
+                            <div class="form-group"><label class="form-label">Telefono HR</label><input type="text" id="hrBrandPhone" placeholder="+39 ..."></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label">Privacy / DPO email</label><input type="email" id="hrBrandDpo" placeholder="dpo@azienda.it"></div>
+                            <div class="form-group"><label class="form-label">Emergenze telefono</label><input type="text" id="hrBrandEmergency" placeholder="+39 ..."></div>
+                        </div>
+                    </details>
+
+                    <details class="hr-fieldset" open>
+                        <summary>3 — Risorse aziendali (max 5)</summary>
+                        <div id="hrResourcesRows"></div>
+                        <button type="button" class="btn small sec" onclick="hrAddResourceRow()">+ Aggiungi risorsa</button>
+                    </details>
+
+                    <details class="hr-fieldset" open>
+                        <summary>4 — Documenti (max 5)</summary>
+                        <div id="hrDocumentsRows"></div>
+                        <button type="button" class="btn small sec" onclick="hrAddDocumentRow()">+ Aggiungi documento</button>
+                    </details>
+
+                    <details class="hr-fieldset">
+                        <summary>5 — Profilo personale (auto)</summary>
+                        <p class="form-hint">Sezione che includerà link al portale dipendente quando attivato (privacy, consensi, dati). In implementazione.</p>
+                    </details>
+                </div>
+
+                <div id="adsPassBackEditor">
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Retro — Contenuti</div>
                 <div class="form-group">
                     <label class="form-label">Link 1 — variabile</label>
@@ -2394,6 +2463,7 @@
                     <div class="form-row"><input type="text" id="tplLink3Label" placeholder="Label es. Prenota" oninput="updatePassPreview()"><input type="text" id="tplLink3Url" placeholder="https://..." oninput="updatePassPreview()"></div>
                 </div>
                 <div class="form-group"><label class="form-label">Contatti</label><textarea id="tplContatti" rows="2" placeholder="Email, telefono, indirizzo..." oninput="updatePassPreview()" style="width:100%;"></textarea></div>
+                </div>
 
                 <button class="btn" onclick="saveTemplate()" style="margin-top:16px;">Salva Template</button>
             </div>
@@ -3095,6 +3165,7 @@ let analyticsDateTo = '';
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
     initDashboardProductTheme();
+    togglePassBackEditorMode();
     initFiloNavGroups();
     if (typeof enhancePageHeaders === 'function') enhancePageHeaders();
     initUserMenu();
@@ -3549,6 +3620,10 @@ function getLockedProductLine() {
 
 function isProductLineLocked() {
     return !!getLockedProductLine();
+}
+
+function isHrDashboard() {
+    return (getLockedProductLine() || getUnscopedDashboardProductLine()) === 'hr';
 }
 
 function getUnscopedDashboardProductLine() {
@@ -4717,8 +4792,106 @@ async function loadTemplates() {
     `).join('');
 }
 
+function togglePassBackEditorMode() {
+    const hr = isHrDashboard();
+    const hrEl = document.getElementById('hrPassBackEditor');
+    const adsEl = document.getElementById('adsPassBackEditor');
+    if (hrEl) hrEl.style.display = hr ? 'block' : 'none';
+    if (adsEl) adsEl.style.display = hr ? 'none' : 'block';
+    const legacyPush = document.getElementById('pushLegacyLinkOut');
+    if (legacyPush) legacyPush.style.display = hr ? 'none' : 'block';
+}
+
+function hrAddLinkRow(containerId, label = '', url = '') {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    if (box.querySelectorAll('.hr-link-row').length >= 5) return toast('Massimo 5 righe');
+    const row = document.createElement('div');
+    row.className = 'hr-link-row';
+    row.innerHTML = `<input type="text" class="hr-row-label" placeholder="Label" value="${esc(label)}"><input type="url" class="hr-row-url" placeholder="https://..." value="${esc(url)}"><button type="button" class="btn small sec" onclick="this.parentElement.remove()">Rimuovi</button>`;
+    box.appendChild(row);
+}
+
+function hrRenderLinkRows(containerId, rows) {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    box.innerHTML = '';
+    (rows || []).slice(0, 5).forEach(r => hrAddLinkRow(containerId, r.label || '', r.url || ''));
+}
+
+function hrCollectLinkRows(containerId) {
+    const box = document.getElementById(containerId);
+    if (!box) return [];
+    return [...box.querySelectorAll('.hr-link-row')].map(row => ({
+        label: row.querySelector('.hr-row-label')?.value.trim() || '',
+        url: row.querySelector('.hr-row-url')?.value.trim() || ''
+    })).filter(r => r.label && r.url).slice(0, 5);
+}
+
+function hrAddResourceRow() { hrAddLinkRow('hrResourcesRows'); }
+function hrAddDocumentRow() { hrAddLinkRow('hrDocumentsRows'); }
+
+async function loadHrBrandBackFields() {
+    if (!brandId || !isHrDashboard()) return;
+    const brand = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('hrBrandEmail', brand.hr_email);
+    set('hrBrandPhone', brand.hr_phone);
+    set('hrBrandDpo', brand.dpo_email);
+    set('hrBrandEmergency', brand.emergency_phone);
+    hrRenderLinkRows('hrResourcesRows', brand.back_resources || []);
+    hrRenderLinkRows('hrDocumentsRows', brand.back_documents || []);
+}
+
+async function saveHrBrandBackFields() {
+    if (!brandId) return;
+    const payload = {
+        hr_email: document.getElementById('hrBrandEmail')?.value.trim() || null,
+        hr_phone: document.getElementById('hrBrandPhone')?.value.trim() || null,
+        dpo_email: document.getElementById('hrBrandDpo')?.value.trim() || null,
+        emergency_phone: document.getElementById('hrBrandEmergency')?.value.trim() || null,
+        back_resources: hrCollectLinkRows('hrResourcesRows'),
+        back_documents: hrCollectLinkRows('hrDocumentsRows')
+    };
+    await fetch(`${API}/brands/${brandId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+    });
+}
+
+function loadHrTemplateBackFields(t) {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('hrFixedLinkLabel', t?.back_fixed_link_label);
+    set('hrFixedLinkUrl', t?.back_fixed_link_url);
+}
+
+function togglePushPassLinkFields() {
+    const on = document.getElementById('pushIncludePassLink')?.checked;
+    const box = document.getElementById('pushPassLinkFields');
+    if (box) box.style.display = on ? 'block' : 'none';
+    if (on && !document.getElementById('pushPassLinkExpires')?.value) {
+        const el = document.getElementById('pushPassLinkExpires');
+        if (el) el.value = defaultPushLinkExpiryLocal();
+    }
+}
+
+function defaultPushLinkExpiryLocal() {
+    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+}
+
+function syncPushPassLinkLabel() {
+    const labelEl = document.getElementById('pushPassLinkLabel');
+    const titleEl = document.getElementById('pushTitle');
+    if (!labelEl || labelEl.value.trim() || !titleEl) return;
+    labelEl.value = titleEl.value.trim().slice(0, 40);
+}
+
 function openTemplateModal() {
     nav('templates');
+    togglePassBackEditorMode();
     document.getElementById('templateEditId').value = '';
     document.getElementById('templateModalTitle').textContent = 'Nuovo Template';
     ['tplName','tplDescription','tplHeaderLabel','tplHeaderValue','tplSecLabel','tplSecValue','tplAuxLabel','tplAuxValue','tplLink1Label','tplLink1Url','tplLink2Label','tplLink2Url','tplLink3Label','tplLink3Url','tplRegolamento','tplContatti'].forEach(id => document.getElementById(id).value = '');
@@ -4730,10 +4903,16 @@ function openTemplateModal() {
     document.body.classList.add('modal-open');
     populateStripPromoSelect();
     onPassTypeChange();
+    if (isHrDashboard()) {
+        hrRenderLinkRows('hrResourcesRows', []);
+        hrRenderLinkRows('hrDocumentsRows', []);
+        loadHrBrandBackFields();
+    }
 }
 
 async function editTemplate(id) {
     nav('templates');
+    togglePassBackEditorMode();
     const res = await fetch(`${API}/templates/${id}`);
     const t = await res.json();
     document.getElementById('templateEditId').value = t.id;
@@ -4761,6 +4940,10 @@ async function editTemplate(id) {
     document.getElementById('tplLink3Url').value = (links[2] || {}).url || '';
     document.getElementById('tplRegolamento').value = fields.regolamento || '';
     document.getElementById('tplContatti').value = fields.contatti || '';
+    if (isHrDashboard()) {
+        loadHrTemplateBackFields(t);
+        await loadHrBrandBackFields();
+    }
     // Reset and load existing images
     tplImageCache = {};
     ['tplImgLogo','tplImgStrip','tplImgThumb','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -4783,10 +4966,6 @@ async function editTemplate(id) {
 
 async function saveTemplate() {
     const editId = document.getElementById('templateEditId').value;
-    const links = [1, 2, 3].map(i => ({
-        label: document.getElementById('tplLink'+i+'Label').value.trim(),
-        url: document.getElementById('tplLink'+i+'Url').value.trim()
-    }));
     const body = {
         brand_id: brandId,
         name: document.getElementById('tplName').value,
@@ -4795,13 +4974,25 @@ async function saveTemplate() {
         fields: {
             headerFields: [{ key: 'header_info', label: document.getElementById('tplHeaderLabel').value, value: document.getElementById('tplHeaderValue').value }],
             secondaryFields: [{ key: 'info', label: document.getElementById('tplSecLabel').value, value: document.getElementById('tplSecValue').value, type: 'secondary' }],
-            auxiliaryFields: [{ key: 'aux_info', label: document.getElementById('tplAuxLabel').value, value: document.getElementById('tplAuxValue').value, type: 'auxiliary' }],
-            links,
-            regolamento: document.getElementById('tplRegolamento').value,
-            contatti: document.getElementById('tplContatti').value
+            auxiliaryFields: [{ key: 'aux_info', label: document.getElementById('tplAuxLabel').value, value: document.getElementById('tplAuxValue').value, type: 'auxiliary' }]
         }
     };
+
+    if (isHrDashboard()) {
+        body.back_fixed_link_label = (document.getElementById('hrFixedLinkLabel')?.value || '').trim().slice(0, 64) || null;
+        body.back_fixed_link_url = (document.getElementById('hrFixedLinkUrl')?.value || '').trim() || null;
+    } else {
+        const links = [1, 2, 3].map(i => ({
+            label: document.getElementById('tplLink'+i+'Label').value.trim(),
+            url: document.getElementById('tplLink'+i+'Url').value.trim()
+        }));
+        body.fields.links = links;
+        body.fields.regolamento = document.getElementById('tplRegolamento').value;
+        body.fields.contatti = document.getElementById('tplContatti').value;
+    }
+
     if (!body.name) return alert('Nome template obbligatorio');
+    if (isHrDashboard() && brandId) await saveHrBrandBackFields();
     const url = editId ? `${API}/templates/${editId}` : `${API}/templates`;
     const method = editId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -5208,10 +5399,18 @@ async function sendImmediatePush() {
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification').value;
     if (gamId) body.gamification_id = gamId;
-    const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
-    if (backLinkUrl) {
-        body.back_link_url = backLinkUrl;
-        body.back_link_label = (document.getElementById('pushBackLinkLabel')?.value || '').trim();
+    if (document.getElementById('pushIncludePassLink')?.checked) {
+        body.include_pass_link = true;
+        body.pass_link_url = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+        body.pass_link_label = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
+        const expLocal = document.getElementById('pushPassLinkExpires')?.value;
+        if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
+    } else if (!isHrDashboard()) {
+        const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
+        if (backLinkUrl) {
+            body.back_link_url = backLinkUrl;
+            body.back_link_label = (document.getElementById('pushBackLinkLabel')?.value || '').trim();
+        }
     }
     if (updatePass && pushStripMediaId) body.strip_media_id = pushStripMediaId;
     const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -5235,6 +5434,10 @@ async function sendImmediatePush() {
     alert(msg);
     document.getElementById('pushTitle').value = '';
     document.getElementById('pushMessage').value = '';
+    const incl = document.getElementById('pushIncludePassLink');
+    if (incl) incl.checked = false;
+    togglePushPassLinkFields();
+    ['pushPassLinkUrl', 'pushPassLinkLabel', 'pushPassLinkExpires'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const pbl = document.getElementById('pushBackLinkLabel');
     const pbu = document.getElementById('pushBackLinkUrl');
     if (pbl) pbl.value = '';

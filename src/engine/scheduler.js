@@ -14,7 +14,8 @@ const {
   touchPass,
   getDevicesForBrand,
   logPush,
-  logEvent
+  logEvent,
+  updatePassDynamicLinks
 } = require('../db');
 const { createPkpass } = require('./passkit');
 const { sendPushUpdate } = require('./apns');
@@ -130,7 +131,10 @@ function calculateNextRun(schedule) {
  * Execute a single scheduled push notification
  */
 async function executeScheduledPush(schedule, baseUrl) {
-  const { brand_id, title, message, target, update_pass, channel = 'apple', campaign_id, audience_id } = schedule;
+  const {
+    brand_id, title, message, target, update_pass, channel = 'apple', campaign_id, audience_id,
+    include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at
+  } = schedule;
   const pushTargetOpts = { campaign_id, audience_id };
   const legacyBoth = channel === 'both';
   const sendApple = channel === 'apple' || legacyBoth || channel === 'all';
@@ -146,6 +150,7 @@ async function executeScheduledPush(schedule, baseUrl) {
   }
 
   let passesUpdated = 0;
+  const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
 
   // If update_pass, update brand config and regenerate passes
   if (update_pass) {
@@ -160,7 +165,16 @@ async function executeScheduledPush(schedule, baseUrl) {
     };
     await updateBrand(brand_id, { config: updatedConfig });
 
-    const passes = await getTargetPassesForPush(brand_id, pushTargetOpts);
+    if (include_pass_link && pass_link_url) {
+      const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await updatePassDynamicLinks(targetPasses.map((p) => p.id), {
+        label: pass_link_label || title.slice(0, 40),
+        url: pass_link_url,
+        expiresAt: pass_link_expires_at || defaultExpiry
+      });
+    }
+
+    const passes = targetPasses;
     const updatedBrand = await getBrand(brand_id);
     const cacheDir = ensureCacheDir();
 
@@ -184,7 +198,7 @@ async function executeScheduledPush(schedule, baseUrl) {
   // Keep Google Wallet objects in sync when pass content changes.
   if (update_pass && sendGoogle && googleWallet.isConfigured()) {
     try {
-      const passes = await getTargetPassesForPush(brand_id, pushTargetOpts);
+      const passes = targetPasses;
       const syncedBrand = await getBrand(brand_id);
       for (const pass of passes) {
         if (!pass.google_wallet_object_id) continue;
@@ -206,7 +220,7 @@ async function executeScheduledPush(schedule, baseUrl) {
   let samsungNotify = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
   if (update_pass && sendSamsung && samsungWallet.isConfigured()) {
     try {
-      const passes = await getTargetPassesForPush(brand_id, pushTargetOpts);
+      const passes = targetPasses;
       samsungNotify = await samsungWallet.notifySavedPassesUpdates(passes);
       console.log('[SamsungWallet] Scheduled notify', samsungNotify);
     } catch (e) {
