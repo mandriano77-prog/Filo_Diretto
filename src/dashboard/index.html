@@ -25,96 +25,13 @@
     })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/dashboard/styles/tokens.css">
+    <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
+    <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            /* ── Design tokens (light-first) ── */
-            --bg-canvas: #FFFFFF;
-            --bg-app: #FAFAFA;
-            --bg-subtle: #F8FAFC;
-            --bg-hover: #F1F5F9;
-            --bg-active: #EDE9FE;
-
-            --border-default: #E2E8F0;
-            --border-strong: #CBD5E1;
-            --border-focus: #8B5CF6;
-
-            --text-primary: #0F172A;
-            --text-body: #334155;
-            --text-secondary: #64748B;
-            --text-muted: #94A3B8;
-            --text-on-accent: #FFFFFF;
-
-            --accent: #8B5CF6;
-            --accent-hover: #7C3AED;
-            --accent-subtle: #F5F3FF;
-
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --info: #3B82F6;
-
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-
-            --text-xs: 12px;
-            --text-sm: 14px;
-            --text-base: 16px;
-            --text-lg: 20px;
-            --text-xl: 24px;
-            --text-2xl: 32px;
-
-            --space-1: 4px;
-            --space-2: 8px;
-            --space-3: 12px;
-            --space-4: 16px;
-            --space-5: 24px;
-            --space-6: 32px;
-            --space-7: 48px;
-
-            --radius-sm: 4px;
-            --radius-md: 6px;
-            --radius-lg: 8px;
-            --radius-pill: 9999px;
-
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-            --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-            --transition-fast: 120ms ease;
-            --transition-base: 200ms ease;
-
-            /* Legacy aliases (theme JS overrides these per product line) */
-            --bg: var(--bg-app);
-            --bg2: var(--bg-canvas);
-            --bg3: var(--bg-hover);
-            --teal: var(--accent);
-            --purple: var(--accent-hover);
-            --text: var(--text-primary);
-            --text2: var(--text-secondary);
-            --border: var(--border-default);
-            --red: var(--danger);
-            --green: var(--success);
-            --orange: var(--warning);
-            --yellow: #EAB308;
-        }
-
-        /* Dark shell — preserved for optional toggle / non-HR product lines */
-        html[data-shell="dark"], html.theme-dark {
-            --bg-canvas: #1E1A36;
-            --bg-app: #0D0B1A;
-            --bg-subtle: #1E1A36;
-            --bg-hover: #2D2645;
-            --bg-active: rgba(124, 58, 237, 0.22);
-            --border-default: #3A3556;
-            --border-strong: #4A4568;
-            --text-primary: #FFFFFF;
-            --text-body: #E2E8F0;
-            --text-secondary: #B0A8C1;
-            --text-muted: #8B839E;
-        }
+        /* Design tokens: /dashboard/styles/tokens.css */
 
         html, body { width: 100%; height: 100%; }
 
@@ -129,6 +46,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        h1.page-title, h2.block-title, h3.block-title { color: var(--text-primary); font-weight: 600; }
         h1, h2, h3, .sec-title { color: var(--text-primary); font-weight: 600; }
         h1, .sec-title { font-size: var(--text-xl); margin-bottom: var(--space-5); }
         h2 { font-size: var(--text-lg); }
@@ -174,6 +92,67 @@
             opacity: 1;
         }
         .nav-label.disabled { opacity: 0.35; }
+
+        .nav-group { border: none; margin: 0; }
+        .nav-group-label {
+            list-style: none;
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--text-muted);
+            margin: var(--space-5) 0 var(--space-2);
+            font-weight: 600;
+            opacity: 1;
+            cursor: pointer;
+            padding: 0 var(--space-3);
+        }
+        .nav-group-label::-webkit-details-marker { display: none; }
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: var(--space-5);
+            border-top: 1px solid var(--border);
+        }
+        .sidebar-footer-text {
+            font-size: var(--text-xs);
+            color: var(--text2);
+        }
+
+        html[data-shell="dark"] .user-menu { align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--text2); }
+        html[data-shell="dark"] .user-menu-trigger { display: none; }
+        html[data-shell="dark"] .user-menu-dropdown {
+            position: static;
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            min-width: 0;
+        }
+        html[data-shell="dark"] .user-menu-dropdown[hidden] { display: flex !important; }
+        html[data-shell="dark"] .user-menu-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            border: none;
+            padding: 0;
+            margin: 0;
+            flex-wrap: wrap;
+        }
+        html[data-shell="dark"] .user-menu-item:not(.user-menu-item--danger) { display: none; }
+        html[data-shell="dark"] .user-menu-item--danger {
+            padding: var(--space-1) var(--space-3);
+            min-height: 32px;
+            width: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-body);
+            background: transparent;
+        }
+        html[data-shell="dark"] .app-breadcrumb { display: none; }
 
         .nav-item {
             display: flex;
@@ -646,6 +625,24 @@
             justify-content: space-between;
             background: var(--bg-subtle);
         }
+        .wai-panel-title {
+            font-size: var(--text-sm);
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .wai-panel-actions { display: flex; gap: var(--space-1); }
+        .wai-panel-btn {
+            min-width: 32px;
+            min-height: 32px;
+            padding: var(--space-1) var(--space-2);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            background: var(--bg-canvas);
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+            font-family: inherit;
+            cursor: pointer;
+        }
         .wai-panel-body {
             flex: 1 1 auto;
             min-height: 0;
@@ -944,49 +941,90 @@
 </div>
 
 <div class="layout" id="mainLayout" style="display:none;">
-    <div class="sidebar">
+    <aside class="sidebar" role="navigation" aria-label="Menu principale">
         <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small class="chrome-byline">by Underdogs Group</small></div>
-        <div class="nav-label" id="navLabelDashboard">Dashboard</div>
-        <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
-        <div class="nav-label">Brand</div>
-        <div class="nav-item" onclick="nav('brand-identity')">Identità</div>
-        <div class="nav-item" onclick="nav('media-library')">Media Library</div>
-        <div class="nav-label">Pass</div>
-        <div class="nav-item" onclick="nav('templates')">Template Pass</div>
-        <div class="nav-item" onclick="nav('passes')">Pass Emessi</div>
-        <div class="nav-label">Comunicazione</div>
-        <div class="nav-item" onclick="nav('campaigns')">Campagne</div>
-        <div class="nav-item" onclick="nav('push')">Push Notification</div>
-        <div class="nav-label">Engagement</div>
-        <div class="nav-item" onclick="nav('instant-win')">Instant Win</div>
-        <div class="nav-item" onclick="nav('gamification')">Gamification</div>
-        <div class="nav-label">Database</div>
-        <div class="nav-item" onclick="nav('leads')" data-menu-key="nav_leads" data-menu-default="Leads">Leads</div>
-        <div class="nav-item" onclick="nav('audiences')">Audience</div>
-        <div class="nav-label">Insights</div>
-        <div class="nav-item" onclick="nav('analytics')">Analytics</div>
-        <div class="nav-item" onclick="nav('activity-log')">Attività</div>
-        <div class="nav-label">Setup</div>
-        <div class="nav-item" onclick="nav('users')" data-role-min="admin">Utenti</div>
+        <details class="nav-group" open data-nav-group="dashboard" id="navGroupDashboard">
+            <summary class="nav-group-label" id="navLabelDashboard">Dashboard</summary>
+            <div class="nav-item active" id="navItemWelcome" onclick="nav('welcome')">Inizio</div>
+        </details>
 
-        <div style="margin-top:auto; padding-top:20px; border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--text2);"><span class="chrome-product-title">Ads2Wallet</span><br><span class="chrome-byline">by Underdogs Group</span></div>
+        <details class="nav-group" open data-nav-group="brand">
+            <summary class="nav-group-label">Brand</summary>
+            <div class="nav-item" onclick="nav('brand-identity')">Identità</div>
+            <div class="nav-item" onclick="nav('media-library')">Media Library</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="pass">
+            <summary class="nav-group-label">Pass</summary>
+            <div class="nav-item" onclick="nav('templates')">Template Pass</div>
+            <div class="nav-item" onclick="nav('passes')">Pass Emissi</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="comunicazione">
+            <summary class="nav-group-label">Comunicazione</summary>
+            <div class="nav-item" onclick="nav('campaigns')">Campagne</div>
+            <div class="nav-item" onclick="nav('push')">Push Notification</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="engagement">
+            <summary class="nav-group-label">Engagement</summary>
+            <div class="nav-item" onclick="nav('instant-win')">Instant Win</div>
+            <div class="nav-item" onclick="nav('gamification')">Gamification</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="database">
+            <summary class="nav-group-label">Database</summary>
+            <div class="nav-item" onclick="nav('leads')" data-menu-key="nav_leads" data-menu-default="Leads">Leads</div>
+            <div class="nav-item" onclick="nav('audiences')">Audience</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="insights">
+            <summary class="nav-group-label">Insights</summary>
+            <div class="nav-item" onclick="nav('analytics')">Analytics</div>
+            <div class="nav-item" onclick="nav('activity-log')">Attività</div>
+        </details>
+
+        <details class="nav-group" open data-nav-group="setup">
+            <summary class="nav-group-label">Setup</summary>
+            <div class="nav-item" onclick="nav('users')" data-role-min="admin">Utenti</div>
+        </details>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-footer-text"><span class="chrome-product-title">Ads2Wallet</span><br><span class="chrome-byline">by Underdogs Group</span></div>
         </div>
-    </div>
+    </aside>
 
     <div class="main">
-        <div class="header">
-            <div class="header-title" id="headerBrandTitle">
-                <img id="headerBrandLogo" class="header-brand-logo" alt="Logo brand">
-                <span id="headerBrandName">Ads2Wallet</span>
+        <header class="header app-header">
+            <div class="header-start">
+                <nav class="app-breadcrumb" aria-label="Percorso" id="appBreadcrumb">
+                    <ol class="breadcrumb-list">
+                        <li><span id="breadcrumbBrand">Ads2Wallet</span></li>
+                        <li><span id="breadcrumbSection" aria-current="page">Inizio</span></li>
+                    </ol>
+                </nav>
+                <div class="header-title header-title--legacy" id="headerBrandTitle">
+                    <img id="headerBrandLogo" class="header-brand-logo" alt="Logo brand">
+                    <span id="headerBrandName">Ads2Wallet</span>
+                </div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
-                <div id="dashboardUserSlot" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--text2);">
-                    <span id="dashboardUserEmail" title="Account"></span>
-                    <span id="dashboardUserRole" class="role-tag"></span>
-                    <button type="button" class="btn small sec" onclick="logout()">Esci</button>
+            <div class="header-actions">
+                <div class="user-menu" id="dashboardUserSlot" style="display:none;">
+                    <button type="button" class="user-menu-trigger" id="userMenuTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Menu account">
+                        <span class="user-avatar" id="userAvatarInitials" aria-hidden="true">?</span>
+                    </button>
+                    <div class="user-menu-dropdown" id="userMenuDropdown" role="menu" hidden>
+                        <div class="user-menu-meta">
+                            <span class="user-menu-email" id="dashboardUserEmail" title="Account"></span>
+                            <span class="user-menu-role role-tag" id="dashboardUserRole"></span>
+                        </div>
+                        <button type="button" class="user-menu-item" role="menuitem" id="userMenuProfileBtn">Profilo</button>
+                        <button type="button" class="user-menu-item" role="menuitem" id="userMenuSettingsBtn">Impostazioni</button>
+                        <button type="button" class="user-menu-item user-menu-item--danger" role="menuitem" onclick="closeUserMenu(); logout();">Esci</button>
+                    </div>
                 </div>
                 <span id="dashboardProductLineWrap">
+                    <label class="sr-only" for="dashboardProductLine">Linea prodotto</label>
                     <select class="brand-sel" id="dashboardProductLine" title="Linea prodotto: filtra i brand disponibili (bloccata quando un brand è selezionato)" onchange="onDashboardProductLineChange()">
                         <option value="ads">Ads</option>
                         <option value="hr">HR</option>
@@ -994,18 +1032,19 @@
                         <option value="live">Live</option>
                     </select>
                 </span>
-                <select class="brand-sel" id="brandSelector" onchange="changeBrand()">
+                <label class="sr-only" for="brandSelector">Seleziona brand</label>
+                <select class="brand-sel brand-sel--header" id="brandSelector" onchange="changeBrand()">
                     <option value="">Seleziona Brand</option>
                 </select>
             </div>
-        </div>
+        </header>
 
         <div class="content">
 
             <!-- WELCOME -->
             <div id="welcome" class="section active">
-                <div class="sec-title">Inizio</div>
-                <p style="font-size:14px;color:var(--text2);max-width:720px;line-height:1.55;margin-bottom:16px;">
+                <h1 class="sec-title page-title">Inizio</h1>
+                <p class="page-lead">
                     Home operativa essenziale: seleziona o crea un brand per iniziare.
                 </p>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
@@ -1014,7 +1053,7 @@
                 </div>
 
                 <div class="card" style="margin-bottom:14px;">
-                    <div class="sec-title" style="font-size:15px;margin-bottom:10px;">Stato integrazioni</div>
+                    <h2 class="block-title block-title--sm">Stato integrazioni</h2>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
                         <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                             Apple Wallet: <strong style="color:var(--green);">OK</strong>
@@ -1029,7 +1068,7 @@
                 </div>
 
                 <div class="card" style="border-color:rgba(255,107,107,.35);">
-                    <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Alert bloccanti</div>
+                    <h2 class="block-title block-title--sm">Alert bloccanti</h2>
                     <div style="font-size:13px;color:var(--text2);">Nessun alert bloccante al momento.</div>
                 </div>
             </div>
@@ -1037,7 +1076,7 @@
             <!-- CAMPAIGNS -->
             <div id="campaigns" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Campagne</div>
+                    <h1 class="sec-title page-title" style="margin-bottom:0">Campagne</h1>
                     <button class="btn" onclick="openCampaignModal()">+ Nuova Campagna</button>
                 </div>
                 <div id="campaignsList" style="color:var(--text2)">Caricamento...</div>
@@ -1046,7 +1085,7 @@
             <!-- CREATIVES -->
             <!-- PASS DESIGN -->
             <div id="pass-design" class="section">
-                <div class="sec-title">Design Pass</div>
+                <h1 class="sec-title page-title">Design Pass</h1>
                 <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Logo, strip image e stile visivo del pass Apple Wallet.</p>
                 <div class="card">
                     <div class="sec-title" style="font-size:16px;">Immagini Pass</div>
@@ -1086,7 +1125,7 @@
             <!-- PASSES -->
             <div id="passes" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Pass Emessi</div>
+                    <h1 class="sec-title page-title" style="margin-bottom:0">Pass Emessi</h1>
                     <div style="display:flex;gap:8px;">
                         <select id="passFilterCampaign" onchange="loadPasses(true)" style="width:auto;min-width:160px;">
                             <option value="">Tutte le campagne</option>
@@ -1101,7 +1140,7 @@
             <!-- TEMPLATES -->
             <div id="templates" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Template Pass</div>
+                    <h1 class="sec-title page-title" style="margin-bottom:0">Template Pass</h1>
                     <button class="btn" onclick="openTemplateModal()">+ Nuovo Template</button>
                 </div>
                 <div id="templatesList" style="color:var(--text2)">Caricamento...</div>
@@ -1109,7 +1148,7 @@
 
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
-                <div class="sec-title">Push &amp; Notifiche</div>
+                <h1 class="sec-title page-title">Push &amp; Notifiche</h1>
                 <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Nella push diretta puoi scegliere il canale: <strong>Apple (APNs)</strong>, <strong>Google Wallet</strong> o entrambi.</p>
 
                 <!-- Sub-tab navigation -->
@@ -1304,7 +1343,7 @@
 
             <!-- BRAND IDENTITY -->
             <div id="brand-identity" class="section">
-                <div class="sec-title">Identità Brand</div>
+                <h1 class="sec-title page-title">Identità Brand</h1>
                 <p style="font-size:12px;color:var(--text2);margin-bottom:20px;">Profilo del brand: settore e home page. I colori del pass sono fissi (tema piattaforma).</p>
 
                 <div class="card">
@@ -1346,7 +1385,7 @@
             <!-- MEDIA LIBRARY -->
             <div id="media-library" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Media Library</div>
+                    <h1 class="sec-title page-title" style="margin-bottom:0">Media Library</h1>
                     <div style="display:flex;gap:8px;">
                         <button class="btn" onclick="openMediaUpload()">+ Carica Immagine</button>
                         <button class="btn sec" style="color:#f66;border-color:#f66;" onclick="deleteAllMedia()">Svuota tutto</button>
@@ -1455,7 +1494,7 @@
             <div id="mediaPickerModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
               <div style="background:#1a1a1a;border-radius:16px;padding:24px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                  <h3 style="margin:0;color:#fff">Scegli Media</h3>
+                  <h2 class="block-title" style="margin:0;color:var(--text-primary)">Scegli Media</h2>
                   <button onclick="closeMediaPicker()" style="background:none;border:none;color:#aaa;font-size:24px;cursor:pointer">&times;</button>
                 </div>
                 <div id="mpFilters" style="margin-bottom:12px">
@@ -1482,7 +1521,7 @@
             <!-- PASS WIZARD -->
             <div id="pass-wizard" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                    <div class="sec-title" style="margin-bottom:0">Crea Pass</div>
+                    <h1 class="sec-title page-title" style="margin-bottom:0">Crea Pass</h1>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <span id="wzStepLabel" style="font-size:12px;color:var(--text2);">Step 1 di 3</span>
                     </div>
@@ -1684,7 +1723,7 @@
 
             <!-- INSTANT WIN -->
             <div id="instant-win" class="section">
-                <div class="sec-title">Instant Win</div>
+                <h1 class="sec-title page-title">Instant Win</h1>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea campagne Instant Win per coinvolgere i tuoi utenti con premi immediati: scratch card, spin the wheel, slot machine.</p>
 
                 <div class="stats-grid" id="iwStats">
@@ -1707,7 +1746,7 @@
                 <div id="iwModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
                   <div style="background:var(--card);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                      <h3 id="iwModalTitle" style="margin:0;font-size:20px;">Nuova Campagna</h3>
+                      <h2 id="iwModalTitle" class="block-title" style="margin:0;font-size:20px;">Nuova Campagna</h2>
                       <button class="btn sec" onclick="closeIwModal()" style="font-size:18px;padding:4px 12px;">✕</button>
                     </div>
                     <input type="hidden" id="iwEditId">
@@ -1739,7 +1778,7 @@
 
             <!-- GAMIFICATION -->
             <div id="gamification" class="section">
-                <div class="sec-title">Gamification</div>
+                <h1 class="sec-title page-title">Gamification</h1>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Crea campagne di gioco skill-based: Quiz, Memory Match, Puzzle. Premi a fasce in base al tempo di completamento.</p>
 
                 <div class="stats-grid" id="gamStats">
@@ -1761,7 +1800,7 @@
                 <div id="gamModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
                   <div style="background:var(--card);border-radius:16px;padding:28px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                      <h3 id="gamModalTitle" style="margin:0;font-size:20px;">Nuova Campagna Gamification</h3>
+                      <h2 id="gamModalTitle" class="block-title" style="margin:0;font-size:20px;">Nuova Campagna Gamification</h3>
                       <button class="btn sec" onclick="closeGamModal()" style="font-size:18px;padding:4px 12px;">✕</button>
                     </div>
                     <input type="hidden" id="gamEditId">
@@ -1804,7 +1843,7 @@
 
             <!-- LEADS DATABASE -->
             <div id="leads" class="section">
-                <div class="sec-title" data-menu-key="leads_page_title" data-menu-default="Lista contatti">Lista contatti</div>
+                <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Lista contatti">Lista contatti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
                     <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
                     <div style="display:flex;gap:8px;align-items:center;">
@@ -1824,7 +1863,7 @@
 
             <!-- AUDIENCES -->
                         <div id="audiences" class="section">
-                <div class="sec-title">Audience Platform</div>
+                <h1 class="sec-title page-title">Audience Platform</h1>
                 <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Segmentazione possessori pass, statistiche di apertura e click sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
                 <button type="button" class="btn sec" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
 
@@ -1931,7 +1970,7 @@
 
             <!-- ANALYTICS -->
             <div id="analytics" class="section">
-                <div class="sec-title">Analytics</div>
+                <h1 class="sec-title page-title">Analytics</h1>
                 <div class="stats-grid" id="analyticsStats"></div>
                 <div class="form-row" style="margin-bottom:16px;">
                     <div class="card" style="margin-bottom:0;">
@@ -1987,7 +2026,7 @@
             <div id="activity-log" class="section">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
                     <div>
-                        <div class="sec-title">Log attività</div>
+                        <h1 class="sec-title page-title">Log attività</h1>
                         <p style="font-size:12px;color:var(--text2);margin-top:8px;max-width:42rem;line-height:1.45;">
                             Cronologia eventi del brand (pass creati, installazioni, wallet, landing, ecc.) registrati dal server.<br>Righe più recenti in alto · massimo 500 per richiesta.</p>
                     </div>
@@ -2009,7 +2048,7 @@
 
             <!-- USERS -->
             <div class="section" id="users">
-                <div class="sec-title">Gestione Utenti</div>
+                <h1 class="sec-title page-title">Gestione Utenti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard.</p>
                     <button class="btn" onclick="openCreateUserModal()" data-role-min="admin" id="createUserBtn">+ Nuovo Utente</button>
@@ -2255,11 +2294,15 @@
 
 <div id="toastEl" class="toast"></div>
 
-<button type="button" id="waiBtn" class="wai-fab" onclick="toggleWaiOverlay()" aria-label="Apri assistente W.AI" title="Assistente W.AI">W.AI</button>
+<button type="button" id="waiBtn" class="wai-fab" onclick="toggleWaiOverlay()" aria-label="Chiedi a W.AI" data-tooltip="Chiedi a W.AI" title="Chiedi a W.AI">W.AI</button>
 
 <div id="waiOverlay" class="wai-panel" aria-label="Pannello W.AI">
   <div class="wai-panel-header">
-    <span style="font-size:15px; font-weight:700; color:#00D4AA;">W.AI</span>
+    <span class="wai-panel-title">W.AI</span>
+    <div class="wai-panel-actions">
+      <button type="button" class="wai-panel-btn" id="waiMinimizeBtn" onclick="minimizeWaiPanel()" aria-label="Minimizza pannello W.AI">−</button>
+      <button type="button" class="wai-panel-btn" id="waiCloseBtn" onclick="toggleWaiOverlay(false)" aria-label="Chiudi pannello W.AI">✕</button>
+    </div>
   </div>
   <div class="wai-panel-body">
     <textarea id="waiPrompt" rows="3" placeholder="Scrivi cosa vuoi fare..." style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#f4ede2; padding:12px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
@@ -2369,17 +2412,142 @@ function syncAuthUi() {
     const slot = document.getElementById('dashboardUserSlot');
     const emailEl = document.getElementById('dashboardUserEmail');
     const roleEl = document.getElementById('dashboardUserRole');
+    const avatarEl = document.getElementById('userAvatarInitials');
     if (!slot || !emailEl || !roleEl) return;
     if (currentUser) {
         slot.style.display = 'flex';
         emailEl.textContent = currentUser.email || '';
         roleEl.textContent = (currentUser.role || 'manager').toUpperCase();
+        if (avatarEl) avatarEl.textContent = userInitials(currentUser);
+        if (!isFiloShell()) {
+            const dd = document.getElementById('userMenuDropdown');
+            if (dd) dd.hidden = false;
+        }
     } else {
         slot.style.display = 'none';
         emailEl.textContent = '';
         roleEl.textContent = '';
+        if (avatarEl) avatarEl.textContent = '?';
+        closeUserMenu();
     }
     syncWaiUi();
+}
+
+const FILO_NAV_GROUP_KEY = 'filo_nav_group';
+
+function isFiloShell() {
+    return document.documentElement.getAttribute('data-shell') === 'light';
+}
+
+function userInitials(user) {
+    if (!user) return '?';
+    const name = (user.name || '').trim();
+    if (name) {
+        const parts = name.split(/\s+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+    const email = (user.email || '').trim();
+    if (email) return email.slice(0, 2).toUpperCase();
+    return '?';
+}
+
+function initFiloNavGroups() {
+    document.querySelectorAll('.nav-group[data-nav-group]').forEach((details) => {
+        const id = details.dataset.navGroup;
+        if (isFiloShell()) {
+            const saved = localStorage.getItem(`${FILO_NAV_GROUP_KEY}:${id}`);
+            if (saved === '0') details.removeAttribute('open');
+            else if (saved === '1') details.setAttribute('open', '');
+        }
+        if (details.dataset.filoNavGroupBound === '1') return;
+        details.dataset.filoNavGroupBound = '1';
+        details.addEventListener('toggle', () => {
+            if (!isFiloShell()) return;
+            localStorage.setItem(`${FILO_NAV_GROUP_KEY}:${id}`, details.open ? '1' : '0');
+        });
+    });
+}
+
+function syncBreadcrumb(sectionId) {
+    const brandEl = document.getElementById('breadcrumbBrand');
+    const sectionEl = document.getElementById('breadcrumbSection');
+    if (!brandEl || !sectionEl) return;
+    const sid = sectionId || getActiveSectionId();
+    sectionEl.textContent = SECTION_PAGE_TITLES[sid] || sid;
+    const productTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
+    brandEl.textContent = (brandId && currentBrandName) ? currentBrandName : productTitle;
+}
+
+function closeUserMenu() {
+    const dd = document.getElementById('userMenuDropdown');
+    const trigger = document.getElementById('userMenuTrigger');
+    if (dd) dd.hidden = true;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+}
+
+function openUserMenu() {
+    const dd = document.getElementById('userMenuDropdown');
+    const trigger = document.getElementById('userMenuTrigger');
+    if (dd) dd.hidden = false;
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
+}
+
+function toggleUserMenu() {
+    const dd = document.getElementById('userMenuDropdown');
+    if (!dd) return;
+    if (dd.hidden) openUserMenu();
+    else closeUserMenu();
+}
+
+function initUserMenu() {
+    const trigger = document.getElementById('userMenuTrigger');
+    const profileBtn = document.getElementById('userMenuProfileBtn');
+    const settingsBtn = document.getElementById('userMenuSettingsBtn');
+    if (trigger && trigger.dataset.userMenuBound !== '1') {
+        trigger.dataset.userMenuBound = '1';
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleUserMenu();
+        });
+    }
+    if (!document.body.dataset.userMenuGlobalBound) {
+        document.body.dataset.userMenuGlobalBound = '1';
+        document.addEventListener('click', () => closeUserMenu());
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeUserMenu();
+        });
+    }
+    if (profileBtn && profileBtn.dataset.userMenuBound !== '1') {
+        profileBtn.dataset.userMenuBound = '1';
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeUserMenu();
+            if (currentUser) toast(currentUser.email || 'Profilo');
+        });
+    }
+    if (settingsBtn && settingsBtn.dataset.userMenuBound !== '1') {
+        settingsBtn.dataset.userMenuBound = '1';
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeUserMenu();
+            if (currentUser?.role === 'admin') nav('users');
+            else toast('Impostazioni account — in arrivo');
+        });
+    }
+}
+
+function syncFiloHeaderChrome() {
+    const wrap = document.getElementById('dashboardProductLineWrap');
+    if (!wrap) return;
+    const locked = !!window.__2WALLET_PRODUCT_LOCK__;
+    wrap.setAttribute('data-filo-hidden', (isFiloShell() && locked) ? '1' : '0');
+}
+
+function minimizeWaiPanel() {
+    toggleWaiOverlay(false);
+    const btn = document.getElementById('waiBtn');
+    if (btn) btn.classList.add('wai-fab--collapsed');
 }
 
 function syncWaiUi() {
@@ -2710,6 +2878,12 @@ let analyticsDateTo = '';
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
     initDashboardProductTheme();
+    initFiloNavGroups();
+    initUserMenu();
+    initFiloNavA11y();
+    syncNavAriaCurrent(getActiveSectionId());
+    syncSectionDocumentTitle(getActiveSectionId());
+    syncBreadcrumb(getActiveSectionId());
     const bindEnter = (id, fn) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('keydown', (e) => { if (e.key === 'Enter') fn(); });
@@ -2721,6 +2895,76 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEnter('resetPasswordConfirm', submitResetPassword);
     bootstrapSession();
 });
+
+// ==================== SECTION TITLES (Filo / a11y) ====================
+const SECTION_PAGE_TITLES = {
+    welcome: 'Inizio',
+    'brand-identity': 'Identità Brand',
+    'media-library': 'Media Library',
+    templates: 'Template Pass',
+    passes: 'Pass Emessi',
+    campaigns: 'Campagne',
+    push: 'Push & Notifiche',
+    'instant-win': 'Instant Win',
+    gamification: 'Gamification',
+    leads: 'People',
+    audiences: 'Audience',
+    analytics: 'Analytics',
+    'activity-log': 'Attività',
+    users: 'Utenti',
+    'pass-design': 'Design Pass',
+    'pass-wizard': 'Crea Pass'
+};
+
+function getActiveSectionId() {
+    const el = document.querySelector('.section.active');
+    return el ? el.id : 'welcome';
+}
+
+function syncSectionDocumentTitle(sectionId) {
+    const sid = sectionId || getActiveSectionId();
+    const sectionLabel = SECTION_PAGE_TITLES[sid] || sid;
+    const appTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
+    const brand = brandId && currentBrandName ? currentBrandName : null;
+    document.title = brand
+        ? `${sectionLabel} · ${brand} · ${appTitle}`
+        : `${sectionLabel} · ${appTitle}`;
+}
+
+function syncNavAriaCurrent(sectionId) {
+    document.querySelectorAll('.nav-item').forEach((n) => {
+        const onclick = n.getAttribute('onclick') || '';
+        const match = onclick.match(/nav\('([^']+)'\)/);
+        if (match && match[1] === sectionId) {
+            n.setAttribute('aria-current', 'page');
+        } else {
+            n.removeAttribute('aria-current');
+        }
+    });
+}
+
+function navKeydown(e, id) {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        nav(id);
+    }
+}
+
+function initFiloNavA11y() {
+    document.querySelectorAll('.nav-item[onclick*="nav("]').forEach((el) => {
+        el.setAttribute('role', 'button');
+        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+        if (el.dataset.filoNavBound === '1') return;
+        el.dataset.filoNavBound = '1';
+        el.addEventListener('keydown', (e) => {
+            const m = (el.getAttribute('onclick') || '').match(/nav\('([^']+)'\)/);
+            if (m && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                nav(m[1]);
+            }
+        });
+    });
+}
 
 // ==================== NAV ====================
 function updateNavState() {
@@ -2747,10 +2991,12 @@ function updateNavState() {
     }
 
     // Hide Dashboard/Inizio once a brand is selected.
+    const navGroupDashboard = document.getElementById('navGroupDashboard');
+    if (navGroupDashboard) navGroupDashboard.style.display = hasBrand ? 'none' : '';
     const dashboardLabel = document.getElementById('navLabelDashboard');
     const welcomeItem = document.getElementById('navItemWelcome');
-    if (dashboardLabel) dashboardLabel.style.display = hasBrand ? 'none' : '';
-    if (welcomeItem) welcomeItem.style.display = hasBrand ? 'none' : '';
+    if (dashboardLabel && !navGroupDashboard) dashboardLabel.style.display = hasBrand ? 'none' : '';
+    if (welcomeItem && !navGroupDashboard) welcomeItem.style.display = hasBrand ? 'none' : '';
 
     // Hide all action buttons for viewer role
     document.querySelectorAll('[data-role-min]').forEach(el => {
@@ -2786,6 +3032,9 @@ function nav(id) {
     const navItem = Array.from(document.querySelectorAll('.nav-item'))
         .find(n => (n.getAttribute('onclick') || '').includes(`'${id}'`));
     if (navItem) navItem.classList.add('active');
+    syncNavAriaCurrent(id);
+    syncSectionDocumentTitle(id);
+    syncBreadcrumb(id);
     const loaders = {
         welcome: () => {},
         campaigns: loadCampaigns,
@@ -3236,11 +3485,10 @@ function applyProductShellTheme(line) {
     if (style) {
         if (T.light) {
             style.textContent =
-                `input:focus,select:focus,textarea:focus{border-color:${accent}!important;box-shadow:0 0 0 3px ${ring}!important;}` +
-                ` .nav-item.active{background:#EDE9FE!important;color:${accent}!important;font-weight:500!important;}` +
-                ` .badge.active{background:#ECFDF5!important;color:#047857!important;}` +
+                `input:focus,select:focus,textarea:focus{border-color:${accent};box-shadow:0 0 0 3px ${ring};}` +
+                ` .badge.active{background:var(--accent-subtle);color:var(--accent-hover);}` +
                 ` .btn:not(.sec):not(.danger):not(.purple){background:${accent};color:${onA};}` +
-                ` .btn.sec{color:${accent};border-color:var(--border-default);background:var(--bg-canvas);}`;
+                ` .btn.sec{color:var(--text-primary);border-color:var(--border-strong);background:var(--bg-canvas);}`;
         } else {
             style.textContent =
                 `input:focus,select:focus,textarea:focus{border-color:${accent}!important;box-shadow:0 0 0 2px ${ring}!important;}` +
@@ -3258,6 +3506,8 @@ function initDashboardProductTheme() {
     syncDocumentTitle(line);
     applyProductMenuCopy(line);
     syncProductLineSelector();
+    syncFiloHeaderChrome();
+    syncBreadcrumb(getActiveSectionId());
 }
 
 function onDashboardProductLineChange() {
@@ -3298,6 +3548,8 @@ function applyBrandTheme() {
             headerBrandLogo.removeAttribute('src');
         }
         document.title = bylineForTitle(productTitle);
+        syncSectionDocumentTitle(getActiveSectionId());
+        syncBreadcrumb(getActiveSectionId());
         return;
     }
     const targetBrandId = brandId;
@@ -3306,7 +3558,8 @@ function applyBrandTheme() {
         const name = brand.name || productTitle;
         currentBrandSlug = brand.slug || '';
         if (headerBrandName) headerBrandName.textContent = name;
-        document.title = name + ' — ' + productTitle;
+        syncSectionDocumentTitle(getActiveSectionId());
+        syncBreadcrumb(getActiveSectionId());
 
         // Load brand logo for the header (fallback to text-only if missing).
         if (headerBrandLogo) {
@@ -7625,6 +7878,10 @@ function toggleWaiOverlay(forceOpen) {
         ? forceOpen
         : (el.style.display === 'none' || !el.style.display);
     el.style.display = shouldOpen ? 'flex' : 'none';
+    if (shouldOpen) {
+        const btn = document.getElementById('waiBtn');
+        if (btn) btn.classList.remove('wai-fab--collapsed');
+    }
     if (!shouldOpen) {
         const preview = document.getElementById('waiPreview');
         if (preview) preview.style.display = 'none';
