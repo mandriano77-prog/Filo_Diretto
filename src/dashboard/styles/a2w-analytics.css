@@ -1,0 +1,326 @@
+/**
+ * Ads2Wallet Analytics page — dark shell only.
+ */
+
+html[data-shell="dark"].a2w-shell #analytics.a2w-analytics-page {
+  max-width: 100%;
+}
+
+/* UX-AUDIT[a2w]: page header with breadcrumb + CTA */
+html[data-shell="dark"].a2w-shell .a2w-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--a2w-border-subtle);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-header__main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--a2w-text-tertiary);
+  margin-bottom: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin-left: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-breadcrumb li:not(:last-child)::after {
+  content: '›';
+  margin-left: var(--space-2);
+  color: var(--a2w-text-tertiary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-header__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-header__desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--a2w-text-secondary);
+  max-width: 52ch;
+  line-height: 1.5;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-page-header__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* UX-AUDIT[a2w]: KPI row equal height, no excess empty space */
+html[data-shell="dark"].a2w-shell .a2w-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+@media (min-width: 640px) {
+  html[data-shell="dark"].a2w-shell .a2w-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  html[data-shell="dark"].a2w-shell .a2w-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+html[data-shell="dark"].a2w-shell .a2w-stats-grid .stat-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-4);
+  border-radius: var(--a2w-radius-card);
+  background: var(--bg-canvas);
+  border: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-stats-grid .stat-label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--a2w-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-stats-grid .stat-value {
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+  margin-bottom: auto;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-stat-meta {
+  font-size: 11px;
+  color: var(--a2w-text-tertiary);
+  margin-top: var(--space-2);
+  line-height: 1.4;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-info-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--a2w-accent-subtle);
+  color: var(--a2w-accent);
+  font-size: 11px;
+  cursor: help;
+  vertical-align: middle;
+}
+
+/* UX-AUDIT[a2w]: charts two-column on large screens */
+html[data-shell="dark"].a2w-shell .a2w-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  html[data-shell="dark"].a2w-shell .a2w-charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+html[data-shell="dark"].a2w-shell .a2w-charts-grid > .card {
+  border-radius: var(--a2w-radius-card);
+  margin-bottom: 0 !important;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-trend-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-date-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-field-label,
+html[data-shell="dark"].a2w-shell .a2w-control-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--a2w-text-tertiary);
+  margin-bottom: var(--space-1);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-trend-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-export-group {
+  margin-left: auto;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-export-buttons {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
+
+/* UX-AUDIT[a2w]: metric chips use mint brand, not purple */
+html[data-shell="dark"].a2w-shell .analytics-chip.active {
+  border-color: var(--a2w-accent);
+  color: var(--a2w-accent);
+  background: var(--a2w-accent-subtle);
+}
+
+html[data-shell="dark"].a2w-shell .analytics-chip:hover {
+  border-color: var(--a2w-accent);
+  color: var(--a2w-accent);
+}
+
+html[data-shell="dark"].a2w-shell #analyticsTrendChart {
+  width: 100%;
+  min-height: 280px;
+}
+
+html[data-shell="dark"].a2w-shell #analyticsTrendChart svg {
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-wallet-empty {
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--a2w-text-secondary);
+  font-size: var(--text-sm);
+  border: 1px dashed var(--a2w-border-default);
+  border-radius: var(--radius-lg);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-top-campaigns-card.a2w-top-campaigns--single {
+  padding: var(--space-4);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-top-campaigns-card.a2w-top-campaigns--single .a2w-top-campaigns-inner {
+  max-width: 480px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-section-heading {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+  margin: var(--space-5) 0 var(--space-3);
+}
+
+/* UX-AUDIT[a2w]: campaign table polish */
+html[data-shell="dark"].a2w-shell .a2w-table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--a2w-fab-clearance);
+  border-radius: var(--a2w-radius-card);
+  border: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table {
+  margin-bottom: 0;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table thead th {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--a2w-border-default);
+  color: var(--a2w-text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-3) var(--space-4);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--a2w-border-subtle);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table .a2w-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table th.a2w-num {
+  text-align: right;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-campaign-table .a2w-col-status {
+  min-width: 88px;
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-badge--active {
+  background: var(--a2w-accent-subtle);
+  color: var(--a2w-accent);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-badge--paused {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--a2w-text-secondary);
+}

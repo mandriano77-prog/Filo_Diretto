@@ -29,6 +29,9 @@
     <link rel="stylesheet" href="/dashboard/styles/tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
     <link rel="stylesheet" href="/dashboard/css/components/empty-state.css">
@@ -2896,6 +2899,7 @@
 <script src="/dashboard/js/components/empty-state.js"></script>
 <script src="/dashboard/js/components/page-header.js"></script>
 <script src="/dashboard/js/components/sidebar.js"></script>
+<script src="/dashboard/js/a2w-shell.js"></script>
 
 <script>
 const API = '/api/v1';
@@ -3044,6 +3048,7 @@ function syncBreadcrumb(sectionId) {
     sectionEl.textContent = typeof getSectionPageTitle === 'function' ? getSectionPageTitle(sid) : (SECTION_PAGE_TITLES[sid] || sid);
     const productTitle = getDashboardProductDisplayTitle(getDashboardProductLine());
     brandEl.textContent = (brandId && currentBrandName) ? currentBrandName : productTitle;
+    if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
 }
 
 function closeUserMenu() {
@@ -3128,6 +3133,7 @@ function syncWaiUi() {
         overlay.style.display = 'none';
         waiDraft = null;
     }
+    if (typeof syncA2wWaiPadding === 'function') syncA2wWaiPadding();
 }
 
 function logout() {
@@ -4107,6 +4113,7 @@ function initDashboardProductTheme() {
     syncProductLineSelector();
     syncFiloHeaderChrome();
     syncBreadcrumb(getActiveSectionId());
+    if (typeof initA2wShell === 'function') initA2wShell();
 }
 
 function onDashboardProductLineChange() {
@@ -4149,6 +4156,7 @@ function applyBrandTheme() {
         document.title = bylineForTitle(productTitle);
         syncSectionDocumentTitle(getActiveSectionId());
         syncBreadcrumb(getActiveSectionId());
+        if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
         return;
     }
     const targetBrandId = brandId;
@@ -4159,6 +4167,7 @@ function applyBrandTheme() {
         if (headerBrandName) headerBrandName.textContent = name;
         syncSectionDocumentTitle(getActiveSectionId());
         syncBreadcrumb(getActiveSectionId());
+        if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
 
         // Load brand logo for the header (fallback to text-only if missing).
         if (headerBrandLogo) {
@@ -4172,11 +4181,13 @@ function applyBrandTheme() {
                     const url = URL.createObjectURL(blob);
                     headerBrandLogo.src = url;
                     headerBrandLogo.style.display = 'block';
+                    if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
                 })
                 .catch(() => {
                     if (brandId !== targetBrandId) return;
                     headerBrandLogo.style.display = 'none';
                     headerBrandLogo.removeAttribute('src');
+                    if (typeof syncA2wHeaderChrome === 'function') syncA2wHeaderChrome();
                 });
         }
     }).catch(() => {});
@@ -8005,6 +8016,9 @@ async function loadActivityLog() {
 // ==================== ANALYTICS ====================
 async function loadAnalytics() {
     if (!brandId) return;
+    if (typeof a2wLoadAnalytics === 'function' && typeof isA2wDeploy === 'function' && isA2wDeploy()) {
+        return a2wLoadAnalytics();
+    }
     const [analytics, campaigns, passes] = await Promise.all([
         fetchCachedJson(`${API}/analytics/${brandId}`, { headers: { ...getAuthHeaders() } }),
         fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } }),
