@@ -48,7 +48,7 @@ async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height
   const thumbH = meta.height || maxH;
   const rightInset = Math.max(20, Math.round(width * 0.055));
   const left = Math.max(pad, width - thumbW - rightInset);
-  const top = Math.max(2, Math.round((height - thumbH) / 2) - Math.round(height * 0.07));
+  const top = Math.max(2, Math.round((height - thumbH) / 2) - Math.round(height * 0.12));
   return sharp(stripBuffer)
     .composite([{ input: thumbSized, left, top }])
     .png()
