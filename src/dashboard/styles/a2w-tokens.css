@@ -21,7 +21,11 @@ html[data-shell="dark"].a2w-shell {
   --a2w-border-default: rgba(255, 255, 255, 0.10);
   --a2w-radius-card: 16px;
   --a2w-fab-clearance: 96px;
+  --a2w-sidebar-expanded-w: 240px;
+  --a2w-sidebar-collapsed-w: 64px;
+  --a2w-dur-sidebar: 150ms;
   --a2w-z-toast: 9000;
   --a2w-z-dropdown: 9200;
   --a2w-z-modal: 9500;
+  --a2w-z-tooltip: 9700;
 }
