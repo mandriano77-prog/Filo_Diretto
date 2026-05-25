@@ -2538,9 +2538,10 @@
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Fronte — Campi</div>
-                <p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">
+<p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">
                     Su Filodiretto il fronte del pass è definito dal profilo dipendente (DIPENDENTE, MATRICOLA, REPARTO, SEDE). I campi fronte del template non vengono applicati al pass emesso.
                 </p>
+                <div id="tplFrontFieldsBlock">
                 <div class="form-row">
                     <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="tplHeaderLabel" placeholder="es. INFO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Header Valore</label><input type="text" id="tplHeaderValue" placeholder="es. Scopri di più" oninput="updatePassPreview()"></div>
@@ -2552,6 +2553,7 @@
                 <div class="form-row">
                     <div class="form-group"><label class="form-label">Auxiliary Label</label><input type="text" id="tplAuxLabel" placeholder="es. PROMO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Auxiliary Valore</label><input type="text" id="tplAuxValue" placeholder="es. -20% su tutto" oninput="updatePassPreview()"></div>
+                </div>
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Immagini Pass</div>
@@ -3372,8 +3374,7 @@ let analyticsTrendMetric = 'both';
 let analyticsDateFrom = '';
 let analyticsDateTo = '';
 
-// ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', () => {
+// ==================== INIT =============document.addEventListener('DOMContentLoaded', () => {
     initDashboardProductTheme();
     togglePassBackEditorMode();
     initFiloNavGroups();
@@ -3395,8 +3396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bootstrapSession();
 });
 
-// ==================== SECTION TITLES (Filo / a11y) — source: /dashboard/lib/nav.js ====================
-const SECTION_PAGE_TITLES = (typeof window !== 'undefined' && window.FD_NAV && window.FD_NAV.buildSectionPageTitles)
+// ==================== SECTION TITLES (Filo / a11y) — source: /dashboard/lib/nav.js =============const SECTION_PAGE_TITLES = (typeof window !== 'undefined' && window.FD_NAV && window.FD_NAV.buildSectionPageTitles)
     ? window.FD_NAV.buildSectionPageTitles()
     : {
         welcome: 'Inizio',
@@ -3483,8 +3483,7 @@ function initFiloNavA11y() {
     });
 }
 
-// ==================== NAV ====================
-function updateNavState() {
+// ==================== NAV =============function updateNavState() {
     const role = currentUser?.role || 'admin';
     const isViewer = role === 'viewer';
     const isAdmin = role === 'admin';
@@ -3626,8 +3625,7 @@ function closeModal(id) {
 }
 function toast(msg) { const t = document.getElementById('toastEl'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
-// ==================== BRANDS ====================
-async function loadBrands() {
+// ==================== BRANDS =============async function loadBrands() {
     const res = await fetch(`${API}/brands`, { headers: { ...getAuthHeaders() } });
     if (!res.ok) return;
     const brands = await res.json();
@@ -3723,8 +3721,7 @@ function syncBrandUrl() {
     history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
 }
 
-// ==================== PRODUCT SHELL THEME (2wallet lines) ====================
-// UI shell uses fixed palettes per product line; pass colors in brand.config stay for the pass only.
+// ==================== PRODUCT SHELL THEME (2wallet lines) =============// UI shell uses fixed palettes per product line; pass colors in brand.config stay for the pass only.
 const PRODUCT_LINE_STORAGE_KEY = '2wallet_product_line';
 const VALID_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
 const PRODUCT_DISPLAY_TITLES = { ads: 'Ads2Wallet', hr: 'HR2Wallet', engage: 'Engage2Wallet', live: 'Live2Wallet' };
@@ -4057,8 +4054,7 @@ function onDashboardProductLineChange() {
     if (getActiveSectionId() === 'leads') loadLeads();
 }
 
-// ==================== BRAND THEMING (header only; shell = product theme) ====================
-function applyBrandTheme() {
+// ==================== BRAND THEMING (header only; shell = product theme) =============function applyBrandTheme() {
     const line = getDashboardProductLine();
     applyProductShellTheme(line);
     syncChromeProductTitles(line);
@@ -4138,8 +4134,7 @@ async function deleteBrandAction() {
     toast('Brand eliminata'); brandId = null; await loadBrands();
 }
 
-// ==================== OVERVIEW ====================
-async function refreshOverview() {
+// ==================== OVERVIEW =============async function refreshOverview() {
     if (!brandId) return;
     try {
         const [analytics, campaigns] = await Promise.all([
@@ -4151,8 +4146,7 @@ async function refreshOverview() {
 }
 
 
-// ==================== CAMPAIGNS ====================
-async function loadCampaigns() {
+// ==================== CAMPAIGNS =============async function loadCampaigns() {
     if (!brandId) return;
     campaignsCache = await fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } });
     const el = document.getElementById('campaignsList');
@@ -4598,8 +4592,7 @@ async function loadPassWalletChannelsDiag() {
     }
 }
 
-// ==================== PASSES ====================
-async function loadPasses(resetPage = false) {
+// ==================== PASSES =============async function loadPasses(resetPage = false) {
     if (!brandId) return;
     const el = document.getElementById('passesContent');
     try {
@@ -5029,8 +5022,7 @@ async function deletePassInstance(id) {
     } catch (err) { alert('Errore: ' + err.message); }
 }
 
-// ==================== TEMPLATES ====================
-async function loadTemplates() {
+// ==================== TEMPLATES =============async function loadTemplates() {
     if (!brandId) return;
     const templates = await fetchCachedJson(`${API}/templates?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } });
     const el = document.getElementById('templatesList');
@@ -5098,6 +5090,10 @@ function togglePassBackEditorMode() {
     const legacyPush = document.getElementById('pushLegacyLinkOut');
     if (legacyPush) legacyPush.style.display = hr ? 'none' : 'block';
     syncEmployeePassTypeUi();
+    const hrNote = document.getElementById('tplFrontHrNote');
+    const frontBlock = document.getElementById('tplFrontFieldsBlock');
+    if (hrNote) hrNote.style.display = hr ? 'block' : 'none';
+    if (frontBlock) frontBlock.style.opacity = hr ? '0.55' : '1';
 }
 
 function hrAddLinkRow(containerId, label = '', url = '') {
@@ -5640,8 +5636,7 @@ async function deleteTemplate(id) {
     } catch (err) { alert('Errore: ' + err.message); }
 }
 
-// ==================== PUSH NOTIFICATIONS ====================
-
+// ==================== PUSH NOTIFICATIONS =============
 // --- Sub-tab switching ---
 function switchPushTab(tab) {
     ['immediate', 'scheduled', 'geofencing'].forEach(t => {
@@ -6241,8 +6236,7 @@ async function loadPushHistory() {
     </table>`;
 }
 
-// ==================== STRIP PROMOS ====================
-async function loadStripPromos() {
+// ==================== STRIP PROMOS =============async function loadStripPromos() {
     const el = document.getElementById('stripPromosList');
     if (!brandId || !el) return;
     const res = await fetch(`${API}/brands/${brandId}/strip-promos`, { headers: getAuthHeaders() });
@@ -6333,8 +6327,7 @@ async function deleteStripPromo(id) {
     toast('Eliminata'); loadStripPromos();
 }
 
-// ==================== AD SERVING ====================
-async function ensureCampaignsCache() {
+// ==================== AD SERVING =============async function ensureCampaignsCache() {
     if (!brandId) return;
     if (!campaignsCache.length) {
         const res = await fetch(`${API}/campaigns?brand_id=${brandId}`);
@@ -6356,8 +6349,7 @@ function populateCampaignSelect(selId, placeholder) {
 }
 
 
-// ==================== INSTANT WIN ====================
-async function loadInstantWin() {
+// ==================== INSTANT WIN =============async function loadInstantWin() {
     if (!brandId) return;
     try {
         // Load stats
@@ -6468,8 +6460,7 @@ async function deleteIwCampaign(id) {
 }
 
 
-// ==================== AUDIENCES ====================
-
+// ==================== AUDIENCES =============
 function switchAudienceTab(tab) {
     ['overview', 'behavior', 'saved'].forEach(t => {
         const panel = document.getElementById('audPanel_' + t);
@@ -6848,8 +6839,7 @@ async function exportAudienceCsv(id) {
 }
 
 
-// ==================== LEADS DATABASE ====================
-let allLeads = [];
+// ==================== LEADS DATABASE =============let allLeads = [];
 let leadsHrMode = false;
 let importPreviewState = null;
 
@@ -7599,8 +7589,7 @@ async function runEmployeeImportCommit() {
     }
 }
 
-// ==================== GAMIFICATION ====================
-async function loadGamification() {
+// ==================== GAMIFICATION =============async function loadGamification() {
     if (!brandId) return;
     try {
         const [statsRes, campaignsRes] = await Promise.all([
@@ -7726,8 +7715,7 @@ async function deleteGamCampaign(id) {
     } catch(e) { toast('Errore: ' + e.message); }
 }
 
-// ==================== ACTIVITY LOG ====================
-async function loadActivityLog() {
+// ==================== ACTIVITY LOG =============async function loadActivityLog() {
     const body = document.getElementById('activityLogBody');
     if (!brandId) return;
     if (!body) return;
@@ -7763,8 +7751,7 @@ async function loadActivityLog() {
     }
 }
 
-// ==================== ANALYTICS ====================
-async function loadAnalytics() {
+// ==================== ANALYTICS =============async function loadAnalytics() {
     if (!brandId) return;
     const [analytics, campaigns, passes] = await Promise.all([
         fetchCachedJson(`${API}/analytics/${brandId}`, { headers: { ...getAuthHeaders() } }),
@@ -8133,8 +8120,7 @@ function downloadBlob(blob, filename) {
     toast('Export completato');
 }
 
-// ==================== PASS WIZARD ====================
-let wzCurrentStep = 1;
+// ==================== PASS WIZARD =============let wzCurrentStep = 1;
 let wzStripBase64 = null;
 let wzLogoBase64 = null;
 
@@ -8683,8 +8669,7 @@ async function wzDeleteTemplate(id) {
     } catch(e) { alert('Errore: ' + e.message); }
 }
 
-// ==================== BRAND IDENTITY ====================
-const BRAND_PASS_FIXED_COLORS = {
+// ==================== BRAND IDENTITY =============const BRAND_PASS_FIXED_COLORS = {
     backgroundColor: '#0D0B1A',
     foregroundColor: '#FFFFFF',
     labelColor: '#A78BFA'
@@ -8734,8 +8719,7 @@ async function saveBrandIdentity() {
     loadBrandIdentity();
 }
 
-// ==================== MEDIA LIBRARY ====================
-async function loadMediaLibrary() {
+// ==================== MEDIA LIBRARY =============async function loadMediaLibrary() {
     if (!brandId) return;
     const logoBox = document.getElementById('mediaLogoBox');
     const stripGrid = document.getElementById('mediaStripGrid');
@@ -8983,8 +8967,7 @@ async function normalizeMediaForUpload(file, type) {
     return canvas.toDataURL('image/png').split(',')[1];
 }
 
-// ==================== MEDIA PICKER ====================
-/** Scarica immagine dalla Media Library come base64 (per pass / template). */
+// ==================== MEDIA PICKER =============/** Scarica immagine dalla Media Library come base64 (per pass / template). */
 async function fetchMediaImageBase64(mediaId) {
     const res = await fetch(`${API}/media/${mediaId}/image`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Impossibile caricare il media');
@@ -9164,8 +9147,7 @@ async function deleteAllMedia() {
     } catch (err) { toast('Errore: ' + err.message); }
 }
 
-// ==================== PASS DESIGN ====================
-function setPassDesignPreview(kind, imageUrl) {
+// ==================== PASS DESIGN =============function setPassDesignPreview(kind, imageUrl) {
     if (kind === 'logo') {
         const img = document.getElementById('bsLogoPreview');
         const ph = document.getElementById('bsLogoPlaceholder');
@@ -9254,8 +9236,7 @@ async function savePassDesign() {
 
 // AI strip functions removed
 
-// ==================== USERS ====================
-async function loadUsers() {
+// ==================== USERS =============async function loadUsers() {
     const res = await fetch(`${API}/users`, { headers: getAuthHeaders() });
     if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -9341,8 +9322,7 @@ async function deleteUser(id) {
     loadUsers();
 }
 
-// ==================== W.AI ====================
-let waiDraft = null;
+// ==================== W.AI =============let waiDraft = null;
 let waiPushComboDraft = null;
 let waiComboStripSaved = false;
 let waiOriginalPrompt = '';
@@ -10000,8 +9980,7 @@ function refreshDashboardSection(intent) {
     (refreshMap[prefix] || (() => {}))();
 }
 
-// ==================== UTILS ====================
-function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// ==================== UTILS =============function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // File to base64 helper
 function fileToBase64(file) {
