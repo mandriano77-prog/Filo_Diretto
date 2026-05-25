@@ -15,17 +15,40 @@ const {
   APPLE_EMPLOYEE_PASS_STRUCTURE
 } = require('./employee-pass');
 
-/** Incolla thumbnail sulla strip — Apple non mostra thumbnail.png su storeCard. */
-async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height) {
-  const pad = Math.max(6, Math.round(width * 0.02));
-  const thumbW = Math.min(Math.round(width * 0.22), width - pad * 2);
-  const thumbH = Math.min(Math.round(height * 0.78), height - pad * 2);
-  const thumbSized = await sharp(thumbBuffer)
-    .resize(thumbW, thumbH, { fit: 'cover' })
+/** Rimuove sfondo nero/opaco e ridimensiona la thumb per overlay sulla strip HR. */
+async function prepareThumbForStripOverlay(thumbBuffer, maxW, maxH) {
+  const resized = await sharp(thumbBuffer)
+    .ensureAlpha()
+    .resize(maxW, maxH, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const { data, info } = resized;
+  const ch = info.channels;
+  for (let i = 0; i < data.length; i += ch) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 40 && g < 40 && b < 40) data[i + 3] = 0;
+  }
+
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: ch } })
     .png()
     .toBuffer();
-  const left = width - thumbW - pad;
-  const top = Math.max(pad, Math.round((height - thumbH) / 2));
+}
+
+/** Incolla thumbnail sulla strip — Apple non mostra thumbnail.png su storeCard. */
+async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height) {
+  const pad = Math.max(10, Math.round(width * 0.035));
+  const maxW = Math.min(Math.round(width * 0.19), width - pad * 4);
+  const maxH = Math.min(Math.round(height * 0.72), height - pad * 2);
+  const thumbSized = await prepareThumbForStripOverlay(thumbBuffer, maxW, maxH);
+  const meta = await sharp(thumbSized).metadata();
+  const thumbW = meta.width || maxW;
+  const thumbH = meta.height || maxH;
+  const rightInset = Math.max(20, Math.round(width * 0.055));
+  const left = Math.max(pad, width - thumbW - rightInset);
+  const top = Math.max(2, Math.round((height - thumbH) / 2) - Math.round(height * 0.07));
   return sharp(stripBuffer)
     .composite([{ input: thumbSized, left, top }])
     .png()
@@ -477,8 +500,9 @@ function generatePassJson(template, instance, brand, options = {}) {
   if (!hasTemplateHeader) {
     headerFields.push({
       key: 'info_hint',
-      label: 'CLICK SUI PUNTINI',
-      value: 'per i dettagli'
+      label: 'Clicca sui ···',
+      value: 'Per ulteriori info',
+      textAlignment: 'PKTextAlignmentRight'
     });
   }
 
@@ -1031,8 +1055,8 @@ async function createPkpass(template, instance, brand, options = {}) {
   if (tplImages.thumbnail) {
     const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
     thumbnailBuffers = {
-      thumb: await sharp(rawThumb).resize(90, 90, { fit: 'cover' }).png().toBuffer(),
-      thumb2x: await sharp(rawThumb).resize(180, 180, { fit: 'cover' }).png().toBuffer()
+      thumb: await sharp(rawThumb).resize(90, 90, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer(),
+      thumb2x: await sharp(rawThumb).resize(180, 180, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer()
     };
     console.log('✓ Using template-level thumbnail');
   }

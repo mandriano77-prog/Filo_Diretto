@@ -361,6 +361,12 @@ function sectionsToAppleBackFields(sections) {
 /** Apple Wallet — pass.json storeCard slice (employee pass layout). */
 function toApplePass(employeePass) {
   const passStructure = {
+    headerFields: [{
+      key: 'info_hint',
+      label: 'Clicca sui ···',
+      value: 'Per ulteriori info',
+      textAlignment: 'PKTextAlignmentRight'
+    }],
     primaryFields: [],
     secondaryFields: employeePass.front.secondary || [],
     auxiliaryFields: employeePass.front.auxiliary || []
