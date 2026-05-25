@@ -109,9 +109,55 @@ html[data-shell="dark"].a2w-shell .header-actions {
   justify-content: flex-end;
 }
 
+html[data-shell="dark"].a2w-shell .a2w-brand-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+html[data-shell="dark"].a2w-shell .a2w-brand-picker__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--a2w-text-tertiary);
+  line-height: 1.2;
+}
+
 html[data-shell="dark"].a2w-shell .brand-sel--header {
   min-width: 160px;
   max-width: 220px;
+}
+
+/* UX-AUDIT[a2w]: dark buttons/cards — no hardcoded light fills */
+html[data-shell="dark"].a2w-shell .btn.sec,
+html[data-shell="dark"].a2w-shell .btn-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--a2w-border-default);
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell .btn.sec:hover,
+html[data-shell="dark"].a2w-shell .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-shell="dark"].a2w-shell .stat-card,
+html[data-shell="dark"].a2w-shell .push-card,
+html[data-shell="dark"].a2w-shell .card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell .geo-suggest-box {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell svg[stroke]:not([stroke="none"]) {
+  stroke: currentColor;
 }
 
 /* UX-AUDIT[a2w]: admin badge + divider in user row */

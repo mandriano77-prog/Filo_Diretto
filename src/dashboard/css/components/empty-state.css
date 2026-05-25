@@ -1,10 +1,70 @@
-/* EmptyState — list/table zero-data */
-html[data-shell="light"] .empty-state {
+/* EmptyState — list/table zero-data (base + light shell overrides) */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.empty-state__icon {
+  display: block;
+  width: 64px;
+  height: 64px;
+  max-width: 64px;
+  max-height: 64px;
+  flex-shrink: 0;
+  margin: 0 auto var(--space-3);
+  color: var(--text-muted, var(--text2));
+  opacity: 0.85;
+}
+
+.empty-state__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base, 14px);
+  font-weight: 600;
+  color: var(--text-primary, var(--text));
+}
+
+.empty-state__desc {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary, var(--text2));
+  max-width: 36ch;
+  line-height: 1.5;
+}
+
+.empty-state .btn {
+  margin-top: var(--space-1);
+}
+
+td .empty-state,
+.table-wrap .empty-state {
+  border: none;
+  background: transparent;
+  padding: var(--space-5, 20px);
+}
+
+.leads-empty-host:not([hidden]) + #leadsTable {
+  display: none;
+}
+
+html[data-shell="light"] .empty-state {
   padding: var(--space-8) var(--space-5);
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
@@ -15,28 +75,8 @@ html[data-shell="light"] .empty-state {
 html[data-shell="light"] .empty-state__icon {
   width: 48px;
   height: 48px;
-  margin-bottom: var(--space-3);
-  color: var(--text-muted);
-  opacity: 0.85;
-}
-
-html[data-shell="light"] .empty-state__title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-html[data-shell="light"] .empty-state__desc {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  max-width: 36ch;
-  line-height: 1.5;
-}
-
-html[data-shell="light"] .empty-state .btn {
-  margin-top: var(--space-1);
+  max-width: 48px;
+  max-height: 48px;
 }
 
 html[data-shell="light"] td .empty-state,

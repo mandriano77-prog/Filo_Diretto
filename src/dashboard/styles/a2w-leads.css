@@ -1,0 +1,79 @@
+/**
+ * Ads2Wallet — Contatti / leads toolbar & KPI (dark shell only).
+ */
+
+html[data-shell="dark"].a2w-shell #leads .leads-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+html[data-shell="dark"].a2w-shell #leads .leads-toolbar__search {
+  flex: 1 1 320px;
+  min-width: 320px;
+  max-width: 100%;
+  width: auto;
+}
+
+html[data-shell="dark"].a2w-shell #leads .leads-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell #leads .leads-export-btn__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+@media (min-width: 640px) {
+  html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid .stat-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-4);
+  border-radius: var(--a2w-radius-card, 16px);
+  background: var(--bg-canvas);
+  border: 1px solid var(--a2w-border-default);
+}
+
+html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid .stat-label {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--a2w-text-secondary);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+html[data-shell="dark"].a2w-shell #leadsStats.a2w-stats-grid .stat-num {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+  line-height: 1.2;
+}
+
+html[data-shell="dark"].a2w-shell #leads .leads-empty-host {
+  margin-bottom: var(--space-4);
+}

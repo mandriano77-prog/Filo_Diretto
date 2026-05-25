@@ -32,6 +32,8 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
@@ -1298,10 +1300,12 @@
                         <option value="live">Live</option>
                     </select>
                 </span>
-                <label class="sr-only" for="brandSelector">Seleziona brand</label>
-                <select class="brand-sel brand-sel--header" id="brandSelector" onchange="changeBrand()">
-                    <option value="">Seleziona Brand</option>
-                </select>
+                <div class="a2w-brand-picker">
+                    <label class="a2w-brand-picker__label" for="brandSelector">Seleziona brand</label>
+                    <select class="brand-sel brand-sel--header" id="brandSelector" onchange="changeBrand()">
+                        <option value="">Seleziona Brand</option>
+                    </select>
+                </div>
             </div>
         </header>
 
@@ -1419,9 +1423,18 @@
 
                 <!-- Sub-tab navigation -->
                 <div class="tabs-bar" role="tablist" aria-label="Modalità push">
-                    <button type="button" class="tabs-bar__tab push-subtab active" role="tab" aria-selected="true" onclick="switchPushTab('immediate')" id="pushTab_immediate"><svg class="tabs-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>Immediata</button>
-                    <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('scheduled')" id="pushTab_scheduled"><svg class="tabs-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Programmata</button>
-                    <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('geofencing')" id="pushTab_geofencing"><svg class="tabs-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-4.35 7-10a7 7 0 1 0-14 0c0 5.65 7 10 7 10z"/><circle cx="12" cy="11" r="2.5"/></svg>Geofencing</button>
+                    <button type="button" class="tabs-bar__tab push-subtab active" role="tab" aria-selected="true" onclick="switchPushTab('immediate')" id="pushTab_immediate">
+                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+                        <span class="push-subtab__label">Immediata</span>
+                    </button>
+                    <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('scheduled')" id="pushTab_scheduled">
+                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span class="push-subtab__label">Programmata</span>
+                    </button>
+                    <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('geofencing')" id="pushTab_geofencing">
+                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span class="push-subtab__label">Geofencing</span>
+                    </button>
                 </div>
 
                 <!-- TAB 1: Push Immediata -->
@@ -2155,13 +2168,13 @@
                 <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Contatti">Contatti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
                     <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="leadsSearch" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
+                    <div class="leads-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" id="leadsSearch" class="leads-toolbar__search" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
                         <button type="button" class="btn sec" id="leadsAddBtn" onclick="openEmployeeManualModal()" style="display:none;white-space:nowrap;">+ Aggiungi</button>
                         <button type="button" class="btn sec" id="leadsImportBtn" onclick="openEmployeeImportModal()" style="display:none;white-space:nowrap;">✨ Importa da file</button>
                         <button type="button" class="btn sec" id="leadsNoMatricolaBtn" onclick="filterLeadsNoMatricola()" style="display:none;white-space:nowrap;">⚠ Senza matricola</button>
                         <button type="button" class="btn sec" id="leadsDistributeBtn" onclick="distributeActivationAll()" style="display:none;white-space:nowrap;">✉ Invia attivazione</button>
-                        <button class="btn" onclick="exportLeadsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
+                        <button type="button" class="btn leads-export-btn" onclick="exportLeadsCSV()" style="white-space:nowrap;"><svg class="leads-export-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Export CSV</span></button>
                     </div>
                 </div>
                 <div id="hrActivationPanel" class="card" style="display:none;margin-bottom:16px;padding:16px 20px;">
@@ -2189,6 +2202,7 @@
                     </div>
                 </div>
                 <div class="stats-grid" id="leadsStats"></div>
+                <div id="leadsEmptyHost" class="leads-empty-host" hidden role="status"></div>
                 <table class="table" id="leadsTable">
                     <thead id="leadsTableHead"><tr>
                         <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th>
@@ -7038,6 +7052,7 @@ async function loadLeads() {
             <div class="stat-card"><div class="stat-num">${statThird}</div><div class="stat-label">${esc(leadsHrMode ? 'Con matricola' : mc.leads_stat_phone)}</div></div>
             <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">${esc(mc.leads_stat_email)}</div></div>
         `;
+        if (typeof ensureA2wLeadsLayout === 'function') ensureA2wLeadsLayout();
 
         updateLeadsNoMatricolaBadge();
         renderLeadsTable(allLeads);
@@ -7046,7 +7061,14 @@ async function loadLeads() {
         console.error('loadLeads error:', e);
         toast(e.message || mc.leads_load_error);
         const cols = leadsHrMode ? 10 : 7;
-        document.getElementById('leadsTable').querySelector('tbody').innerHTML =
+        const emptyHost = document.getElementById('leadsEmptyHost');
+        if (emptyHost) {
+            emptyHost.innerHTML = '';
+            emptyHost.hidden = true;
+        }
+        const table = document.getElementById('leadsTable');
+        table.hidden = false;
+        table.querySelector('tbody').innerHTML =
             `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(e.message || mc.leads_load_error)}</td></tr>`;
     }
 }
@@ -7161,10 +7183,12 @@ function walletStatusLabel(l) {
 
 function renderLeadsTable(leads) {
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
-    const tbody = document.getElementById('leadsTable').querySelector('tbody');
+    const table = document.getElementById('leadsTable');
+    const tbody = table.querySelector('tbody');
+    const emptyHost = document.getElementById('leadsEmptyHost');
     const cols = leadsHrMode ? 10 : 7;
     if (!leads.length) {
-        tbody.innerHTML = '<tr><td colspan="' + cols + '">' + renderEmptyState({
+        const emptyHtml = renderEmptyState({
             title: mc.leads_empty,
             description: leadsHrMode
                 ? 'Carica un CSV o Excel con il pulsante Importa da file.'
@@ -7172,9 +7196,22 @@ function renderLeadsTable(leads) {
             icon: 'users',
             ctaLabel: leadsHrMode ? 'Importa da file' : '',
             ctaOnclick: leadsHrMode ? 'openEmployeeManualModal()' : ''
-        }) + '</td></tr>';
+        });
+        if (emptyHost) {
+            emptyHost.innerHTML = emptyHtml;
+            emptyHost.hidden = false;
+        } else {
+            tbody.innerHTML = '<tr><td colspan="' + cols + '">' + emptyHtml + '</td></tr>';
+        }
+        table.hidden = !!emptyHost;
+        tbody.innerHTML = '';
         return;
     }
+    if (emptyHost) {
+        emptyHost.innerHTML = '';
+        emptyHost.hidden = true;
+    }
+    table.hidden = false;
     if (leadsHrMode) {
         tbody.innerHTML = leads.map((l) => {
             const matCell = l.employee_id

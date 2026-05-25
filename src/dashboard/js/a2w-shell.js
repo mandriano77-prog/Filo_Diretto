@@ -29,8 +29,14 @@
     const line = typeof getDashboardProductLine === 'function' ? getDashboardProductLine() : 'ads';
     root.setAttribute('data-product-line', line);
     initA2wUserMenuChrome();
+    ensureA2wLeadsLayout();
     syncA2wHeaderChrome();
     syncA2wWaiPadding();
+  }
+
+  function ensureA2wLeadsLayout() {
+    const stats = document.getElementById('leadsStats');
+    if (stats) stats.classList.add('a2w-stats-grid');
   }
 
   function initA2wUserMenuChrome() {
@@ -507,6 +513,7 @@
     renderA2wCampaignTable(campaigns);
   }
 
+  window.ensureA2wLeadsLayout = ensureA2wLeadsLayout;
   window.initA2wShell = initA2wShell;
   window.syncA2wHeaderChrome = syncA2wHeaderChrome;
   window.syncA2wWaiPadding = syncA2wWaiPadding;

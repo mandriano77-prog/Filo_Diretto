@@ -3,7 +3,8 @@
  * Scoped to light HR shell (studio.filodiretto.app)
  */
 
-html[data-shell="light"] .sr-only {
+html[data-shell="light"] .sr-only,
+html[data-shell="light"] .a2w-brand-picker__label {
   position: absolute;
   width: 1px;
   height: 1px;
