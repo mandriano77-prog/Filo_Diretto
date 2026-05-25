@@ -46,7 +46,8 @@ async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height
   const meta = await sharp(thumbSized).metadata();
   const thumbW = meta.width || maxW;
   const thumbH = meta.height || maxH;
-  const rightInset = Math.max(20, Math.round(width * 0.055));
+  // Keep a visible slice of strip on the right side.
+  const rightInset = Math.max(30, Math.round(width * 0.085));
   const left = Math.max(pad, width - thumbW - rightInset);
   const top = Math.max(2, Math.round((height - thumbH) / 2) - Math.round(height * 0.07));
   return sharp(stripBuffer)
