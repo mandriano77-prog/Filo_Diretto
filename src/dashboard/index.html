@@ -2496,6 +2496,10 @@
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Fronte — Campi</div>
+                <p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text-secondary);margin:0 0 10px;line-height:1.45;">
+                    Su Filo Diretto HR il fronte del pass è generato automaticamente: nome e matricola sotto la strip, QR con solo matricola. I campi Header/Secondary qui sotto non vengono usati in Wallet (solo anteprima Ads).
+                </p>
+                <div id="tplFrontFieldsBlock">
                 <div class="form-row">
                     <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="tplHeaderLabel" placeholder="es. INFO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Header Valore</label><input type="text" id="tplHeaderValue" placeholder="es. Scopri di più" oninput="updatePassPreview()"></div>
@@ -2507,6 +2511,7 @@
                 <div class="form-row">
                     <div class="form-group"><label class="form-label">Auxiliary Label</label><input type="text" id="tplAuxLabel" placeholder="es. PROMO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Auxiliary Valore</label><input type="text" id="tplAuxValue" placeholder="es. -20% su tutto" oninput="updatePassPreview()"></div>
+                </div>
                 </div>
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Immagini Pass</div>
@@ -5014,6 +5019,10 @@ function togglePassBackEditorMode() {
     if (adsEl) adsEl.style.display = hr ? 'none' : 'block';
     const legacyPush = document.getElementById('pushLegacyLinkOut');
     if (legacyPush) legacyPush.style.display = hr ? 'none' : 'block';
+    const hrNote = document.getElementById('tplFrontHrNote');
+    const frontBlock = document.getElementById('tplFrontFieldsBlock');
+    if (hrNote) hrNote.style.display = hr ? 'block' : 'none';
+    if (frontBlock) frontBlock.style.opacity = hr ? '0.55' : '1';
 }
 
 function hrAddLinkRow(containerId, label = '', url = '') {
