@@ -1635,10 +1635,17 @@ router.get('/templates', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+async function normalizeTemplateBodyForBrand(body, brand, req) {
+  if (!isHrBrand(brand, req)) return body;
+  return { ...body, pass_type: 'employee_pass' };
+}
+
 router.post('/templates', async (req, res) => {
   try {
     if (!requireBrandId(req, res, req.body.brand_id)) return;
-    const template = await createTemplate(req.body);
+    const brand = await getBrand(req.body.brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const template = await createTemplate(await normalizeTemplateBodyForBrand(req.body, brand, req));
     res.json(template);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1660,7 +1667,11 @@ router.put('/templates/:id', async (req, res) => {
     if (req.body.back_fixed_link_url) {
       assertHttpsUrl(req.body.back_fixed_link_url, 'Link fisso fallback');
     }
-    const template = await updateTemplate(req.params.id, req.body);
+    const brand = await getBrand(existing.brand_id);
+    const template = await updateTemplate(
+      req.params.id,
+      await normalizeTemplateBodyForBrand(req.body, brand, req)
+    );
     const { touched } = await touchPassesForTemplate(req.params.id);
     let wallet_push_sent = 0;
     const devices = await getDevicesForTemplate(req.params.id);
@@ -3298,9 +3309,8 @@ router.get('/play/:serial_number/info', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Leads Database (aggregated player data) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+
+// Leads Database (aggregated player data)
 
 function isHrBrand(brand, req) {
   if (brandProductLine(brand) === 'hr') return true;

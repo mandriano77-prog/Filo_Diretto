@@ -1848,13 +1848,17 @@
                                         <label class="form-label">Nome Template</label>
                                         <input type="text" id="wzName" placeholder="es. Pass Loyalty Primavera">
                                     </div>
-                                    <div class="form-group">
+                                    <div class="form-group" id="wzTypeSelectGroup">
                                         <label class="form-label">Tipo Pass</label>
                                         <select id="wzType" onchange="wzUpdatePreview()">
                                             <option value="storeCard">Store Card</option>
                                             <option value="coupon">Coupon</option>
                                             <option value="eventTicket">Event Ticket</option>
                                         </select>
+                                    </div>
+                                    <div class="form-group" id="wzTypeHrStatic" style="display:none">
+                                        <label class="form-label">Layout</label>
+                                        <div class="form-static-value" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text1);">Pass dipendente</div>
                                     </div>
                                 </div>
                             </div>
@@ -2486,8 +2490,12 @@
             <div style="flex:1;min-width:0;">
                 <div class="form-group"><label class="form-label">Nome</label><input type="text" id="tplName" placeholder="es. Coupon -20%" oninput="updatePassPreview()"></div>
                 <div class="form-row">
-                    <div class="form-group"><label class="form-label">Tipo Pass <span class="pass-type-info-btn" onclick="togglePassTypeInfo()" title="Info sul tipo di pass">ⓘ</span></label>
+                    <div class="form-group" id="tplTypeSelectGroup"><label class="form-label">Tipo Pass <span class="pass-type-info-btn" onclick="togglePassTypeInfo()" title="Info sul tipo di pass">ⓘ</span></label>
                         <select id="tplType" onchange="onPassTypeChange()"><option value="storeCard">Store Card</option><option value="coupon">Coupon</option><option value="eventTicket">Event Ticket</option></select>
+                    </div>
+                    <div class="form-group" id="tplTypeHrStatic" style="display:none">
+                        <label class="form-label">Layout</label>
+                        <div class="form-static-value" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text1);">Pass dipendente</div>
                     </div>
                     <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="tplDescription" placeholder="es. Sconto benvenuto" oninput="updatePassPreview()"></div>
                 </div>
@@ -4995,7 +5003,7 @@ async function loadTemplates() {
                 <div class="card-icon">&#127915;</div>
                 <div class="card-info">
                     <div class="card-title">${esc(t.name)}</div>
-                    <div class="card-desc">Tipo: ${t.pass_type || 'coupon'}</div>
+                    <div class="card-desc">Layout: ${formatTemplatePassTypeLabel(t.pass_type)}</div>
                 </div>
                 <div class="card-actions">
                     <button class="btn small" onclick="editTemplate('${t.id}')">Modifica</button>
@@ -5006,6 +5014,39 @@ async function loadTemplates() {
     `).join('');
 }
 
+const EMPLOYEE_PASS_TYPE = 'employee_pass';
+
+function formatTemplatePassTypeLabel(passType) {
+    if (isHrDashboard() || passType === EMPLOYEE_PASS_TYPE) return 'Pass dipendente';
+    const labels = { storeCard: 'Store Card', coupon: 'Coupon', eventTicket: 'Event Ticket', generic: 'Generic', boardingPass: 'Boarding Pass' };
+    return labels[passType] || passType || 'Pass';
+}
+
+function templatePassTypeForSave() {
+    return isHrDashboard() ? EMPLOYEE_PASS_TYPE : document.getElementById('tplType').value;
+}
+
+function syncEmployeePassTypeUi() {
+    const hr = isHrDashboard();
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+    show('tplTypeSelectGroup', !hr);
+    show('tplTypeHrStatic', hr);
+    show('wzTypeSelectGroup', !hr);
+    show('wzTypeHrStatic', hr);
+    const infoBox = document.getElementById('passTypeInfoBox');
+    if (infoBox && hr) infoBox.style.display = 'none';
+    if (hr) {
+        const stripRow = document.getElementById('tplImgStripRow');
+        const thumbRow = document.getElementById('tplImgThumbRow');
+        const bgRow = document.getElementById('tplImgBgRow');
+        if (stripRow) stripRow.style.display = '';
+        if (thumbRow) thumbRow.style.display = '';
+        if (bgRow) bgRow.style.display = 'none';
+    } else {
+        onPassTypeChange();
+    }
+}
+
 function togglePassBackEditorMode() {
     const hr = isHrDashboard();
     const hrEl = document.getElementById('hrPassBackEditor');
@@ -5014,6 +5055,7 @@ function togglePassBackEditorMode() {
     if (adsEl) adsEl.style.display = hr ? 'none' : 'block';
     const legacyPush = document.getElementById('pushLegacyLinkOut');
     if (legacyPush) legacyPush.style.display = hr ? 'none' : 'block';
+    syncEmployeePassTypeUi();
 }
 
 function hrAddLinkRow(containerId, label = '', url = '') {
@@ -5112,7 +5154,7 @@ function openTemplateModal() {
     ['tplImgLogo','tplImgStrip','tplImgThumb','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     ['tplImgLogoPreview','tplImgStripPreview','tplImgThumbPreview','tplImgBgPreview'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     tplImageCache = {};
-    document.getElementById('tplType').value = 'storeCard';
+    if (!isHrDashboard()) document.getElementById('tplType').value = 'storeCard';
     document.getElementById('templateModal').classList.add('active');
     document.body.classList.add('modal-open');
     populateStripPromoSelect();
@@ -5132,7 +5174,7 @@ async function editTemplate(id) {
     document.getElementById('templateEditId').value = t.id;
     document.getElementById('templateModalTitle').textContent = 'Modifica Template';
     document.getElementById('tplName').value = t.name || '';
-    document.getElementById('tplType').value = t.pass_type || 'coupon';
+    if (!isHrDashboard()) document.getElementById('tplType').value = t.pass_type || 'coupon';
     document.getElementById('tplDescription').value = t.style?.description || '';
     const fields = t.fields || {};
     const header = (fields.headerFields || [])[0] || {};
@@ -5189,7 +5231,7 @@ async function saveTemplate() {
     const body = {
         brand_id: brandId,
         name: document.getElementById('tplName').value,
-        pass_type: document.getElementById('tplType').value,
+        pass_type: templatePassTypeForSave(),
         style: { ...existingStyle, description: document.getElementById('tplDescription').value },
         fields: {
             headerFields: [{ key: 'header_info', label: document.getElementById('tplHeaderLabel').value, value: document.getElementById('tplHeaderValue').value }],
@@ -5235,7 +5277,7 @@ async function saveTemplate() {
 
 function updatePassPreview() {
     const brandName = currentBrandName || 'BRAND';
-    const passType = document.getElementById('tplType').value;
+    const passType = isHrDashboard() ? 'storeCard' : document.getElementById('tplType').value;
     const headerLabel = document.getElementById('tplHeaderLabel').value;
     const headerValue = document.getElementById('tplHeaderValue').value;
     const secLabel = document.getElementById('tplSecLabel').value;
@@ -5379,6 +5421,11 @@ function updatePassTypeInfo() {
 }
 
 function onPassTypeChange() {
+    if (isHrDashboard()) {
+        syncEmployeePassTypeUi();
+        updatePassPreview();
+        return;
+    }
     const type = document.getElementById('tplType').value;
     const slots = PASS_IMAGE_SLOTS[type] || PASS_IMAGE_SLOTS.storeCard;
     document.getElementById('tplImgStripRow').style.display = slots.strip ? '' : 'none';
@@ -7754,7 +7801,7 @@ function wzUpdatePreview() {
 
 function wzBuildPreview() {
     const brandName = currentBrandName || 'BRAND';
-    const type = document.getElementById('wzType').value;
+    const type = isHrDashboard() ? EMPLOYEE_PASS_TYPE : document.getElementById('wzType').value;
     const hLabel = document.getElementById('wzHeaderLabel').value;
     const hValue = document.getElementById('wzHeaderValue').value;
     const sLabel = document.getElementById('wzSecLabel').value;
@@ -7812,7 +7859,7 @@ function wzBuildPreview() {
     document.getElementById('wzSummary').innerHTML = `
         <div style="display:grid;grid-template-columns:140px 1fr;gap:8px 12px;font-size:13px;">
             <span style="font-weight:600;color:var(--text1);">Nome</span><span>${esc(document.getElementById('wzName').value || '—')}</span>
-            <span style="font-weight:600;color:var(--text1);">Tipo</span><span>${type}</span>
+            <span style="font-weight:600;color:var(--text1);">Layout</span><span>${formatTemplatePassTypeLabel(type)}</span>
             <span style="font-weight:600;color:var(--text1);">Campi fronte</span><span>${frontFields} configurati</span>
             <span style="font-weight:600;color:var(--text1);">Link retro</span><span>${backLinks} link</span>
             <span style="font-weight:600;color:var(--text1);">Regolamento</span><span>${hasReg ? 'Presente' : 'Non configurato'}</span>
@@ -8093,7 +8140,7 @@ async function wzPublish() {
     const body = {
         brand_id: brandId,
         name,
-        pass_type: document.getElementById('wzType').value,
+        pass_type: isHrDashboard() ? EMPLOYEE_PASS_TYPE : document.getElementById('wzType').value,
         style: { ...existingStyle, description: '' },
         fields: {
             headerFields: [{ key: 'header_info', label: document.getElementById('wzHeaderLabel').value, value: document.getElementById('wzHeaderValue').value }],
@@ -8189,7 +8236,7 @@ async function loadWzTemplates() {
                 <div style="flex:1;">
                     <div style="font-weight:600;font-size:14px;">${esc(t.name)}</div>
                     <div style="font-size:11px;color:var(--text2);margin-top:2px;">
-                        ${t.pass_type || 'storeCard'} · Creato ${new Date(t.created_at).toLocaleDateString('it-IT')}
+                        ${formatTemplatePassTypeLabel(t.pass_type)} · Creato ${new Date(t.created_at).toLocaleDateString('it-IT')}
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;">
@@ -8209,7 +8256,7 @@ async function wzEditTemplate(id) {
         const t = await res.json();
         // Fill wizard fields
         document.getElementById('wzName').value = t.name || '';
-        document.getElementById('wzType').value = t.pass_type || 'storeCard';
+        if (!isHrDashboard()) document.getElementById('wzType').value = t.pass_type || 'storeCard';
         const f = t.fields || {};
         if (f.headerFields && f.headerFields[0]) {
             document.getElementById('wzHeaderLabel').value = f.headerFields[0].label || '';

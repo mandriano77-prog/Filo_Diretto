@@ -9,7 +9,11 @@ const {
   resolveMemberProfile,
   resolveEmployeeIdForBarcode
 } = require('./pass-hr-back');
-const { buildEmployeePass, toApplePass } = require('./employee-pass');
+const {
+  buildEmployeePass,
+  toApplePass,
+  APPLE_EMPLOYEE_PASS_STRUCTURE
+} = require('./employee-pass');
 
 /** Incolla thumbnail sulla strip — Apple non mostra thumbnail.png su storeCard. */
 async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height) {
@@ -610,7 +614,9 @@ function generatePassJson(template, instance, brand, options = {}) {
   }
 
   // ── Pass structure ────────────────────────────────────────────
-  const structureKey = template.pass_type || 'storeCard';
+  const structureKey = useHrBack
+    ? APPLE_EMPLOYEE_PASS_STRUCTURE
+    : (template.pass_type || 'storeCard');
   let passStructure = {};
   let barcodePayload = buildIdentifyingQrBarcode(instance, member);
   let passForegroundColor = foregroundColor;
@@ -1028,22 +1034,21 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using template-level thumbnail');
   }
 
-  const passType = template.pass_type || 'storeCard';
-  if (hrBrand && thumbnailBuffers && (passType === 'storeCard' || passType === 'coupon')) {
-    stripBuffers.strip = await compositeThumbnailOnStrip(stripBuffers.strip, thumbnailBuffers.thumb, 375, 123);
-    stripBuffers.strip2x = await compositeThumbnailOnStrip(stripBuffers.strip2x, thumbnailBuffers.thumb2x, 750, 246);
-    console.log('[passkit] Thumbnail HR composita sulla strip (storeCard non espone thumbnail nativa)');
-  }
-
-  // Background — for eventTicket
+  // Background — loyalty / event layouts only (not employee pass)
   let backgroundBuffers = null;
-  if (tplImages.background) {
+  if (!hrBrand && tplImages.background) {
     const rawBg = Buffer.from(tplImages.background, 'base64');
     backgroundBuffers = {
       bg: await sharp(rawBg).resize(180, 220, { fit: 'cover' }).png().toBuffer(),
       bg2x: await sharp(rawBg).resize(360, 440, { fit: 'cover' }).png().toBuffer()
     };
     console.log('✓ Using template-level background');
+  }
+
+  if (hrBrand && thumbnailBuffers) {
+    stripBuffers.strip = await compositeThumbnailOnStrip(stripBuffers.strip, thumbnailBuffers.thumb, 375, 123);
+    stripBuffers.strip2x = await compositeThumbnailOnStrip(stripBuffers.strip2x, thumbnailBuffers.thumb2x, 750, 246);
+    console.log('[passkit] Employee pass: thumbnail composita sulla strip');
   }
 
   // Build file map
@@ -1055,24 +1060,25 @@ async function createPkpass(template, instance, brand, options = {}) {
     'logo@2x.png': logoBuffers.logo2x || logoBuffers.logo
   };
 
-  // Strip images for storeCard/coupon/eventTicket (unless eventTicket uses background+thumbnail instead)
-  if (passType === 'coupon' || passType === 'storeCard' || (passType === 'eventTicket' && !backgroundBuffers)) {
+  if (hrBrand) {
     files['strip.png'] = stripBuffers.strip;
     files['strip@2x.png'] = stripBuffers.strip2x;
-  }
-
-  // Thumbnail for generic/eventTicket (Apple ignores on storeCard/coupon)
-  if (thumbnailBuffers && (passType === 'generic' || passType === 'eventTicket')) {
-    files['thumbnail.png'] = thumbnailBuffers.thumb;
-    files['thumbnail@2x.png'] = thumbnailBuffers.thumb2x;
-  } else if (thumbnailBuffers && (passType === 'storeCard' || passType === 'coupon')) {
-    console.warn('[passkit] thumbnail ignorata su Apple Wallet per pass_type=%s — usa eventTicket', passType);
-  }
-
-  // Background for eventTicket
-  if (backgroundBuffers && passType === 'eventTicket') {
-    files['background.png'] = backgroundBuffers.bg;
-    files['background@2x.png'] = backgroundBuffers.bg2x;
+  } else {
+    const passType = template.pass_type || 'storeCard';
+    if (passType === 'coupon' || passType === 'storeCard' || (passType === 'eventTicket' && !backgroundBuffers)) {
+      files['strip.png'] = stripBuffers.strip;
+      files['strip@2x.png'] = stripBuffers.strip2x;
+    }
+    if (thumbnailBuffers && (passType === 'generic' || passType === 'eventTicket')) {
+      files['thumbnail.png'] = thumbnailBuffers.thumb;
+      files['thumbnail@2x.png'] = thumbnailBuffers.thumb2x;
+    } else if (thumbnailBuffers && (passType === 'storeCard' || passType === 'coupon')) {
+      console.warn('[passkit] thumbnail ignorata su Apple Wallet per pass_type=%s — usa eventTicket', passType);
+    }
+    if (backgroundBuffers && passType === 'eventTicket') {
+      files['background.png'] = backgroundBuffers.bg;
+      files['background@2x.png'] = backgroundBuffers.bg2x;
+    }
   }
 
   // Generate manifest

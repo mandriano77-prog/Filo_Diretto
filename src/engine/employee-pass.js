@@ -3,6 +3,11 @@
  * Single source for Filo Diretto HR pass content parity.
  */
 
+/** Canonical pass type in DB / API / UI for HR employee passes. */
+const EMPLOYEE_PASS_TYPE = 'employee_pass';
+/** Apple Wallet pass.json top-level key (implementation detail only). */
+const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
+
 const HR_BG_DEFAULT = '#8B5CF6';
 const HR_LABEL_DEFAULT = '#A78BFA';
 const HR_FG_DEFAULT = '#FFFFFF';
@@ -301,7 +306,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     logoText: brand?.name || '',
     programName: (template?.name || brand?.name || '').slice(0, 64),
     templateName: template?.name || '',
-    passType: template?.pass_type || 'storeCard',
+    passType: EMPLOYEE_PASS_TYPE,
     profile,
     colors,
     images,
@@ -335,7 +340,7 @@ function sectionsToAppleBackFields(sections) {
   });
 }
 
-/** Apple Wallet — pass.json storeCard/eventTicket slice */
+/** Apple Wallet — pass.json storeCard slice (employee pass layout). */
 function toApplePass(employeePass) {
   const passStructure = {};
   if (employeePass.front.header?.length) passStructure.headerFields = employeePass.front.header;
@@ -483,6 +488,8 @@ function isHrEmployeePass(brand) {
 }
 
 module.exports = {
+  EMPLOYEE_PASS_TYPE,
+  APPLE_EMPLOYEE_PASS_STRUCTURE,
   buildEmployeePass,
   toApplePass,
   toGooglePass,
