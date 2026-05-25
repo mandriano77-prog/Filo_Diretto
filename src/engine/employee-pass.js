@@ -263,11 +263,13 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template });
   const tplImages = template?.style?.images || {};
 
-  const primary = profile.full_name
-    ? { key: 'employee_name', label: '', value: profile.full_name }
-    : null;
+  // Apple storeCard: primaryFields are drawn ON TOP of the strip image — keep null for HR.
+  const primary = null;
 
   const secondary = [];
+  if (profile.full_name) {
+    secondary.push({ key: 'employee_name', label: 'NOME', value: profile.full_name });
+  }
   if (profile.employee_id) {
     secondary.push({ key: 'matricola', label: 'MATRICOLA', value: `#${profile.employee_id}` });
   }
@@ -278,11 +280,11 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     secondary.push({ key: 'reparto', label: 'REPARTO', value: profile.department });
   }
 
-  // HR pass front: solo dati dipendente + hint fisso (no header/secondary marketing dal template)
+  // HR pass front: hint only in header (template headerFields are ignored on generate)
   const header = [{
     key: 'info_hint',
-    label: 'CLICCA SUI PUNTINI',
-    value: 'per i dettagli'
+    label: 'DETTAGLI',
+    value: 'Tocca ··· in alto'
   }];
   const auxiliary = [];
 
@@ -290,7 +292,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
 
   const barcodeValue = instance?.serial_number || '';
   const employeeId = profile.employee_id || profile.id || instance?.id || '';
-  const barcodeAlt = `${profile.full_name || 'Membro'} · #${employeeId}`.slice(0, 64);
+  const barcodeAlt = profile.employee_id
+    ? `#${String(profile.employee_id)}`
+    : `#${String(employeeId)}`.slice(0, 64);
 
   return {
     member_id: member?.id || instance?.member_id || null,
@@ -298,7 +302,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     pass_instance_id: instance?.id || null,
     serial_number: instance?.serial_number || null,
     brandName: brand?.name || '',
-    logoText: brand?.name || '',
+    /** Apple logoText (top-left under icon) — empty for HR to avoid brand name cluttering the pass face */
+    logoText: '',
     programName: (template?.name || brand?.name || '').slice(0, 64),
     templateName: template?.name || '',
     passType: template?.pass_type || 'storeCard',
@@ -421,8 +426,8 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
   if (passKind === 'loyalty') {
     objectPatch.accountName = (employeePass.profile.full_name || 'Membro').slice(0, 64);
   } else {
-    objectPatch.cardTitle = { defaultValue: { language: 'it', value: employeePass.brandName } };
-    objectPatch.subheader = { defaultValue: { language: 'it', value: 'Dipendente' } };
+    objectPatch.cardTitle = { defaultValue: { language: 'it', value: employeePass.templateName || 'Pass dipendente' } };
+    objectPatch.subheader = { defaultValue: { language: 'it', value: employeePass.brandName || '' } };
     objectPatch.header = { defaultValue: { language: 'it', value: employeePass.profile.full_name || 'Membro' } };
     if (thumbUri && employeePass.hasTemplateImages.thumbnail) {
       objectPatch.mainImage = googleImageRef(thumbUri, 'Thumbnail');
