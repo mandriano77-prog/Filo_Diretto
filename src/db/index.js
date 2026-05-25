@@ -985,46 +985,74 @@ async function deleteBrand(id) {
 
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Templates Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
+function parseTemplateRow(row) {
+  if (!row) return null;
+  const parseJson = (v, fallback) => {
+    if (v == null) return fallback;
+    if (typeof v === 'object') return v;
+    try { return JSON.parse(v); } catch { return fallback; }
+  };
+  const backResources = parseJson(row.back_resources, []);
+  const backDocuments = parseJson(row.back_documents, []);
+  return {
+    ...row,
+    style: parseJson(row.style, {}),
+    fields: parseJson(row.fields, {}),
+    config: parseJson(row.config, {}),
+    back_resources: Array.isArray(backResources) ? backResources : [],
+    back_documents: Array.isArray(backDocuments) ? backDocuments : []
+  };
+}
+
 async function createTemplate(data) {
   const id = data.id || uuidv4();
   const {
     brand_id, name, pass_type = 'coupon', style = {}, fields = [], config = {},
-    back_fixed_link_label = null, back_fixed_link_url = null
+    back_fixed_link_label = null, back_fixed_link_url = null,
+    hr_email = null, hr_phone = null, dpo_email = null, emergency_phone = null,
+    back_resources = [], back_documents = []
   } = data;
   if (!brand_id || !name) throw new Error('Brand ID and template name are required');
   const styleObj = typeof style === 'string' ? JSON.parse(style) : style;
   const fieldsObj = typeof fields === 'string' ? JSON.parse(fields) : fields;
   const configObj = typeof config === 'string' ? JSON.parse(config) : config;
+  const resourcesArr = Array.isArray(back_resources) ? back_resources.slice(0, 5) : [];
+  const documentsArr = Array.isArray(back_documents) ? back_documents.slice(0, 5) : [];
   await pool.query(
-    `INSERT INTO pass_templates (id, brand_id, name, pass_type, style, fields, config, back_fixed_link_label, back_fixed_link_url)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [id, brand_id, name, pass_type, JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj), back_fixed_link_label, back_fixed_link_url]
+    `INSERT INTO pass_templates (
+       id, brand_id, name, pass_type, style, fields, config,
+       back_fixed_link_label, back_fixed_link_url,
+       hr_email, hr_phone, dpo_email, emergency_phone, back_resources, back_documents
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+    [
+      id, brand_id, name, pass_type,
+      JSON.stringify(styleObj), JSON.stringify(fieldsObj), JSON.stringify(configObj),
+      back_fixed_link_label, back_fixed_link_url,
+      hr_email, hr_phone, dpo_email, emergency_phone,
+      JSON.stringify(resourcesArr), JSON.stringify(documentsArr)
+    ]
   );
-  return { id, brand_id, name, pass_type, style: styleObj, fields: fieldsObj, config: configObj, back_fixed_link_label, back_fixed_link_url };
+  return parseTemplateRow({
+    id, brand_id, name, pass_type,
+    style: styleObj, fields: fieldsObj, config: configObj,
+    back_fixed_link_label, back_fixed_link_url,
+    hr_email, hr_phone, dpo_email, emergency_phone,
+    back_resources: resourcesArr, back_documents: documentsArr
+  });
 }
 
 async function getTemplate(id) {
   const result = await pool.query('SELECT * FROM pass_templates WHERE id = $1', [id]);
   if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-  return {
-    ...row,
-    style: typeof row.style === 'string' ? JSON.parse(row.style) : row.style,
-    fields: typeof row.fields === 'string' ? JSON.parse(row.fields) : row.fields,
-    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config
-  };
+  return parseTemplateRow(result.rows[0]);
 }
 
 async function listTemplates(brandId) {
   const result = await pool.query(
     'SELECT * FROM pass_templates WHERE brand_id = $1 ORDER BY created_at DESC', [brandId]
   );
-  return result.rows.map(row => ({
-    ...row,
-    style: typeof row.style === 'string' ? JSON.parse(row.style) : row.style,
-    fields: typeof row.fields === 'string' ? JSON.parse(row.fields) : row.fields,
-    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config
-  }));
+  return result.rows.map(parseTemplateRow);
 }
 
 async function updateTemplate(id, data) {
@@ -1060,7 +1088,7 @@ async function updateTemplate(id, data) {
   const result = await pool.query(
     `UPDATE pass_templates SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, vals
   );
-  return result.rows[0] || null;
+  return result.rows[0] ? parseTemplateRow(result.rows[0]) : null;
 }
 
 async function deleteTemplate(id) {

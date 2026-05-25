@@ -132,6 +132,11 @@ function validateBrandBackLinks(data) {
   }
 }
 
+function validateTemplateBackPayload(body) {
+  if (body.back_fixed_link_url) assertHttpsUrl(body.back_fixed_link_url, 'Link fisso fallback');
+  validateBrandBackLinks(body);
+}
+
 /** Comma-separated emails allowed to log in on this deploy (e.g. Filo Diretto → admin@nudj.studio). */
 function dashboardLoginAllowlist() {
   const raw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
@@ -1645,6 +1650,7 @@ router.post('/templates', async (req, res) => {
     if (!requireBrandId(req, res, req.body.brand_id)) return;
     const brand = await getBrand(req.body.brand_id);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    validateTemplateBackPayload(req.body);
     const template = await createTemplate(await normalizeTemplateBodyForBrand(req.body, brand, req));
     res.json(template);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1664,9 +1670,7 @@ router.put('/templates/:id', async (req, res) => {
     const existing = await getTemplate(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Template non trovato' });
     if (!requireBrandId(req, res, existing.brand_id)) return;
-    if (req.body.back_fixed_link_url) {
-      assertHttpsUrl(req.body.back_fixed_link_url, 'Link fisso fallback');
-    }
+    validateTemplateBackPayload(req.body);
     const brand = await getBrand(existing.brand_id);
     const template = await updateTemplate(
       req.params.id,
@@ -1979,6 +1983,20 @@ router.post('/push/send', async (req, res) => {
           { include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_link_url, back_link_label },
           title
         );
+        if (!passLink) {
+          const linkOutUrl = (back_link_url || pass_link_url || '').trim();
+          if (linkOutUrl) {
+            passLink = parsePassLinkFromPushBody(
+              {
+                include_pass_link: true,
+                pass_link_url: linkOutUrl,
+                pass_link_label: back_link_label || pass_link_label,
+                pass_link_expires_at
+              },
+              title
+            );
+          }
+        }
       } catch (linkErr) {
         return res.status(400).json({ error: linkErr.message });
       }
@@ -1986,16 +2004,8 @@ router.post('/push/send', async (req, res) => {
       if (passLink) {
         await updatePassDynamicLinks(targetPasses.map((p) => p.id), passLink);
         console.log(`[PUSH] Dynamic pass link set on ${targetPasses.length} passes until ${passLink.expiresAt}`);
-      }
-
-      const linkOutUrl = (back_link_url || pass_link_url || '').trim();
-      if (linkOutUrl && !passLink) {
-        config.pushLinkOut = {
-          label: (back_link_label || pass_link_label || '').trim() || 'Scopri di più',
-          url: linkOutUrl,
-          ts: Date.now()
-        };
-      } else if (!passLink) {
+        delete config.pushLinkOut;
+      } else {
         delete config.pushLinkOut;
       }
 

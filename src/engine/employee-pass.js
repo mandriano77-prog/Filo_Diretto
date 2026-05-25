@@ -180,9 +180,26 @@ function makeHrLinkField(key, label, url) {
   };
 }
 
+/** Template-level HR retro fields with brand fallback (per-template config). */
+function resolveHrBackSource(template, brand) {
+  const tplRes = parseJsonArray(template?.back_resources);
+  const tplDocs = parseJsonArray(template?.back_documents);
+  const brandRes = parseJsonArray(brand?.back_resources);
+  const brandDocs = parseJsonArray(brand?.back_documents);
+  return {
+    hr_email: template?.hr_email ?? brand?.hr_email ?? null,
+    hr_phone: template?.hr_phone ?? brand?.hr_phone ?? null,
+    dpo_email: template?.dpo_email ?? brand?.dpo_email ?? null,
+    emergency_phone: template?.emergency_phone ?? brand?.emergency_phone ?? null,
+    back_resources: tplRes.length ? tplRes : brandRes,
+    back_documents: tplDocs.length ? tplDocs : brandDocs
+  };
+}
+
 function buildBackSections({ brand, template, instance, member, brandConfig = {} }) {
   const profile = resolveMemberProfile(member, instance);
   const sections = [];
+  const hrBack = resolveHrBackSource(template, brand);
 
   const dynamicLink = resolveVariableLink(instance, template, brandConfig);
   if (dynamicLink?.url) {
@@ -224,17 +241,24 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     sections.push({ kind: 'text', key: 'manager', label: 'MANAGER DIRETTO', body: mgr });
   }
 
-  if (brand?.hr_email) sections.push({ kind: 'text', key: 'hr_email', label: 'PEOPLE OPERATIONS', body: brand.hr_email });
-  if (brand?.hr_phone) sections.push({ kind: 'text', key: 'hr_phone', label: 'TELEFONO HR', body: brand.hr_phone });
-  if (brand?.dpo_email) sections.push({ kind: 'text', key: 'dpo', label: 'PRIVACY / DPO', body: brand.dpo_email });
-  if (brand?.emergency_phone) sections.push({ kind: 'text', key: 'emergency', label: 'EMERGENZE', body: brand.emergency_phone });
+  if (hrBack.hr_email) sections.push({ kind: 'text', key: 'hr_email', label: 'PEOPLE OPERATIONS', body: hrBack.hr_email });
+  if (hrBack.hr_phone) sections.push({ kind: 'text', key: 'hr_phone', label: 'TELEFONO HR', body: hrBack.hr_phone });
+  if (hrBack.dpo_email) sections.push({ kind: 'text', key: 'dpo', label: 'PRIVACY / DPO', body: hrBack.dpo_email });
+  if (hrBack.emergency_phone) sections.push({ kind: 'text', key: 'emergency', label: 'EMERGENZE', body: hrBack.emergency_phone });
 
-  parseJsonArray(brand?.back_resources).slice(0, 5).forEach((r, i) => {
+  hrBack.back_resources.slice(0, 5).forEach((r, i) => {
     if (r?.label && r?.url) sections.push({ kind: 'link', key: `resource_${i}`, label: r.label, url: r.url });
   });
 
-  parseJsonArray(brand?.back_documents).slice(0, 5).forEach((d, i) => {
+  hrBack.back_documents.slice(0, 5).forEach((d, i) => {
     if (d?.label && d?.url) sections.push({ kind: 'link', key: `doc_${i}`, label: d.label, url: d.url, doc: true });
+  });
+
+  sections.push({
+    kind: 'text',
+    key: 'portal_placeholder',
+    label: 'PROFILO PERSONALE',
+    body: 'Portale dipendente — in implementazione'
   });
 
   return sections;
@@ -507,6 +531,7 @@ module.exports = {
   resolveEmployeePassColors,
   walletImageUrls,
   buildBackSections,
+  resolveHrBackSource,
   sectionsToAppleBackFields,
   resolveMemberProfile,
   resolveVariableLink,

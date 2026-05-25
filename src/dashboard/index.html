@@ -2587,13 +2587,14 @@
 
                     <details class="hr-fieldset" open>
                         <summary>2 — Contatti HR aziendali</summary>
+                        <p class="form-hint">Salvati su questo template (con fallback ai valori brand se lasci vuoto).</p>
                         <div class="form-row">
-                            <div class="form-group"><label class="form-label">People Operations email</label><input type="email" id="hrBrandEmail" placeholder="people@azienda.it"></div>
-                            <div class="form-group"><label class="form-label">Telefono HR</label><input type="text" id="hrBrandPhone" placeholder="+39 ..."></div>
+                            <div class="form-group"><label class="form-label">People Operations email</label><input type="email" id="hrBrandEmail" placeholder="people@azienda.it" oninput="updatePassPreview()"></div>
+                            <div class="form-group"><label class="form-label">Telefono HR</label><input type="text" id="hrBrandPhone" placeholder="+39 ..." oninput="updatePassPreview()"></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label class="form-label">Privacy / DPO email</label><input type="email" id="hrBrandDpo" placeholder="dpo@azienda.it"></div>
-                            <div class="form-group"><label class="form-label">Emergenze telefono</label><input type="text" id="hrBrandEmergency" placeholder="+39 ..."></div>
+                            <div class="form-group"><label class="form-label">Privacy / DPO email</label><input type="email" id="hrBrandDpo" placeholder="dpo@azienda.it" oninput="updatePassPreview()"></div>
+                            <div class="form-group"><label class="form-label">Emergenze telefono</label><input type="text" id="hrBrandEmergency" placeholder="+39 ..." oninput="updatePassPreview()"></div>
                         </div>
                     </details>
 
@@ -5071,7 +5072,7 @@ function hrAddLinkRow(containerId, label = '', url = '') {
     if (box.querySelectorAll('.hr-link-row').length >= 5) return toast('Massimo 5 righe');
     const row = document.createElement('div');
     row.className = 'hr-link-row';
-    row.innerHTML = `<input type="text" class="hr-row-label" placeholder="Label" value="${esc(label)}"><input type="url" class="hr-row-url" placeholder="https://..." value="${esc(url)}"><button type="button" class="btn small sec" onclick="this.parentElement.remove()">Rimuovi</button>`;
+    row.innerHTML = `<input type="text" class="hr-row-label" placeholder="Label" value="${esc(label)}" oninput="updatePassPreview()"><input type="url" class="hr-row-url" placeholder="https://..." value="${esc(url)}" oninput="updatePassPreview()"><button type="button" class="btn small sec" onclick="this.parentElement.remove();updatePassPreview();">Rimuovi</button>`;
     box.appendChild(row);
 }
 
@@ -5094,21 +5095,8 @@ function hrCollectLinkRows(containerId) {
 function hrAddResourceRow() { hrAddLinkRow('hrResourcesRows'); }
 function hrAddDocumentRow() { hrAddLinkRow('hrDocumentsRows'); }
 
-async function loadHrBrandBackFields() {
-    if (!brandId || !isHrDashboard()) return;
-    const brand = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-    set('hrBrandEmail', brand.hr_email);
-    set('hrBrandPhone', brand.hr_phone);
-    set('hrBrandDpo', brand.dpo_email);
-    set('hrBrandEmergency', brand.emergency_phone);
-    hrRenderLinkRows('hrResourcesRows', brand.back_resources || []);
-    hrRenderLinkRows('hrDocumentsRows', brand.back_documents || []);
-}
-
-async function saveHrBrandBackFields() {
-    if (!brandId) return;
-    const payload = {
+function hrTemplateBackPayloadFromForm() {
+    return {
         hr_email: document.getElementById('hrBrandEmail')?.value.trim() || null,
         hr_phone: document.getElementById('hrBrandPhone')?.value.trim() || null,
         dpo_email: document.getElementById('hrBrandDpo')?.value.trim() || null,
@@ -5116,17 +5104,30 @@ async function saveHrBrandBackFields() {
         back_resources: hrCollectLinkRows('hrResourcesRows'),
         back_documents: hrCollectLinkRows('hrDocumentsRows')
     };
-    await fetch(`${API}/brands/${brandId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(payload)
-    });
 }
 
-function loadHrTemplateBackFields(t) {
+async function loadHrTemplateBackFields(t) {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
     set('hrFixedLinkLabel', t?.back_fixed_link_label);
     set('hrFixedLinkUrl', t?.back_fixed_link_url);
+    let brand = {};
+    if (brandId) {
+        try {
+            brand = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
+        } catch (_) {}
+    }
+    const pick = (key) => (t && t[key] != null && String(t[key]).trim() !== '') ? t[key] : (brand[key] || '');
+    set('hrBrandEmail', pick('hr_email'));
+    set('hrBrandPhone', pick('hr_phone'));
+    set('hrBrandDpo', pick('dpo_email'));
+    set('hrBrandEmergency', pick('emergency_phone'));
+    const resources = (Array.isArray(t?.back_resources) && t.back_resources.length)
+        ? t.back_resources : (brand.back_resources || []);
+    const documents = (Array.isArray(t?.back_documents) && t.back_documents.length)
+        ? t.back_documents : (brand.back_documents || []);
+    hrRenderLinkRows('hrResourcesRows', resources);
+    hrRenderLinkRows('hrDocumentsRows', documents);
+    updatePassPreview();
 }
 
 function togglePushPassLinkFields() {
@@ -5152,7 +5153,7 @@ function syncPushPassLinkLabel() {
     labelEl.value = titleEl.value.trim().slice(0, 40);
 }
 
-function openTemplateModal() {
+async function openTemplateModal() {
     nav('templates');
     togglePassBackEditorMode();
     document.getElementById('templateEditId').value = '';
@@ -5167,9 +5168,7 @@ function openTemplateModal() {
     populateStripPromoSelect();
     onPassTypeChange();
     if (isHrDashboard()) {
-        hrRenderLinkRows('hrResourcesRows', []);
-        hrRenderLinkRows('hrDocumentsRows', []);
-        loadHrBrandBackFields();
+        await loadHrTemplateBackFields(null);
     }
 }
 
@@ -5204,8 +5203,7 @@ async function editTemplate(id) {
     document.getElementById('tplRegolamento').value = fields.regolamento || '';
     document.getElementById('tplContatti').value = fields.contatti || '';
     if (isHrDashboard()) {
-        loadHrTemplateBackFields(t);
-        await loadHrBrandBackFields();
+        await loadHrTemplateBackFields(t);
     }
     // Reset and load existing images
     tplImageCache = {};
@@ -5250,6 +5248,7 @@ async function saveTemplate() {
     if (isHrDashboard()) {
         body.back_fixed_link_label = (document.getElementById('hrFixedLinkLabel')?.value || '').trim().slice(0, 64) || null;
         body.back_fixed_link_url = (document.getElementById('hrFixedLinkUrl')?.value || '').trim() || null;
+        Object.assign(body, hrTemplateBackPayloadFromForm());
     } else {
         const links = [1, 2, 3].map(i => ({
             label: document.getElementById('tplLink'+i+'Label').value.trim(),
@@ -5261,7 +5260,6 @@ async function saveTemplate() {
     }
 
     if (!body.name) return alert('Nome template obbligatorio');
-    if (isHrDashboard() && brandId) await saveHrBrandBackFields();
     const url = editId ? `${API}/templates/${editId}` : `${API}/templates`;
     const method = editId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -5285,6 +5283,59 @@ async function saveTemplate() {
 function updatePassPreview() {
     const brandName = currentBrandName || 'BRAND';
     const passType = isHrDashboard() ? 'storeCard' : document.getElementById('tplType').value;
+
+    if (isHrDashboard()) {
+        document.getElementById('ppLogo').textContent = brandName;
+        document.getElementById('ppBackLogo').textContent = brandName;
+        const logoPreview = document.getElementById('tplImgLogoPreview');
+        if (logoPreview && logoPreview.style.display !== 'none') {
+            document.getElementById('ppLogo').innerHTML = `<img src="${logoPreview.src}" style="height:20px;">`;
+        }
+        const strip = document.getElementById('ppStrip');
+        const stripPreview = document.getElementById('tplImgStripPreview');
+        if (stripPreview && stripPreview.style.display !== 'none') {
+            strip.style.backgroundImage = `url(${stripPreview.src})`;
+            strip.style.backgroundSize = 'cover';
+            strip.style.display = '';
+        } else {
+            strip.style.backgroundImage = '';
+            strip.style.display = '';
+        }
+        document.getElementById('passPreviewFront').className = 'pass-flip-face pass-front pass-type-storeCard';
+        document.getElementById('ppHeaderField').innerHTML = '';
+        document.getElementById('ppSecondary').innerHTML =
+            '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>';
+        document.getElementById('ppAuxiliary').innerHTML =
+            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">SEDE</div><div class="pp-field-value">Milano</div></div>';
+
+        let backHtml = '';
+        const addBackText = (lbl, val) => {
+            if (val) backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl)}</div><div class="pp-back-field-value">${esc(val)}</div></div>`;
+        };
+        const addBackLink = (lbl, url) => {
+            if (lbl || url) backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl || 'LINK')}</div><div class="pp-back-field-value"><a href="#">${esc(url || lbl)}</a></div></div>`;
+        };
+        addBackLink(
+            document.getElementById('hrFixedLinkLabel')?.value.trim(),
+            document.getElementById('hrFixedLinkUrl')?.value.trim()
+        );
+        addBackText('DIPENDENTE', 'Mario Rossi (da anagrafica import)');
+        addBackText('MATRICOLA', '#4721');
+        addBackText('REPARTO', 'Engineering');
+        addBackText('SEDE', 'Milano');
+        addBackText('PEOPLE OPERATIONS', document.getElementById('hrBrandEmail')?.value.trim());
+        addBackText('TELEFONO HR', document.getElementById('hrBrandPhone')?.value.trim());
+        addBackText('PRIVACY / DPO', document.getElementById('hrBrandDpo')?.value.trim());
+        addBackText('EMERGENZE', document.getElementById('hrBrandEmergency')?.value.trim());
+        hrCollectLinkRows('hrResourcesRows').forEach(r => addBackLink(r.label, r.url));
+        hrCollectLinkRows('hrDocumentsRows').forEach(r => addBackLink(r.label, r.url));
+        addBackText('PROFILO PERSONALE', 'Portale dipendente — in implementazione');
+        document.getElementById('ppBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Configura il retro HR</div>';
+        return;
+    }
+
     const headerLabel = document.getElementById('tplHeaderLabel').value;
     const headerValue = document.getElementById('tplHeaderValue').value;
     const secLabel = document.getElementById('tplSecLabel').value;
