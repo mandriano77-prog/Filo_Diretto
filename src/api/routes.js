@@ -10,6 +10,8 @@ const {
   incrementCampaignDownloads, incrementCampaignInstalls,
   createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesForTemplate, listPasses, countPasses, deletePass,
   getMemberForPass, listEmployeesForBrand, importEmployeesBatch,
+  findMemberByBrandKey, updateMemberRecord,
+  createImportError, listImportErrors,
   updatePassDynamicLinks,
   logEvent, listEvents,
   registerDevice, getDevicesForPass, getDevicesForBrand, getDevicesForTemplate, unregisterDevice, getSerialsForDevice,
@@ -3395,29 +3397,47 @@ router.post('/brands/:brand_id/employees/import', async (req, res) => {
       update_existing = false
     } = req.body || {};
 
+    const {
+      parseImportFile,
+      evaluateImportRows,
+      newImportBatchId
+    } = require('../engine/member-import');
+
     let employees = Array.isArray(employeesBody) ? employeesBody : null;
+    let rejected = [];
+    const batch_id = newImportBatchId();
 
     if (!employees) {
-      const {
-        parseImportFile,
-        mapRowToEmployee,
-        rowIsValid,
-        suggestColumnMapping
-      } = require('../engine/member-import');
+      if (!file_base64 && !csv_text) {
+        return res.status(400).json({ error: 'Carica un file CSV/Excel o incolla testo CSV' });
+      }
       const { headers, rows } = parseImportFile({ file_base64, filename, csv_text });
-      const effectiveMapping = mapping && Object.keys(mapping).length
-        ? mapping
-        : suggestColumnMapping(headers);
-      employees = rows
-        .map((row) => mapRowToEmployee(row, effectiveMapping))
-        .filter(rowIsValid);
+      const evaluated = await evaluateImportRows({
+        headers,
+        rows,
+        mapping,
+        allowExisting: !!update_existing,
+        checkExisting: async (employee_id) => findMemberByBrandKey(brand_id, { employee_id })
+      });
+      employees = evaluated.employees;
+      rejected = evaluated.rejected;
     }
 
-    if (!employees.length) {
-      return res.status(400).json({ error: 'Nessuna riga valida da importare' });
+    for (const row of rejected) {
+      await createImportError({
+        brand_id,
+        import_batch_id: batch_id,
+        row_number: row.row,
+        row_data: { raw: row.raw, mapped: row.mapped, name: row.name },
+        error_reason: row.reason
+      });
     }
 
-    if (create_passes) {
+    if (!employees.length && !rejected.length) {
+      return res.status(400).json({ error: 'File vuoto o senza righe dati' });
+    }
+
+    if (create_passes && employees.length) {
       if (!template_id) {
         return res.status(400).json({ error: 'template_id richiesto per creare i pass' });
       }
@@ -3427,14 +3447,97 @@ router.post('/brands/:brand_id/employees/import', async (req, res) => {
       }
     }
 
-    const summary = await importEmployeesBatch(brand_id, employees, {
-      template_id,
-      create_passes: !!create_passes,
-      update_existing: !!update_existing,
-      skip_invalid: true
+    const summary = employees.length
+      ? await importEmployeesBatch(brand_id, employees, {
+        template_id,
+        create_passes: !!create_passes,
+        update_existing: !!update_existing,
+        skip_invalid: true
+      })
+      : { created: 0, updated: 0, skipped: 0, passes_created: 0, errors: [] };
+
+    const imported = (summary.created || 0) + (summary.updated || 0);
+    res.json({
+      success: true,
+      imported,
+      rejected: rejected.length,
+      batch_id,
+      errors: rejected.map((r) => ({ row: r.row, name: r.name, reason: r.reason })),
+      created: summary.created,
+      updated: summary.updated,
+      passes_created: summary.passes_created,
+      skipped: summary.skipped
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/:brand_id/employees/import/errors', async (req, res) => {
+  try {
+    const { brand_id } = req.params;
+    const { import_batch_id } = req.query;
+    if (!requireBrandId(req, res, brand_id)) return;
+    if (!import_batch_id) {
+      return res.status(400).json({ error: 'import_batch_id richiesto' });
+    }
+    const rows = await listImportErrors(brand_id, { import_batch_id });
+    res.json({ import_batch_id, errors: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.patch('/brands/:brand_id/members/:member_id', async (req, res) => {
+  try {
+    const { brand_id, member_id } = req.params;
+    if (!requireBrandId(req, res, brand_id)) return;
+    const brand = await getBrand(brand_id);
+    if (!brand || !isHrBrand(brand, req)) {
+      return res.status(400).json({ error: 'Aggiornamento dipendente disponibile solo per brand HR' });
+    }
+
+    const existing = await pool.query(
+      'SELECT * FROM members WHERE id = $1 AND brand_id = $2',
+      [member_id, brand_id]
+    );
+    if (!existing.rows.length) return res.status(404).json({ error: 'Dipendente non trovato' });
+
+    const member = existing.rows[0];
+    const { employee_id, department, office_location, first_name, last_name, email } = req.body || {};
+
+    if (employee_id !== undefined) {
+      const trimmed = String(employee_id || '').trim();
+      if (!trimmed) return res.status(400).json({ error: 'Matricola obbligatoria' });
+      const dup = await findMemberByBrandKey(brand_id, { employee_id: trimmed });
+      if (dup && String(dup.id) !== String(member_id)) {
+        return res.status(409).json({ error: `Matricola #${trimmed} già assegnata` });
+      }
+    }
+
+    const updated = await updateMemberRecord(member_id, {
+      employee_id,
+      department,
+      office_location,
+      first_name,
+      last_name,
+      email
     });
 
-    res.json({ success: true, ...summary });
+    let wallet_push_sent = 0;
+    if (updated.pass_id) {
+      await touchPass(updated.pass_id);
+      const devices = await pool.query(
+        `SELECT push_token FROM device_registrations WHERE serial_number = (
+          SELECT serial_number FROM pass_instances WHERE id = $1
+        ) AND push_token IS NOT NULL AND push_token <> ''`,
+        [updated.pass_id]
+      );
+      for (const d of devices.rows) {
+        try {
+          const result = await sendPushUpdate(d.push_token);
+          if (result.success) wallet_push_sent++;
+        } catch (_) {}
+      }
+    }
+
+    res.json({ member: updated, wallet_push_sent });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

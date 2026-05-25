@@ -1453,13 +1453,13 @@ async function importEmployeesBatch(brandId, employees, options = {}) {
   for (let i = 0; i < employees.length; i++) {
     const emp = employees[i];
     try {
-      if (!emp || (!emp.first_name && !emp.last_name && !emp.employee_id)) {
+      if (!emp || !String(emp.employee_id || '').trim()) {
         if (skip_invalid) {
           summary.skipped++;
-          summary.errors.push({ row: i + 1, reason: 'Riga senza nome o matricola' });
+          summary.errors.push({ row: i + 1, reason: 'Matricola mancante' });
           continue;
         }
-        throw new Error('Riga senza nome o matricola');
+        throw new Error('Matricola mancante');
       }
 
       const existing = await findMemberByBrandKey(brandId, {

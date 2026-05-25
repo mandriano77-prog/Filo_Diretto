@@ -1235,7 +1235,7 @@
 
         <details class="nav-group" open data-nav-group="database">
             <summary class="nav-group-label">Database</summary>
-            <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-menu-key="nav_leads" data-menu-default="Contatti">Contatti</div>
+            <div class="nav-item" onclick="nav('leads')" data-section-id="leads" data-menu-key="nav_leads" data-menu-default="Contatti">Contatti <span id="navNoMatricolaBadge" class="nav-badge" style="display:none;" title="Dipendenti senza matricola"></span></div>
             <div class="nav-item" onclick="nav('audiences')" data-section-id="audiences">Audience</div>
         </details>
 
@@ -2154,6 +2154,7 @@
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                         <input type="text" id="leadsSearch" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
                         <button type="button" class="btn sec" id="leadsImportBtn" onclick="openEmployeeImportModal()" style="display:none;white-space:nowrap;">✨ Importa da file</button>
+                        <button type="button" class="btn sec" id="leadsNoMatricolaBtn" onclick="filterLeadsNoMatricola()" style="display:none;white-space:nowrap;">⚠ Senza matricola</button>
                         <button class="btn" onclick="exportLeadsCSV()" style="white-space:nowrap;">⬇ Export CSV</button>
                     </div>
                 </div>
@@ -2189,6 +2190,8 @@
                     </header>
                     <div class="import-wizard__body">
                         <div id="importStepUpload">
+                            <p class="import-wizard__matricola-help"><strong>Matricola obbligatoria.</strong> Le righe senza matricola vengono rifiutate. La prima riga del file deve contenere una colonna <code>matricola</code> (o equivalente).</p>
+                            <p style="margin:0 0 12px;"><button type="button" class="btn sec small" onclick="downloadEmployeeImportTemplate()">📥 Scarica template CSV</button></p>
                             <label class="import-dropzone" id="importDropzone" for="importFileInput">
                                 <span id="importDropzoneLabel">Trascina qui il file oppure clicca per scegliere</span>
                                 <span class="import-dropzone__hint">.csv · .xlsx · .xls — max ~5 MB</span>
@@ -2196,8 +2199,9 @@
                             <input type="file" id="importFileInput" accept=".csv,.txt,.xlsx,.xls,.ods" style="display:none;" onchange="onImportFileSelected(event)">
                             <div class="form-group import-wizard__paste">
                                 <label class="import-wizard__field-label" for="importCsvPaste">Oppure incolla CSV</label>
-                                <textarea id="importCsvPaste" rows="4" placeholder="Nome;Cognome;Matricola;Email;Sede&#10;Mario;Rossi;A001;..."></textarea>
+                                <textarea id="importCsvPaste" rows="4" placeholder="matricola,nome,cognome,email,reparto,sede&#10;4721,Mario,Rossi,mario.rossi@acme.it,..."></textarea>
                             </div>
+                            <p id="importMatricolaWarn" class="import-wizard__warn" style="display:none;" role="alert"></p>
                         </div>
                         <div id="importStepMap" style="display:none;">
                             <p class="import-wizard__map-hint">Verifica che ogni colonna sia abbinata al campo giusto.</p>
@@ -2228,6 +2232,11 @@
                                     </table>
                                 </div>
                             </div>
+                        </div>
+                        <div id="importStepResult" style="display:none;">
+                            <div class="import-result-summary" id="importResultSummary"></div>
+                            <ul id="importRejectedList" class="import-rejected-list"></ul>
+                            <button type="button" class="btn sec" id="importExportRejectedBtn" style="display:none;margin-top:12px;" onclick="exportImportRejectedCsv()">📤 Esporta CSV righe rifiutate</button>
                         </div>
                         <p id="importStatusMsg" class="import-wizard__status" role="status"></p>
                     </div>
@@ -6883,6 +6892,7 @@ async function loadLeads() {
             <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">${esc(mc.leads_stat_email)}</div></div>
         `;
 
+        updateLeadsNoMatricolaBadge();
         renderLeadsTable(allLeads);
     } catch(e) {
         console.error('loadLeads error:', e);
@@ -6919,17 +6929,22 @@ function renderLeadsTable(leads) {
         return;
     }
     if (leadsHrMode) {
-        tbody.innerHTML = leads.map((l) => `<tr>
+        tbody.innerHTML = leads.map((l) => {
+            const matCell = l.employee_id
+                ? esc(l.employee_id)
+                : `<span style="display:inline-flex;gap:6px;align-items:center;"><input type="text" class="hr-inline-matricola" placeholder="Matricola" style="width:88px;padding:4px 8px;font-size:12px;"><button type="button" class="btn small" onclick="saveMemberMatricola('${l.id}', this)">Salva</button></span>`;
+            return `<tr>
             <td>${esc(l.player_first_name || '-')}</td>
             <td>${esc(l.player_last_name || '-')}</td>
-            <td>${esc(l.employee_id || '-')}</td>
+            <td>${matCell}</td>
             <td>${esc(l.department || '-')}</td>
             <td>${esc(l.office_location || '-')}</td>
             <td>${l.player_email ? `<a href="mailto:${esc(l.player_email)}" style="color:var(--accent);">${esc(l.player_email)}</a>` : '—'}</td>
             <td style="font-size:11px;font-family:monospace;">${l.pass_id ? esc(String(l.pass_id).substring(0, 8)) + '…' : '—'}</td>
             <td style="font-size:12px;">${esc(walletStatusLabel(l))}</td>
             <td style="font-size:12px;">${l.registered_at ? new Date(l.registered_at).toLocaleDateString('it-IT') : '-'}</td>
-        </tr>`).join('');
+        </tr>`;
+        }).join('');
         return;
     }
     tbody.innerHTML = leads.map(l => `<tr>
@@ -6943,7 +6958,48 @@ function renderLeadsTable(leads) {
     </tr>`).join('');
 }
 
+function updateLeadsNoMatricolaBadge() {
+    if (!leadsHrMode) return;
+    const noMat = allLeads.filter((l) => !l.employee_id || !String(l.employee_id).trim()).length;
+    const badge = document.getElementById('navNoMatricolaBadge');
+    const btn = document.getElementById('leadsNoMatricolaBtn');
+    if (badge) {
+        badge.style.display = noMat > 0 ? 'inline-block' : 'none';
+        badge.textContent = noMat > 0 ? String(noMat) : '';
+        badge.title = `${noMat} dipendenti senza matricola`;
+    }
+    if (btn) btn.style.display = noMat > 0 ? '' : 'none';
+}
+
+function filterLeadsNoMatricola() {
+    window.leadsFilterNoMatricola = true;
+    document.getElementById('leadsSearch').value = '';
+    renderLeadsTable(allLeads.filter((l) => !l.employee_id || !String(l.employee_id).trim()));
+    toast('Filtro: solo dipendenti senza matricola');
+}
+
+async function saveMemberMatricola(memberId, btnEl) {
+    const row = btnEl?.closest('tr');
+    const input = row?.querySelector('.hr-inline-matricola');
+    const matricola = (input?.value || '').trim();
+    if (!matricola) return toast('Inserisci una matricola');
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/members/${memberId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify({ employee_id: matricola })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Salvataggio fallito');
+        toast(data.wallet_push_sent ? 'Matricola salvata — pass aggiornato' : 'Matricola salvata');
+        await loadLeads();
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
 function filterLeads() {
+    window.leadsFilterNoMatricola = false;
     const q = document.getElementById('leadsSearch').value.toLowerCase();
     if (!q) return renderLeadsTable(allLeads);
     const filtered = allLeads.filter(l =>
@@ -6990,6 +7046,9 @@ function exportLeadsCSV() {
     toast('CSV esportato!');
 }
 
+const IMPORT_CSV_TEMPLATE_HEADER = 'matricola,nome,cognome,email,reparto,sede,data_assunzione,manager_email';
+const IMPORT_CSV_TEMPLATE_SAMPLE = '4721,Mario,Rossi,mario.rossi@acme.it,Engineering,Milano,2024-03-12,laura.b@acme.it';
+
 const IMPORT_FIELD_LABELS = {
     first_name: 'Nome', last_name: 'Cognome', full_name: 'Nome completo', email: 'Email',
     employee_id: 'Matricola', department: 'Reparto', office_location: 'Sede',
@@ -7031,7 +7090,12 @@ function updateImportSummaryChips(data) {
     chips.hidden = false;
     const chipValid = document.getElementById('importChipValid');
     const chipMap = document.getElementById('importChipMapping');
-    if (chipValid) chipValid.textContent = `${valid} righe valide${total ? ` / ${total}` : ''}`;
+    const rejected = data?.rejected_count || data?.invalid_count || 0;
+    if (chipValid) {
+        chipValid.textContent = rejected
+            ? `${valid} importabili · ${rejected} rifiutate${total ? ` / ${total}` : ''}`
+            : `${valid} righe valide${total ? ` / ${total}` : ''}`;
+    }
     if (chipMap) chipMap.textContent = `Mapping: ${mapped}/${fieldTotal} campi`;
 }
 
@@ -7052,9 +7116,11 @@ function updateImportCommitButton() {
     const btn = document.getElementById('importCommitBtn');
     if (!btn) return;
     const valid = importPreviewState?.preview?.valid_count || 0;
+    const mapping = getImportMappingFromUi();
+    const matricolaMapped = mapping.employee_id != null && mapping.employee_id !== '';
     const createPasses = document.getElementById('importCreatePasses')?.checked;
     const templateId = document.getElementById('importTemplateId')?.value;
-    btn.disabled = valid <= 0 || btn.classList.contains('is-loading') || (!!createPasses && !templateId);
+    btn.disabled = valid <= 0 || !matricolaMapped || btn.classList.contains('is-loading') || (!!createPasses && !templateId);
 }
 
 function bindImportWizardControls() {
@@ -7077,20 +7143,25 @@ function bindImportWizardControls() {
 
 function showImportWizardPhase(phase) {
     const upload = phase === 'upload';
+    const result = phase === 'result';
     document.getElementById('importStepUpload').style.display = upload ? '' : 'none';
-    document.getElementById('importStepMap').style.display = upload ? 'none' : '';
+    document.getElementById('importStepMap').style.display = (!upload && !result) ? '' : 'none';
+    document.getElementById('importStepResult').style.display = result ? '' : 'none';
     document.getElementById('importFooterUpload').style.display = upload ? 'flex' : 'none';
-    document.getElementById('importFooterMap').style.display = upload ? 'none' : 'flex';
-    document.getElementById('importSummaryChips').hidden = upload;
+    document.getElementById('importFooterMap').style.display = (!upload && !result) ? 'flex' : 'none';
+    document.getElementById('importSummaryChips').hidden = upload || result;
     refreshImportWizardStepper();
 }
 
 function openEmployeeImportModal() {
     importPreviewState = null;
+    window.leadsFilterNoMatricola = false;
     document.getElementById('importFileInput').value = '';
     document.getElementById('importCsvPaste').value = '';
     document.getElementById('importDropzoneLabel').textContent = 'Trascina qui il file oppure clicca per scegliere';
     document.getElementById('importStatusMsg').textContent = '';
+    const warn = document.getElementById('importMatricolaWarn');
+    if (warn) { warn.style.display = 'none'; warn.textContent = ''; }
     const commitBtn = document.getElementById('importCommitBtn');
     if (commitBtn) {
         commitBtn.classList.remove('is-loading');
@@ -7150,6 +7221,18 @@ async function runImportPreview() {
     } else {
         return toast('Seleziona un file o incolla CSV');
     }
+    const warnEl = document.getElementById('importMatricolaWarn');
+    const headerHint = paste ? clientMatricolaHeaderWarning(paste) : null;
+    if (warnEl) {
+        if (headerHint) {
+            warnEl.style.display = 'block';
+            warnEl.textContent = headerHint;
+        } else {
+            warnEl.style.display = 'none';
+            warnEl.textContent = '';
+        }
+    }
+
     document.getElementById('importStatusMsg').textContent = 'Analisi colonne in corso…';
     try {
         const res = await fetch(`${API}/brands/${brandId}/employees/import/preview`, {
@@ -7159,6 +7242,10 @@ async function runImportPreview() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Preview fallita');
+        if (!data.matricola_header_ok && warnEl) {
+            warnEl.style.display = 'block';
+            warnEl.textContent = clientMatricolaHeaderWarning(data.headers || []) || warnEl.textContent;
+        }
         importPreviewState = { ...importPreviewState, preview: data, mapping: { ...data.mapping } };
         renderImportMappingStep(data);
         showImportWizardPhase('map');
@@ -7169,10 +7256,39 @@ async function runImportPreview() {
     }
 }
 
+function downloadEmployeeImportTemplate() {
+    const csv = [IMPORT_CSV_TEMPLATE_HEADER, IMPORT_CSV_TEMPLATE_SAMPLE].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'filodiretto-import-dipendenti.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function clientMatricolaHeaderWarning(headersOrText) {
+    let headers = [];
+    if (Array.isArray(headersOrText)) {
+        headers = headersOrText;
+    } else {
+        const line = String(headersOrText || '').split(/\r?\n/).find((l) => l.trim());
+        if (!line) return 'Nessuna intestazione trovata nel file.';
+        const delim = (line.match(/;/g) || []).length > (line.match(/,/g) || []).length ? ';' : ',';
+        headers = line.split(delim).map((h) => h.trim().replace(/^"|"$/g, ''));
+    }
+    const ok = headers.some((h) => {
+        const n = String(h).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return n.includes('matricola') || n.includes('badge') || n.includes('employee') || n === 'codice';
+    });
+    return ok ? null : 'La prima riga non contiene una colonna matricola. Scarica il template o correggi le intestazioni.';
+}
+
 function importMapSelectHtml(key, headers, cur) {
     const label = IMPORT_FIELD_LABELS[key] || key;
     const ignored = cur === '';
-    const rowCls = ignored ? 'import-map-row is-ignored' : 'import-map-row is-mapped';
+    const required = key === 'employee_id';
+    const rowCls = (ignored ? 'import-map-row is-ignored' : 'import-map-row is-mapped') + (required ? ' import-map-row--required' : '');
     const opts = ['<option value="">— ignora —</option>']
         .concat(headers.map((h, i) => {
             const title = esc(h || '(colonna ' + i + ')');
@@ -7211,20 +7327,26 @@ function renderImportMappingStep(data) {
             : '—';
     }
 
+    const rejectedByRow = {};
+    (data.rejected || []).forEach((r) => { rejectedByRow[r.row] = r.reason; });
+
     const head = document.getElementById('importPreviewHead');
-    head.innerHTML = '<th class="col-num">#</th><th>Nome</th><th>Cognome</th><th class="col-num">Matricola</th><th class="col-email">Email</th><th>Sede</th>';
+    head.innerHTML = '<th class="col-num">#</th><th>Nome</th><th>Cognome</th><th class="col-num">Matricola</th><th class="col-email">Email</th><th>Sede</th><th>Motivo</th>';
     const body = document.getElementById('importPreviewBody');
     body.innerHTML = previewRows.map((row) => {
         const m = row.mapped || {};
-        const ok = row.valid ? '' : ' class="import-preview-row--invalid"';
+        const rowNum = row.row_number || row.row_index + 2;
+        const reason = rejectedByRow[rowNum] || (!row.valid ? 'Matricola mancante o non valida' : '');
+        const ok = row.valid && !reason ? '' : ' class="import-preview-row--invalid"';
         const email = m.email || '';
         return `<tr${ok}>
-            <td class="col-num">${row.row_index + 1}</td>
+            <td class="col-num">${rowNum}</td>
             <td>${esc(m.first_name || '')}</td>
             <td>${esc(m.last_name || '')}</td>
-            <td class="col-num">${esc(m.employee_id || '')}</td>
+            <td class="col-num">${esc(m.employee_id || '—')}</td>
             <td class="col-email" title="${esc(email)}">${esc(email)}</td>
             <td>${esc(m.office_location || '')}</td>
+            <td style="font-size:11px;color:var(--danger,#dc2626);max-width:160px;white-space:normal;">${esc(reason)}</td>
         </tr>`;
     }).join('');
 
@@ -7244,6 +7366,41 @@ function getImportMappingFromUi() {
 
 function importBackToUpload() {
     showImportWizardPhase('upload');
+}
+
+function showImportResultStep({ imported, rejected, errors }) {
+    showImportWizardPhase('result');
+    const sum = document.getElementById('importResultSummary');
+    if (sum) {
+        sum.innerHTML = `<p>✓ <strong>${imported}</strong> dipendenti importati</p><p>✕ <strong>${rejected}</strong> righe rifiutate</p>`;
+    }
+    const ul = document.getElementById('importRejectedList');
+    if (ul) {
+        ul.innerHTML = (errors || []).map((e) =>
+            `<li>Riga ${e.row}: <strong>${esc(e.name || '—')}</strong> — ${esc(e.reason)}</li>`
+        ).join('') || '<li>Nessun dettaglio</li>';
+    }
+    const exp = document.getElementById('importExportRejectedBtn');
+    if (exp) exp.style.display = (errors || []).length ? '' : 'none';
+}
+
+function exportImportRejectedCsv() {
+    const rows = importPreviewState?.lastRejected || [];
+    if (!rows.length) return toast('Nessuna riga rifiutata da esportare');
+    const header = 'riga,nome,motivo';
+    const lines = rows.map((r) => [
+        r.row,
+        (r.name || '').replace(/"/g, '""'),
+        (r.reason || '').replace(/"/g, '""')
+    ].map((v) => `"${v}"`).join(','));
+    const csv = [header, ...lines].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `import-rifiutate_${importPreviewState?.lastBatchId || 'batch'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 async function runEmployeeImportCommit() {
@@ -7283,8 +7440,15 @@ async function runEmployeeImportCommit() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Import fallito');
         const errN = (data.errors || []).length;
-        toast(`Importati: ${data.created} nuovi, ${data.updated} aggiornati, ${data.passes_created} pass${errN ? ` (${errN} righe saltate)` : ''}`);
-        closeEmployeeImportModal();
+        const imported = data.imported != null ? data.imported : ((data.created || 0) + (data.updated || 0));
+        importPreviewState.lastRejected = data.errors || [];
+        importPreviewState.lastBatchId = data.batch_id;
+        toast(`Importati: ${imported}${errN ? ` · ${errN} righe rifiutate` : ''}`);
+        if (errN) {
+            showImportResultStep({ imported, rejected: errN, errors: data.errors });
+        } else {
+            closeEmployeeImportModal();
+        }
         await loadLeads();
     } catch (e) {
         document.getElementById('importStatusMsg').textContent = e.message;
