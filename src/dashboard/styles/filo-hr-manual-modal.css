@@ -1,0 +1,288 @@
+/**
+ * FiloDiretto HR — modale "Aggiungi dipendente" (PR-A).
+ * UX-AUDIT[filo-hr]: scoped to light shell only; zero global leakage.
+ */
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready {
+  --filo-modal-ring: #8B5CF6;
+  --filo-modal-danger: #DC2626;
+  --filo-modal-success: #059669;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__dialog {
+  max-width: 680px;
+  width: calc(100% - 32px);
+  border-radius: 12px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__required-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .form-label .filo-hr-required {
+  color: var(--filo-modal-danger);
+  margin-left: 2px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-field-hint--error {
+  color: var(--filo-modal-danger);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .form-group.filo-hr-field--error input,
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .form-group.filo-hr-field--error select {
+  border-color: var(--filo-modal-danger);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .form-group.filo-hr-field--success input[type="email"] {
+  border-color: var(--filo-modal-success);
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-field-wrap {
+  position: relative;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-field-icon {
+  position: absolute;
+  right: 10px;
+  top: 34px;
+  pointer-events: none;
+  display: flex;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-activation-fieldset {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px 14px 14px;
+  margin: 16px 0 0;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-activation-fieldset legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0 6px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-check-row input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready #manualTemplateWrap {
+  overflow: hidden;
+  max-height: 120px;
+  opacity: 1;
+  transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready #manualTemplateWrap.filo-hr-template--hidden {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0 !important;
+  pointer-events: none;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__queue {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__queue-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-empty {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-item__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-item__line {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-item__sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-queue-item__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-manual-modal__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-height: 40px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-outline {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .filo-hr-btn-primary .filo-hr-spinner {
+  animation: filo-hr-spin 0.8s linear infinite;
+}
+
+@keyframes filo-hr-spin {
+  to { transform: rotate(360deg); }
+}
+
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready button:focus-visible,
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready input:focus-visible,
+html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready select:focus-visible {
+  outline: 2px solid var(--filo-modal-ring);
+  outline-offset: 2px;
+}
+
+html[data-shell="light"] #filoManualDiscardDialog {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-shell="light"] #filoManualDiscardDialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+html[data-shell="light"] #filoManualDiscardDialog .filo-hr-discard__inner {
+  padding: 20px 22px;
+}
+
+html[data-shell="light"] #filoManualDiscardDialog .filo-hr-discard__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+html[data-shell="light"] #filoManualDiscardDialog .filo-hr-discard__msg {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+html[data-shell="light"] #filoManualDiscardDialog .filo-hr-discard__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  html[data-shell="light"] #employeeManualModal.filo-hr-manual-modal--ready .import-modal-card {
+    max-height: 100vh;
+    border-radius: 0;
+    width: 100%;
+  }
+}
