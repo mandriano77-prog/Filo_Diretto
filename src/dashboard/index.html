@@ -2763,6 +2763,13 @@ function getAuthHeaders() {
     if (t) h.Authorization = `Bearer ${t}`;
     return h;
 }
+
+function getDashboardFetchHeaders() {
+    return {
+        ...getAuthHeaders(),
+        'X-Dashboard-Product-Line': getDashboardProductLine()
+    };
+}
 let authToken = null;
 let currentUser = null;
 let passwordResetToken = null;
@@ -6693,7 +6700,7 @@ async function loadLeads() {
             : 'Cerca nome, email...';
     }
     try {
-        const res = await fetch(`${API}/brands/${brandId}/leads`, { headers: getAuthHeaders() });
+        const res = await fetch(`${API}/brands/${brandId}/leads`, { headers: getDashboardFetchHeaders() });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || 'Failed to load leads');
@@ -6718,9 +6725,10 @@ async function loadLeads() {
         renderLeadsTable(allLeads);
     } catch(e) {
         console.error('loadLeads error:', e);
+        toast(e.message || mc.leads_load_error);
         const cols = leadsHrMode ? 9 : 7;
         document.getElementById('leadsTable').querySelector('tbody').innerHTML =
-            `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(mc.leads_load_error)}</td></tr>`;
+            `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(e.message || mc.leads_load_error)}</td></tr>`;
     }
 }
 

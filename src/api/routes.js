@@ -3292,9 +3292,14 @@ router.get('/play/:serial_number/info', async (req, res) => {
 
 
 
-function isHrBrand(brand) {
-  const line = String(brand?.config?.product_line || process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase();
-  return line === 'hr';
+function isHrBrand(brand, req) {
+  if (brandProductLine(brand) === 'hr') return true;
+  if (deployProductLineLock() === 'hr') return true;
+  if (req) {
+    const hdr = String(req.headers['x-dashboard-product-line'] || '').toLowerCase();
+    if (hdr === 'hr') return true;
+  }
+  return false;
 }
 
 router.get('/brands/:brand_id/employees', async (req, res) => {
@@ -3303,7 +3308,7 @@ router.get('/brands/:brand_id/employees', async (req, res) => {
     if (!requireBrandId(req, res, brand_id)) return;
     const brand = await getBrand(brand_id);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
-    if (!isHrBrand(brand)) {
+    if (!isHrBrand(brand, req)) {
       return res.status(400).json({ error: 'Endpoint dipendenti disponibile solo per brand HR' });
     }
 
@@ -3410,7 +3415,7 @@ router.get('/brands/:brand_id/leads', async (req, res) => {
     const brand = await getBrand(brand_id);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
 
-    if (isHrBrand(brand)) {
+    if (isHrBrand(brand, req)) {
       const employees = await listEmployeesForBrand(brand_id);
       const leads = employees.map((m) => ({
         id: m.id,
@@ -3483,7 +3488,10 @@ router.get('/brands/:brand_id/leads', async (req, res) => {
       with_phone: withPhone,
       with_email: withEmail
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('[GET /brands/:brand_id/leads]', req.params.brand_id, err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Gamification Campaigns CRUD ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ

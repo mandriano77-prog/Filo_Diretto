@@ -765,9 +765,7 @@ async function getDb() {
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`).catch(() => {});
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_members_pass ON members(pass_id) WHERE pass_id IS NOT NULL`).catch(() => {});
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_members_brand ON members(brand_id)`).catch(() => {});
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_members_brand_employee ON members(brand_id, employee_id) WHERE employee_id IS NOT NULL`).catch(() => {});
+    await ensureMembersHrSchema();
 
     await pool.query(`ALTER TABLE pass_templates ADD COLUMN IF NOT EXISTS back_fixed_link_label VARCHAR(64)`).catch(() => {});
     await pool.query(`ALTER TABLE pass_templates ADD COLUMN IF NOT EXISTS back_fixed_link_url VARCHAR(512)`).catch(() => {});
@@ -785,13 +783,6 @@ async function getDb() {
     await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS emergency_phone VARCHAR(64)`).catch(() => {});
     await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_resources JSONB DEFAULT '[]'::jsonb`).catch(() => {});
     await pool.query(`ALTER TABLE brands ADD COLUMN IF NOT EXISTS back_documents JSONB DEFAULT '[]'::jsonb`).catch(() => {});
-
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS employee_id VARCHAR(64)`).catch(() => {});
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS department VARCHAR(128)`).catch(() => {});
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS office_location VARCHAR(255)`).catch(() => {});
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS hire_date DATE`).catch(() => {});
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS manager_name VARCHAR(128)`).catch(() => {});
-    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS manager_email VARCHAR(255)`).catch(() => {});
 
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS include_pass_link BOOLEAN DEFAULT false`).catch(() => {});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS pass_link_url VARCHAR(512)`).catch(() => {});
@@ -1119,8 +1110,94 @@ async function touchPass(id) {
   return { success: true };
 }
 
+/** Legacy DBs may have an old `members` table without HR columns (e.g. pass_id). */
+async function ensureMembersHrSchema() {
+  const exists = await pool.query(
+    `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'members' LIMIT 1`
+  );
+  if (!exists.rows.length) {
+    await pool.query(`CREATE TABLE IF NOT EXISTS members (
+      id TEXT PRIMARY KEY,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      pass_id TEXT,
+      first_name TEXT,
+      last_name TEXT,
+      email TEXT,
+      employee_id VARCHAR(64),
+      department VARCHAR(128),
+      office_location VARCHAR(255),
+      hire_date DATE,
+      manager_name VARCHAR(128),
+      manager_email VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
+  }
+
+  const colRes = await pool.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'members'`
+  );
+  const have = new Set(colRes.rows.map((r) => r.column_name));
+
+  const addColumn = async (name, ddl) => {
+    if (have.has(name)) return;
+    await pool.query(`ALTER TABLE members ADD COLUMN IF NOT EXISTS ${name} ${ddl}`);
+    have.add(name);
+    console.log(`[schema] members.${name} added`);
+  };
+
+  await addColumn('brand_id', 'TEXT');
+  await addColumn('pass_id', 'TEXT');
+  await addColumn('first_name', 'TEXT');
+  await addColumn('last_name', 'TEXT');
+  await addColumn('email', 'TEXT');
+  await addColumn('employee_id', 'VARCHAR(64)');
+  await addColumn('department', 'VARCHAR(128)');
+  await addColumn('office_location', 'VARCHAR(255)');
+  await addColumn('hire_date', 'DATE');
+  await addColumn('manager_name', 'VARCHAR(128)');
+  await addColumn('manager_email', 'VARCHAR(255)');
+  await addColumn('created_at', 'TIMESTAMPTZ DEFAULT NOW()');
+  await addColumn('updated_at', 'TIMESTAMPTZ DEFAULT NOW()');
+
+  if (have.has('name') && have.has('first_name')) {
+    await pool.query(`
+      UPDATE members
+      SET
+        first_name = COALESCE(NULLIF(TRIM(first_name), ''), split_part(TRIM(name), ' ', 1)),
+        last_name = COALESCE(
+          NULLIF(TRIM(last_name), ''),
+          NULLIF(TRIM(substring(TRIM(name) FROM position(' ' IN TRIM(name)))), ''),
+          ''
+        )
+      WHERE name IS NOT NULL AND TRIM(name) <> ''
+        AND (first_name IS NULL OR TRIM(first_name) = '')
+    `).catch((err) => console.warn('[schema] members name split:', err.message));
+  }
+
+  if (have.has('pass_id')) {
+    await pool.query(`
+      UPDATE members m
+      SET pass_id = pi.id, updated_at = NOW()
+      FROM pass_instances pi
+      WHERE pi.member_id = m.id
+        AND (m.pass_id IS NULL OR m.pass_id = '')
+    `).catch((err) => console.warn('[schema] members pass_id backfill:', err.message));
+  }
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_members_brand ON members(brand_id)`).catch(() => {});
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_members_pass ON members(pass_id) WHERE pass_id IS NOT NULL`
+  ).catch(() => {});
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_members_brand_employee ON members(brand_id, employee_id) WHERE employee_id IS NOT NULL`
+  ).catch(() => {});
+}
+
 async function getMemberForPass(passId) {
   if (!passId) return null;
+  await ensureMembersHrSchema();
   const byPass = await pool.query('SELECT * FROM members WHERE pass_id = $1 LIMIT 1', [passId]);
   if (byPass.rows.length) return byPass.rows[0];
   const pass = await getPassInstance(passId);
@@ -1130,6 +1207,7 @@ async function getMemberForPass(passId) {
 }
 
 async function listEmployeesForBrand(brandId) {
+  await ensureMembersHrSchema();
   const result = await pool.query(
     `SELECT
       m.id,
@@ -1148,20 +1226,19 @@ async function listEmployeesForBrand(brandId) {
       m.updated_at,
       pi.serial_number,
       pi.status AS pass_status,
-      pi.google_wallet_saved,
-      pi.samsung_wallet_saved,
-      dr.device_library_id AS device_id
+      COALESCE(pi.google_wallet_saved, false) AS google_wallet_saved,
+      COALESCE(pi.samsung_wallet_saved, false) AS samsung_wallet_saved,
+      (
+        SELECT dr.device_library_id
+        FROM device_registrations dr
+        WHERE pi.serial_number IS NOT NULL AND dr.serial_number = pi.serial_number
+        ORDER BY dr.created_at DESC NULLS LAST
+        LIMIT 1
+      ) AS device_id
     FROM members m
-    LEFT JOIN pass_instances pi ON pi.id = m.pass_id
-    LEFT JOIN LATERAL (
-      SELECT device_library_id
-      FROM device_registrations
-      WHERE serial_number = pi.serial_number
-      ORDER BY created_at DESC NULLS LAST
-      LIMIT 1
-    ) dr ON true
+    LEFT JOIN pass_instances pi ON (pi.id = m.pass_id OR pi.member_id = m.id)
     WHERE m.brand_id = $1
-    ORDER BY m.created_at DESC`,
+    ORDER BY m.created_at DESC NULLS LAST`,
     [brandId]
   );
   return result.rows;
@@ -1186,6 +1263,7 @@ async function findMemberByBrandKey(brandId, { employee_id, email }) {
 }
 
 async function createMemberRecord(data) {
+  await ensureMembersHrSchema();
   const id = data.id || uuidv4();
   const {
     brand_id,
@@ -1215,6 +1293,7 @@ async function createMemberRecord(data) {
 }
 
 async function updateMemberRecord(id, data) {
+  await ensureMembersHrSchema();
   const fields = [];
   const values = [];
   let p = 0;
@@ -1242,6 +1321,7 @@ async function updateMemberRecord(id, data) {
 }
 
 async function importEmployeesBatch(brandId, employees, options = {}) {
+  await ensureMembersHrSchema();
   const {
     template_id,
     create_passes = true,
