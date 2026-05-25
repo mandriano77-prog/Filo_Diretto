@@ -623,6 +623,7 @@ function generatePassJson(template, instance, brand, options = {}) {
   let passBackgroundColor = backgroundColor;
   let passLabelColor = labelColor;
   let passLogoText = brand.name;
+  let omitLogoText = false;
 
   if (useHrBack) {
     const apiBase = `${String(baseUrl).replace(/\/+$/, '')}/api/v1`;
@@ -640,6 +641,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     passBackgroundColor = apple.backgroundColor;
     passLabelColor = apple.labelColor;
     passLogoText = apple.logoText;
+    omitLogoText = !passLogoText;
     barcodePayload = apple.barcode;
   } else {
     if (headerFields.length > 0) passStructure.headerFields = headerFields;
@@ -656,17 +658,18 @@ function generatePassJson(template, instance, brand, options = {}) {
     teamIdentifier,
     organizationName: brand.name,
     description: template.name,
-    logoText: passLogoText,
     foregroundColor: passForegroundColor,
     backgroundColor: passBackgroundColor,
     labelColor: passLabelColor,
     authenticationToken: instance.auth_token,
     webServiceURL: `${baseUrl}/api`,
     [structureKey]: passStructure,
-  // Barcode — QR identificativo (serialNumber); altText nome · #matricola
     barcodes: [barcodePayload],
     barcode: barcodePayload
   };
+  if (!omitLogoText && passLogoText) {
+    passJson.logoText = passLogoText;
+  }
 
   // Geofencing — iOS shows the pass on lock screen when inside maxDistance (m) of any location.
   // Sticky / repeated appearance while stationary is normal iOS behavior inside the zone, not APNs.
