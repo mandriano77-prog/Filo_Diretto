@@ -31,10 +31,11 @@
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
+    <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
@@ -1648,11 +1649,11 @@
                         <div class="a2w-bi-header__copy">
                             <p class="a2w-bi-breadcrumb"><span id="a2wBiBreadcrumbBrand">Brand</span> <span aria-hidden="true">›</span> <span>Identità Brand</span></p>
                             <h1 class="sec-title page-title a2w-bi-title">Identità Brand</h1>
-                            <p class="a2w-bi-subtitle">Definisci nome, logo, contatti e dati pubblici. Queste informazioni alimentano pass, landing e comunicazioni.</p>
+                            <p class="a2w-bi-subtitle">Definisci nome, logo, colori e dati pubblici del brand. Queste informazioni alimentano pass, landing e comunicazioni.</p>
                         </div>
                         <div class="a2w-bi-header__actions">
                             <span id="a2wBiSaveStateBadge" class="a2w-bi-state-badge">Salvato</span>
-                            <button type="button" id="a2wBiSaveBtn" class="btn a2w-btn-primary" onclick="saveBrandIdentity()" disabled>Salva modifiche</button>
+                            <button type="button" id="a2wBiSaveBtn" class="btn" onclick="saveBrandIdentity()" disabled>Salva modifiche</button>
                         </div>
                     </header>
 
@@ -1689,8 +1690,8 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label" for="biSettore">Settore</label>
-                                        <input type="text" id="biSettore" list="biSettoreList" placeholder="Cerca o seleziona settore" autocomplete="off">
-                                        <datalist id="biSettoreList">
+                                        <select id="biSettore">
+                                            <option value="">— Seleziona —</option>
                                             <option value="ristorazione">Ristorazione</option>
                                             <option value="retail">Retail</option>
                                             <option value="beauty">Beauty / Wellness</option>
@@ -1700,7 +1701,7 @@
                                             <option value="automotive">Automotive</option>
                                             <option value="tech">Tech</option>
                                             <option value="altro">Altro</option>
-                                        </datalist>
+                                        </select>
                                         <p class="a2w-bi-field-help">Usato per analytics e template suggeriti.</p>
                                         <p class="a2w-bi-field-error" id="biSettoreError" role="alert"></p>
                                     </div>
@@ -1719,12 +1720,9 @@
                             </section>
 
                             <section class="card a2w-bi-section">
-                                <div class="a2w-bi-section__head a2w-bi-section__head--row">
-                                    <div>
-                                        <h2>Logo e immagini chiave</h2>
-                                        <p>Carica o sostituisci gli asset principali. Per gestione avanzata usa la Media Library.</p>
-                                    </div>
-                                    <button type="button" class="a2w-bi-link-btn" id="a2wBiOpenMediaLibraryBtn">Apri Media Library</button>
+                                <div class="a2w-bi-section__head">
+                                    <h2>Logo e immagini chiave</h2>
+                                    <p>Gestisci gli asset principali direttamente da questa pagina.</p>
                                 </div>
                                 <div class="a2w-bi-assets-grid" id="a2wBiAssetsGrid"></div>
                             </section>
@@ -1771,9 +1769,9 @@
                             </section>
 
                             <section class="a2w-bi-danger-zone" aria-labelledby="brandDangerTitle">
-                                <h2 id="brandDangerTitle">Zona pericolosa</h2>
-                                <p>Elimina definitivamente il brand e tutti i dati collegati (pass, campagne, contatti, immagini). L'operazione è irreversibile.</p>
-                                <div id="a2wBiDangerActionHost"></div>
+                                <h2 id="brandDangerTitle">Elimina brand</h2>
+                                <p>Elimina definitivamente il brand e tutti i dati collegati (pass emessi, campagne, contatti, immagini). L'operazione è irreversibile.</p>
+                                <button type="button" class="btn danger" onclick="deleteBrandAction()">Elimina brand</button>
                             </section>
                         </div>
 
@@ -1804,15 +1802,19 @@
                     </div>
                 </div>
 
-                <div style="display:flex;gap:10px;margin-top:24px;">
-                    <button class="btn" onclick="saveBrandIdentity()">Salva identità</button>
+                <div id="a2wDeleteBrandDialog" class="a2w-bi-delete-dialog" hidden>
+                    <div class="a2w-bi-delete-dialog__backdrop"></div>
+                    <div class="a2w-bi-delete-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="a2wDeleteBrandDialogTitle">
+                        <h3 id="a2wDeleteBrandDialogTitle">Conferma eliminazione brand</h3>
+                        <p>Verranno eliminati: <strong id="a2wDeleteBrandCounts">—</strong>. L'operazione è irreversibile.</p>
+                        <label class="form-label" for="a2wDeleteBrandConfirmInput">Digita <span id="a2wDeleteBrandNameToken"></span> per confermare</label>
+                        <input type="text" id="a2wDeleteBrandConfirmInput" autocomplete="off">
+                        <div class="a2w-bi-delete-dialog__actions">
+                            <button type="button" class="btn sec" id="a2wDeleteBrandCancelBtn">Annulla</button>
+                            <button type="button" class="btn danger" id="a2wDeleteBrandConfirmBtn" disabled>Elimina definitivamente</button>
+                        </div>
+                    </div>
                 </div>
-                <section class="danger-zone" aria-labelledby="brandDangerTitle">
-                    <h2 id="brandDangerTitle" class="danger-zone__title">Zona pericolosa</h2>
-                    <p class="danger-zone__desc">Elimina il brand e tutti i dati collegati (pass, campagne, contatti). L'operazione è irreversibile.</p>
-                    <button type="button" class="btn danger" onclick="deleteBrandAction()">Elimina brand</button>
-                </section>
-                <!-- Landing link removed -->
             </div>
 
             <!-- MEDIA LIBRARY -->
@@ -1882,6 +1884,13 @@
                             <option value="thumbnail">Thumbnail</option>
                             <option value="background">Background</option>
                         </select>
+                    </div>
+                    <div class="form-group" id="mediaUploadCampaignGroup">
+                        <label class="form-label">Campagna (opzionale, per strip)</label>
+                        <select id="mediaUploadCampaignId" title="Scegli tra le campagne create nella tab Campagne">
+                            <option value="">— Nessuna campagna —</option>
+                        </select>
+                        <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">L’elenco è quello della tab <strong>Campagne</strong> (nessun testo libero). Crea prima la campagna, poi assegnala qui.</p>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Nome (opzionale)</label>
@@ -2011,11 +2020,11 @@
                                     <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="wzHeaderLabel" placeholder="es. PUNTI" oninput="wzUpdatePreview()"></div>
                                     <div class="form-group"><label class="form-label">Header Value</label><input type="text" id="wzHeaderValue" placeholder="es. 0" oninput="wzUpdatePreview()"></div>
                                 </div>
-                                <div class="form-row" style="display:none;">
+                                <div class="form-row">
                                     <div class="form-group"><label class="form-label">Info Secondaria Label</label><input type="text" id="wzSecLabel" placeholder="es. LIVELLO" oninput="wzUpdatePreview()"></div>
                                     <div class="form-group"><label class="form-label">Info Secondaria Value</label><input type="text" id="wzSecValue" placeholder="es. Silver" oninput="wzUpdatePreview()"></div>
                                 </div>
-                                <div class="form-row" style="display:none;">
+                                <div class="form-row">
                                     <div class="form-group"><label class="form-label">Dettaglio Label</label><input type="text" id="wzAuxLabel" placeholder="es. OFFERTA" oninput="wzUpdatePreview()"></div>
                                     <div class="form-group"><label class="form-label">Dettaglio Value</label><input type="text" id="wzAuxValue" placeholder="es. Sconto 10%" oninput="wzUpdatePreview()"></div>
                                 </div>
@@ -2288,45 +2297,33 @@
 
             <!-- LEADS DATABASE -->
             <div id="leads" class="section">
-                <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Contatti">Contatti</h1>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
-                    <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
-                    <div class="leads-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                        <input type="text" id="leadsSearch" class="leads-toolbar__search" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
-                        <button type="button" class="btn sec" id="leadsAddBtn" onclick="openEmployeeManualModal()" style="display:none;white-space:nowrap;">+ Aggiungi</button>
-                        <button type="button" class="btn sec" id="leadsImportBtn" onclick="openEmployeeImportModal()" style="display:none;white-space:nowrap;">✨ Importa da file</button>
-                        <button type="button" class="btn sec" id="leadsNoMatricolaBtn" onclick="filterLeadsNoMatricola()" style="display:none;white-space:nowrap;">⚠ Senza matricola</button>
-                        <button type="button" class="btn sec" id="leadsDistributeBtn" onclick="distributeActivationAll()" style="display:none;white-space:nowrap;">✉ Invia attivazione</button>
-                        <button type="button" class="btn leads-export-btn" onclick="exportLeadsCSV()" style="white-space:nowrap;"><svg class="leads-export-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Export CSV</span></button>
+                <div class="contacts-page-header">
+                  <div>
+                    <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Contatti">Contatti</h1>
+                    <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." class="contacts-page-blurb">Elenco delle persone collegate ai pass di questo brand.</p>
+                  </div>
+                  <div class="contacts-page-menu" id="contactsPageMenu" hidden>
+                    <button type="button" class="btn sec small contacts-page-menu__trigger" id="contactsPageMenuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menu pagina Contatti">⋮</button>
+                    <div class="contacts-page-menu__panel" id="contactsPageMenuPanel" hidden role="menu">
+                      <button type="button" role="menuitem" class="contacts-page-menu__item" id="contactsShowTourBtn">Mostra tour</button>
                     </div>
+                  </div>
                 </div>
-                <div id="hrActivationPanel" class="card" style="display:none;margin-bottom:16px;padding:16px 20px;">
-                    <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Distribuzione pass (ibrida)</div>
-                    <div class="stats-grid" id="activationStats" style="margin-bottom:12px;"></div>
-                    <div class="form-row" style="align-items:flex-end;gap:12px;flex-wrap:wrap;">
-                        <div class="form-group" style="flex:1;min-width:200px;">
-                            <label class="form-label">Join pubblico / QR</label>
-                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
-                                <input type="checkbox" id="hrPublicQrEnabled" onchange="saveHrDistributionSettings()"> Abilita pagina <code>/join/{slug}</code>
-                            </label>
-                        </div>
-                        <div class="form-group" style="flex:1;min-width:160px;">
-                            <label class="form-label">Slug join (opz.)</label>
-                            <input type="text" id="hrPublicQrSlug" placeholder="es. acme-hr" onblur="saveHrDistributionSettings()">
-                        </div>
-                        <div class="form-group" style="flex:2;min-width:220px;">
-                            <label class="form-label">Domini email ammessi (virgola)</label>
-                            <input type="text" id="hrAllowedDomains" placeholder="acme.it, acme.com" onblur="saveHrDistributionSettings()">
-                        </div>
+                <div class="contacts-top-grid">
+                  <div id="contactsCardA" class="card contacts-card">
+                    <div class="contacts-card__heading">
+                      <h2 id="contactsCardATitle" class="contacts-card__title">Anagrafica dipendenti</h2>
+                      <div id="contactsCardAHelp" class="contacts-card__help"></div>
                     </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
-                        <input type="text" id="hrJoinUrl" readonly style="flex:1;min-width:200px;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);">
-                        <button type="button" class="btn small sec" onclick="copyHrJoinUrl()">Copia link join</button>
-                    </div>
+                    <div id="contactsToolbarHost" class="contacts-toolbar"></div>
+                    <div id="leadsStats"></div>
+                  </div>
+                  <div id="contactsCardBHost" class="card contacts-card contacts-card--distribution" hidden data-coach-step="distribution"></div>
+                  <div id="contactsCardCHost" class="card contacts-card contacts-card--join" hidden data-coach-step="join"></div>
                 </div>
-                <div class="stats-grid" id="leadsStats"></div>
                 <div id="leadsEmptyHost" class="leads-empty-host" hidden role="status"></div>
                 <table class="table" id="leadsTable">
+                    <caption class="sr-only">Elenco contatti</caption>
                     <thead id="leadsTableHead"><tr>
                         <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th>
                         <th>Device ID</th><th>Pass ID</th><th>Data registrazione</th>
@@ -2741,11 +2738,11 @@
                     <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="tplHeaderLabel" placeholder="es. INFO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Header Valore</label><input type="text" id="tplHeaderValue" placeholder="es. Scopri di più" oninput="updatePassPreview()"></div>
                 </div>
-                <div class="form-row" style="display:none;">
+                <div class="form-row">
                     <div class="form-group"><label class="form-label">Secondary Label</label><input type="text" id="tplSecLabel" placeholder="es. VALIDO FINO AL" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Secondary Valore</label><input type="text" id="tplSecValue" placeholder="es. 30/06/2026" oninput="updatePassPreview()"></div>
                 </div>
-                <div class="form-row" style="display:none;">
+                <div class="form-row">
                     <div class="form-group"><label class="form-label">Auxiliary Label</label><input type="text" id="tplAuxLabel" placeholder="es. PROMO" oninput="updatePassPreview()"></div>
                     <div class="form-group"><label class="form-label">Auxiliary Valore</label><input type="text" id="tplAuxValue" placeholder="es. -20% su tutto" oninput="updatePassPreview()"></div>
                 </div>
@@ -2829,9 +2826,21 @@
                         </div>
                     </details>
 
+                    <details class="hr-fieldset" open>
+                        <summary>3 — Risorse aziendali (max 5)</summary>
+                        <div id="hrResourcesRows"></div>
+                        <button type="button" class="btn small sec" onclick="hrAddResourceRow()">+ Aggiungi risorsa</button>
+                    </details>
+
+                    <details class="hr-fieldset" open>
+                        <summary>4 — Documenti (max 5)</summary>
+                        <div id="hrDocumentsRows"></div>
+                        <button type="button" class="btn small sec" onclick="hrAddDocumentRow()">+ Aggiungi documento</button>
+                    </details>
+
                     <details class="hr-fieldset">
-                        <summary>3 — Profilo personale (auto)</summary>
-                        <p class="form-hint">Il link profilo viene generato automaticamente per ogni dipendente nel pass emesso.</p>
+                        <summary>5 — Profilo personale (auto)</summary>
+                        <p class="form-hint">Sezione che includerà link al portale dipendente quando attivato (privacy, consensi, dati). In implementazione.</p>
                     </details>
                 </div>
 
@@ -3020,17 +3029,6 @@
 <script src="/dashboard/js/components/contacts/qr-modal.js"></script>
 <script src="/dashboard/js/components/contacts/join-setup-coach.js"></script>
 <script src="/dashboard/js/components/contacts/contacts-page.js"></script>
-<script src="/dashboard/js/components/ui/utils.js"></script>
-<script src="/dashboard/js/components/ui/action-menu-context.js"></script>
-<script src="/dashboard/js/components/ui/page-header.js"></script>
-<script src="/dashboard/js/components/ui/empty-state.js"></script>
-<script src="/dashboard/js/components/ui/error-state.js"></script>
-<script src="/dashboard/js/components/ui/toolbar.js"></script>
-<script src="/dashboard/js/components/ui/stat-card.js"></script>
-<script src="/dashboard/js/components/ui/confirm-dialog.js"></script>
-<script src="/dashboard/js/components/ui/danger-action-button.js"></script>
-<script src="/dashboard/js/components/ui/action-menu.js"></script>
-<script src="/dashboard/js/components/ui/index.js"></script>
 <script src="/dashboard/js/a2w-shell.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
@@ -3590,6 +3588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof enhancePageHeaders === 'function') enhancePageHeaders();
     initUserMenu();
     initFiloNavA11y();
+    applyLegacyCampaignsUiMask();
     syncNavAriaCurrent(getActiveSectionId());
     syncSectionDocumentTitle(getActiveSectionId());
     syncBreadcrumb(getActiveSectionId());
@@ -3737,11 +3736,61 @@ function updateNavState() {
     document.body.classList.toggle('role-viewer', isViewer);
     document.body.classList.toggle('role-manager', role === 'manager');
     document.body.classList.toggle('role-admin', isAdmin);
+    applyLegacyCampaignsUiMask();
     syncWaiUi();
 }
 
+function isLegacyCampaignsUiEnabled() {
+    return !isHrDashboard();
+}
+
+function getDefaultBrandSection() {
+    return isLegacyCampaignsUiEnabled() ? 'campaigns' : 'passes';
+}
+
+function applyLegacyCampaignsUiMask() {
+    const hidden = !isLegacyCampaignsUiEnabled();
+    const campaignNav = document.querySelector('.nav-item[data-section-id="campaigns"]');
+    if (campaignNav) campaignNav.style.display = hidden ? 'none' : '';
+
+    const campaignSection = document.getElementById('campaigns');
+    if (campaignSection) campaignSection.style.display = hidden ? 'none' : '';
+
+    const campaignModal = document.getElementById('campaignModal');
+    if (campaignModal && hidden) campaignModal.classList.remove('active');
+
+    const passFilter = document.getElementById('passFilterCampaign');
+    if (passFilter) {
+        const wrap = passFilter.closest('div');
+        if (wrap) wrap.style.display = hidden ? 'none' : '';
+        if (hidden) passFilter.value = '';
+    }
+
+    const passHint = document.getElementById('passFilterSessionHint');
+    if (passHint) {
+        passHint.textContent = hidden
+            ? 'Ricerca e pagina sono ricordati per questo brand finché il tab del browser è aperto.'
+            : 'Campagna, ricerca e pagina sono ricordati per questo brand finché il tab del browser è aperto.';
+    }
+
+    ['pushCampaignTarget', 'schedCampaignTarget', 'mediaUploadCampaignId', 'audCampaign'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const group = el.closest('.form-group') || el.parentElement;
+        if (group) group.style.display = hidden ? 'none' : '';
+        if (hidden && 'value' in el) el.value = '';
+    });
+
+    const campTable = document.getElementById('campaignAnalyticsTable');
+    if (campTable) {
+        const panel = campTable.closest('.card') || campTable.parentElement;
+        if (panel) panel.style.display = hidden ? 'none' : '';
+    }
+}
+
 function nav(id) {
-    if (id === 'welcome' && brandId) id = 'campaigns';
+    if (id === 'campaigns' && !isLegacyCampaignsUiEnabled()) id = getDefaultBrandSection();
+    if (id === 'welcome' && brandId) id = getDefaultBrandSection();
     if (!brandId && !SECTIONS_NO_BRAND.has(id)) {
         toast('Seleziona un brand dall\'elenco in alto');
         return;
@@ -3803,7 +3852,7 @@ function getActiveSectionId() {
 
 function refreshActiveSection() {
     let activeId = getActiveSectionId();
-    if (brandId && activeId === 'welcome') activeId = 'campaigns';
+    if (brandId && activeId === 'welcome') activeId = getDefaultBrandSection();
     nav(activeId);
 }
 
@@ -3883,7 +3932,7 @@ async function loadBrands() {
         applyBrandTheme();
         await refreshOverview();
         let sid = getActiveSectionId();
-        if (sid === 'welcome') sid = 'campaigns';
+        if (sid === 'welcome') sid = getDefaultBrandSection();
         nav(sid);
     } else {
         currentBrandName = '';
@@ -3922,7 +3971,7 @@ function changeBrand() {
     passHasNextPage = false;
     refreshOverview().then(() => {
         let sid = getActiveSectionId();
-        if (sid === 'welcome') sid = 'campaigns';
+        if (sid === 'welcome') sid = getDefaultBrandSection();
         nav(sid);
     });
 }
@@ -4371,17 +4420,6 @@ function adjustAlpha(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-
-async function deleteBrandAction() {
-    if (!brandId) return alert('Seleziona una brand');
-    if (!await appConfirm({ title: 'Elimina brand', message: 'Eliminare il brand e tutti i dati collegati? Non si può annullare.', confirmLabel: 'Elimina brand', tone: 'danger' })) return;
-    const res = await fetch(`${API}/brands/${brandId}`, { method: 'DELETE', headers: getAuthHeaders() });
-    if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        return toast('Errore: ' + (e.error || 'eliminazione fallita'));
-    }
-    toast('Brand eliminata'); brandId = null; await loadBrands();
-}
 
 // ==================== OVERVIEW ====================
 async function refreshOverview() {
@@ -4853,7 +4891,9 @@ async function loadPasses(resetPage = false) {
     if (resetPage) passPageIndex = 0;
 
     syncPassCampaignDropdownPreference();
-    const campaignFilter = document.getElementById('passFilterCampaign')?.value || '';
+    const campaignFilter = isLegacyCampaignsUiEnabled()
+        ? (document.getElementById('passFilterCampaign')?.value || '')
+        : '';
     const effectiveLimit = PASSES_PAGE_SIZE + 1;
     const offset = passPageIndex * PASSES_PAGE_SIZE;
     let url = `${API}/passes?brand_id=${brandId}&limit=${effectiveLimit}&offset=${offset}&include_total=1`;
@@ -4877,7 +4917,9 @@ async function loadPasses(resetPage = false) {
     const passes = rawPasses.length > PASSES_PAGE_SIZE ? rawPasses.slice(0, PASSES_PAGE_SIZE) : rawPasses;
     const q = (passSearchQuery || '').trim().toLowerCase();
     const filteredPasses = q ? passes.filter(p => {
-        const camp = campaignsCache.find(c => c.id === p.campaign_id);
+        const camp = isLegacyCampaignsUiEnabled()
+            ? campaignsCache.find(c => c.id === p.campaign_id)
+            : null;
         const haystack = [
             p.id, p.serial_number, p.device_id, p.status, p.device_source,
             p.referrer_url, p.user_agent, camp?.name
@@ -5384,8 +5426,8 @@ function hrTemplateBackPayloadFromForm() {
         hr_phone: document.getElementById('hrBrandPhone')?.value.trim() || null,
         dpo_email: document.getElementById('hrBrandDpo')?.value.trim() || null,
         emergency_phone: document.getElementById('hrBrandEmergency')?.value.trim() || null,
-        back_resources: [],
-        back_documents: []
+        back_resources: hrCollectLinkRows('hrResourcesRows'),
+        back_documents: hrCollectLinkRows('hrDocumentsRows')
     };
 }
 
@@ -5404,6 +5446,12 @@ async function loadHrTemplateBackFields(t) {
     set('hrBrandPhone', pick('hr_phone'));
     set('hrBrandDpo', pick('dpo_email'));
     set('hrBrandEmergency', pick('emergency_phone'));
+    const resources = (Array.isArray(t?.back_resources) && t.back_resources.length)
+        ? t.back_resources : (brand.back_resources || []);
+    const documents = (Array.isArray(t?.back_documents) && t.back_documents.length)
+        ? t.back_documents : (brand.back_documents || []);
+    hrRenderLinkRows('hrResourcesRows', resources);
+    hrRenderLinkRows('hrDocumentsRows', documents);
     updatePassPreview();
 }
 
@@ -5517,8 +5565,8 @@ async function saveTemplate() {
         style: { ...existingStyle, description: document.getElementById('tplDescription').value },
         fields: {
             headerFields: [{ key: 'header_info', label: document.getElementById('tplHeaderLabel').value, value: document.getElementById('tplHeaderValue').value }],
-            secondaryFields: [],
-            auxiliaryFields: []
+            secondaryFields: [{ key: 'info', label: document.getElementById('tplSecLabel').value, value: document.getElementById('tplSecValue').value, type: 'secondary' }],
+            auxiliaryFields: [{ key: 'aux_info', label: document.getElementById('tplAuxLabel').value, value: document.getElementById('tplAuxValue').value, type: 'auxiliary' }]
         }
     };
 
@@ -5598,8 +5646,16 @@ function updatePassPreview() {
             document.getElementById('hrFixedLinkLabel')?.value.trim(),
             document.getElementById('hrFixedLinkUrl')?.value.trim()
         );
+        addBackText('DIPENDENTE', 'Mario Rossi (da anagrafica import)');
+        addBackText('MATRICOLA', '#4721');
+        addBackText('REPARTO', 'Engineering');
+        addBackText('SEDE', 'Milano');
         addBackText('PEOPLE OPERATIONS', document.getElementById('hrBrandEmail')?.value.trim());
+        addBackText('TELEFONO HR', document.getElementById('hrBrandPhone')?.value.trim());
         addBackText('PRIVACY / DPO', document.getElementById('hrBrandDpo')?.value.trim());
+        addBackText('EMERGENZE', document.getElementById('hrBrandEmergency')?.value.trim());
+        hrCollectLinkRows('hrResourcesRows').forEach(r => addBackLink(r.label, r.url));
+        hrCollectLinkRows('hrDocumentsRows').forEach(r => addBackLink(r.label, r.url));
         addBackLink('PROFILO PERSONALE', `${window.location.origin}/portal/?t=TOKEN_AUTOMATICO`);
         document.getElementById('ppBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Configura il retro HR</div>';
         return;
@@ -5607,10 +5663,10 @@ function updatePassPreview() {
 
     const headerLabel = document.getElementById('tplHeaderLabel').value;
     const headerValue = document.getElementById('tplHeaderValue').value;
-    const secLabel = '';
-    const secValue = '';
-    const auxLabel = '';
-    const auxValue = '';
+    const secLabel = document.getElementById('tplSecLabel').value;
+    const secValue = document.getElementById('tplSecValue').value;
+    const auxLabel = document.getElementById('tplAuxLabel').value;
+    const auxValue = document.getElementById('tplAuxValue').value;
 
     // Front
     document.getElementById('ppLogo').textContent = brandName;
@@ -5891,6 +5947,11 @@ function switchPushTab(tab) {
 // --- Campaign selects ---
 async function loadPushCampaignSelect() {
     const sel = document.getElementById('pushCampaignTarget');
+    if (!sel) return;
+    if (!isLegacyCampaignsUiEnabled()) {
+        sel.innerHTML = '<option value="">Tutti i pass</option>';
+        return;
+    }
     sel.innerHTML = '<option value="">Tutti i pass (tutte le campagne)</option>';
     if (!brandId) return;
     if (!campaignsCache.length) {
@@ -5941,6 +6002,10 @@ async function loadPushGamSelect() {
 async function loadSchedCampaignSelect() {
     const sel = document.getElementById('schedCampaignTarget');
     if (!sel) return;
+    if (!isLegacyCampaignsUiEnabled()) {
+        sel.innerHTML = '<option value="">Tutti i pass</option>';
+        return;
+    }
     sel.innerHTML = '<option value="">Tutti i pass (tutte le campagne)</option>';
     if (!brandId) return;
     if (!campaignsCache.length) {
@@ -5963,7 +6028,9 @@ async function loadPushAudienceSelect() {
         const sel = document.getElementById(id);
         if (!sel) return;
         const cur = sel.value;
-        sel.innerHTML = '<option value="">— Nessuna (usa campagna o tutti) —</option>';
+        sel.innerHTML = isLegacyCampaignsUiEnabled()
+            ? '<option value="">— Nessuna (usa campagna o tutti) —</option>'
+            : '<option value="">— Nessuna (usa tutti) —</option>';
         audiencesCache.forEach(a => {
             const o = document.createElement('option');
             o.value = a.id;
@@ -6018,7 +6085,9 @@ function pushClearStrip() {
 async function sendImmediatePush() {
     const title = document.getElementById('pushTitle').value;
     const message = document.getElementById('pushMessage').value;
-    const campaignId = document.getElementById('pushCampaignTarget').value || null;
+    const campaignId = isLegacyCampaignsUiEnabled()
+        ? (document.getElementById('pushCampaignTarget')?.value || null)
+        : null;
     const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
     const channel = document.getElementById('pushChannel').value || 'apple';
     const updatePass = document.getElementById('pushUpdatePass').checked;
@@ -6028,7 +6097,7 @@ async function sendImmediatePush() {
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (audienceId) body.audience_id = audienceId;
-    else if (campaignId) body.campaign_id = campaignId;
+    else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
     const iwId = document.getElementById('pushInstantWin').value;
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification').value;
@@ -6090,7 +6159,9 @@ function toggleSchedOptions() {
 async function createScheduledPush() {
     const title = document.getElementById('schedTitle').value;
     const message = document.getElementById('schedMessage').value;
-    const campaignId = document.getElementById('schedCampaignTarget').value || null;
+    const campaignId = isLegacyCampaignsUiEnabled()
+        ? (document.getElementById('schedCampaignTarget')?.value || null)
+        : null;
     const audienceId = document.getElementById('schedAudienceTarget')?.value || null;
     const updatePass = document.getElementById('schedUpdatePass').checked;
     const channel = document.getElementById('schedChannel').value || 'apple';
@@ -6102,7 +6173,7 @@ async function createScheduledPush() {
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
     if (audienceId) body.audience_id = audienceId;
-    else if (campaignId) body.campaign_id = campaignId;
+    else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
     if (schedType === 'once') {
         body.date = document.getElementById('schedDate').value;
         if (!body.date) return alert('Seleziona una data');
@@ -7085,6 +7156,18 @@ async function exportAudienceCsv(id) {
 let allLeads = [];
 let leadsHrMode = false;
 let importPreviewState = null;
+let leadsActiveKpiFilter = null;
+let leadsToolbarInitialized = false;
+let leadsToolbarMode = '';
+let hrDistributionMode = 'hybrid';
+let leadsSearchDebounceTimer = null;
+let leadsPage = 1;
+let leadsPerPage = 10;
+let leadsFilters = {
+    hasEmail: false,
+    hasPhone: false,
+    withDevice: false
+};
 
 function isHrBrandContext() {
     if (getDashboardProductLine() === 'hr') return true;
@@ -7092,6 +7175,387 @@ function isHrBrandContext() {
         ? brandsListCache.find((x) => String(x.id) === String(brandId))
         : null;
     return getBrandProductLine(b) === 'hr';
+}
+
+function getDistributionModeStorageKey() {
+    return `filo:contacts:distribution-mode:${brandId || 'no-brand'}`;
+}
+
+function getDistributionModeFromStorage() {
+    try {
+        const raw = localStorage.getItem(getDistributionModeStorageKey()) || '';
+        if (raw === 'direct_invite' || raw === 'public_join' || raw === 'hybrid') return raw;
+    } catch (_) {}
+    return 'hybrid';
+}
+
+function setDistributionMode(mode) {
+    if (!['direct_invite', 'public_join', 'hybrid'].includes(mode)) return;
+    hrDistributionMode = mode;
+    try {
+        localStorage.setItem(getDistributionModeStorageKey(), mode);
+    } catch (_) {}
+    if (window.ContactsPage) {
+        if (typeof ContactsPage.ensureJoinCard === 'function') {
+            ContactsPage.ensureJoinCard(mode);
+        } else if (typeof ContactsPage.setJoinCardVisible === 'function') {
+            ContactsPage.setJoinCardVisible(isJoinEnabledForMode());
+        }
+    }
+}
+
+function isJoinEnabledForMode() {
+    return hrDistributionMode === 'public_join' || hrDistributionMode === 'hybrid';
+}
+
+function renderDistributionMode() {
+    if (window.ContactsPage) ContactsPage.init(leadsHrMode);
+}
+
+function isLeadPassInstalled(lead) {
+    return !!(lead.device_id || lead.google_wallet_saved || lead.samsung_wallet_saved);
+}
+
+function isA2wLeadsRedesignActive() {
+    return !leadsHrMode
+        && document.documentElement.getAttribute('data-shell') === 'dark'
+        && document.documentElement.classList.contains('a2w-shell');
+}
+
+function resetLeadsFilters() {
+    leadsFilters = { hasEmail: false, hasPhone: false, withDevice: false };
+}
+
+function closeA2wLeadsFilterPopover() {
+    const panel = document.getElementById('a2wLeadsFiltersPanel');
+    const trigger = document.getElementById('a2wLeadsFiltersBtn');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+}
+
+function syncA2wLeadsExportButtonState() {
+    const btn = document.getElementById('leadsExportBtn');
+    if (!btn) return;
+    const filtered = getFilteredLeadsByUiState();
+    const disabled = !filtered.length;
+    btn.disabled = disabled;
+    btn.classList.toggle('is-disabled', disabled);
+    btn.title = disabled ? 'Nessun contatto da esportare' : 'Esporta contatti in CSV';
+}
+
+function ensureA2wLeadsHeaderChrome() {
+    if (!isA2wLeadsRedesignActive()) return;
+    const section = document.getElementById('leads');
+    const header = section?.querySelector('.contacts-page-header');
+    if (!section || !header) return;
+    section.classList.add('a2w-contacts-page');
+
+    const menu = document.getElementById('contactsPageMenu');
+    if (menu) menu.hidden = true;
+
+    const title = header.querySelector('h1.page-title');
+    if (title && !title.querySelector('.a2w-contacts-help-trigger')) {
+        const helpBtn = document.createElement('button');
+        helpBtn.type = 'button';
+        helpBtn.className = 'a2w-contacts-help-trigger';
+        helpBtn.id = 'a2wContactsHelpBtn';
+        helpBtn.setAttribute('aria-label', 'Informazioni su Contatti');
+        helpBtn.setAttribute('aria-describedby', 'a2wContactsHelpTooltip');
+        helpBtn.textContent = '?';
+
+        const helpTip = document.createElement('span');
+        helpTip.className = 'a2w-contacts-help-tooltip';
+        helpTip.id = 'a2wContactsHelpTooltip';
+        helpTip.setAttribute('role', 'tooltip');
+        helpTip.textContent = 'I contatti vengono raccolti automaticamente da landing page, pass emessi e form di iscrizione.';
+
+        const wrap = document.createElement('span');
+        wrap.className = 'a2w-contacts-help-wrap';
+        wrap.appendChild(helpBtn);
+        wrap.appendChild(helpTip);
+        title.appendChild(wrap);
+    }
+
+    let actions = document.getElementById('a2wContactsHeaderActions');
+    if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'a2w-contacts-header-actions';
+        actions.id = 'a2wContactsHeaderActions';
+        actions.innerHTML = `
+          <button type="button" class="btn sec a2w-contacts-header-btn" id="a2wContactsImportBtn" aria-label="Importa contatti da CSV">⬆ Importa CSV</button>
+          <button type="button" class="btn a2w-contacts-header-btn" id="a2wContactsAddBtn" aria-label="Aggiungi contatto">＋ Aggiungi contatto</button>
+        `;
+        header.appendChild(actions);
+    }
+
+    const importBtn = document.getElementById('a2wContactsImportBtn');
+    if (importBtn && importBtn.dataset.bound !== '1') {
+        importBtn.dataset.bound = '1';
+        importBtn.addEventListener('click', openEmployeeImportModal);
+    }
+    const addBtn = document.getElementById('a2wContactsAddBtn');
+    if (addBtn && addBtn.dataset.bound !== '1') {
+        addBtn.dataset.bound = '1';
+        addBtn.addEventListener('click', function () {
+            window.location.href = '/landing/new';
+        });
+    }
+}
+
+function getLeadsKpiMetrics(leads) {
+    const rows = Array.isArray(leads) ? leads : [];
+    return {
+        total: rows.length,
+        with_employee_id: rows.filter((l) => !!(l.employee_id && String(l.employee_id).trim())).length,
+        with_email: rows.filter((l) => !!(l.player_email && String(l.player_email).trim())).length,
+        candidate: rows.filter((l) => (l.activation_status || 'candidate') === 'candidate').length,
+        invited: rows.filter((l) => (l.activation_status || 'candidate') === 'invited').length,
+        activated: rows.filter((l) => (l.activation_status || 'candidate') === 'activated').length,
+        pass_installed: rows.filter((l) => isLeadPassInstalled(l)).length
+    };
+}
+
+function applyLeadsKpiFilter(leads, activeFilter) {
+    const rows = Array.isArray(leads) ? leads : [];
+    if (!activeFilter) return rows;
+    switch (activeFilter) {
+        case 'total':
+            return rows;
+        case 'with_employee_id':
+            return rows.filter((l) => !!(l.employee_id && String(l.employee_id).trim()));
+        case 'with_email':
+            return rows.filter((l) => !!(l.player_email && String(l.player_email).trim()));
+        case 'candidate':
+            return rows.filter((l) => (l.activation_status || 'candidate') === 'candidate');
+        case 'invited':
+            return rows.filter((l) => (l.activation_status || 'candidate') === 'invited');
+        case 'activated':
+            return rows.filter((l) => (l.activation_status || 'candidate') === 'activated');
+        case 'pass_installed':
+            return rows.filter((l) => isLeadPassInstalled(l));
+        default:
+            return rows;
+    }
+}
+
+function getFilteredLeadsByUiState() {
+    const q = (document.getElementById('leadsSearch')?.value || '').toLowerCase().trim();
+    let base = applyLeadsKpiFilter(allLeads, leadsActiveKpiFilter);
+    if (isA2wLeadsRedesignActive()) {
+        if (leadsFilters.hasEmail) {
+            base = base.filter((l) => !!(l.player_email && String(l.player_email).trim()));
+        }
+        if (leadsFilters.hasPhone) {
+            base = base.filter((l) => !!(l.player_phone && String(l.player_phone).trim()));
+        }
+        if (leadsFilters.withDevice) {
+            base = base.filter((l) => !!(l.device_id && String(l.device_id).trim()));
+        }
+    }
+    if (!q) return base;
+    return base.filter((l) =>
+        (l.player_first_name || '').toLowerCase().includes(q) ||
+        (l.player_last_name || '').toLowerCase().includes(q) ||
+        (l.player_email || '').toLowerCase().includes(q) ||
+        (l.player_phone || '').toLowerCase().includes(q) ||
+        (l.employee_id || '').toLowerCase().includes(q) ||
+        (l.department || '').toLowerCase().includes(q) ||
+        (l.office_location || '').toLowerCase().includes(q)
+    );
+}
+
+function renderLeadsToolbar() {
+    const host = document.getElementById('contactsToolbarHost');
+    if (!host) return;
+    const modeKey = leadsHrMode ? 'hr' : (isA2wLeadsRedesignActive() ? 'a2w' : 'legacy');
+    if (leadsToolbarInitialized && leadsToolbarMode === modeKey) return;
+    if (leadsToolbarMode !== modeKey) {
+        host.innerHTML = '';
+        leadsToolbarInitialized = false;
+    }
+    if (isA2wLeadsRedesignActive()) {
+        host.classList.add('a2w-contacts-toolbar');
+        host.innerHTML = `
+          <div class="a2w-contacts-search-wrap">
+            <label for="leadsSearch" class="sr-only">Cerca contatti</label>
+            <span class="a2w-contacts-search-icon" aria-hidden="true">⌕</span>
+            <input
+              type="text"
+              id="leadsSearch"
+              class="a2w-contacts-search-input"
+              placeholder="Cerca per nome, email, telefono…"
+              autocomplete="off"
+            >
+          </div>
+          <div class="a2w-contacts-toolbar-actions" role="group" aria-label="Azioni contatti">
+            <div class="a2w-contacts-filter-wrap">
+              <button type="button" class="btn sec a2w-contacts-toolbar-btn" id="a2wLeadsFiltersBtn" aria-expanded="false" aria-controls="a2wLeadsFiltersPanel" aria-label="Apri filtri contatti">Filtri</button>
+              <div class="a2w-contacts-filter-popover" id="a2wLeadsFiltersPanel" hidden>
+                <label><input type="checkbox" id="a2wFilterHasEmail"> Solo con email</label>
+                <label><input type="checkbox" id="a2wFilterHasPhone"> Solo con telefono</label>
+                <label><input type="checkbox" id="a2wFilterWithDevice"> Solo con device</label>
+                <button type="button" class="a2w-contacts-filter-reset" id="a2wLeadsResetFiltersBtn">Resetta filtri</button>
+              </div>
+            </div>
+            <button type="button" class="btn sec a2w-contacts-toolbar-btn" id="leadsExportBtn" aria-label="Esporta contatti in CSV">⬇ Export CSV</button>
+          </div>
+        `;
+        const searchInput = host.querySelector('#leadsSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                if (leadsSearchDebounceTimer) clearTimeout(leadsSearchDebounceTimer);
+                leadsSearchDebounceTimer = setTimeout(filterLeads, 300);
+            });
+        }
+        const exportBtn = host.querySelector('#leadsExportBtn');
+        if (exportBtn) exportBtn.addEventListener('click', exportLeadsCSV);
+
+        const filtersBtn = document.getElementById('a2wLeadsFiltersBtn');
+        const filtersPanel = document.getElementById('a2wLeadsFiltersPanel');
+        if (filtersBtn && filtersPanel) {
+            filtersBtn.addEventListener('click', function () {
+                const open = filtersPanel.hidden;
+                filtersPanel.hidden = !open;
+                filtersBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            document.addEventListener('click', function (event) {
+                if (filtersPanel.hidden) return;
+                if (!filtersPanel.contains(event.target) && event.target !== filtersBtn) {
+                    closeA2wLeadsFilterPopover();
+                }
+            }, { capture: false });
+        }
+        [
+            ['a2wFilterHasEmail', 'hasEmail'],
+            ['a2wFilterHasPhone', 'hasPhone'],
+            ['a2wFilterWithDevice', 'withDevice']
+        ].forEach(function (entry) {
+            const el = document.getElementById(entry[0]);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                leadsFilters[entry[1]] = !!el.checked;
+                leadsPage = 1;
+                filterLeads();
+            });
+        });
+        const resetBtn = document.getElementById('a2wLeadsResetFiltersBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                resetLeadsFilters();
+                ['a2wFilterHasEmail', 'a2wFilterHasPhone', 'a2wFilterWithDevice'].forEach(function (id) {
+                    const node = document.getElementById(id);
+                    if (node) node.checked = false;
+                });
+                const q = document.getElementById('leadsSearch');
+                if (q) q.value = '';
+                leadsPage = 1;
+                closeA2wLeadsFilterPopover();
+                filterLeads();
+            });
+        }
+        leadsToolbarInitialized = true;
+        leadsToolbarMode = modeKey;
+        return;
+    }
+    if (!window.ContactsToolbar || typeof window.ContactsToolbar.render !== 'function') return;
+    window.ContactsToolbar.render({
+        host,
+        searchPlaceholder: 'Cerca nome, matricola, email…',
+        onSearchInput: filterLeads,
+        onAdd: openEmployeeManualModal,
+        onImport: openEmployeeImportModal,
+        onDistribute: distributeActivationAll,
+        onExport: exportLeadsCSV
+    });
+    leadsToolbarInitialized = true;
+    leadsToolbarMode = modeKey;
+}
+
+function renderLeadsKpiStrip() {
+    const host = document.getElementById('leadsStats');
+    if (!host || !leadsHrMode) return;
+    host.classList.remove('stats-grid');
+    const metrics = getLeadsKpiMetrics(allLeads);
+    if (window.KpiStrip && typeof window.KpiStrip.render === 'function') {
+        window.KpiStrip.render({
+            host,
+            metrics,
+            activeFilter: leadsActiveKpiFilter,
+            onSelect: function (nextFilter) {
+                leadsActiveKpiFilter = leadsActiveKpiFilter === nextFilter ? null : nextFilter;
+                renderLeadsKpiStrip();
+                renderLeadsTable(getFilteredLeadsByUiState());
+            }
+        });
+    }
+}
+
+function renderLegacyLeadsStats(data, mc) {
+    const host = document.getElementById('leadsStats');
+    if (!host) return;
+    if (isA2wLeadsRedesignActive()) {
+        const rows = Array.isArray(allLeads) ? allLeads : [];
+        const inLast7Days = (lead) => {
+            if (!lead?.registered_at) return false;
+            const ts = new Date(lead.registered_at).getTime();
+            if (!Number.isFinite(ts)) return false;
+            return (Date.now() - ts) <= 7 * 24 * 60 * 60 * 1000;
+        };
+        const kpis = [
+            {
+                key: 'total',
+                label: 'Contatti totali',
+                value: rows.length,
+                delta: rows.filter(inLast7Days).length,
+                icon: '👥',
+                primary: true
+            },
+            {
+                key: 'device',
+                label: 'Con device registrato',
+                value: rows.filter((l) => !!(l.device_id && String(l.device_id).trim())).length,
+                delta: rows.filter((l) => !!(l.device_id && String(l.device_id).trim()) && inLast7Days(l)).length,
+                icon: '📱'
+            },
+            {
+                key: 'phone',
+                label: 'Con telefono',
+                value: rows.filter((l) => !!(l.player_phone && String(l.player_phone).trim())).length,
+                delta: rows.filter((l) => !!(l.player_phone && String(l.player_phone).trim()) && inLast7Days(l)).length,
+                icon: '☎'
+            },
+            {
+                key: 'email',
+                label: 'Con email',
+                value: rows.filter((l) => !!(l.player_email && String(l.player_email).trim())).length,
+                delta: rows.filter((l) => !!(l.player_email && String(l.player_email).trim()) && inLast7Days(l)).length,
+                icon: '✉'
+            }
+        ];
+        host.classList.remove('stats-grid');
+        host.classList.add('a2w-contacts-kpis');
+        host.innerHTML = kpis.map((kpi) => `
+          <article class="a2w-contacts-kpi-card${kpi.primary ? ' is-primary' : ''}" data-kpi="${kpi.key}">
+            <div class="a2w-contacts-kpi-icon" aria-hidden="true">${kpi.icon}</div>
+            <div class="a2w-contacts-kpi-main">
+              <p class="a2w-contacts-kpi-label">${esc(kpi.label)}</p>
+              <p class="a2w-contacts-kpi-value">${kpi.value}</p>
+            </div>
+            <p class="a2w-contacts-kpi-delta">+${kpi.delta} ultimi 7 gg</p>
+          </article>
+        `).join('');
+        return;
+    }
+    const statDevice = data.with_device || 0;
+    const statThird = data.with_phone || 0;
+    host.classList.add('stats-grid');
+    host.innerHTML = `
+        <div class="stat-card"><div class="stat-num">${data.total_leads || 0}</div><div class="stat-label">${esc(mc.leads_stat_total)}</div></div>
+        <div class="stat-card"><div class="stat-num">${statDevice}</div><div class="stat-label">${esc(mc.leads_stat_device)}</div></div>
+        <div class="stat-card"><div class="stat-num">${statThird}</div><div class="stat-label">${esc(mc.leads_stat_phone)}</div></div>
+        <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">${esc(mc.leads_stat_email)}</div></div>
+    `;
 }
 
 function updateLeadsImportButton() {
@@ -7102,8 +7566,7 @@ function updateLeadsImportButton() {
     if (addBtn) addBtn.style.display = hr ? '' : 'none';
     const distBtn = document.getElementById('leadsDistributeBtn');
     if (distBtn) distBtn.style.display = hr ? '' : 'none';
-    const panel = document.getElementById('hrActivationPanel');
-    if (panel) panel.style.display = hr ? '' : 'none';
+    if (window.ContactsPage) ContactsPage.init(hr);
 }
 
 let manualEmployeeQueue = []; // legacy shim; filoHrContatti.manualModal owns queue state on HR shell
@@ -7170,6 +7633,10 @@ function setLeadsTableHead(hr) {
             <th>Nome</th><th>Cognome</th><th>Matricola</th><th>Reparto</th><th>Sede</th>
             <th>Email</th><th>Attivazione</th><th>Pass</th><th>Wallet</th><th>Azioni</th>
         </tr>`;
+    } else if (isA2wLeadsRedesignActive()) {
+        thead.innerHTML = `<tr>
+            <th>Nome</th><th>Email</th><th>Telefono</th><th>Device</th><th>Pass attivi</th><th>Data iscrizione</th><th>Azioni</th>
+        </tr>`;
     } else {
         thead.innerHTML = `<tr>
             <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th>
@@ -7182,13 +7649,45 @@ async function loadLeads() {
     if (!brandId) return;
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
     leadsHrMode = isHrBrandContext();
+    hrDistributionMode = getDistributionModeFromStorage();
+    if (!leadsHrMode) leadsActiveKpiFilter = null;
+    if (!leadsHrMode) leadsPage = 1;
+    if (!leadsHrMode && !isA2wLeadsRedesignActive()) resetLeadsFilters();
+    ensureA2wLeadsHeaderChrome();
+    renderLeadsToolbar();
+    renderDistributionMode();
     updateLeadsImportButton();
     setLeadsTableHead(leadsHrMode);
+    const cardTitle = document.getElementById('contactsCardATitle');
+    if (cardTitle) cardTitle.textContent = leadsHrMode ? 'Anagrafica dipendenti' : 'Contatti';
     const searchEl = document.getElementById('leadsSearch');
     if (searchEl) {
         searchEl.placeholder = leadsHrMode
             ? 'Cerca nome, matricola, email…'
-            : 'Cerca nome, email...';
+            : 'Cerca per nome, email, telefono…';
+    }
+    if (isA2wLeadsRedesignActive()) {
+        const table = document.getElementById('leadsTable');
+        const tbody = table?.querySelector('tbody');
+        const emptyHost = document.getElementById('leadsEmptyHost');
+        if (emptyHost) {
+            emptyHost.innerHTML = '';
+            emptyHost.hidden = true;
+        }
+        if (table && tbody) {
+            table.hidden = false;
+            tbody.innerHTML = Array.from({ length: 6 }).map(() => `
+              <tr class="a2w-contacts-skeleton-row">
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+                <td><span class="a2w-skeleton-line"></span></td>
+              </tr>
+            `).join('');
+        }
     }
     try {
         const res = await fetch(`${API}/brands/${brandId}/leads`, { headers: getDashboardFetchHeaders() });
@@ -7199,23 +7698,16 @@ async function loadLeads() {
         const data = await res.json();
         allLeads = data.leads || [];
 
-        const statDevice = leadsHrMode
-            ? (data.with_device ?? allLeads.filter((l) => l.device_id).length)
-            : (data.with_device || 0);
-        const statThird = leadsHrMode
-            ? (data.with_employee_id ?? allLeads.filter((l) => l.employee_id).length)
-            : (data.with_phone || 0);
-
-        document.getElementById('leadsStats').innerHTML = `
-            <div class="stat-card"><div class="stat-num">${data.total_leads || 0}</div><div class="stat-label">${esc(mc.leads_stat_total)}</div></div>
-            <div class="stat-card"><div class="stat-num">${statDevice}</div><div class="stat-label">${esc(mc.leads_stat_device)}</div></div>
-            <div class="stat-card"><div class="stat-num">${statThird}</div><div class="stat-label">${esc(leadsHrMode ? 'Con matricola' : mc.leads_stat_phone)}</div></div>
-            <div class="stat-card"><div class="stat-num">${data.with_email || 0}</div><div class="stat-label">${esc(mc.leads_stat_email)}</div></div>
-        `;
+        if (leadsHrMode) {
+            renderLeadsKpiStrip();
+        } else {
+            renderLegacyLeadsStats(data, mc);
+        }
         if (typeof ensureA2wLeadsLayout === 'function') ensureA2wLeadsLayout();
 
         updateLeadsNoMatricolaBadge();
-        renderLeadsTable(allLeads);
+        renderLeadsTable(getFilteredLeadsByUiState());
+        syncA2wLeadsExportButtonState();
         if (leadsHrMode) loadActivationStats();
     } catch(e) {
         console.error('loadLeads error:', e);
@@ -7228,8 +7720,20 @@ async function loadLeads() {
         }
         const table = document.getElementById('leadsTable');
         table.hidden = false;
-        table.querySelector('tbody').innerHTML =
-            `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(e.message || mc.leads_load_error)}</td></tr>`;
+        if (isA2wLeadsRedesignActive()) {
+            table.querySelector('tbody').innerHTML = `
+              <tr>
+                <td colspan="${cols}">
+                  <div class="a2w-contacts-error-banner" role="alert">
+                    <span>${esc(e.message || mc.leads_load_error)}</span>
+                    <button type="button" class="btn sec small" onclick="loadLeads()">Riprova</button>
+                  </div>
+                </td>
+              </tr>`;
+        } else {
+            table.querySelector('tbody').innerHTML =
+                `<tr><td colspan="${cols}" style="color:var(--text2);text-align:center;">${esc(e.message || mc.leads_load_error)}</td></tr>`;
+        }
     }
 }
 
@@ -7244,51 +7748,17 @@ async function loadActivationStats() {
         const res = await fetch(`${API}/brands/${brandId}/activation/stats`, { headers: getAuthHeaders() });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        const c = data.counts || {};
-        const el = document.getElementById('activationStats');
-        if (el) {
-            el.innerHTML = `
-                <div class="stat-card"><div class="stat-num">${c.candidate || 0}</div><div class="stat-label">Da invitare</div></div>
-                <div class="stat-card"><div class="stat-num">${c.invited || 0}</div><div class="stat-label">Invitati</div></div>
-                <div class="stat-card"><div class="stat-num">${c.activated || 0}</div><div class="stat-label">Attivi</div></div>
-            `;
+        if (window.ContactsPage && typeof ContactsPage.onHrLeadsLoaded === 'function') {
+            await ContactsPage.onHrLeadsLoaded(data);
         }
-        const chk = document.getElementById('hrPublicQrEnabled');
-        const slugIn = document.getElementById('hrPublicQrSlug');
-        const domIn = document.getElementById('hrAllowedDomains');
-        const joinIn = document.getElementById('hrJoinUrl');
-        if (chk) chk.checked = !!data.public_qr_enabled;
-        if (slugIn) slugIn.value = data.public_qr_slug || '';
-        if (domIn) domIn.value = (data.allowed_email_domains || []).join(', ');
-        if (joinIn) joinIn.value = data.join_url || '';
     } catch (e) {
         console.warn('activation stats', e.message);
     }
 }
 
 async function saveHrDistributionSettings() {
-    if (!brandId) return;
-    const domainsRaw = (document.getElementById('hrAllowedDomains')?.value || '').trim();
-    const allowed_email_domains = domainsRaw
-        ? domainsRaw.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
-        : [];
-    const body = {
-        public_qr_enabled: !!document.getElementById('hrPublicQrEnabled')?.checked,
-        public_qr_slug: (document.getElementById('hrPublicQrSlug')?.value || '').trim() || null,
-        allowed_email_domains
-    };
-    try {
-        const res = await fetch(`${API}/brands/${brandId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-            body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        await loadActivationStats();
-        toast('Impostazioni distribuzione salvate');
-    } catch (e) {
-        toast(e.message);
+    if (window.ContactsPage && typeof ContactsPage.saveDistributionSettings === 'function') {
+        return ContactsPage.saveDistributionSettings();
     }
 }
 
@@ -7347,7 +7817,39 @@ function renderLeadsTable(leads) {
     const tbody = table.querySelector('tbody');
     const emptyHost = document.getElementById('leadsEmptyHost');
     const cols = leadsHrMode ? 10 : 7;
-    if (!leads.length) {
+    const isA2w = isA2wLeadsRedesignActive();
+    const totalRows = Array.isArray(allLeads) ? allLeads.length : 0;
+    const filteredRows = Array.isArray(leads) ? leads : [];
+
+    if (isA2w && !leadsHrMode && totalRows === 0) {
+        if (emptyHost) {
+            emptyHost.hidden = false;
+            emptyHost.innerHTML = `
+              <div class="a2w-contacts-empty" data-a2w-component="contacts-empty-state">
+                <div class="a2w-contacts-empty__icon" aria-hidden="true">👥</div>
+                <h2 class="a2w-contacts-empty__title">Nessun contatto registrato</h2>
+                <p class="a2w-contacts-empty__desc">I contatti raccolti da landing e pass compariranno qui. Inizia configurando un punto di raccolta.</p>
+                <div class="a2w-contacts-empty__actions">
+                  <button type="button" class="btn" onclick="window.location.href='/landing/new'">Crea una landing</button>
+                  <button type="button" class="btn sec" onclick="nav('templates')">Configura un pass</button>
+                  <button type="button" class="a2w-contacts-empty__link" onclick="openEmployeeImportModal()">Importa da CSV</button>
+                </div>
+              </div>
+            `;
+        }
+        table.hidden = true;
+        tbody.innerHTML = '';
+        const toolbarHost = document.getElementById('contactsToolbarHost');
+        const statsHost = document.getElementById('leadsStats');
+        if (toolbarHost) toolbarHost.hidden = true;
+        if (statsHost) statsHost.hidden = true;
+        const pager = document.getElementById('a2wLeadsPagination');
+        if (pager) pager.hidden = true;
+        syncA2wLeadsExportButtonState();
+        return;
+    }
+
+    if (!filteredRows.length) {
         const emptyHtml = renderEmptyState({
             title: mc.leads_empty,
             description: leadsHrMode
@@ -7358,18 +7860,40 @@ function renderLeadsTable(leads) {
             ctaOnclick: leadsHrMode ? 'openEmployeeManualModal()' : ''
         });
         if (emptyHost) {
-            emptyHost.innerHTML = emptyHtml;
+            emptyHost.innerHTML = isA2w && !leadsHrMode && totalRows > 0
+                ? `
+                  <div class="a2w-contacts-filter-empty" role="status">
+                    <p>Nessun contatto corrisponde ai filtri.</p>
+                    <button type="button" class="a2w-contacts-empty__link" onclick="resetA2wLeadsFiltersAndSearch()">Resetta filtri</button>
+                  </div>
+                `
+                : emptyHtml;
             emptyHost.hidden = false;
         } else {
             tbody.innerHTML = '<tr><td colspan="' + cols + '">' + emptyHtml + '</td></tr>';
         }
-        table.hidden = !!emptyHost;
+        table.hidden = !!emptyHost || (isA2w && !leadsHrMode && totalRows > 0);
         tbody.innerHTML = '';
+        if (isA2w && !leadsHrMode) {
+            const toolbarHost = document.getElementById('contactsToolbarHost');
+            const statsHost = document.getElementById('leadsStats');
+            if (toolbarHost) toolbarHost.hidden = false;
+            if (statsHost) statsHost.hidden = false;
+            const pager = document.getElementById('a2wLeadsPagination');
+            if (pager) pager.hidden = true;
+            syncA2wLeadsExportButtonState();
+        }
         return;
     }
     if (emptyHost) {
         emptyHost.innerHTML = '';
         emptyHost.hidden = true;
+    }
+    if (isA2w && !leadsHrMode) {
+        const toolbarHost = document.getElementById('contactsToolbarHost');
+        const statsHost = document.getElementById('leadsStats');
+        if (toolbarHost) toolbarHost.hidden = false;
+        if (statsHost) statsHost.hidden = false;
     }
     table.hidden = false;
     if (leadsHrMode) {
@@ -7399,7 +7923,124 @@ function renderLeadsTable(leads) {
         }).join('');
         return;
     }
-    tbody.innerHTML = leads.map(l => `<tr>
+    if (isA2w) {
+        const totalPages = Math.max(1, Math.ceil(filteredRows.length / leadsPerPage));
+        leadsPage = Math.max(1, Math.min(leadsPage, totalPages));
+        const start = (leadsPage - 1) * leadsPerPage;
+        const pageRows = filteredRows.slice(start, start + leadsPerPage);
+        tbody.innerHTML = pageRows.map((l) => {
+            const fullName = [l.player_first_name, l.player_last_name].filter(Boolean).join(' ').trim() || '—';
+            const email = l.player_email ? `<a href="mailto:${esc(l.player_email)}" class="a2w-contacts-mail-link">${esc(l.player_email)}</a>` : '—';
+            const phone = esc(l.player_phone || '—');
+            const device = l.device_id ? esc(String(l.device_id).slice(0, 12)) + '…' : '—';
+            const passActive = l.pass_id ? '1' : '0';
+            const regDate = l.registered_at ? new Date(l.registered_at).toLocaleDateString('it-IT') : '—';
+            return `<tr>
+              <td>${esc(fullName)}</td>
+              <td>${email}</td>
+              <td>${phone}</td>
+              <td>${device}</td>
+              <td>${passActive}</td>
+              <td>${regDate}</td>
+              <td>
+                <div class="a2w-leads-row-actions" data-member-id="${esc(l.id)}">
+                  <button type="button" class="a2w-leads-kebab-btn" data-a2w-menu-trigger="1" aria-label="Apri azioni contatto">⋮</button>
+                  <div class="a2w-leads-row-menu" hidden>
+                    <button type="button" data-a2w-action="detail">Vedi dettaglio</button>
+                    <button type="button" data-a2w-action="segment">Aggiungi a segmento</button>
+                    <button type="button" data-a2w-action="delete" class="is-danger">Elimina</button>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        }).join('');
+
+        let pager = document.getElementById('a2wLeadsPagination');
+        if (!pager) {
+            pager = document.createElement('div');
+            pager.id = 'a2wLeadsPagination';
+            pager.className = 'a2w-leads-pagination';
+            table.insertAdjacentElement('afterend', pager);
+        }
+        pager.hidden = false;
+        pager.innerHTML = `
+          <div class="a2w-leads-pagination__left">
+            <label for="a2wLeadsPerPage">Righe pagina</label>
+            <select id="a2wLeadsPerPage">
+              <option value="10"${leadsPerPage === 10 ? ' selected' : ''}>10</option>
+              <option value="25"${leadsPerPage === 25 ? ' selected' : ''}>25</option>
+              <option value="50"${leadsPerPage === 50 ? ' selected' : ''}>50</option>
+            </select>
+          </div>
+          <div class="a2w-leads-pagination__right">
+            <span>Pagina ${leadsPage} di ${totalPages}</span>
+            <button type="button" class="btn sec small" id="a2wLeadsPrevBtn" ${leadsPage <= 1 ? 'disabled' : ''}>Precedente</button>
+            <button type="button" class="btn sec small" id="a2wLeadsNextBtn" ${leadsPage >= totalPages ? 'disabled' : ''}>Successiva</button>
+          </div>
+        `;
+        const prevBtn = document.getElementById('a2wLeadsPrevBtn');
+        const nextBtn = document.getElementById('a2wLeadsNextBtn');
+        const perPage = document.getElementById('a2wLeadsPerPage');
+        if (prevBtn) prevBtn.onclick = function () {
+            if (leadsPage > 1) {
+                leadsPage -= 1;
+                renderLeadsTable(getFilteredLeadsByUiState());
+            }
+        };
+        if (nextBtn) nextBtn.onclick = function () {
+            if (leadsPage < totalPages) {
+                leadsPage += 1;
+                renderLeadsTable(getFilteredLeadsByUiState());
+            }
+        };
+        if (perPage) perPage.onchange = function () {
+            leadsPerPage = Number(perPage.value) || 10;
+            leadsPage = 1;
+            renderLeadsTable(getFilteredLeadsByUiState());
+        };
+
+        tbody.querySelectorAll('[data-a2w-menu-trigger="1"]').forEach((btn) => {
+            btn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const actions = btn.closest('.a2w-leads-row-actions');
+                const menu = actions?.querySelector('.a2w-leads-row-menu');
+                if (!menu) return;
+                const isOpen = !menu.hidden;
+                table.querySelectorAll('.a2w-leads-row-menu').forEach((node) => {
+                    node.hidden = true;
+                });
+                menu.hidden = isOpen;
+            });
+        });
+        tbody.querySelectorAll('.a2w-leads-row-menu button').forEach((btn) => {
+            btn.addEventListener('click', function () {
+                const action = btn.dataset.a2wAction;
+                const memberId = btn.closest('.a2w-leads-row-actions')?.dataset.memberId;
+                if (!memberId) return;
+                if (action === 'delete') {
+                    deleteMemberContact(memberId);
+                    return;
+                }
+                if (action === 'segment') {
+                    nav('audiences');
+                    toast('Aggiungi il contatto a un segmento da Audience');
+                    return;
+                }
+                toast('Dettaglio contatto in arrivo');
+            });
+        });
+        if (!document.body.dataset.a2wLeadsMenusBound) {
+            document.body.dataset.a2wLeadsMenusBound = '1';
+            document.addEventListener('click', function () {
+                document.querySelectorAll('#leads .a2w-leads-row-menu').forEach((node) => {
+                    node.hidden = true;
+                });
+            }, { capture: false });
+        }
+        syncA2wLeadsExportButtonState();
+        return;
+    }
+    tbody.innerHTML = filteredRows.map((l) => `<tr>
         <td>${esc(l.player_first_name || '-')}</td>
         <td>${esc(l.player_last_name || '-')}</td>
         <td><a href="mailto:${esc(l.player_email)}" style="color:var(--accent);">${esc(l.player_email)}</a></td>
@@ -7425,7 +8066,10 @@ function updateLeadsNoMatricolaBadge() {
 
 function filterLeadsNoMatricola() {
     window.leadsFilterNoMatricola = true;
-    document.getElementById('leadsSearch').value = '';
+    const search = document.getElementById('leadsSearch');
+    if (search) search.value = '';
+    leadsActiveKpiFilter = null;
+    renderLeadsKpiStrip();
     renderLeadsTable(allLeads.filter((l) => !l.employee_id || !String(l.employee_id).trim()));
     toast('Filtro: solo dipendenti senza matricola');
 }
@@ -7478,37 +8122,54 @@ async function deleteMemberContact(memberId) {
 
 function filterLeads() {
     window.leadsFilterNoMatricola = false;
-    const q = document.getElementById('leadsSearch').value.toLowerCase();
-    if (!q) return renderLeadsTable(allLeads);
-    const filtered = allLeads.filter(l =>
-        (l.player_first_name || '').toLowerCase().includes(q) ||
-        (l.player_last_name || '').toLowerCase().includes(q) ||
-        (l.player_email || '').toLowerCase().includes(q) ||
-        (l.player_phone || '').toLowerCase().includes(q) ||
-        (l.employee_id || '').toLowerCase().includes(q) ||
-        (l.department || '').toLowerCase().includes(q) ||
-        (l.office_location || '').toLowerCase().includes(q)
-    );
-    renderLeadsTable(filtered);
+    leadsPage = 1;
+    renderLeadsTable(getFilteredLeadsByUiState());
+    syncA2wLeadsExportButtonState();
+}
+
+function resetA2wLeadsFiltersAndSearch() {
+    if (!isA2wLeadsRedesignActive()) return;
+    resetLeadsFilters();
+    ['a2wFilterHasEmail', 'a2wFilterHasPhone', 'a2wFilterWithDevice'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.checked = false;
+    });
+    const search = document.getElementById('leadsSearch');
+    if (search) search.value = '';
+    closeA2wLeadsFilterPopover();
+    leadsPage = 1;
+    renderLeadsTable(getFilteredLeadsByUiState());
+    syncA2wLeadsExportButtonState();
 }
 
 function exportLeadsCSV() {
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
-    if (!allLeads.length) return toast(mc.leads_export_empty);
+    const rowsSource = isA2wLeadsRedesignActive() ? getFilteredLeadsByUiState() : allLeads;
+    if (!rowsSource.length) return toast(mc.leads_export_empty);
     let header;
     let rows;
     if (leadsHrMode) {
         header = 'Nome,Cognome,Matricola,Reparto,Sede,Email,Attivazione,Pass ID,Wallet,Creato';
-        rows = allLeads.map(l => [
+        rows = rowsSource.map((l) => [
             l.player_first_name || '', l.player_last_name || '', l.employee_id || '',
             l.department || '', l.office_location || '', l.player_email || '',
             activationStatusLabel(l.activation_status),
             l.pass_id || '', walletStatusLabel(l),
             l.registered_at ? new Date(l.registered_at).toISOString().split('T')[0] : ''
         ]);
+    } else if (isA2wLeadsRedesignActive()) {
+        header = 'Nome,Email,Telefono,Device,Pass attivi,Data iscrizione';
+        rows = rowsSource.map((l) => [
+            [l.player_first_name, l.player_last_name].filter(Boolean).join(' ').trim(),
+            l.player_email || '',
+            l.player_phone || '',
+            l.device_id || '',
+            l.pass_id ? '1' : '0',
+            l.registered_at ? new Date(l.registered_at).toISOString().split('T')[0] : ''
+        ]);
     } else {
         header = 'Nome,Cognome,Email,Telefono,Device ID,Pass ID,Data registrazione';
-        rows = allLeads.map(l => [
+        rows = rowsSource.map((l) => [
             l.player_first_name || '', l.player_last_name || '', l.player_email || '',
             l.player_phone || '', l.device_id || '', l.pass_id || '',
             l.registered_at ? new Date(l.registered_at).toISOString().split('T')[0] : ''
@@ -8100,9 +8761,12 @@ async function loadAnalytics() {
     if (typeof a2wLoadAnalytics === 'function' && typeof isA2wDeploy === 'function' && isA2wDeploy()) {
         return a2wLoadAnalytics();
     }
+    const campaignsEnabled = isLegacyCampaignsUiEnabled();
     const [analytics, campaigns, passes] = await Promise.all([
         fetchCachedJson(`${API}/analytics/${brandId}`, { headers: { ...getAuthHeaders() } }),
-        fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } }),
+        campaignsEnabled
+            ? fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } })
+            : Promise.resolve([]),
         fetchCachedJson(`${API}/passes?brand_id=${brandId}&limit=600`, { headers: { ...getAuthHeaders() } })
     ]);
 
@@ -8139,9 +8803,14 @@ async function loadAnalytics() {
     syncAnalyticsRangeControls();
     renderAnalyticsTrendChart(allPasses);
     renderAnalyticsWalletSplit(allPasses);
-    renderAnalyticsTopCampaigns(campaigns);
+    renderAnalyticsTopCampaigns(campaignsEnabled ? campaigns : []);
 
     const tbody = document.querySelector('#campaignAnalyticsTable tbody');
+    if (!campaignsEnabled) {
+        const tableWrap = document.getElementById('campaignAnalyticsTable')?.closest('.card');
+        if (tableWrap) tableWrap.style.display = 'none';
+        return;
+    }
     if (!campaigns.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2)">Nessuna campagna</td></tr>'; return; }
     tbody.innerHTML = campaigns.map(c => {
         const conv = c.total_downloads > 0 ? ((c.total_installs / c.total_downloads) * 100).toFixed(1) : '0';
@@ -8497,10 +9166,10 @@ function wzBuildPreview() {
     const type = isHrDashboard() ? EMPLOYEE_PASS_TYPE : document.getElementById('wzType').value;
     const hLabel = document.getElementById('wzHeaderLabel').value;
     const hValue = document.getElementById('wzHeaderValue').value;
-    const sLabel = '';
-    const sValue = '';
-    const aLabel = '';
-    const aValue = '';
+    const sLabel = document.getElementById('wzSecLabel').value;
+    const sValue = document.getElementById('wzSecValue').value;
+    const aLabel = document.getElementById('wzAuxLabel').value;
+    const aValue = document.getElementById('wzAuxValue').value;
 
     // Front
     const wzPpLogo = document.getElementById('wzPpLogo');
@@ -8765,6 +9434,10 @@ async function wzAiGenerate() {
         // Fill pass fields with sensible defaults based on settore
         if (!document.getElementById('wzHeaderLabel').value) document.getElementById('wzHeaderLabel').value = 'STATO';
         if (!document.getElementById('wzHeaderValue').value) document.getElementById('wzHeaderValue').value = 'Attivo';
+        if (!document.getElementById('wzSecLabel').value) document.getElementById('wzSecLabel').value = 'OFFERTA';
+        if (!document.getElementById('wzSecValue').value) document.getElementById('wzSecValue').value = copy.claim ? copy.claim.substring(0, 30) : 'Scopri le novità';
+        if (!document.getElementById('wzAuxLabel').value) document.getElementById('wzAuxLabel').value = 'INFO';
+        if (!document.getElementById('wzAuxValue').value) document.getElementById('wzAuxValue').value = 'Aggiornamenti via Wallet';
         toast('Contenuti AI generati!');
     } catch(e) { toast('Errore AI: ' + e.message); }
     btn.disabled = false; btn.textContent = 'Genera tutto con AI';
@@ -8791,6 +9464,10 @@ async function wzAiCopy(section) {
         if (section === 'front') {
             document.getElementById('wzHeaderLabel').value = 'STATO';
             document.getElementById('wzHeaderValue').value = 'Attivo';
+            document.getElementById('wzSecLabel').value = 'OFFERTA';
+            document.getElementById('wzSecValue').value = copy.claim ? copy.claim.substring(0, 30) : 'Scopri le novità';
+            document.getElementById('wzAuxLabel').value = 'INFO';
+            document.getElementById('wzAuxValue').value = copy.subheadline ? copy.subheadline.substring(0, 30) : 'Aggiornamenti via Wallet';
             toast('Campi fronte generati!');
         } else if (section === 'back') {
             document.getElementById('wzRegolamento').value = `Questo pass è personale e non trasferibile. Il brand ${brand.name} si riserva di modificare le condizioni in qualsiasi momento. Per cancellare, rimuovi il pass dal Wallet.`;
@@ -8829,8 +9506,8 @@ async function wzPublish() {
         style: { ...existingStyle, description: '' },
         fields: {
             headerFields: [{ key: 'header_info', label: document.getElementById('wzHeaderLabel').value, value: document.getElementById('wzHeaderValue').value }],
-            secondaryFields: [],
-            auxiliaryFields: [],
+            secondaryFields: [{ key: 'info', label: document.getElementById('wzSecLabel').value, value: document.getElementById('wzSecValue').value }],
+            auxiliaryFields: [{ key: 'aux_info', label: document.getElementById('wzAuxLabel').value, value: document.getElementById('wzAuxValue').value }],
             links,
             regolamento: document.getElementById('wzRegolamento').value,
             contatti: document.getElementById('wzContatti').value
@@ -9035,14 +9712,9 @@ const brandIdentityState = {
     slugAvailable: null,
     slugChecking: false,
     previewTab: 'apple',
-    touched: {},
     mediaByType: { logo: [], strip: [], thumbnail: [], background: [] },
     selectedAssets: { logo: null, strip: null, thumbnail: null, background: null }
 };
-
-const A2W_BI_SETTORE_OPTIONS = [
-    'ristorazione', 'retail', 'beauty', 'sport', 'eventi', 'hospitality', 'automotive', 'tech', 'altro'
-];
 
 function isA2wBrandIdentityV2Enabled() {
     if (document.documentElement.getAttribute('data-shell') !== 'dark') return false;
@@ -9135,9 +9807,6 @@ function a2wBiValidate(data) {
     else if (!/^[a-z0-9-]+$/.test(data.slug)) errors.biSlug = 'Usa solo minuscole, numeri e trattini';
 
     if (data.tagline && data.tagline.length > 80) errors.biTagline = 'Massimo 80 caratteri';
-    if (data.settore && !A2W_BI_SETTORE_OPTIONS.includes(data.settore)) {
-        errors.biSettore = 'Seleziona un settore dall\'elenco';
-    }
     if (data.homepage && !/^https:\/\//i.test(data.homepage)) errors.biHomepage = 'Inserisci un URL https:// valido';
     if (data.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.supportEmail)) errors.biSupportEmail = 'Email non valida';
     if (data.supportPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(data.supportPhone)) errors.biSupportPhone = 'Telefono non valido';
@@ -9171,19 +9840,9 @@ function a2wBiUpdateSaveStateBadge(stateLabel, modeClass) {
     if (modeClass) badge.classList.add(modeClass);
 }
 
-function a2wBiApplyLiveValidation() {
-    if (!isA2wBrandIdentityV2Enabled()) return;
-    const data = a2wBiCollectFormData();
-    const errors = a2wBiValidate(data);
-    Object.keys(brandIdentityState.touched).forEach((fieldId) => {
-        a2wBiSetFieldError(fieldId, errors[fieldId] || '');
-    });
-}
-
 function a2wBiUpdateSaveButton(errorCount) {
     const btn = a2wBiField('a2wBiSaveBtn');
     if (!btn) return;
-    btn.classList.add('a2w-btn-primary');
     if (brandIdentityState.saving) {
         btn.disabled = true;
         btn.textContent = 'Salvataggio…';
@@ -9194,11 +9853,6 @@ function a2wBiUpdateSaveButton(errorCount) {
         btn.disabled = true;
         btn.textContent = `${errorCount} campi da correggere`;
         a2wBiUpdateSaveStateBadge('Modifiche non salvate', 'is-dirty');
-        return;
-    }
-    if (brandIdentityState.slugChecking) {
-        btn.disabled = true;
-        btn.textContent = 'Verifica slug…';
         return;
     }
     btn.disabled = !brandIdentityState.dirty;
@@ -9214,7 +9868,6 @@ function a2wBiSyncDirtyState() {
     if (!isA2wBrandIdentityV2Enabled()) return;
     const current = a2wBiSerializeState(a2wBiCollectFormData(), brandIdentityState.selectedAssets);
     brandIdentityState.dirty = current !== brandIdentityState.baseline;
-    a2wBiApplyLiveValidation();
     const errors = a2wBiValidate(a2wBiCollectFormData());
     a2wBiUpdateSaveButton(Object.keys(errors).length);
 }
@@ -9256,13 +9909,12 @@ async function a2wBiCheckSlugAvailabilityNow() {
         if (status) status.textContent = '?';
     } finally {
         brandIdentityState.slugChecking = false;
-        a2wBiSyncDirtyState();
     }
 }
 
 function a2wBiScheduleSlugAvailabilityCheck() {
     if (brandIdentityState.slugCheckTimer) clearTimeout(brandIdentityState.slugCheckTimer);
-    brandIdentityState.slugCheckTimer = setTimeout(a2wBiCheckSlugAvailabilityNow, 200);
+    brandIdentityState.slugCheckTimer = setTimeout(a2wBiCheckSlugAvailabilityNow, 320);
 }
 
 function a2wBiMediaImageUrl(item) {
@@ -9295,37 +9947,13 @@ function a2wBiApplySelectedAssetsFromConfig(config) {
     });
 }
 
-function a2wBiBindAssetDropzone(type) {
-    const zone = document.querySelector(`#a2wBiAssetsGrid [data-a2w-dropzone="${type}"]`);
-    if (!zone || zone.dataset.bound === '1') return;
-    zone.dataset.bound = '1';
-    const prevent = (e) => { e.preventDefault(); e.stopPropagation(); };
-    zone.addEventListener('dragenter', prevent);
-    zone.addEventListener('dragover', (e) => {
-        prevent(e);
-        zone.classList.add('is-dragover');
-    });
-    zone.addEventListener('dragleave', () => zone.classList.remove('is-dragover'));
-    zone.addEventListener('drop', async (e) => {
-        prevent(e);
-        zone.classList.remove('is-dragover');
-        const file = e.dataTransfer?.files?.[0];
-        if (file) await a2wBiUploadAsset(type, file);
-    });
-    zone.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        const input = a2wBiField(`a2wBiAssetUploadInput_${type}`);
-        if (input) input.click();
-    });
-}
-
 function a2wBiBindAssetCardActions(type) {
     const uploadInput = a2wBiField(`a2wBiAssetUploadInput_${type}`);
     const browseBtn = a2wBiField(`a2wBiAssetBrowseBtn_${type}`);
     const pickBtn = a2wBiField(`a2wBiAssetPickBtn_${type}`);
     const removeBtn = a2wBiField(`a2wBiAssetRemoveBtn_${type}`);
-    a2wBiBindAssetDropzone(type);
-    if (browseBtn && uploadInput) browseBtn.onclick = (e) => { e.stopPropagation(); uploadInput.click(); };
+    const libraryBtn = a2wBiField(`a2wBiAssetLibraryBtn_${type}`);
+    if (browseBtn && uploadInput) browseBtn.onclick = () => uploadInput.click();
     if (uploadInput) {
         uploadInput.onchange = async () => {
             const file = uploadInput.files && uploadInput.files[0];
@@ -9353,6 +9981,7 @@ function a2wBiBindAssetCardActions(type) {
             a2wBiSyncDirtyState();
         };
     }
+    if (libraryBtn) libraryBtn.onclick = () => nav('media-library');
 }
 
 async function a2wBiUploadAsset(type, file) {
@@ -9399,13 +10028,11 @@ function a2wBiRenderAssetsGrid() {
           <article class="a2w-bi-asset-card" data-a2w-asset-type="${type}">
             <h3 class="a2w-bi-asset-title">${esc(spec.label)}</h3>
             <p class="a2w-bi-asset-spec">${esc(spec.hint)}</p>
-            <div class="a2w-bi-asset-dropzone" data-a2w-dropzone="${type}" role="button" tabindex="0" aria-label="Carica ${esc(spec.label)}">
-              <div class="a2w-bi-asset-preview">${preview}</div>
-              <p class="a2w-bi-asset-dropzone-hint">Trascina un file o clicca per caricare</p>
-            </div>
+            <div class="a2w-bi-asset-preview">${preview}</div>
             <div class="a2w-bi-asset-actions">
               <button type="button" class="btn sec small" id="a2wBiAssetBrowseBtn_${type}">Sfoglia file</button>
               <button type="button" class="btn sec small" id="a2wBiAssetPickBtn_${type}">Da libreria</button>
+              <button type="button" class="btn sec small" id="a2wBiAssetLibraryBtn_${type}">Apri Media Library</button>
               <button type="button" class="btn sec small" id="a2wBiAssetRemoveBtn_${type}">Rimuovi</button>
             </div>
             <input type="file" id="a2wBiAssetUploadInput_${type}" accept="image/*,.pdf" hidden>
@@ -9439,8 +10066,6 @@ function a2wBiUpdatePreviewCard() {
         passStrip.style.backgroundImage = strip?.id ? `url("${a2wBiMediaImageUrl(strip)}")` : '';
         passStrip.style.backgroundSize = 'cover';
     }
-    const previewRoot = a2wBiField('a2wBiPassPreview');
-    if (previewRoot) previewRoot.dataset.wallet = brandIdentityState.previewTab || 'apple';
     a2wBiUpdateSlugPreview();
     const slug = data.slug || '';
     const qrHost = a2wBiField('a2wBiPreviewQr');
@@ -9569,20 +10194,6 @@ function a2wBiEnsureUiBound() {
         });
     }
 
-    const mediaLibBtn = a2wBiField('a2wBiOpenMediaLibraryBtn');
-    if (mediaLibBtn) mediaLibBtn.addEventListener('click', () => nav('media-library'));
-
-    const dangerHost = a2wBiField('a2wBiDangerActionHost');
-    if (dangerHost && dangerHost.dataset.mounted !== '1') {
-        dangerHost.dataset.mounted = '1';
-        const dangerBtn = document.createElement('button');
-        dangerBtn.type = 'button';
-        dangerBtn.className = 'btn a2w-ui-btn-destructive';
-        dangerBtn.textContent = 'Elimina brand';
-        dangerBtn.addEventListener('click', () => deleteBrandAction());
-        dangerHost.appendChild(dangerBtn);
-    }
-
     const copyBtn = a2wBiField('biCopySlugUrlBtn');
     if (copyBtn) {
         copyBtn.addEventListener('click', async () => {
@@ -9615,7 +10226,6 @@ function a2wBiEnsureUiBound() {
         const field = a2wBiField(id);
         if (!field) return;
         field.addEventListener('input', () => {
-            brandIdentityState.touched[id] = true;
             if (id === 'biName' && !brandIdentityState.slugEdited) {
                 const slugField = a2wBiField('biSlug');
                 if (slugField) slugField.value = a2wBiSlugify(field.value);
@@ -9629,12 +10239,7 @@ function a2wBiEnsureUiBound() {
             a2wBiUpdatePreviewCard();
             a2wBiSyncDirtyState();
         });
-        field.addEventListener('blur', () => {
-            brandIdentityState.touched[id] = true;
-            a2wBiSyncDirtyState();
-        });
         field.addEventListener('change', () => {
-            brandIdentityState.touched[id] = true;
             if (id === 'biSlug') a2wBiScheduleSlugAvailabilityCheck();
             a2wBiSyncDirtyState();
         });
@@ -9697,16 +10302,38 @@ function a2wBiEnsureUiBound() {
 }
 
 async function loadBrandIdentity() {
+    const pageRoot = document.querySelector('#brand-identity .a2w-bi-page');
+    const a2wEnabled = isA2wBrandIdentityV2Enabled();
+    if (pageRoot) pageRoot.classList.toggle('a2w-bi-legacy-shell', !a2wEnabled);
+    if (a2wEnabled) {
+        a2wBiEnsureUiBound();
+    } else {
+        const saveBtn = a2wBiField('a2wBiSaveBtn');
+        if (saveBtn) saveBtn.disabled = false;
+        const stateBadge = a2wBiField('a2wBiSaveStateBadge');
+        if (stateBadge) stateBadge.textContent = '';
+    }
     if (!brandId) {
-        ['biName','biSlug','biSettore','biHomepage'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+        ['biName','biSlug','biTagline','biSettore','biLang','biHomepage','biSupportEmail','biSupportPhone','biSocialInstagram','biSocialFacebook','biSocialLinkedin','biSocialTiktok','biSocialX']
+            .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        brandIdentityState.selectedAssets = { logo: null, strip: null, thumbnail: null, background: null };
+        a2wBiRenderAssetsGrid();
+        a2wBiUpdatePreviewCard();
+        brandIdentityState.baseline = a2wBiSerializeState(a2wBiCollectFormData(), brandIdentityState.selectedAssets);
+        brandIdentityState.dirty = false;
+        a2wBiUpdateSaveButton(0);
         return;
     }
-    const res = await fetch(`${API}/brands/${brandId}`);
+    const res = await fetch(`${API}/brands/${brandId}`, { headers: getAuthHeaders() });
     const brand = await res.json();
     const c = brand.config || {};
     document.getElementById('biName').value = brand.name || '';
     document.getElementById('biSlug').value = brand.slug || '';
     document.getElementById('biSettore').value = c.settore || '';
+    const biLang = document.getElementById('biLang');
+    if (biLang) biLang.value = c.language || 'it';
+    const biTagline = document.getElementById('biTagline');
+    if (biTagline) biTagline.value = c.tagline || '';
     document.getElementById('biHomepage').value = c.homepage || '';
     const support = c.support || {};
     if (document.getElementById('biSupportEmail')) document.getElementById('biSupportEmail').value = support.email || '';
@@ -9728,7 +10355,6 @@ async function loadBrandIdentity() {
         a2wBiRenderAssetsGrid();
         a2wBiUpdatePreviewCard();
         a2wBiClearErrors();
-        brandIdentityState.touched = {};
         brandIdentityState.baseline = a2wBiSerializeState(a2wBiCollectFormData(), brandIdentityState.selectedAssets);
         brandIdentityState.dirty = false;
         a2wBiScheduleSlugAvailabilityCheck();
@@ -9737,18 +10363,16 @@ async function loadBrandIdentity() {
 }
 
 async function saveBrandIdentity() {
-    const name = document.getElementById('biName').value.trim();
+    const data = a2wBiCollectFormData();
+    const name = data.name;
     if (!name) { toast('Inserisci il nome del brand'); return; }
     if (isA2wBrandIdentityV2Enabled()) {
         a2wBiClearErrors();
         const errors = a2wBiValidate(data);
-        Object.keys(errors).forEach((field) => { brandIdentityState.touched[field] = true; });
         Object.entries(errors).forEach(([field, message]) => a2wBiSetFieldError(field, message));
         const errorCount = Object.keys(errors).length;
         if (errorCount > 0) {
-            a2wBiApplyLiveValidation();
             a2wBiUpdateSaveButton(errorCount);
-            toast('Correggi i campi evidenziati');
             return;
         }
         if (brandIdentityState.slugAvailable === false) {
@@ -9809,61 +10433,55 @@ async function saveBrandIdentity() {
             syncBrandUrl();
             toast('Brand creato!');
             await loadBrands();
-        } else { toast('Errore creazione brand'); return; }
-    } else {
-        // UPDATE existing brand
-        const existing = await fetch(`${API}/brands/${brandId}`).then(r => r.json());
-        const mergedConfig = { ...(existing.config || {}), ...config };
-        await fetch(`${API}/brands/${brandId}`, { method: 'PUT', headers: {'Content-Type':'application/json', ...getAuthHeaders()}, body: JSON.stringify({ name, slug, config: mergedConfig }) });
-        toast('Identità brand salvata!');
+        } else {
+            // UPDATE existing brand
+            const existing = await fetch(`${API}/brands/${brandId}`).then(r => r.json());
+            const mergedConfig = {
+                ...(existing.config || {}),
+                ...config,
+                brand_identity_assets: assets,
+                brand_identity_last_saved_at: new Date().toISOString()
+            };
+            const saveRes = await fetch(`${API}/brands/${brandId}`, {
+                method: 'PUT',
+                headers: {'Content-Type':'application/json', ...getAuthHeaders()},
+                body: JSON.stringify({ name, slug, config: mergedConfig })
+            });
+            if (!saveRes.ok) {
+                const err = await saveRes.json().catch(() => ({}));
+                if (isA2wBrandIdentityV2Enabled() && /slug|duplicate|unique/i.test(err.error || '')) {
+                    a2wBiSetFieldError('biSlug', 'Slug già in uso');
+                    a2wBiUpdateSaveButton(1);
+                }
+                throw new Error(err.error || 'Errore salvataggio identità');
+            }
+            toast('Identità brand salvata!');
+        }
+        if (isA2wBrandIdentityV2Enabled()) {
+            brandIdentityState.lastSavedAt = Date.now();
+        }
+        applyBrandTheme();
+        await loadBrandIdentity();
+    } catch (e) {
+        toast(e.message || 'Errore salvataggio identità');
+    } finally {
+        if (isA2wBrandIdentityV2Enabled()) {
+            brandIdentityState.saving = false;
+            a2wBiSyncDirtyState();
+        }
     }
-}
-
-async function a2wBiExecuteDeleteBrand() {
-    if (!brandId) return;
-    const res = await fetch(`${API}/brands/${brandId}`, { method: 'DELETE', headers: getAuthHeaders() });
-    if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || 'eliminazione fallita');
-    }
-    toast('Brand eliminata');
-    brandId = null;
-    await loadBrands();
 }
 
 async function deleteBrandAction() {
-    if (!brandId) return toast('Seleziona un brand');
+    if (!brandId) return alert('Seleziona una brand');
     if (!isA2wBrandIdentityV2Enabled()) {
         if (!await appConfirm({ title: 'Elimina brand', message: 'Eliminare il brand e tutti i dati collegati? Non si può annullare.', confirmLabel: 'Elimina brand', tone: 'danger' })) return;
-        try {
-            await a2wBiExecuteDeleteBrand();
-        } catch (e) {
-            toast('Errore: ' + (e.message || 'eliminazione fallita'));
+        const res = await fetch(`${API}/brands/${brandId}`, { method: 'DELETE', headers: getAuthHeaders() });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            return toast('Errore: ' + (e.error || 'eliminazione fallita'));
         }
-        return;
-    }
-    const data = a2wBiCollectFormData();
-    const counts = await a2wBiBuildDeleteCounts();
-    const confirmName = data.name || 'Brand';
-    if (window.A2W && A2W.UI && typeof A2W.UI.openConfirmDialog === 'function') {
-        const ok = await A2W.UI.openConfirmDialog({
-            title: 'Elimina brand',
-            description: 'Questa azione è irreversibile. Verranno eliminati tutti i dati collegati al brand.',
-            impactedItems: [
-                `${counts.passes} pass emessi`,
-                `${counts.contatti} contatti`,
-                `${counts.campagne} campagne`
-            ],
-            requireTyping: true,
-            confirmText: confirmName,
-            confirmLabel: 'Elimina definitivamente'
-        });
-        if (!ok) return;
-        try {
-            await a2wBiExecuteDeleteBrand();
-        } catch (e) {
-            toast('Errore: ' + (e.message || 'eliminazione fallita'));
-        }
+        toast('Brand eliminata'); brandId = null; await loadBrands();
         return;
     }
     await a2wBiOpenDeleteDialog();
@@ -9957,6 +10575,8 @@ function onMediaUploadTypeChange() {
     const type = document.getElementById('mediaUploadType')?.value || 'strip';
     const hint = document.getElementById('mediaUploadSpecHint');
     if (hint) hint.textContent = getMediaSpecHint(type);
+    const campGroup = document.getElementById('mediaUploadCampaignGroup');
+    if (campGroup) campGroup.style.display = type === 'strip' ? '' : 'none';
 }
 
 let mediaCropState = {
@@ -10202,6 +10822,19 @@ async function mpUpload() {
   reader.readAsDataURL(file);
 }
 
+function populateMediaUploadCampaignSelect(selectedId = '') {
+    const sel = document.getElementById('mediaUploadCampaignId');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Nessuna campagna —</option>';
+    (campaignsCache || []).forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = c.name;
+        sel.appendChild(o);
+    });
+    if (selectedId) sel.value = selectedId;
+}
+
 async function openMediaUpload(selectedCampaignId = '') {
     mediaUploadEditedBase64 = null;
     const fileInput = document.getElementById('mediaUploadFile');
@@ -10209,6 +10842,13 @@ async function openMediaUpload(selectedCampaignId = '') {
         fileInput.value = '';
         fileInput.onchange = () => { mediaUploadEditedBase64 = null; };
     }
+    if (brandId) {
+        try {
+            brandDataCache.delete(cacheKey(`${API}/campaigns?brand_id=${brandId}`));
+            campaignsCache = await fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } });
+        } catch (_) {}
+    }
+    populateMediaUploadCampaignSelect(selectedCampaignId);
     onMediaUploadTypeChange();
     document.getElementById('mediaUploadModal').classList.add('active');
 }
@@ -10221,6 +10861,7 @@ async function doMediaUpload() {
     const file = fileInput?.files?.[0];
     if (!file) return toast('Seleziona un file');
     const type = typeSelect?.value || 'generic';
+    const campaignId = document.getElementById('mediaUploadCampaignId')?.value || null;
     const autoFit = !!document.getElementById('mediaUploadAutoFit')?.checked;
     try {
         let base64;
@@ -10238,15 +10879,18 @@ async function doMediaUpload() {
         }
         const titleInput = document.getElementById('mediaUploadName');
         const rawTitle = titleInput?.value?.trim() || file.name;
-        const title = rawTitle;
+        const selectedCampaign = (campaignsCache || []).find(c => c.id === campaignId);
+        const title = selectedCampaign ? `[${selectedCampaign.name}] ${rawTitle}` : rawTitle;
         await fetch(`${API}/media`, {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ brand_id: bid, type, title, image_base64: base64 })
+            body: JSON.stringify({ brand_id: bid, campaign_id: campaignId, type, title, image_base64: base64 })
         });
         toast('Media caricato!');
         fileInput.value = '';
         if (titleInput) titleInput.value = '';
+        const campaignSel = document.getElementById('mediaUploadCampaignId');
+        if (campaignSel) campaignSel.value = '';
         mediaUploadEditedBase64 = null;
         closeModal('mediaUploadModal');
         loadMediaLibrary();
