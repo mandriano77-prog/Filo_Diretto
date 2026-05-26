@@ -357,7 +357,8 @@ async function getPassHoldersInsights(brandId) {
         COUNT(p.id)::int AS pass_count,
         COUNT(*) FILTER (WHERE EXISTS (
           SELECT 1 FROM device_registrations dr WHERE dr.serial_number = p.serial_number
-        ))::int AS apple_installs
+        ))::int AS apple_installs,
+        COUNT(*) FILTER (WHERE p.google_wallet_saved = TRUE)::int AS google_installs
       FROM campaigns c
       LEFT JOIN pass_instances p ON p.campaign_id = c.id
       WHERE c.brand_id = $1

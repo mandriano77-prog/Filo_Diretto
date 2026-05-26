@@ -1,0 +1,335 @@
+/**
+ * Ads2Wallet — Audience page (dark shell + legacy fallback tabs).
+ */
+
+#audiences .a2w-audience-tabs-legacy {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border, rgba(255, 255, 255, 0.1));
+}
+
+#audiences .a2w-audience-tabs-legacy .aud-subtab {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: var(--text2, rgba(255, 255, 255, 0.6));
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#audiences .a2w-audience-tabs-legacy .aud-subtab.active,
+#audiences .a2w-audience-tabs-legacy .aud-subtab[aria-selected="true"] {
+  border-bottom-color: var(--teal, #34d399);
+  color: var(--teal, #34d399);
+  font-weight: 700;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-legacy-header,
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs-legacy {
+  display: none;
+}
+
+html[data-shell="dark"].a2w-shell #audiences.a2w-audience-page {
+  max-width: 1120px;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+  margin-bottom: var(--space-5, 20px);
+  border-bottom: 1px solid var(--a2w-border-default, rgba(255, 255, 255, 0.1));
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs__tab {
+  padding: var(--space-3, 12px) 0;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--a2w-text-secondary, rgba(255, 255, 255, 0.6));
+  font-size: var(--text-sm, 13px);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs__tab:hover {
+  color: var(--a2w-text-primary, rgba(255, 255, 255, 0.92));
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs__tab.is-active,
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-tabs__tab[aria-selected="true"] {
+  color: var(--a2w-accent, #34d399);
+  border-bottom-color: var(--a2w-accent, #34d399);
+  font-weight: 600;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4, 16px);
+  margin-bottom: var(--space-5, 20px);
+}
+
+@media (max-width: 900px) {
+  html[data-shell="dark"].a2w-shell #audiences .a2w-audience-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  html[data-shell="dark"].a2w-shell #audiences .a2w-audience-kpi-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-block {
+  margin-bottom: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--a2w-border-default, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-md, 12px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-block__title {
+  font-size: var(--text-base, 14px);
+  font-weight: 600;
+  color: var(--a2w-text-primary);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-block__hint {
+  font-weight: 400;
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-block__note {
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3, 12px);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-3, 12px);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row:hover,
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row:focus-visible {
+  background: rgba(52, 211, 153, 0.06);
+  border-color: rgba(52, 211, 153, 0.25);
+  outline: none;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row__name {
+  font-weight: 600;
+  font-size: var(--text-sm, 13px);
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row__counts {
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+  white-space: nowrap;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row__bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-campaign-row__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--a2w-accent, #34d399);
+  transition: width 0.3s ease;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-behavior-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  margin-bottom: var(--space-4, 16px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--a2w-border-default);
+  background: var(--bg-canvas, #0f1419);
+  color: var(--a2w-text-primary);
+  font-family: inherit;
+  font-size: var(--text-sm, 13px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-heatmap {
+  display: grid;
+  grid-template-columns: 32px repeat(7, 1fr);
+  grid-template-rows: auto repeat(6, 20px);
+  gap: 3px;
+  max-width: 480px;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-heatmap__label {
+  font-size: 9px;
+  color: var(--a2w-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-heatmap__cell {
+  border-radius: 2px;
+  background: rgba(52, 211, 153, 0.08);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-funnel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-2, 8px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-funnel__step {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: var(--space-3, 12px);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm, 8px);
+  text-align: center;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-funnel__step-value {
+  font-size: var(--text-lg, 18px);
+  font-weight: 700;
+  color: var(--a2w-accent, #34d399);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-funnel__step-label {
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+  margin-top: 4px;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-funnel__arrow {
+  display: flex;
+  align-items: center;
+  color: var(--a2w-text-secondary);
+  font-size: 18px;
+  padding: 0 2px;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3, 12px);
+  padding: var(--space-2, 8px) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: var(--text-sm, 13px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-link-row:last-child {
+  border-bottom: none;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segment-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2, 8px) var(--space-4, 16px);
+  align-items: start;
+  padding: var(--space-4, 16px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--a2w-border-default, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-md, 12px);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segment-card__name {
+  font-weight: 600;
+  font-size: var(--text-base, 14px);
+  color: var(--a2w-text-primary);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segment-card__summary {
+  grid-column: 1;
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segment-card__meta {
+  grid-column: 1;
+  font-size: var(--text-xs, 11px);
+  color: var(--a2w-text-secondary);
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-segment-card__actions {
+  grid-row: 1 / span 3;
+  grid-column: 2;
+  align-self: center;
+}
+
+html[data-shell="dark"].a2w-shell #audiences .a2w-audience-empty {
+  text-align: center;
+  padding: var(--space-6, 24px);
+  color: var(--a2w-text-secondary);
+}
+
+/* W.AI FAB — icon only on A2W shell */
+html[data-shell="dark"].a2w-shell .wai-fab {
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+html[data-shell="dark"].a2w-shell .wai-fab::before {
+  content: '';
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z'/%3E%3Cpath d='M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z'/%3E%3Cpath d='M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z'/%3E%3C/svg%3E") center / contain no-repeat;
+}

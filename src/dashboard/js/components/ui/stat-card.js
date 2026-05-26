@@ -24,7 +24,17 @@
 
     const text = createEl('div', 'a2w-ui-stat-card__text');
     text.appendChild(createEl('div', 'a2w-ui-stat-card__value', { text: String(props.value ?? '—') }));
-    text.appendChild(createEl('div', 'a2w-ui-stat-card__label', { text: props.label || '' }));
+    const labelEl = createEl('div', 'a2w-ui-stat-card__label', { text: props.label || '' });
+    if (props.tooltip) {
+      const help = createEl('button', 'a2w-ui-stat-card__help', {
+        type: 'button',
+        'aria-label': 'Informazioni su ' + (props.label || 'indicatore'),
+        text: '?'
+      });
+      help.title = props.tooltip;
+      labelEl.appendChild(help);
+    }
+    text.appendChild(labelEl);
     body.appendChild(text);
     root.appendChild(body);
 

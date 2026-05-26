@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-audience.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
@@ -1419,57 +1420,92 @@
 
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
-                <h1 class="sec-title page-title">Push &amp; Notifiche</h1>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Nella push diretta puoi scegliere il canale: <strong>Apple (APNs)</strong>, <strong>Google Wallet</strong> o entrambi.</p>
+                <header class="a2w-push-legacy-header">
+                    <h1 class="sec-title page-title">Push &amp; Notifiche</h1>
+                    <p class="a2w-push-legacy-desc" style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing.</p>
+                </header>
+                <header class="a2w-page-header a2w-push-page-header" id="a2wPushPageHeader" hidden>
+                    <div class="a2w-page-header__main">
+                        <ol class="a2w-page-breadcrumb" aria-label="Percorso pagina"><li>Dashboard</li><li aria-current="page">Push &amp; Notifiche</li></ol>
+                        <h1 class="a2w-page-header__title">Push &amp; Notifiche</h1>
+                        <p class="a2w-page-header__desc">Invia notifiche push o programmale nel tempo o per geofencing.</p>
+                    </div>
+                </header>
 
-                <!-- Sub-tab navigation -->
-                <div class="tabs-bar" role="tablist" aria-label="Modalità push">
+                <div class="a2w-push-tabs tabs-bar" role="tablist" aria-label="Modalità push">
                     <button type="button" class="tabs-bar__tab push-subtab active" role="tab" aria-selected="true" onclick="switchPushTab('immediate')" id="pushTab_immediate">
-                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
                         <span class="push-subtab__label">Immediata</span>
                     </button>
                     <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('scheduled')" id="pushTab_scheduled">
-                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                         <span class="push-subtab__label">Programmata</span>
                     </button>
                     <button type="button" class="tabs-bar__tab push-subtab" role="tab" aria-selected="false" onclick="switchPushTab('geofencing')" id="pushTab_geofencing">
-                        <svg class="tabs-bar__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
                         <span class="push-subtab__label">Geofencing</span>
                     </button>
                 </div>
 
                 <!-- TAB 1: Push Immediata -->
                 <div id="pushPanel_immediate" class="push-panel">
+                    <div class="a2w-push-immediate-layout">
+                    <div class="a2w-push-form-col">
                     <div class="push-card">
-                        <div class="form-group">
-                            <label class="form-label">Campagna target</label>
-                            <select id="pushCampaignTarget">
-                                <option value="">Tutti i pass (tutte le campagne)</option>
-                            </select>
-                        </div>                        <div class="form-group">
-                            <label class="form-label">Audience (opzionale)</label>
-                            <select id="pushAudienceTarget">
-                                <option value="">— Nessuna (usa campagna o tutti) —</option>
-                            </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna. Crea segmenti in <strong>Audience</strong>.</p>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Canale invio</label>
-                            <select id="pushChannel">
+                        <section class="a2w-push-section" id="a2wPushAudienceSection">
+                            <h2 class="a2w-push-section__title">Destinatari</h2>
+                            <div class="a2w-push-audience-modes" role="radiogroup" aria-label="Tipo destinatari">
+                                <label class="a2w-push-radio"><input type="radio" name="a2wPushAudienceMode" value="all" checked> Tutti i pass</label>
+                                <label class="a2w-push-radio a2w-push-radio--campaign"><input type="radio" name="a2wPushAudienceMode" value="campaign"> Per campagna</label>
+                                <label class="a2w-push-radio"><input type="radio" name="a2wPushAudienceMode" value="audience"> Per audience salvata</label>
+                            </div>
+                            <div class="form-group a2w-push-target-wrap" id="a2wPushCampaignWrap" hidden>
+                                <label class="form-label" for="pushCampaignTarget">Campagna</label>
+                                <select id="pushCampaignTarget">
+                                    <option value="">Seleziona campagna</option>
+                                </select>
+                            </div>
+                            <div class="form-group a2w-push-target-wrap" id="a2wPushAudienceWrap" hidden>
+                                <label class="form-label" for="pushAudienceTarget">Audience</label>
+                                <select id="pushAudienceTarget">
+                                    <option value="">Seleziona audience</option>
+                                </select>
+                                <p class="a2w-push-field-hint" style="font-size:11px;color:var(--text2);margin-top:4px;">Crea segmenti nella sezione Audience.</p>
+                            </div>
+                            <p class="a2w-push-reach-badge" id="a2wPushReachBadge" aria-live="polite">Raggiungerai <strong>—</strong> device</p>
+                        </section>
+                        <section class="a2w-push-section" id="a2wPushChannelSection">
+                            <h2 class="a2w-push-section__title">Canale</h2>
+                            <label class="form-label a2w-push-legacy-channel-label" for="pushChannel">Canale invio</label>
+                            <div class="a2w-push-channel-toggles">
+                                <label class="a2w-push-toggle"><input type="checkbox" id="a2wPushChApple" checked> Apple Wallet (APNs)</label>
+                                <label class="a2w-push-toggle"><input type="checkbox" id="a2wPushChGoogle"> Google Wallet</label>
+                            </div>
+                            <select id="pushChannel" class="a2w-push-channel-select-native" aria-hidden="true" tabindex="-1">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
                                 <option value="samsung">Samsung Wallet</option>
                                 <option value="all">Tutti i canali</option>
                             </select>
+                        </section>
+                        <section class="a2w-push-section">
+                            <h2 class="a2w-push-section__title">Contenuto</h2>
+                        <div class="form-group">
+                            <label class="form-label" for="pushTitle">Titolo <span class="a2w-push-char" id="a2wPushCharTitle">0/50</span></label>
+                            <input type="text" id="pushTitle" maxlength="50" placeholder="es. Offerta speciale weekend!">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Titolo</label>
-                            <input type="text" id="pushTitle" placeholder="es. Offerta speciale weekend!">
+                            <label class="form-label" for="pushMessage">Messaggio <span class="a2w-push-char" id="a2wPushCharMessage">0/178</span></label>
+                            <textarea id="pushMessage" rows="3" maxlength="178" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;"></textarea>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Messaggio</label>
-                            <textarea id="pushMessage" rows="3" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;"></textarea>
+                        <div class="form-group a2w-push-link-out">
+                            <label class="form-label" for="pushBackLinkLabel">Link out (opzionale)</label>
+                            <div class="form-row">
+                                <input type="text" id="pushBackLinkLabel" placeholder="Testo link es. Scopri l'offerta" style="flex:1;">
+                                <input type="url" id="pushBackLinkUrl" placeholder="https://..." style="flex:1;">
+                            </div>
                         </div>
+                        </section>
+                        <details class="a2w-push-advanced" id="a2wPushAdvanced">
+                            <summary>Opzioni avanzate</summary>
+                            <div class="a2w-push-advanced__body">
                         <div class="form-group" style="margin-top:4px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                                 <input type="checkbox" id="pushUpdatePass" checked onchange="togglePushStripBlock()" style="width:auto;accent-color:var(--teal);">
@@ -1510,10 +1546,6 @@
                         </div>
                         <div class="form-group" style="margin-top:8px;display:none;" id="pushLegacyLinkOut">
                             <label class="form-label">Link out — retro Link 1 (legacy Ads)</label>
-                            <div class="form-row">
-                                <input type="text" id="pushBackLinkLabel" placeholder="Testo link es. Scopri l'offerta" style="flex:1;">
-                                <input type="url" id="pushBackLinkUrl" placeholder="https://..." style="flex:1;">
-                            </div>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label">Collega Instant Win (opzionale)</label>
@@ -1529,10 +1561,63 @@
                             </select>
                             <p style="font-size:11px;color:var(--text2);margin-top:4px;">Quiz, Memory o Puzzle — il link al gioco verrà inserito nel Link 1 del retro di ogni pass.</p>
                         </div>
-                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
+                            </div>
+                        </details>
+                        <footer class="a2w-push-form-footer">
+                            <button type="button" class="btn a2w-btn-primary a2w-push-send-btn" id="a2wPushSendBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                                Invia notifica
+                            </button>
+                            <button type="button" class="btn sec a2w-push-draft-btn" id="a2wPushDraftBtn">Salva come bozza</button>
+                            <button type="button" class="btn a2w-push-send-legacy" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">Invia Notifica Ora</button>
+                        </footer>
                     </div>
-                    <div class="sec-title" style="margin-top:24px;">Storico Notifiche</div>
-                    <div id="pushHistory"></div>
+                    </div>
+                    <aside class="a2w-push-preview-col" id="a2wPushPreviewCol" aria-label="Anteprima notifica">
+                        <div class="a2w-push-preview-sticky">
+                            <div class="a2w-push-preview-toolbar">
+                                <span class="a2w-push-preview-label">Anteprima</span>
+                                <div class="a2w-push-preview-os" role="tablist" aria-label="Sistema operativo anteprima">
+                                    <button type="button" class="a2w-push-preview-os-btn active" data-os="ios" aria-selected="true">iOS</button>
+                                    <button type="button" class="a2w-push-preview-os-btn" data-os="android" aria-selected="false">Android</button>
+                                </div>
+                            </div>
+                            <div class="a2w-push-preview-devices">
+                                <div class="a2w-push-mockup a2w-push-mockup--ios is-visible" id="a2wPushMockIos">
+                                    <div class="a2w-push-mockup__frame">
+                                        <div class="a2w-push-mockup__notch"></div>
+                                        <div class="a2w-push-mockup__screen">
+                                            <div class="a2w-push-mockup__banner">
+                                                <img class="a2w-push-mockup__logo" id="a2wPushPreviewLogoIos" alt="" width="28" height="28">
+                                                <div class="a2w-push-mockup__text">
+                                                    <div class="a2w-push-mockup__title" id="a2wPushPreviewTitleIos">Titolo notifica</div>
+                                                    <div class="a2w-push-mockup__message" id="a2wPushPreviewMsgIos">Il messaggio apparirà qui.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="a2w-push-mockup a2w-push-mockup--android" id="a2wPushMockAndroid">
+                                    <div class="a2w-push-mockup__frame">
+                                        <div class="a2w-push-mockup__screen">
+                                            <div class="a2w-push-mockup__banner a2w-push-mockup__banner--android">
+                                                <img class="a2w-push-mockup__logo" id="a2wPushPreviewLogoAndroid" alt="" width="24" height="24">
+                                                <div class="a2w-push-mockup__text">
+                                                    <div class="a2w-push-mockup__title" id="a2wPushPreviewTitleAndroid">Titolo notifica</div>
+                                                    <div class="a2w-push-mockup__message" id="a2wPushPreviewMsgAndroid">Il messaggio apparirà qui.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                    </div>
+                    <section class="a2w-push-history-section">
+                        <h2 class="a2w-push-history-title sec-title">Storico notifiche</h2>
+                        <div id="pushHistory"></div>
+                    </section>
                 </div>
 
                 <!-- TAB 2: Push Programmata -->
@@ -1601,7 +1686,7 @@
                                 <span>Aggiorna contenuto pass ad ogni invio</span>
                             </label>
                         </div>
-                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="createScheduledPush()">&#128337; Programma Notifica</button>
+                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="createScheduledPush()">Programma Notifica</button>
                     </div>
                     <div class="sec-title" style="margin-top:24px;">Notifiche Programmate Attive</div>
                     <div id="scheduledList" style="color:var(--text2)">Nessuna notifica programmata.</div>
@@ -1634,7 +1719,7 @@
                             <label class="form-label">Distanza massima di rilevamento (metri)</label>
                             <input type="number" id="geoMaxDistance" value="500" min="100" max="5000" step="100" style="width:120px;">
                         </div>
-                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="saveGeofencing()" id="geoSaveBtn">&#128205; Salva e Aggiorna Pass</button>
+                        <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="saveGeofencing()" id="geoSaveBtn">Salva e Aggiorna Pass</button>
                         <p id="geoSaveStatus" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:center;"></p>
                     </div>
                 </div>
@@ -1804,15 +1889,19 @@
                     </div>
                 </div>
 
-                <div style="display:flex;gap:10px;margin-top:24px;">
-                    <button class="btn" onclick="saveBrandIdentity()">Salva identità</button>
+                <div id="a2wDeleteBrandDialog" class="a2w-bi-delete-dialog" hidden>
+                    <div class="a2w-bi-delete-dialog__backdrop"></div>
+                    <div class="a2w-bi-delete-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="a2wDeleteBrandDialogTitle">
+                        <h3 id="a2wDeleteBrandDialogTitle">Conferma eliminazione brand</h3>
+                        <p>Verranno eliminati: <strong id="a2wDeleteBrandCounts">—</strong>. L'operazione è irreversibile.</p>
+                        <label class="form-label" for="a2wDeleteBrandConfirmInput">Digita <span id="a2wDeleteBrandNameToken"></span> per confermare</label>
+                        <input type="text" id="a2wDeleteBrandConfirmInput" autocomplete="off">
+                        <div class="a2w-bi-delete-dialog__actions">
+                            <button type="button" class="btn sec" id="a2wDeleteBrandCancelBtn">Annulla</button>
+                            <button type="button" class="btn danger" id="a2wDeleteBrandConfirmBtn" disabled>Elimina definitivamente</button>
+                        </div>
+                    </div>
                 </div>
-                <section class="danger-zone" aria-labelledby="brandDangerTitle">
-                    <h2 id="brandDangerTitle" class="danger-zone__title">Zona pericolosa</h2>
-                    <p class="danger-zone__desc">Elimina il brand e tutti i dati collegati (pass, campagne, contatti). L'operazione è irreversibile.</p>
-                    <button type="button" class="btn danger" onclick="deleteBrandAction()">Elimina brand</button>
-                </section>
-                <!-- Landing link removed -->
             </div>
 
             <!-- MEDIA LIBRARY -->
@@ -2579,6 +2668,299 @@
             </div>
 
 
+            <!-- LEADS DATABASE -->
+            <div id="leads" class="section">
+                <h1 class="sec-title page-title" data-menu-key="leads_page_title" data-menu-default="Contatti">Contatti</h1>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+                    <p data-menu-key="leads_page_blurb" data-menu-default="Elenco delle persone collegate ai pass di questo brand." style="color:var(--text2);font-size:13px;">Elenco delle persone collegate ai pass di questo brand.</p>
+                    <div class="leads-toolbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" id="leadsSearch" class="leads-toolbar__search" placeholder="Cerca nome, email..." oninput="filterLeads()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);font-size:13px;width:200px;">
+                        <button type="button" class="btn sec" id="leadsAddBtn" onclick="openEmployeeManualModal()" style="display:none;white-space:nowrap;">+ Aggiungi</button>
+                        <button type="button" class="btn sec" id="leadsImportBtn" onclick="openEmployeeImportModal()" style="display:none;white-space:nowrap;">✨ Importa da file</button>
+                        <button type="button" class="btn sec" id="leadsNoMatricolaBtn" onclick="filterLeadsNoMatricola()" style="display:none;white-space:nowrap;">⚠ Senza matricola</button>
+                        <button type="button" class="btn sec" id="leadsDistributeBtn" onclick="distributeActivationAll()" style="display:none;white-space:nowrap;">✉ Invia attivazione</button>
+                        <button type="button" class="btn leads-export-btn" onclick="exportLeadsCSV()" style="white-space:nowrap;"><svg class="leads-export-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Export CSV</span></button>
+                    </div>
+                </div>
+                <div id="hrActivationPanel" class="card" style="display:none;margin-bottom:16px;padding:16px 20px;">
+                    <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Distribuzione pass (ibrida)</div>
+                    <div class="stats-grid" id="activationStats" style="margin-bottom:12px;"></div>
+                    <div class="form-row" style="align-items:flex-end;gap:12px;flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:200px;">
+                            <label class="form-label">Join pubblico / QR</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                                <input type="checkbox" id="hrPublicQrEnabled" onchange="saveHrDistributionSettings()"> Abilita pagina <code>/join/{slug}</code>
+                            </label>
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:160px;">
+                            <label class="form-label">Slug join (opz.)</label>
+                            <input type="text" id="hrPublicQrSlug" placeholder="es. acme-hr" onblur="saveHrDistributionSettings()">
+                        </div>
+                        <div class="form-group" style="flex:2;min-width:220px;">
+                            <label class="form-label">Domini email ammessi (virgola)</label>
+                            <input type="text" id="hrAllowedDomains" placeholder="acme.it, acme.com" onblur="saveHrDistributionSettings()">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                        <input type="text" id="hrJoinUrl" readonly style="flex:1;min-width:200px;padding:8px 10px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);">
+                        <button type="button" class="btn small sec" onclick="copyHrJoinUrl()">Copia link join</button>
+                    </div>
+                </div>
+                <div class="stats-grid" id="leadsStats"></div>
+                <div id="leadsEmptyHost" class="leads-empty-host" hidden role="status"></div>
+                <table class="table" id="leadsTable">
+                    <thead id="leadsTableHead"><tr>
+                        <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th>
+                        <th>Device ID</th><th>Pass ID</th><th>Data registrazione</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="employeeImportModal" class="import-modal-overlay import-wizard" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="employeeImportTitle">
+                <div class="card import-modal-card import-wizard__dialog">
+                    <header class="import-wizard__header">
+                        <ol class="import-wizard__stepper" aria-label="Passaggi importazione">
+                            <li class="import-wizard__step is-active" data-step="1"><span class="import-wizard__step-num" aria-hidden="true">1</span><span>Carica file</span></li>
+                            <li class="import-wizard__step" data-step="2"><span class="import-wizard__step-num" aria-hidden="true">2</span><span>Mappa colonne</span></li>
+                            <li class="import-wizard__step" data-step="3"><span class="import-wizard__step-num" aria-hidden="true">3</span><span>Conferma &amp; importa</span></li>
+                        </ol>
+                        <div class="import-wizard__title-row">
+                            <div class="import-wizard__title-block">
+                                <h2 id="employeeImportTitle" class="import-wizard__title">Importa dipendenti</h2>
+                                <p class="import-wizard__subtitle">Auto-rileviamo le colonne del tuo file. Verifica che ogni colonna sia abbinata al campo giusto.</p>
+                                <div id="importSummaryChips" class="import-wizard__chips" hidden>
+                                    <span class="import-wizard__chip import-wizard__chip--ok" id="importChipValid">0 righe valide</span>
+                                    <span class="import-wizard__chip" id="importChipMapping">Mapping: 0/11</span>
+                                </div>
+                            </div>
+                            <button type="button" class="import-wizard__close" onclick="closeEmployeeImportModal()" aria-label="Chiudi importazione">×</button>
+                        </div>
+                    </header>
+                    <div class="import-wizard__body">
+                        <div id="importStepUpload">
+                            <p class="import-wizard__matricola-help"><strong>Matricola obbligatoria.</strong> Le righe senza matricola vengono rifiutate. La prima riga del file deve contenere una colonna <code>matricola</code> (o equivalente).</p>
+                            <p style="margin:0 0 12px;"><button type="button" class="btn sec small" onclick="downloadEmployeeImportTemplate()">📥 Scarica template CSV</button></p>
+                            <label class="import-dropzone" id="importDropzone" for="importFileInput">
+                                <span id="importDropzoneLabel">Trascina qui il file oppure clicca per scegliere</span>
+                                <span class="import-dropzone__hint">.csv · .xlsx · .xls — max ~5 MB</span>
+                            </label>
+                            <input type="file" id="importFileInput" accept=".csv,.txt,.xlsx,.xls,.ods" style="display:none;" onchange="onImportFileSelected(event)">
+                            <div class="form-group import-wizard__paste">
+                                <label class="import-wizard__field-label" for="importCsvPaste">Oppure incolla CSV</label>
+                                <textarea id="importCsvPaste" rows="4" placeholder="matricola,nome,cognome,email,reparto,sede&#10;4721,Mario,Rossi,mario.rossi@acme.it,..."></textarea>
+                            </div>
+                            <p id="importMatricolaWarn" class="import-wizard__warn" style="display:none;" role="alert"></p>
+                        </div>
+                        <div id="importStepMap" style="display:none;">
+                            <p class="import-wizard__map-hint">Verifica che ogni colonna sia abbinata al campo giusto.</p>
+                            <div id="importMappingGrid" class="import-mapping-sections"></div>
+                            <div class="import-wizard__options">
+                                <div class="form-group">
+                                    <label class="import-wizard__field-label" for="importTemplateId">Template pass (per creare tessere)</label>
+                                    <select id="importTemplateId" class="import-wizard__select"></select>
+                                </div>
+                                <label class="import-wizard__option">
+                                    <input type="checkbox" id="importCreatePasses" checked>
+                                    <span>Crea pass Wallet per ogni dipendente</span>
+                                </label>
+                                <label class="import-wizard__option">
+                                    <input type="checkbox" id="importUpdateExisting">
+                                    <span>Aggiorna dipendenti già presenti<small>Stessa matricola o stessa email</small></span>
+                                </label>
+                            </div>
+                            <div class="import-preview-wrap">
+                                <div class="import-preview__toolbar">
+                                    <span class="import-preview__label">Anteprima</span>
+                                    <span class="import-preview__range" id="importPreviewRange">—</span>
+                                </div>
+                                <div class="import-preview__scroll">
+                                    <table class="table import-preview-table">
+                                        <thead><tr id="importPreviewHead"></tr></thead>
+                                        <tbody id="importPreviewBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="importStepResult" style="display:none;">
+                            <div class="import-result-summary" id="importResultSummary"></div>
+                            <ul id="importRejectedList" class="import-rejected-list"></ul>
+                            <button type="button" class="btn sec" id="importExportRejectedBtn" style="display:none;margin-top:12px;" onclick="exportImportRejectedCsv()">📤 Esporta CSV righe rifiutate</button>
+                        </div>
+                        <p id="importStatusMsg" class="import-wizard__status" role="status"></p>
+                    </div>
+                    <footer class="import-wizard__footer">
+                        <div id="importFooterUpload" class="import-wizard__footer-inner import-wizard__footer-inner--upload">
+                            <span></span>
+                            <button type="button" class="btn import-wizard__cta" onclick="runImportPreview()">Analizza colonne</button>
+                        </div>
+                        <div id="importFooterMap" class="import-wizard__footer-inner" style="display:none;">
+                            <button type="button" class="btn import-wizard__btn-back" onclick="importBackToUpload()">← Altro file</button>
+                            <button type="button" class="btn import-wizard__cta" id="importCommitBtn" onclick="runEmployeeImportCommit()" disabled>Importa <strong id="importCommitCount">0</strong> dipendenti</button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+
+            <div id="employeeManualModal" class="import-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="employeeManualTitle">
+                <div class="card import-modal-card filo-hr-manual-modal__dialog">
+                    <header class="import-wizard__header" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;">
+                        <div class="import-wizard__title-row">
+                            <div class="import-wizard__title-block">
+                                <h2 id="employeeManualTitle" class="import-wizard__title">Aggiungi dipendente</h2>
+                                <p class="import-wizard__subtitle">Inserisci uno o più nuovi assunti. Aggiungili alla lista e salva tutti insieme.</p>
+                            </div>
+                            <button type="button" class="import-wizard__close" id="filoManualCloseBtn" aria-label="Chiudi">×</button>
+                        </div>
+                    </header>
+                    <div class="import-wizard__body">
+                        <p class="import-wizard__matricola-help"><strong>Matricola obbligatoria.</strong> Email consigliata per invio link di attivazione pass.</p>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label" for="manualEmployeeId">Matricola *</label><input type="text" id="manualEmployeeId" placeholder="es. 4721" autocomplete="off"></div>
+                            <div class="form-group"><label class="form-label" for="manualEmail">Email</label><input type="email" id="manualEmail" placeholder="nome.cognome@azienda.it"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label" for="manualFirstName">Nome</label><input type="text" id="manualFirstName" placeholder="Mario"></div>
+                            <div class="form-group"><label class="form-label" for="manualLastName">Cognome</label><input type="text" id="manualLastName" placeholder="Rossi"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label" for="manualDepartment">Reparto</label><input type="text" id="manualDepartment" placeholder="Engineering"></div>
+                            <div class="form-group"><label class="form-label" for="manualOffice">Sede</label><input type="text" id="manualOffice" placeholder="Milano"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label" for="manualHireDate">Data assunzione</label><input type="date" id="manualHireDate"></div>
+                            <div class="form-group"><label class="form-label" for="manualManagerEmail">Email manager</label><input type="email" id="manualManagerEmail" placeholder="manager@azienda.it"></div>
+                        </div>
+                        <div class="import-wizard__options" style="margin-top:8px;">
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                                <input type="checkbox" id="manualCreatePasses" checked> Crea pass Wallet
+                            </label>
+                            <div class="form-group" id="manualTemplateWrap" style="margin-top:8px;">
+                                <label class="form-label" for="manualTemplateId">Template pass</label>
+                                <select id="manualTemplateId" class="import-wizard__select"></select>
+                            </div>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px;">
+                                <input type="checkbox" id="manualSendActivation"> Invia email di attivazione
+                            </label>
+                        </div>
+                        <div id="manualEmployeeQueueWrap" style="display:none;"></div>
+                        <p id="manualEmployeeStatus" class="import-wizard__status" role="status"></p>
+                    </div>
+                    <footer class="import-wizard__footer">
+                        <div class="import-wizard__footer-inner">
+                            <button type="button" class="btn import-wizard__btn-back">Annulla</button>
+                            <button type="button" class="btn import-wizard__cta" id="manualSaveCloseBtn" disabled>Salva <strong id="manualSaveCount">0</strong> dipendenti</button>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- AUDIENCES -->
+                        <div id="audiences" class="section">
+                <h1 class="sec-title page-title">Audience</h1>
+                <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Segmentazione possessori pass, statistiche di apertura e click sul retro, audience salvate. Per segmenti in linguaggio naturale usa <strong>W.AI</strong> (pulsante in basso a destra).</p>
+                <button type="button" class="btn sec" style="margin-bottom:16px;" onclick="openWaiForAudience()">Apri W.AI · segmenta audience</button>
+
+                <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);">
+                    <button type="button" class="aud-subtab active" id="audTab_overview" onclick="switchAudienceTab('overview')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--teal);margin-bottom:-2px;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;">Panoramica</button>
+                    <button type="button" class="aud-subtab" id="audTab_behavior" onclick="switchAudienceTab('behavior')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Comportamento</button>
+                    <button type="button" class="aud-subtab" id="audTab_saved" onclick="switchAudienceTab('saved')" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text2);font-size:13px;cursor:pointer;">Audience salvate</button>
+                </div>
+
+                <div id="audPanel_overview" class="aud-panel">
+                    <div class="sec-title" style="font-size:16px;margin-bottom:12px;">Possessori pass</div>
+                    <div class="stats-grid" id="audienceInsightsStats"></div>
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Pass per campagna</div>
+                        <div id="audienceCampaignBreakdown" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                </div>
+
+                <div id="audPanel_behavior" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                        <select id="audBehaviorDays" onchange="loadAudienceBehavior()" style="width:auto;padding:6px 10px;">
+                            <option value="7">7 giorni</option>
+                            <option value="30" selected>30 giorni</option>
+                            <option value="90">90 giorni</option>
+                        </select>
+                        <button class="btn sec" onclick="exportHolderEventsCsv()">⬇ Export eventi CSV</button>
+                    </div>
+                    <div class="stats-grid" id="audienceBehaviorStats"></div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Funnel per link (retro pass)</div>
+                        <div id="audienceLinkFunnels" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="sec-title" style="font-size:15px;">Link più cliccati</div>
+                        <div id="audienceTopLinks" style="font-size:13px;color:var(--text2);">—</div>
+                    </div>
+                    <div class="card">
+                        <div class="sec-title" style="font-size:15px;">Eventi recenti</div>
+                        <div id="audienceRecentEvents" style="max-height:280px;overflow:auto;font-size:12px;">—</div>
+                    </div>
+                </div>
+
+
+                <div id="audPanel_saved" class="aud-panel" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="font-size:16px;margin:0;">Le tue audience</div>
+                        <button class="btn" onclick="openAudienceEditor()">+ Nuova audience</button>
+                    </div>
+                    <div id="audiencesList" style="color:var(--text2);">Caricamento...</div>
+                </div>
+            </div>
+
+            <div id="audienceEditorModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+                <div class="card" style="max-width:560px;width:100%;max-height:90vh;overflow:auto;margin:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <div class="sec-title" style="margin:0;font-size:18px;" id="audienceEditorTitle">Nuova audience</div>
+                        <button class="btn sec" onclick="closeAudienceEditor()">✕</button>
+                    </div>
+                    <div class="form-group"><label class="form-label">Nome *</label><input type="text" id="audName"></div>
+                    <div class="form-group"><label class="form-label">Descrizione</label><input type="text" id="audDescription"></div>
+                    <div class="form-group"><label class="form-label">Campagna</label><select id="audCampaign"><option value="">Tutte</option></select></div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Stato</label><select id="audStatus"><option value="any">Qualsiasi</option><option value="active">Attivo</option><option value="inactive">Inattivo</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Wallet</label><select id="audWallet"><option value="any">Qualsiasi</option><option value="installed">Installato</option><option value="apple">Apple</option><option value="google">Google</option><option value="samsung">Samsung</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Push Apple</label><select id="audApplePush"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Email</label><select id="audHasEmail"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Telefono</label><select id="audHasPhone"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">UTM</label><input type="text" id="audUtmSource"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato dal</label><input type="date" id="audCreatedAfter"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Creato fino</label><input type="date" id="audCreatedBefore"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Instant Win</label><select id="audPlayedIw"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Gamification</label><select id="audPlayedGam"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
+                    </div>
+                    <div class="sec-title" style="font-size:14px;margin:12px 0 6px;">Comportamento</div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Tipo filtro</label>
+                            <select id="audBehaviorMode" onchange="onAudBehaviorModeChange()">
+                                <option value="">— Nessun filtro —</option>
+                                <option value="did">Ha fatto</option>
+                                <option value="never">Non ha mai fatto</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Azione</label><select id="audBehaviorAction"><option value="">—</option><option value="opened">Aperto pass</option><option value="link_click">Click link retro</option><option value="installed">Installato</option><option value="instant_win_played">Instant Win</option><option value="gamification_played">Gamification</option></select></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Target key</label><input type="text" id="audBehaviorTargetKey" placeholder="link_0"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1;"><label class="form-label">Giorni</label><input type="number" id="audBehaviorSinceDays" value="30" min="1" max="365"></div>
+                        <div class="form-group" style="flex:1;"><label class="form-label">Min count</label><input type="number" id="audBehaviorMinCount" value="1" min="1"></div>
+                    </div>
+                    <div style="background:var(--bg2);padding:12px;border-radius:8px;margin:12px 0;">Anteprima: <strong id="audPreviewCount">—</strong></div>
+                    <div style="display:flex;gap:8px;"><button class="btn sec" onclick="previewAudienceRules()">Anteprima</button><button class="btn" onclick="saveAudience()">Salva</button></div>
+                </div>
+            </div>
+
+
             <!-- ANALYTICS -->
             <div id="analytics" class="section">
                 <h1 class="sec-title page-title">Analytics</h1>
@@ -3031,6 +3413,8 @@
 <script src="/dashboard/js/components/ui/danger-action-button.js"></script>
 <script src="/dashboard/js/components/ui/action-menu.js"></script>
 <script src="/dashboard/js/components/ui/index.js"></script>
+<script src="/dashboard/js/a2w-audience.js"></script>
+<script src="/dashboard/js/components/a2w-push-page.js"></script>
 <script src="/dashboard/js/a2w-shell.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
