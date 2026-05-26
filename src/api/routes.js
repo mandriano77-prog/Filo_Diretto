@@ -1281,6 +1281,7 @@ function isJwtBypassRoute(req) {
   if (m === 'POST' && /^\/join\/[^/]+$/.test(path)) return true;
   if (m === 'GET' && /^\/activate\/[^/]+$/.test(path)) return true;
   if (m === 'POST' && /^\/activate\/[^/]+$/.test(path)) return true;
+  if (path.startsWith('/portal/')) return true;
   return false;
 }
 
