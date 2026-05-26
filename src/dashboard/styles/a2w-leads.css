@@ -273,6 +273,13 @@ html[data-shell="dark"].a2w-shell #leads .a2w-contacts-filter-popover__hint {
   margin: 2px 0 0;
   font-size: 11px;
   color: var(--a2w-text-secondary);
+  cursor: pointer;
+}
+
+html[data-shell="dark"].a2w-shell #leads .a2w-contacts-filter-popover input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
 }
 
 html[data-shell="dark"].a2w-shell #leads .a2w-contacts-filter-options {
