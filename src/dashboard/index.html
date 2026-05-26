@@ -3032,6 +3032,7 @@
 <script src="/dashboard/js/components/ui/danger-action-button.js"></script>
 <script src="/dashboard/js/components/ui/action-menu.js"></script>
 <script src="/dashboard/js/components/ui/index.js"></script>
+<script src="/dashboard/js/components/contacts/a2w-contacts-ux.js"></script>
 <script src="/dashboard/js/a2w-shell.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
@@ -7320,11 +7321,27 @@ function renderLeadsToolbar() {
           </div>
           <div class="a2w-contacts-toolbar-actions" role="group" aria-label="Azioni contatti">
             <div class="a2w-contacts-filter-wrap">
-              <button type="button" class="btn sec a2w-contacts-toolbar-btn" id="a2wLeadsFiltersBtn" aria-expanded="false" aria-controls="a2wLeadsFiltersPanel" aria-label="Apri filtri contatti">Filtri</button>
-              <div class="a2w-contacts-filter-popover" id="a2wLeadsFiltersPanel" hidden>
-                <label><input type="checkbox" id="a2wFilterHasEmail"> Solo con email</label>
-                <label><input type="checkbox" id="a2wFilterHasPhone"> Solo con telefono</label>
-                <label><input type="checkbox" id="a2wFilterWithDevice"> Solo con device</label>
+              <button type="button" class="btn sec a2w-contacts-toolbar-btn" id="a2wLeadsFiltersBtn" aria-expanded="false" aria-controls="a2wLeadsFiltersPanel" aria-haspopup="dialog" aria-label="Apri filtri contatti">Filtri</button>
+              <div class="a2w-contacts-filter-popover" id="a2wLeadsFiltersPanel" role="dialog" aria-modal="false" aria-labelledby="a2wLeadsFiltersTitle" hidden>
+                <header class="a2w-contacts-filter-popover__head">
+                  <p class="a2w-contacts-filter-popover__title" id="a2wLeadsFiltersTitle">Filtra contatti</p>
+                  <p class="a2w-contacts-filter-popover__hint">I filtri sono cumulativi</p>
+                </header>
+                <div class="a2w-contacts-filter-options">
+                  <label class="a2w-contacts-filter-option">
+                    <input type="checkbox" class="a2w-checkbox" id="a2wFilterHasEmail">
+                    <span class="a2w-contacts-filter-option__label">Ha email</span>
+                  </label>
+                  <label class="a2w-contacts-filter-option">
+                    <input type="checkbox" class="a2w-checkbox" id="a2wFilterHasPhone">
+                    <span class="a2w-contacts-filter-option__label">Ha telefono</span>
+                  </label>
+                  <label class="a2w-contacts-filter-option">
+                    <input type="checkbox" class="a2w-checkbox" id="a2wFilterWithDevice">
+                    <span class="a2w-contacts-filter-option__label">Ha device registrato</span>
+                  </label>
+                </div>
+                <hr class="a2w-contacts-filter-divider" aria-hidden="true">
                 <button type="button" class="a2w-contacts-filter-reset" id="a2wLeadsResetFiltersBtn">Resetta filtri</button>
               </div>
             </div>
