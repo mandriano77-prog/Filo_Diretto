@@ -16,7 +16,7 @@ const {
 } = require('./employee-pass');
 const {
   resolveWalletLogoRawBuffer,
-  resolveNotificationIconRawBuffer,
+  resolvePassIconBuffers,
   buildNotificationIconFromRaw,
   buildPassLogoBuffersFromRaw
 } = require('./brand-wallet-logo');
@@ -736,6 +736,11 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.maxDistance = maxDistanceM;
   }
 
+  const iconRev = Number(brandConfig.wallet_icon_rev) || 0;
+  if (iconRev > 0) {
+    passJson.userInfo = { ...(passJson.userInfo || {}), walletIconRev: iconRev };
+  }
+
   return passJson;
 }
 
@@ -987,13 +992,13 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log(`✓ Wallet logo from ${resolvedLogo.source}`);
   }
 
-  const resolvedIcon = await resolveNotificationIconRawBuffer(brand);
-  if (resolvedIcon) {
-    iconBuffers = await buildNotificationIconFromRaw(resolvedIcon.buffer);
-    console.log(`✓ Notification icon from ${resolvedIcon.source}`);
-  } else if (resolvedLogo) {
-    iconBuffers = await buildNotificationIconFromRaw(resolvedLogo.buffer);
-    console.log('✓ Notification icon derived from pass logo (carica un\'icona quadrata per migliore leggibilità)');
+  const resolvedPassIcon = await resolvePassIconBuffers(brand, resolvedLogo);
+  if (resolvedPassIcon.iconBuffers) {
+    iconBuffers = resolvedPassIcon.iconBuffers;
+    console.log(`✓ Notification icon from ${resolvedPassIcon.source}`);
+    if (resolvedPassIcon.source === 'logo_derived' && brandCfg.brand_identity_assets?.wallet_icon) {
+      console.warn('[passkit] wallet_icon media configurata ma icona ricavata dal logo — esegui sync icona notifiche');
+    }
   }
 
   // Fall back to default icon files, then generated (HR skips Hirostar default assets)

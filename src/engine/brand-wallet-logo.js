@@ -41,6 +41,43 @@ async function resolveNotificationIconRawBuffer(brand) {
   return null;
 }
 
+function readIconPackFromConfig(logos) {
+  if (!logos?.icon) return null;
+  return {
+    icon: Buffer.from(logos.icon, 'base64'),
+    icon2x: Buffer.from(logos['icon@2x'] || logos.icon, 'base64'),
+    icon3x: Buffer.from(logos['icon@3x'] || logos['icon@2x'] || logos.icon, 'base64')
+  };
+}
+
+/**
+ * Resolve notification icon buffers for .pkpass (icon.png).
+ * Prefers dedicated wallet_icon media, then synced config.logos, then wide logo crop.
+ */
+async function resolvePassIconBuffers(brand, resolvedLogo) {
+  const cfg = brand?.config || {};
+  const fromMedia = await resolveNotificationIconRawBuffer(brand);
+  if (fromMedia) {
+    return {
+      iconBuffers: await buildNotificationIconFromRaw(fromMedia.buffer),
+      source: fromMedia.source
+    };
+  }
+  if (cfg.brand_identity_assets?.wallet_icon) {
+    const synced = readIconPackFromConfig(cfg.logos);
+    if (synced) {
+      return { iconBuffers: synced, source: 'config_logos_synced' };
+    }
+  }
+  if (resolvedLogo?.buffer) {
+    return {
+      iconBuffers: await buildNotificationIconFromRaw(resolvedLogo.buffer),
+      source: 'logo_derived'
+    };
+  }
+  return { iconBuffers: null, source: null };
+}
+
 /** Canonical wide logo for pass logo.png (Brand Identity → template → config). */
 async function resolveWalletLogoRawBuffer(brand, template) {
   const cfg = brand?.config || {};
@@ -118,6 +155,8 @@ async function applyWalletIconBase64(brandId, iconBase64, { brand, touchPasses =
     'icon@2x': iconPack.icon2x.toString('base64'),
     'icon@3x': iconPack.icon3x.toString('base64')
   };
+  config.wallet_icon_rev = (Number(config.wallet_icon_rev) || 0) + 1;
+  config.wallet_icon_synced_at = new Date().toISOString();
   await updateBrand(brandId, { config });
   if (touchPasses) {
     const passes = await listPasses(brandId);
@@ -129,10 +168,17 @@ async function applyWalletIconBase64(brandId, iconBase64, { brand, touchPasses =
 async function applyBrandLogoBase64(brandId, logoBase64, { brand, syncTemplates = false } = {}) {
   const imgBuffer = Buffer.from(logoBase64, 'base64');
   const logoBuffers = await buildPassLogoBuffersFromRaw(imgBuffer);
+  const cfg = brand?.config || {};
+  const hasDedicatedIconAsset = !!cfg.brand_identity_assets?.wallet_icon;
   const dedicated = await resolveNotificationIconRawBuffer(brand);
-  const iconPack = dedicated
-    ? await buildNotificationIconFromRaw(dedicated.buffer)
-    : await buildNotificationIconFromRaw(imgBuffer);
+  let iconPack;
+  if (dedicated) {
+    iconPack = await buildNotificationIconFromRaw(dedicated.buffer);
+  } else if (hasDedicatedIconAsset) {
+    iconPack = readIconPackFromConfig(cfg.logos) || await buildNotificationIconFromRaw(imgBuffer);
+  } else {
+    iconPack = await buildNotificationIconFromRaw(imgBuffer);
+  }
 
   const config = { ...(brand?.config || {}) };
   config.logos = {
@@ -220,6 +266,8 @@ module.exports = {
   resolveBrandLogoRawBuffer,
   resolveNotificationIconRawBuffer,
   resolveWalletLogoRawBuffer,
+  resolvePassIconBuffers,
+  readIconPackFromConfig,
   buildNotificationIconFromRaw,
   buildPassLogoBuffersFromRaw,
   buildWalletLogoAndIconFromRaw,

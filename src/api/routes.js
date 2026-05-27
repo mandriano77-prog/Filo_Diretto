@@ -764,20 +764,36 @@ router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
       passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
     });
-    const { inspectPkpassIcon, resolveBrandLogoRawBuffer } = require('../engine/brand-wallet-logo');
+    const {
+      inspectPkpassIcon,
+      resolveBrandLogoRawBuffer,
+      resolveWalletLogoRawBuffer,
+      resolvePassIconBuffers
+    } = require('../engine/brand-wallet-logo');
     const icon = await inspectPkpassIcon(pkpassBuffer);
+    const resolvedLogo = await resolveWalletLogoRawBuffer(brand, template);
     const resolved = await resolveBrandLogoRawBuffer(brand);
+    const passIcon = await resolvePassIconBuffers(brand, resolvedLogo);
+    const walletIconMediaId = brand?.config?.brand_identity_assets?.wallet_icon || null;
+    const cfg = brand?.config || {};
     res.json({
       pass_id: passInstance.id,
       serial_number: passInstance.serial_number,
       brand_id: brand.id,
       brand_name: brand.name,
-      resolved_wallet_source: resolved?.source || null,
+      wallet_icon_media_id: walletIconMediaId,
+      wallet_icon_rev: cfg.wallet_icon_rev || 0,
+      wallet_icon_synced_at: cfg.wallet_icon_synced_at || null,
+      notification_icon_source: passIcon.source,
+      has_config_logos_icon: !!(cfg.logos?.icon),
+      resolved_wallet_logo_source: resolvedLogo?.source || resolved?.source || null,
       pkpass_icon: icon,
       pkpass_bytes: pkpassBuffer.length,
       pass_type_identifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       preview_url: '/api/v1/passes/' + passInstance.id + '/wallet-icon.png',
-      ios_cache_hint: 'Se preview_url e ok ma la notifica no: elimina il pass da Wallet, scarica di nuovo, reinvia push.'
+      ios_cache_hint: passIcon.source === 'logo_derived'
+        ? 'Il server usa ancora il logo orizzontale per icon.png — carica icona quadrata e Salva Template / Brand Identity.'
+        : 'Se preview_url è ok ma la notifica no: elimina il pass da Wallet, riscarica il .pkpass, poi reinvia push. iOS può tenere in cache l\'icona finché il pass non viene reinstallato.'
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -905,7 +921,8 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
-      'Last-Modified': new Date(pass.last_updated).toUTCString()
+      'Last-Modified': new Date(pass.last_updated).toUTCString(),
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
     });
     res.send(pkpassBuffer);
   } catch (err) {
@@ -2272,6 +2289,7 @@ router.post('/push/send', async (req, res) => {
         await syncWalletLogoFromBrandIdentity(brand_id, brand, {
           syncTemplates: isHrBrand(brand, req)
         });
+        brand = await getBrand(brand_id);
         await syncWalletIconFromBrandIdentity(brand_id, brand, { touchPasses: true });
         brand = await getBrand(brand_id);
       } catch (syncErr) {
