@@ -214,9 +214,26 @@ function resolveHrBackSource(template, brand) {
   };
 }
 
+function buildAnnouncementBackSection(brandConfig) {
+  const ann = brandConfig?.pushAnnouncement;
+  if (!ann || !ann.message) return null;
+  const label = String(ann.title || 'NOVITA').trim().toUpperCase().slice(0, 64) || 'NOVITA';
+  const body = String(ann.message || '').trim();
+  if (!body) return null;
+  return {
+    kind: 'text',
+    key: 'announcement_full',
+    label,
+    body
+  };
+}
+
 function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null }) {
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
+
+  const announcement = buildAnnouncementBackSection(brandConfig);
+  if (announcement) sections.push(announcement);
 
   if (hrBack.hr_email) {
     sections.push({

@@ -101,7 +101,7 @@ html[data-shell="light"] .confirm-dialog__actions {
   border-radius: 12px;
 }
 
-.import-wizard__header {
+html[data-shell="light"] .import-wizard__header {
   flex-shrink: 0;
   padding: 20px 32px 16px;
   border-bottom: 1px solid #e2e8f0;
@@ -217,7 +217,7 @@ html[data-shell="light"] .confirm-dialog__actions {
   color: #047857;
 }
 
-.import-wizard__close {
+html[data-shell="light"] .import-wizard__close {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
@@ -250,7 +250,7 @@ html[data-shell="light"] .confirm-dialog__actions {
   min-height: 0;
 }
 
-.import-wizard__footer {
+html[data-shell="light"] .import-wizard__footer {
   flex-shrink: 0;
   padding: 16px 32px;
   border-top: 1px solid #e2e8f0;

@@ -727,6 +727,20 @@ function generatePassJson(template, instance, brand, options = {}) {
   return passJson;
 }
 
+async function buildWalletLogoAndIconFromRaw(rawLogoBuffer) {
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+  const [logo, logo2x, icon, icon2x] = await Promise.all([
+    sharp(rawLogoBuffer).resize(160, 50, { fit: 'contain', position: 'left', background: transparent }).png().toBuffer(),
+    sharp(rawLogoBuffer).resize(320, 100, { fit: 'contain', position: 'left', background: transparent }).png().toBuffer(),
+    sharp(rawLogoBuffer).resize(29, 29, { fit: 'contain', background: transparent }).png().toBuffer(),
+    sharp(rawLogoBuffer).resize(58, 58, { fit: 'contain', background: transparent }).png().toBuffer()
+  ]);
+  return {
+    logoBuffers: { logo, logo2x },
+    iconBuffers: { icon, icon2x }
+  };
+}
+
 /**
  * Generate icon PNG files with brand initial (geometric paths, no font needed)
  */
@@ -966,26 +980,23 @@ async function createPkpass(template, instance, brand, options = {}) {
   const fgColor = brandCfg.foregroundColor || template.style?.foregroundColor || '#FFFFFF';
 
   let iconBuffers, logoBuffers;
+  const tplImages = template.style?.images || {};
 
-  // Check if brand has custom logo images (base64 in config)
-  // Re-process logos to ensure left alignment every time
-  if (brand.config?.logos) {
-    const brandLogos = brand.config.logos;
-    iconBuffers = {
-      icon: brandLogos['icon'] ? Buffer.from(brandLogos['icon'], 'base64') : null,
-      icon2x: brandLogos['icon@2x'] ? Buffer.from(brandLogos['icon@2x'], 'base64') : null
-    };
+  // Derive logo + notification icon from the same source every regeneration.
+  // Avoid stale brand.config.logos.icon (e.g. legacy tenant artwork).
+  let rawLogoSource = null;
+  if (tplImages.logo) {
+    rawLogoSource = Buffer.from(tplImages.logo, 'base64');
+    console.log('✓ Using template-level logo (icon derived from logo)');
+  } else if (brand.config?.logos?.logo) {
+    rawLogoSource = Buffer.from(brand.config.logos.logo, 'base64');
+    console.log('✓ Using brand logo (icon derived from logo)');
+  }
 
-    // Re-resize logos with left alignment (stored logos may be centered)
-    if (brandLogos['logo']) {
-      const rawLogo = Buffer.from(brandLogos['logo'], 'base64');
-      const logo1x = await sharp(rawLogo).resize(160, 50, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      const logo2x = await sharp(rawLogo).resize(320, 100, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-      logoBuffers = { logo: logo1x, logo2x: logo2x };
-    } else {
-      logoBuffers = { logo: null, logo2x: null };
-    }
-    console.log('✓ Using custom brand logos (left-aligned)');
+  if (rawLogoSource) {
+    const built = await buildWalletLogoAndIconFromRaw(rawLogoSource);
+    logoBuffers = built.logoBuffers;
+    iconBuffers = built.iconBuffers;
   }
 
   // Fall back to default icon files, then generated
@@ -1006,18 +1017,6 @@ async function createPkpass(template, instance, brand, options = {}) {
   if (!logoBuffers?.logo) {
     const logos = await generateLogo(brand.name, bgColor, fgColor);
     logoBuffers = logos;
-  }
-
-  // Template-level images override brand-level (template.style.images)
-  const tplImages = template.style?.images || {};
-
-  // Logo from template overrides brand logo
-  if (tplImages.logo) {
-    const rawLogo = Buffer.from(tplImages.logo, 'base64');
-    const logo1x = await sharp(rawLogo).resize(160, 50, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    const logo2x = await sharp(rawLogo).resize(320, 100, { fit: 'contain', position: 'left', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    logoBuffers = { logo: logo1x, logo2x: logo2x };
-    console.log('✓ Using template-level logo');
   }
 
   // Strip images — push override → template → brand → default file → generated
