@@ -49,14 +49,22 @@ async function resolveWalletLogoRawBuffer(brand, template) {
   return resolveBrandLogoRawBuffer(brand);
 }
 
-async function deriveNotificationIconFromPassLogo(logoBuffers) {
-  if (!logoBuffers?.logo) return null;
-  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-  const logoHi = logoBuffers.logo2x || logoBuffers.logo;
+/** Square crop + cover fill — legible on iOS push (29/58/87px), unlike wide pass logos. */
+async function buildNotificationIconFromRaw(rawLogoBuffer) {
+  const meta = await sharp(rawLogoBuffer).metadata();
+  const w = meta.width || 100;
+  const h = meta.height || 100;
+  const size = Math.max(1, Math.min(w, h));
+  const left = Math.max(0, Math.floor((w - size) / 2));
+  const top = Math.max(0, Math.floor((h - size) / 2));
+  const square = await sharp(rawLogoBuffer)
+    .extract({ left, top, width: size, height: size })
+    .png()
+    .toBuffer();
   const [icon, icon2x, icon3x] = await Promise.all([
-    sharp(logoBuffers.logo).resize(29, 29, { fit: 'contain', background: transparent }).png().toBuffer(),
-    sharp(logoHi).resize(58, 58, { fit: 'contain', background: transparent }).png().toBuffer(),
-    sharp(logoHi).resize(87, 87, { fit: 'contain', background: transparent }).png().toBuffer()
+    sharp(square).resize(29, 29, { fit: 'cover', position: 'centre' }).png().toBuffer(),
+    sharp(square).resize(58, 58, { fit: 'cover', position: 'centre' }).png().toBuffer(),
+    sharp(square).resize(87, 87, { fit: 'cover', position: 'centre' }).png().toBuffer()
   ]);
   return { icon, icon2x, icon3x };
 }
@@ -65,18 +73,16 @@ async function applyBrandLogoBase64(brandId, logoBase64, { brand, syncTemplates 
   const imgBuffer = Buffer.from(logoBase64, 'base64');
   const logo1x = await sharp(imgBuffer).resize(160, 50, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
   const logo2x = await sharp(imgBuffer).resize(320, 100, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-  const icon1x = await sharp(imgBuffer).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-  const icon2x = await sharp(imgBuffer).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-  const icon3x = await sharp(imgBuffer).resize(87, 87, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+  const iconPack = await buildNotificationIconFromRaw(imgBuffer);
 
   const config = { ...(brand?.config || {}) };
   config.logos = {
     ...(config.logos || {}),
     logo: logo1x.toString('base64'),
     'logo@2x': logo2x.toString('base64'),
-    icon: icon1x.toString('base64'),
-    'icon@2x': icon2x.toString('base64'),
-    'icon@3x': icon3x.toString('base64')
+    icon: iconPack.icon.toString('base64'),
+    'icon@2x': iconPack.icon2x.toString('base64'),
+    'icon@3x': iconPack.icon3x.toString('base64')
   };
   await updateBrand(brandId, { config });
 
@@ -121,7 +127,7 @@ async function inspectPkpassIcon(pkpassBuffer) {
 module.exports = {
   resolveBrandLogoRawBuffer,
   resolveWalletLogoRawBuffer,
-  deriveNotificationIconFromPassLogo,
+  buildNotificationIconFromRaw,
   applyBrandLogoBase64,
   syncWalletLogoFromBrandIdentity,
   inspectPkpassIcon

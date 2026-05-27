@@ -332,6 +332,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     pass_instance_id: instance?.id || null,
     serial_number: instance?.serial_number || null,
     brandName: brand?.name || '',
+    headerHint: resolvePassHeaderHint(template, cfg),
     logoText: '',
     programName: (template?.name || brand?.name || '').slice(0, 64),
     templateName: template?.name || '',
@@ -369,15 +370,24 @@ function sectionsToAppleBackFields(sections) {
   });
 }
 
+function resolvePassHeaderHint(template, brandConfig) {
+  const tplH = template?.fields?.headerFields?.[0];
+  const brandH = brandConfig?.pass_header_hint;
+  const label = String(tplH?.label ?? brandH?.label ?? '').trim();
+  const value = String(tplH?.value ?? brandH?.value ?? '').trim();
+  if (!label && !value) return null;
+  return {
+    key: 'info_hint',
+    label: label.toUpperCase().slice(0, 64),
+    value: value.slice(0, 64),
+    textAlignment: 'PKTextAlignmentRight'
+  };
+}
+
 /** Apple Wallet — pass.json storeCard slice (employee pass layout). */
 function toApplePass(employeePass) {
   const passStructure = {
-    headerFields: [{
-      key: 'info_hint',
-      label: 'Clicca sui ···',
-      value: 'Per ulteriori info',
-      textAlignment: 'PKTextAlignmentRight'
-    }],
+    headerFields: employeePass.headerHint ? [employeePass.headerHint] : [],
     primaryFields: [],
     secondaryFields: employeePass.front.secondary || [],
     auxiliaryFields: employeePass.front.auxiliary || []

@@ -14,7 +14,7 @@ const {
   toApplePass,
   APPLE_EMPLOYEE_PASS_STRUCTURE
 } = require('./employee-pass');
-const { resolveWalletLogoRawBuffer, deriveNotificationIconFromPassLogo } = require('./brand-wallet-logo');
+const { resolveWalletLogoRawBuffer, buildNotificationIconFromRaw } = require('./brand-wallet-logo');
 
 /** Rimuove sfondo nero/opaco e ridimensiona la thumb per overlay sulla strip HR. */
 async function prepareThumbForStripOverlay(thumbBuffer, maxW, maxH) {
@@ -498,14 +498,20 @@ function generatePassJson(template, instance, brand, options = {}) {
     if (stale >= 0) auxiliaryFields.splice(stale, 1);
   }
 
-  // HEADER fallback: hint to tap ··· for more details (only if template has no custom header)
+  // Optional brand-level header hint when template has none configured
   if (!hasTemplateHeader) {
-    headerFields.push({
-      key: 'info_hint',
-      label: 'Clicca sui ···',
-      value: 'Per ulteriori info',
-      textAlignment: 'PKTextAlignmentRight'
-    });
+    const brandHint = brandConfig.pass_header_hint || {};
+    const hintLabel = String(brandHint.label || '').trim();
+    const hintValue = String(brandHint.value || '').trim();
+    if (hintLabel || hintValue) {
+      hasTemplateHeader = true;
+      headerFields.push({
+        key: 'info_hint',
+        label: hintLabel.toUpperCase().slice(0, 64),
+        value: hintValue.slice(0, 64),
+        textAlignment: 'PKTextAlignmentRight'
+      });
+    }
   }
 
   // AUXILIARY: Promo teaser on pass front — changeMessage triggers lock screen notification
@@ -730,15 +736,14 @@ function generatePassJson(template, instance, brand, options = {}) {
 
 async function buildWalletLogoAndIconFromRaw(rawLogoBuffer) {
   const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
-  const [logo, logo2x, icon, icon2x] = await Promise.all([
+  const [logo, logo2x, iconBuffers] = await Promise.all([
     sharp(rawLogoBuffer).resize(160, 50, { fit: 'contain', position: 'left', background: transparent }).png().toBuffer(),
     sharp(rawLogoBuffer).resize(320, 100, { fit: 'contain', position: 'left', background: transparent }).png().toBuffer(),
-    sharp(rawLogoBuffer).resize(29, 29, { fit: 'contain', background: transparent }).png().toBuffer(),
-    sharp(rawLogoBuffer).resize(58, 58, { fit: 'contain', background: transparent }).png().toBuffer()
+    buildNotificationIconFromRaw(rawLogoBuffer)
   ]);
   return {
     logoBuffers: { logo, logo2x },
-    iconBuffers: { icon, icon2x }
+    iconBuffers
   };
 }
 
@@ -980,12 +985,14 @@ async function createPkpass(template, instance, brand, options = {}) {
   const bgColor = brandCfg.backgroundColor || template.style?.backgroundColor || '#0D0B1A';
   const fgColor = brandCfg.foregroundColor || template.style?.foregroundColor || '#FFFFFF';
 
-  // Logo + notification icon share one source; icon.png is always derived from logo.png.
+  // Pass logo (wide) + notification icon (square crop) from the same raw brand artwork.
   let iconBuffers, logoBuffers;
+  let rawLogoForIcon = null;
   const tplImages = template.style?.images || {};
 
   const resolvedLogo = await resolveWalletLogoRawBuffer(brand, template);
   if (resolvedLogo) {
+    rawLogoForIcon = resolvedLogo.buffer;
     const built = await buildWalletLogoAndIconFromRaw(resolvedLogo.buffer);
     logoBuffers = built.logoBuffers;
     iconBuffers = built.iconBuffers;
@@ -1016,11 +1023,9 @@ async function createPkpass(template, instance, brand, options = {}) {
     logoBuffers = logos;
   }
 
-  // iOS push notifications read icon.png from the pass bundle — keep it in sync with logo.png.
-  const iconFromLogo = await deriveNotificationIconFromPassLogo(logoBuffers);
-  if (iconFromLogo) {
-    iconBuffers = iconFromLogo;
-    console.log('✓ Notification icon derived from pass logo');
+  if (!iconBuffers?.icon && rawLogoForIcon) {
+    iconBuffers = await buildNotificationIconFromRaw(rawLogoForIcon);
+    console.log('✓ Notification icon from brand artwork (square crop)');
   }
 
   // Strip images — push override → template → brand → default file → generated

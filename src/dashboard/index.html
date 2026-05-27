@@ -2780,12 +2780,12 @@
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Fronte — Campi</div>
 <p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">
-                    Su Filodiretto il fronte del pass è definito dal profilo dipendente (DIPENDENTE, MATRICOLA, REPARTO, SEDE). I campi fronte del template non vengono applicati al pass emesso.
+                    Su Filodiretto il fronte mostra DIPENDENTE, MATRICOLA, REPARTO e SEDE dal profilo. L’<strong>header in alto a destra</strong> (es. «LEGGI LE PUSH» / «Vedi dietro») si configura qui sotto: lascia vuoto per non mostrarlo.
                 </p>
                 <div id="tplFrontFieldsBlock">
                 <div class="form-row">
-                    <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="tplHeaderLabel" placeholder="es. INFO" oninput="updatePassPreview()"></div>
-                    <div class="form-group"><label class="form-label">Header Valore</label><input type="text" id="tplHeaderValue" placeholder="es. Scopri di più" oninput="updatePassPreview()"></div>
+                    <div class="form-group"><label class="form-label">Header Label</label><input type="text" id="tplHeaderLabel" placeholder="es. LEGGI LE PUSH" oninput="updatePassPreview()"></div>
+                    <div class="form-group"><label class="form-label">Header Valore</label><input type="text" id="tplHeaderValue" placeholder="es. Vedi dietro" oninput="updatePassPreview()"></div>
                 </div>
                 <div class="form-row" style="display:none;">
                     <div class="form-group"><label class="form-label">Secondary Label</label><input type="text" id="tplSecLabel" placeholder="es. VALIDO FINO AL" oninput="updatePassPreview()"></div>
@@ -5558,8 +5558,15 @@ async function editTemplate(id) {
     const header = (fields.headerFields || [])[0] || {};
     const secondary = (fields.secondaryFields || [])[0] || {};
     const auxiliary = (fields.auxiliaryFields || [])[0] || {};
-    document.getElementById('tplHeaderLabel').value = header.label || '';
-    document.getElementById('tplHeaderValue').value = header.value || '';
+    let brandHint = {};
+    if (brandId) {
+        try {
+            const b = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
+            brandHint = b?.config?.pass_header_hint || {};
+        } catch (_) {}
+    }
+    document.getElementById('tplHeaderLabel').value = header.label || brandHint.label || '';
+    document.getElementById('tplHeaderValue').value = header.value || brandHint.value || '';
     document.getElementById('tplSecLabel').value = secondary.label || '';
     document.getElementById('tplSecValue').value = secondary.value || '';
     document.getElementById('tplAuxLabel').value = auxiliary.label || '';
@@ -5605,13 +5612,17 @@ async function saveTemplate() {
             existingStyle = existing.style || {};
         } catch (_) {}
     }
+    const headerLabel = document.getElementById('tplHeaderLabel').value.trim();
+    const headerValue = document.getElementById('tplHeaderValue').value.trim();
     const body = {
         brand_id: brandId,
         name: document.getElementById('tplName').value,
         pass_type: templatePassTypeForSave(),
         style: { ...existingStyle, description: document.getElementById('tplDescription').value },
         fields: {
-            headerFields: [{ key: 'header_info', label: document.getElementById('tplHeaderLabel').value, value: document.getElementById('tplHeaderValue').value }],
+            headerFields: (headerLabel || headerValue)
+                ? [{ key: 'header_info', label: headerLabel, value: headerValue }]
+                : [],
             secondaryFields: [],
             auxiliaryFields: []
         }
@@ -5640,6 +5651,24 @@ async function saveTemplate() {
     // Upload images if any were selected
     if (tplId && Object.keys(tplImageCache).length > 0) {
         await uploadTemplateImages(tplId);
+    }
+    if (isHrDashboard() && brandId) {
+        try {
+            const existing = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
+            const cfg = { ...(existing.config || {}) };
+            if (headerLabel || headerValue) {
+                cfg.pass_header_hint = { label: headerLabel, value: headerValue };
+            } else {
+                delete cfg.pass_header_hint;
+            }
+            await fetch(`${API}/brands/${brandId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ config: cfg })
+            });
+        } catch (e) {
+            console.warn('[HR] pass_header_hint sync failed:', e);
+        }
     }
     closeModal('templateModal');
     if (editId && saved.wallet_refresh) {
@@ -5674,7 +5703,14 @@ function updatePassPreview() {
             strip.style.display = '';
         }
         document.getElementById('passPreviewFront').className = 'pass-flip-face pass-front pass-type-storeCard';
-        document.getElementById('ppHeaderField').innerHTML = '';
+        const hrHeaderLabel = document.getElementById('tplHeaderLabel').value.trim();
+        const hrHeaderValue = document.getElementById('tplHeaderValue').value.trim();
+        const hrHf = document.getElementById('ppHeaderField');
+        if (hrHeaderLabel || hrHeaderValue) {
+            hrHf.innerHTML = `<div class="pp-field-label">${esc(hrHeaderLabel)}</div><div class="pp-field-value">${esc(hrHeaderValue)}</div>`;
+        } else {
+            hrHf.innerHTML = '';
+        }
         document.getElementById('ppSecondary').innerHTML =
             '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>';
