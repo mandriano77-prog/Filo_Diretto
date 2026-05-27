@@ -1,5 +1,18 @@
 # Filo Diretto UI Changelog
 
+## FD-03 — Tabella Utenti (`[FD] users`)
+
+### Added
+- `src/filodiretto/fd-users.css` — brand cell, copy ID, protected badge, kebab menu
+- `src/filodiretto/fd-users.js` — `fdLoadUsers()` con lookup nome brand; no-op su `a2w-shell`
+
+### Changed
+- HR deploy injects `fd-users.css` / `fd-users.js`
+- `loadUsers()` delega a Filo quando `isFiloOperationalHome()`
+- Colonna Brand: nome + ID copiabile on hover; azioni in menu ⋮; utenti protetti con badge 🔒 e tooltip
+
+---
+
 ## FD-02 — Home dashboard (`[FD] home`)
 
 ### Added

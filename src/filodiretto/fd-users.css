@@ -1,0 +1,186 @@
+/**
+ * FD-03 — FiloDiretto users table. Scoped to [data-app="filodiretto"].
+ */
+html[data-app='filodiretto'] #users.users--fd .fd-users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+html[data-app='filodiretto'] #users.users--fd .fd-users-lead {
+  color: var(--text2);
+  font-size: 13px;
+  margin: 0;
+  max-width: 52ch;
+  line-height: 1.5;
+}
+
+html[data-app='filodiretto'] #users.users--fd .fd-users-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+html[data-app='filodiretto'] #users.users--fd #usersTable thead th:last-child {
+  width: 52px;
+  text-align: center;
+}
+
+html[data-app='filodiretto'] #users.users--fd #usersTable tbody td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] .fd-users-brand {
+  min-width: 140px;
+}
+
+html[data-app='filodiretto'] .fd-users-brand__name {
+  display: block;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+html[data-app='filodiretto'] .fd-users-brand__id-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] .fd-users-brand__id {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] .fd-users-copy {
+  opacity: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text2);
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+html[data-app='filodiretto'] .fd-users-brand:hover .fd-users-copy,
+html[data-app='filodiretto'] .fd-users-copy:focus-visible {
+  opacity: 1;
+}
+
+html[data-app='filodiretto'] .fd-users-copy:hover {
+  background: var(--bg3, #f3f4f6);
+  color: var(--text1);
+}
+
+html[data-app='filodiretto'] .fd-users-protected {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--fd-border-strong, #d1d5db);
+  background: var(--bg3, #f9fafb);
+  color: var(--text2);
+  cursor: help;
+}
+
+html[data-app='filodiretto'] .fd-users-protected__icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-wrap {
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+html[data-app='filodiretto'] .fd-users-kebab {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+html[data-app='filodiretto'] .fd-users-kebab:hover,
+html[data-app='filodiretto'] .fd-users-kebab[aria-expanded='true'] {
+  border-color: var(--fd-border-strong, #d1d5db);
+  background: var(--bg3, #f9fafb);
+  color: var(--text1);
+}
+
+html[data-app='filodiretto'] .fd-users-kebab:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-menu[hidden] {
+  display: none;
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text1);
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-item:hover {
+  background: var(--bg3, #f3f4f6);
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-item--danger {
+  color: var(--red, #dc2626);
+}
+
+html[data-app='filodiretto'] .fd-users-kebab-item--danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+html[data-app='filodiretto'] .fd-users-role {
+  text-transform: none;
+  font-size: 11px;
+}
