@@ -10918,6 +10918,30 @@ async function saveBrandIdentity() {
                 throw new Error(err.error || 'Errore salvataggio identità');
             }
             toast('Identità brand salvata!');
+            const logoAsset = brandIdentityState.selectedAssets?.logo;
+            if (logoAsset?.id) {
+                try {
+                    const imgRes = await fetch(`${API}/media/${logoAsset.id}/image`, { headers: getAuthHeaders() });
+                    if (imgRes.ok) {
+                        const blob = await imgRes.blob();
+                        const logoB64 = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                        if (logoB64) {
+                            await fetch(`${API}/brands/${brandId}/logo`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                                body: JSON.stringify({ logo_base64: logoB64 })
+                            });
+                        }
+                    }
+                } catch (syncErr) {
+                    console.warn('[Brand Identity] wallet logo sync failed:', syncErr);
+                }
+            }
         }
         if (isA2wBrandIdentityV2Enabled()) {
             brandIdentityState.lastSavedAt = Date.now();

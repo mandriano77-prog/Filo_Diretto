@@ -1466,6 +1466,14 @@ router.put('/brands/:id', async (req, res) => {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;
     validateBrandBackLinks(req.body);
     const brand = await updateBrand(req.params.id, req.body);
+    const { syncWalletLogoFromBrandIdentity } = require('../engine/brand-wallet-logo');
+    const synced = await syncWalletLogoFromBrandIdentity(req.params.id, brand, {
+      syncTemplates: isHrBrand(brand, req)
+    });
+    if (synced) {
+      const refreshed = await getBrand(req.params.id);
+      return res.json(refreshed);
+    }
     res.json(brand);
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
@@ -1489,42 +1497,13 @@ router.post('/brands/:id/logo', async (req, res) => {
     let { logo_base64 } = req.body;
     if (!logo_base64) return res.status(400).json({ error: 'logo_base64 richiesto' });
 
-    // Convert PDF to PNG if needed
+  // Convert PDF to PNG if needed
     logo_base64 = await pdfToPngIfNeeded(logo_base64);
-    const imgBuffer = Buffer.from(logo_base64, 'base64');
-    // Generate @1x and @2x logos
-    const logo1x = await sharp(imgBuffer).resize(160, 50, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    const logo2x = await sharp(imgBuffer).resize(320, 100, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    // Generate icons
-    const icon1x = await sharp(imgBuffer).resize(29, 29, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    const icon2x = await sharp(imgBuffer).resize(58, 58, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-    const icon3x = await sharp(imgBuffer).resize(87, 87, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-
-    const config = brand.config || {};
-    config.logos = config.logos || {};
-    config.logos.logo = logo1x.toString('base64');
-    config.logos['logo@2x'] = logo2x.toString('base64');
-    config.logos.icon = icon1x.toString('base64');
-    config.logos['icon@2x'] = icon2x.toString('base64');
-    config.logos['icon@3x'] = icon3x.toString('base64');
-
-    await updateBrand(req.params.id, { config });
-
-    // Keep pass templates aligned with Brand Identity on HR deploys.
-    if (isHrBrand(brand, req)) {
-      const templates = await listTemplates(brand.id);
-      for (const tpl of templates) {
-        const prevStyle = tpl.style && typeof tpl.style === 'object' ? tpl.style : {};
-        const prevImages = prevStyle.images && typeof prevStyle.images === 'object' ? prevStyle.images : {};
-        const style = {
-          ...prevStyle,
-          images: { ...prevImages, logo: logo_base64 }
-        };
-        await updateTemplate(tpl.id, { style });
-        await touchPassesForTemplate(tpl.id);
-      }
-      console.log(`[Brand logo] Synced HR logo to ${templates.length} template(s) for brand ${brand.id}`);
-    }
+    const { applyBrandLogoBase64 } = require('../engine/brand-wallet-logo');
+    await applyBrandLogoBase64(req.params.id, logo_base64, {
+      brand,
+      syncTemplates: isHrBrand(brand, req)
+    });
 
     res.json({ success: true, templates_synced: isHrBrand(brand, req) });
   } catch (err) {
@@ -1537,6 +1516,15 @@ router.get('/brands/:id/logo', async (req, res) => {
   try {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;
     const brand = await getBrand(req.params.id);
+    const mediaId = brand?.config?.brand_identity_assets?.logo;
+    if (mediaId) {
+      const media = await getMedia(mediaId);
+      if (media?.image_base64) {
+        const buf = Buffer.from(media.image_base64, 'base64');
+        res.set('Content-Type', 'image/png');
+        return res.send(buf);
+      }
+    }
     if (!brand?.config?.logos?.logo) return res.status(404).json({ error: 'Nessun logo' });
     const buf = Buffer.from(brand.config.logos.logo, 'base64');
     res.set('Content-Type', 'image/png');

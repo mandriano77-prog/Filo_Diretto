@@ -14,6 +14,7 @@ const {
   toApplePass,
   APPLE_EMPLOYEE_PASS_STRUCTURE
 } = require('./employee-pass');
+const { resolveBrandLogoRawBuffer } = require('./brand-wallet-logo');
 
 /** Rimuove sfondo nero/opaco e ridimensiona la thumb per overlay sulla strip HR. */
 async function prepareThumbForStripOverlay(thumbBuffer, maxW, maxH) {
@@ -982,18 +983,16 @@ async function createPkpass(template, instance, brand, options = {}) {
   let iconBuffers, logoBuffers;
   const tplImages = template.style?.images || {};
 
-  // Derive logo + notification icon from the same source every regeneration.
-  // HR: brand identity logo wins over template (templates often keep legacy artwork).
+  // Logo/icon: Brand Identity media first, then legacy config.logos.
+  // HR never falls back to template logos (often cloned Hirostar demo artwork).
   let rawLogoSource = null;
-  if (hrBrand && brand.config?.logos?.logo) {
-    rawLogoSource = Buffer.from(brand.config.logos.logo, 'base64');
-    console.log('✓ HR pass: brand logo drives wallet icon/notification');
-  } else if (tplImages.logo) {
+  const resolvedLogo = await resolveBrandLogoRawBuffer(brand);
+  if (resolvedLogo) {
+    rawLogoSource = resolvedLogo.buffer;
+    console.log(`✓ Wallet logo from ${resolvedLogo.source}`);
+  } else if (!hrBrand && tplImages.logo) {
     rawLogoSource = Buffer.from(tplImages.logo, 'base64');
     console.log('✓ Using template-level logo (icon derived from logo)');
-  } else if (brand.config?.logos?.logo) {
-    rawLogoSource = Buffer.from(brand.config.logos.logo, 'base64');
-    console.log('✓ Using brand logo (icon derived from logo)');
   }
 
   if (rawLogoSource) {
