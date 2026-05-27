@@ -10357,7 +10357,7 @@ function a2wBiApplySelectedAssetsFromConfig(config) {
     ['logo', 'strip', 'thumbnail', 'background'].forEach((type) => {
         const byId = String(saved[type] || '');
         const pool = brandIdentityState.mediaByType[type] || [];
-        brandIdentityState.selectedAssets[type] = pool.find((x) => String(x.id) === byId) || pool[0] || null;
+        brandIdentityState.selectedAssets[type] = pool.find((x) => String(x.id) === byId) || null;
     });
 }
 
