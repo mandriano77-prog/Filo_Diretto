@@ -355,6 +355,35 @@
 
         .pass-table-wrap { overflow-x: auto; max-height: 66vh; border-radius: var(--radius-md); }
         .pass-table thead th { position: sticky; top: 0; z-index: 2; }
+        .pass-table__select-col { width: 42px; text-align: center; vertical-align: middle; }
+        .pass-table__select-col input { width: 16px; height: 16px; accent-color: var(--teal, var(--accent)); cursor: pointer; }
+        .pass-table__id { font-family: ui-monospace, monospace; font-size: 11px; max-width: 148px; }
+        .pass-id-copy {
+            display: inline-block; max-width: 100%; padding: 2px 6px; border-radius: 6px;
+            border: 1px dashed var(--border); background: transparent; color: var(--text);
+            font: inherit; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .pass-id-copy:hover { border-color: var(--accent); color: var(--accent); background: rgba(124, 58, 237, 0.06); }
+        .pass-row-actions { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
+        .pass-action-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            min-height: 32px; padding: 0 10px; font-size: 12px; font-weight: 600; line-height: 1;
+            border-radius: 8px; border: 1px solid var(--border); background: var(--bg2, var(--bg3));
+            color: var(--text); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .pass-action-btn:hover { background: var(--bg-hover); border-color: var(--accent); color: var(--accent); }
+        .pass-action-btn--danger {
+            min-width: 32px; padding: 0 8px; color: #ef4444; border-color: rgba(239, 68, 68, 0.35);
+            background: rgba(239, 68, 68, 0.06);
+        }
+        .pass-action-btn--danger:hover { background: rgba(239, 68, 68, 0.12); border-color: #ef4444; color: #dc2626; }
+        .pass-bulk-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+            margin-bottom: 10px; padding: 10px 14px; border-radius: var(--radius-md);
+            border: 1px solid rgba(124, 58, 237, 0.35); background: rgba(124, 58, 237, 0.08);
+        }
+        .pass-bulk-bar[hidden] { display: none !important; }
+        .pass-bulk-bar__count { font-size: 13px; font-weight: 600; color: var(--text); }
         .pass-table-legend {
             margin-bottom: 12px;
             padding: 12px 14px;
@@ -4792,8 +4821,105 @@ function renderPassTableLegendHtml() {
             <span><strong>Google</strong> <span class="legend-pill legend-pill--ok">GW</span> salvato · <span class="legend-pill legend-pill--pending">GW°</span> in attesa · — non usato</span>
             <span><strong>Samsung</strong> <span class="legend-pill legend-pill--ok">SW</span> salvato · <span class="legend-pill legend-pill--pending">SW°</span> in attesa</span>
             <span><strong>Push (APNs)</strong> ✔ ultima consegnata · ✖ errore · <em>Nx</em> = numero invii</span>
+            <span><strong>Pass ID</strong> clic per copiare l'identificativo completo</span>
         </div>
     </div>`;
+}
+
+function getPassSelectedIds() {
+    if (!window._passSelectedIds) window._passSelectedIds = new Set();
+    return window._passSelectedIds;
+}
+
+function formatPassIdShort(id) {
+    const s = String(id || '');
+    if (!s) return '—';
+    if (s.length <= 14) return s;
+    return s.slice(0, 8) + '…' + s.slice(-4);
+}
+
+function copyPassIdToClipboard(id) {
+    if (!id) return;
+    navigator.clipboard.writeText(String(id))
+        .then(() => toast('Pass ID copiato'))
+        .catch(() => toast('Copia non riuscita'));
+}
+
+function updatePassBulkBar() {
+    const bar = document.getElementById('passBulkBar');
+    if (!bar) return;
+    const n = getPassSelectedIds().size;
+    bar.hidden = n === 0;
+    const countEl = document.getElementById('passBulkCount');
+    if (countEl) countEl.textContent = String(n);
+}
+
+function onPassRowCheckboxChange(id, el) {
+    const set = getPassSelectedIds();
+    if (el.checked) set.add(id);
+    else set.delete(id);
+    updatePassBulkBar();
+    syncPassSelectAllCheckbox();
+}
+
+function syncPassSelectAllCheckbox() {
+    const master = document.getElementById('passSelectAll');
+    const passes = window._lastPassesForExport || [];
+    if (!master || !passes.length) return;
+    const set = getPassSelectedIds();
+    const onPage = passes.filter((p) => set.has(p.id)).length;
+    master.checked = onPage > 0 && onPage === passes.length;
+    master.indeterminate = onPage > 0 && onPage < passes.length;
+}
+
+function onPassSelectAllChange(el) {
+    const passes = window._lastPassesForExport || [];
+    const set = getPassSelectedIds();
+    passes.forEach((p) => (el.checked ? set.add(p.id) : set.delete(p.id)));
+    document.querySelectorAll('.pass-row-cb').forEach((cb) => { cb.checked = el.checked; });
+    updatePassBulkBar();
+}
+
+function clearPassSelection() {
+    getPassSelectedIds().clear();
+    document.querySelectorAll('.pass-row-cb').forEach((cb) => { cb.checked = false; });
+    const master = document.getElementById('passSelectAll');
+    if (master) { master.checked = false; master.indeterminate = false; }
+    updatePassBulkBar();
+}
+
+async function deleteSelectedPasses() {
+    const set = getPassSelectedIds();
+    const ids = [...set];
+    if (!ids.length) return;
+    if (!await appConfirm({
+        title: 'Elimina pass selezionati',
+        message: `Eliminare ${ids.length} pass? Operazione irreversibile.`,
+        confirmLabel: 'Elimina',
+        tone: 'danger'
+    })) return;
+    const guard = prompt('Conferma definitiva: scrivi ELIMINA per procedere.');
+    if (guard !== 'ELIMINA') {
+        toast('Eliminazione annullata');
+        return;
+    }
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+        try {
+            const res = await fetch(`${API}/passes/${id}`, { method: 'DELETE', headers: { ...getAuthHeaders() } });
+            if (res.ok) {
+                ok += 1;
+                set.delete(id);
+            } else fail += 1;
+        } catch (_) {
+            fail += 1;
+        }
+    }
+    if (ok) toast(`Eliminati ${ok} pass`);
+    if (fail) toast(`${fail} pass non eliminati`);
+    updatePassBulkBar();
+    loadPasses(false);
 }
 
 async function loadPassWalletChannelsDiag() {
@@ -4980,12 +5106,8 @@ async function loadPasses(resetPage = false) {
     const passes = rawPasses.length > PASSES_PAGE_SIZE ? rawPasses.slice(0, PASSES_PAGE_SIZE) : rawPasses;
     const q = (passSearchQuery || '').trim().toLowerCase();
     const filteredPasses = q ? passes.filter(p => {
-        const camp = isLegacyCampaignsUiEnabled()
-            ? campaignsCache.find(c => c.id === p.campaign_id)
-            : null;
         const haystack = [
-            p.id, p.serial_number, p.device_id, p.status, p.device_source,
-            p.referrer_url, p.user_agent, camp?.name
+            p.id, p.serial_number, p.device_id, p.status, p.device_source
         ].filter(Boolean).join(' ').toLowerCase();
         return haystack.includes(q);
     }) : passes;
@@ -5021,12 +5143,22 @@ async function loadPasses(resetPage = false) {
         <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${pushSent}</div></div>
     </div>`;
 
+    const selectedOnPage = filteredPasses.filter((p) => getPassSelectedIds().has(p.id)).length;
+    const allOnPageSelected = filteredPasses.length > 0 && selectedOnPage === filteredPasses.length;
+
     el.innerHTML = statsHtml + renderPassTableLegendHtml() + `
+        <div id="passBulkBar" class="pass-bulk-bar" hidden>
+            <span class="pass-bulk-bar__count"><span id="passBulkCount">0</span> pass selezionati</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn small sec" onclick="clearPassSelection()">Deseleziona</button>
+                <button type="button" class="btn small danger" onclick="deleteSelectedPasses()">Elimina selezionati</button>
+            </div>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
             <input
                 type="search"
                 id="passSearchInput"
-                placeholder="Cerca serial, device, campagna..."
+                placeholder="Cerca pass ID, serial, device..."
                 value="${esc(passSearchQuery)}"
                 oninput="handlePassSearchInput(this.value)"
                 style="max-width:320px;"
@@ -5036,31 +5168,26 @@ async function loadPasses(resetPage = false) {
         <div class="pass-table-wrap">
         <table class="table pass-table">
             <thead><tr>
+                <th class="pass-table__select-col" title="Seleziona tutti i pass in questa pagina">
+                    <input type="checkbox" id="passSelectAll" aria-label="Seleziona tutti" ${allOnPageSelected ? 'checked' : ''} onchange="onPassSelectAllChange(this)">
+                </th>
+                <th title="Identificativo univoco del pass (clic per copiare)">Pass ID</th>
                 <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
                 <th title="Apple: campanella = APNs. Google: GW / GW°. Samsung: SW / SW° (ref salvato sul server Samsung).">Apple · Google · Samsung</th>
                 <th title="Storico notifiche inviate via Apple Push (APNs)">Push (APNs)</th>
                 <th>Device ID</th>
-                <th>Campagna</th>
-                <th>UTM</th>
-                <th title="Campo informativo di debug, non usato per KPI installazioni wallet">OS / Browser (debug)</th>
-                <th>Referrer</th>
                 <th>Stato</th>
-                <th>Azioni</th>
+                <th style="text-align:right;">Azioni</th>
             </tr></thead>
             <tbody>${filteredPasses.map(p => {
-                const camp = campaignsCache.find(c => c.id === p.campaign_id);
-                const utm = p.utm || {};
+                const rowSelected = getPassSelectedIds().has(p.id);
                 const googleSaved = passGoogleSaved(p);
                 const googlePending = passGooglePending(p);
                 const samsungSaved = passSamsungSaved(p);
                 const samsungPending = passSamsungPending(p);
                 const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
                 const applePushOn = !!p.push_token;
-                const osInfo = parseUserAgent(p.user_agent);
-                const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
-                const utmStr = utmParts.length ? utmParts.join(' / ') : '-';
-                const refDisplay = p.referrer_url ? shortenUrl(p.referrer_url) : '-';
                 const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
                 const installTitle = !isInstalled ? 'Non installato nei wallet configurati'
                     : p.device_source === 'google' ? 'Salvato in Google Wallet'
@@ -5089,7 +5216,13 @@ async function loadPasses(resetPage = false) {
                     walletReachHtml += '<span title="Nessun ref Samsung per questo pass" style="opacity:0.3;font-size:11px;">·</span>';
                 }
                 walletReachHtml += '</span>';
-                return `<tr>
+                return `<tr data-pass-id="${esc(p.id)}">
+                    <td class="pass-table__select-col">
+                        <input type="checkbox" class="pass-row-cb" aria-label="Seleziona pass" data-pass-id="${esc(p.id)}" ${rowSelected ? 'checked' : ''} onchange="onPassRowCheckboxChange('${p.id}', this)">
+                    </td>
+                    <td class="pass-table__id">
+                        <button type="button" class="pass-id-copy" onclick="copyPassIdToClipboard('${esc(p.id)}')" title="${esc(p.id)}">${esc(formatPassIdShort(p.id))}</button>
+                    </td>
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
                     <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
                     <td style="text-align:center;font-size:14px;">${walletReachHtml}</td>
@@ -5099,14 +5232,12 @@ async function loadPasses(resetPage = false) {
                         return statusIcon + ' <span style="font-size:10px;opacity:0.6;" title="' + esc(String(p.push_count)) + ' push APNs inviate">' + p.push_count + 'x · ' + pushDate + '</span>';
                     })() : '<span style="opacity:0.3;" title="Nessuna push APNs inviata">-</span>'}</td>
                     <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : p.device_source === 'samsung' ? 'S ' : '') + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
-                    <td>${camp ? esc(camp.name) : '<span style="opacity:0.3">-</span>'}</td>
-                    <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(utmParts.join(' / '))}">${esc(utmStr)}</td>
-                    <td style="font-size:11px;">${esc(osInfo)}</td>
-                    <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.referrer_url||'')}">${esc(refDisplay)}</td>
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
-                    <td style="display:flex;gap:4px;flex-wrap:wrap;">
-                        <button type="button" class="btn small sec" onclick="viewPassDetail('${p.id}')" title="Apri dettaglio pass">Vedi pass</button>
-                        <button class="btn small danger" onclick="deletePassInstance('${p.id}')" title="Elimina pass">&#10005;</button>
+                    <td style="text-align:right;">
+                        <div class="pass-row-actions">
+                            <button type="button" class="pass-action-btn pass-action-btn--view" onclick="viewPassDetail('${p.id}')" title="Apri dettaglio pass">Dettaglio</button>
+                            <button type="button" class="pass-action-btn pass-action-btn--danger" onclick="deletePassInstance('${p.id}')" title="Elimina pass" aria-label="Elimina pass">&#128465;</button>
+                        </div>
                     </td>
                 </tr>`;
             }).join('')}</tbody>
@@ -5124,6 +5255,8 @@ async function loadPasses(resetPage = false) {
             </div>
         </div>
     `;
+    updatePassBulkBar();
+    syncPassSelectAllCheckbox();
     persistPassFilters();
     } catch (e) {
         console.error('loadPasses', e);
@@ -5162,6 +5295,7 @@ function downloadPassesTableCsv() {
     }
     const sep = ';';
     const headers = [
+        'Pass ID',
         'Pass creato (generazione server)',
         'Installato',
         'Data installazione',
@@ -5171,16 +5305,9 @@ function downloadPassesTableCsv() {
         'Push APNs (storico)',
         'Device ID',
         'Sorgente device',
-        'Campagna',
-        'UTM',
-        'OS / Browser',
-        'Referrer',
         'Stato'
     ];
     const rows = passes.map(p => {
-        const camp = campaignsCache.find(c => c.id === p.campaign_id);
-        const utm = p.utm || {};
-        const utmParts = [utm.utm_source, utm.utm_medium, utm.utm_campaign, utm.utm_content].filter(Boolean);
         const gSaved = passGoogleSaved(p);
         const samSaved = passSamsungSaved(p);
         let samsungWalletCsv = '';
@@ -5199,6 +5326,7 @@ function downloadPassesTableCsv() {
         const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : p.device_source === 'samsung' ? 'Samsung' : '';
         const passCreato = p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : '';
         return [
+            p.id || '',
             passCreato,
             isInstalled ? 'Sì' : 'No',
             installDateStr,
@@ -5208,10 +5336,6 @@ function downloadPassesTableCsv() {
             pushStr,
             p.device_id || '',
             src,
-            camp ? camp.name : '',
-            utmParts.join(' / '),
-            parseUserAgent(p.user_agent),
-            p.referrer_url || '',
             p.status || ''
         ].map(csvEscapeCell).join(sep);
     });
@@ -5375,6 +5499,7 @@ async function deletePassInstance(id) {
         const res = await fetch(`${API}/passes/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Errore eliminazione');
         toast('Pass eliminato');
+        getPassSelectedIds().delete(id);
         loadPasses();
     } catch (err) { alert('Errore: ' + err.message); }
 }
