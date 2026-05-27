@@ -20,7 +20,7 @@ html[data-app='filodiretto'] #users.users--fd .fd-users-lead {
 html[data-app='filodiretto'] #users.users--fd .fd-users-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 12px;
+  border-radius: var(--fd-radius-md);
   background: var(--surface, #fff);
 }
 
@@ -114,7 +114,7 @@ html[data-app='filodiretto'] .fd-users-kebab {
   width: 32px;
   height: 32px;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 8px;
+  border-radius: var(--fd-radius-sm);
   background: var(--surface, #fff);
   cursor: pointer;
   display: inline-flex;
@@ -146,9 +146,9 @@ html[data-app='filodiretto'] .fd-users-kebab-menu {
   min-width: 168px;
   padding: 4px;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 10px;
+  border-radius: var(--fd-radius-md);
   background: var(--surface, #fff);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--fd-shadow-menu);
 }
 
 html[data-app='filodiretto'] .fd-users-kebab-menu[hidden] {
@@ -173,11 +173,11 @@ html[data-app='filodiretto'] .fd-users-kebab-item:hover {
 }
 
 html[data-app='filodiretto'] .fd-users-kebab-item--danger {
-  color: var(--red, #dc2626);
+  color: var(--fd-color-danger);
 }
 
 html[data-app='filodiretto'] .fd-users-kebab-item--danger:hover {
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--fd-color-danger-hover-bg);
 }
 
 html[data-app='filodiretto'] .fd-users-role {

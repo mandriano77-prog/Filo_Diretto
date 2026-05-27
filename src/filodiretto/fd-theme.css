@@ -1,0 +1,61 @@
+/**
+ * FD-09 — Bridge Filo tokens → dashboard semantic variables (Filo deploy only).
+ */
+html[data-app='filodiretto'] {
+  --accent: var(--fd-color-primary-500);
+  --accent-hover: var(--fd-color-primary-700);
+  --accent-subtle: var(--fd-color-primary-50);
+  --brand-50: var(--fd-color-primary-50);
+  --brand-100: var(--fd-color-primary-100);
+  --brand-600: var(--fd-color-primary-700);
+
+  --bg-canvas: var(--fd-color-bg-canvas);
+  --bg-app: var(--fd-color-bg-app);
+  --bg-subtle: var(--fd-color-bg-subtle);
+  --bg-hover: var(--fd-color-bg-hover);
+  --bg-active: var(--fd-color-primary-100);
+
+  --text-primary: var(--fd-color-text-primary);
+  --text-body: var(--fd-color-text-body);
+  --text-secondary: var(--fd-color-text-secondary);
+  --text-muted: var(--fd-color-text-muted);
+  --text2: var(--fd-color-text-secondary);
+  --text-on-accent: var(--fd-color-text-on-accent);
+
+  --border-default: var(--fd-border);
+  --border-strong: var(--fd-border-strong);
+  --border: var(--fd-border);
+  --border-focus: var(--fd-color-primary-500);
+
+  --success: var(--fd-color-success);
+  --success-bg: var(--fd-color-success-bg);
+  --warning: var(--fd-color-warning);
+  --warning-bg: var(--fd-color-warning-bg);
+  --danger: var(--fd-color-danger);
+  --danger-50: var(--fd-color-danger-bg);
+  --danger-600: var(--fd-color-danger);
+  --red: var(--fd-color-danger);
+  --green: var(--fd-color-success);
+  --info: var(--fd-color-info);
+  --info-bg: var(--fd-color-info-bg);
+
+  --radius-sm: var(--fd-radius-sm);
+  --radius-md: var(--fd-radius-md);
+  --radius-lg: var(--fd-radius-lg);
+  --radius-ui: var(--fd-radius-md);
+  --radius-pill: var(--fd-radius-pill);
+
+  --shadow-sm: var(--fd-shadow-sm);
+  --shadow-md: var(--fd-shadow-md);
+  --shadow-lg: var(--fd-shadow-lg);
+
+  --space-1: var(--fd-space-1);
+  --space-2: var(--fd-space-2);
+  --space-3: var(--fd-space-3);
+  --space-4: var(--fd-space-4);
+  --space-5: var(--fd-space-5);
+  --space-6: var(--fd-space-6);
+
+  --surface: var(--fd-color-bg-canvas);
+  --bg3: var(--fd-color-bg-hover);
+}

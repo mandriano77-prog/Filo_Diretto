@@ -18,7 +18,7 @@ html[data-app='filodiretto'] .fd-home-kpi-grid {
 
 html[data-app='filodiretto'] .fd-home-kpi {
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 12px;
+  border-radius: var(--fd-radius-md);
   padding: 14px 16px;
   background: var(--surface, #fff);
 }
@@ -58,7 +58,7 @@ html[data-app='filodiretto'] .fd-home-grid-2 {
 
 html[data-app='filodiretto'] .fd-home-card {
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 12px;
+  border-radius: var(--fd-radius-md);
   padding: 16px 18px;
   background: var(--surface, #fff);
 }
@@ -89,8 +89,8 @@ html[data-app='filodiretto'] .fd-onboarding-item {
 }
 
 html[data-app='filodiretto'] .fd-onboarding-item--done {
-  border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(34, 197, 94, 0.06);
+  border-color: var(--fd-color-success-border);
+  background: var(--fd-color-success-bg);
 }
 
 html[data-app='filodiretto'] .fd-onboarding-item__check {
@@ -108,9 +108,9 @@ html[data-app='filodiretto'] .fd-onboarding-item__check {
 }
 
 html[data-app='filodiretto'] .fd-onboarding-item--done .fd-onboarding-item__check {
-  border-color: var(--green, #22c55e);
-  background: var(--green, #22c55e);
-  color: #fff;
+  border-color: var(--fd-color-success);
+  background: var(--fd-color-success);
+  color: var(--fd-color-text-on-accent);
 }
 
 html[data-app='filodiretto'] .fd-onboarding-item__body {
@@ -133,7 +133,7 @@ html[data-app='filodiretto'] .fd-onboarding-item__action {
   flex: 0 0 auto;
   font-size: 12px;
   font-weight: 500;
-  color: var(--accent, #2563eb);
+  color: var(--fd-color-primary-700);
   background: none;
   border: none;
   cursor: pointer;

@@ -1,11 +1,72 @@
 /**
- * FiloDiretto design tokens (--fd-*). Scoped usage in filodiretto/*.css only.
+ * FD-09 — FiloDiretto design tokens (--fd-*).
+ * Loaded only on HR deploy; map to dashboard vars via fd-theme.css.
  */
 :root {
+  /* Primary scale */
+  --fd-color-primary-50: #f5f3ff;
+  --fd-color-primary-100: #ede9fe;
+  --fd-color-primary-500: #8b5cf6;
+  --fd-color-primary-700: #6d28d9;
+
+  /* Semantic */
+  --fd-color-success: #10b981;
+  --fd-color-success-bg: #ecfdf5;
+  --fd-color-success-border: rgba(16, 185, 129, 0.35);
+
+  --fd-color-warning: #f59e0b;
+  --fd-color-warning-bg: #fffbeb;
+  --fd-color-warning-border: rgba(245, 158, 11, 0.55);
+  --fd-color-warning-text: #a16207;
+
+  --fd-color-danger: #dc2626;
+  --fd-color-danger-bg: #fef2f2;
+  --fd-color-danger-border: rgba(220, 38, 38, 0.45);
+  --fd-color-danger-hover-bg: rgba(220, 38, 38, 0.08);
+
+  --fd-color-info: #3b82f6;
+  --fd-color-info-bg: #eff6ff;
+  --fd-color-info-border: rgba(37, 99, 235, 0.35);
+  --fd-color-info-text: #1d4ed8;
+
+  /* Neutrals */
+  --fd-color-bg-canvas: #ffffff;
+  --fd-color-bg-app: #fafafa;
+  --fd-color-bg-subtle: #f8fafc;
+  --fd-color-bg-hover: #f1f5f9;
   --fd-color-header-bg: #fafafa;
+
+  --fd-color-text-primary: #0f172a;
+  --fd-color-text-body: #334155;
+  --fd-color-text-secondary: #475569;
+  --fd-color-text-muted: #64748b;
+  --fd-color-text-on-accent: #ffffff;
+
   --fd-border: #e5e7eb;
   --fd-border-strong: #d1d5db;
-  --fd-danger: #dc2626;
-  --fd-text-helper: #475569;
+
+  /* Spacing */
+  --fd-space-1: 4px;
+  --fd-space-2: 8px;
+  --fd-space-3: 12px;
+  --fd-space-4: 16px;
+  --fd-space-5: 24px;
+  --fd-space-6: 32px;
+
+  /* Radius — 12px standard (md) */
+  --fd-radius-sm: 6px;
+  --fd-radius-md: 12px;
+  --fd-radius-lg: 16px;
+  --fd-radius-pill: 9999px;
   --fd-radius-header: 0;
+
+  /* Shadows */
+  --fd-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --fd-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --fd-shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --fd-shadow-menu: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* Module aliases (FD-01–FD-08) */
+  --fd-danger: var(--fd-color-danger);
+  --fd-text-helper: var(--fd-color-text-secondary);
 }

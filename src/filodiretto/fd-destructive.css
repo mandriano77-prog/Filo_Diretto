@@ -5,14 +5,14 @@ html[data-app='filodiretto'] .fd-btn-danger-outline,
 html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-actions button[id*='RemoveBtn'] {
   background: var(--surface, #fff) !important;
   color: var(--fd-danger, #dc2626) !important;
-  border: 1px solid rgba(220, 38, 38, 0.45) !important;
+  border: 1px solid var(--fd-color-danger-border) !important;
   filter: none !important;
 }
 
 html[data-app='filodiretto'] .fd-btn-danger-outline:hover:not(:disabled),
 html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-actions button[id*='RemoveBtn']:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.08) !important;
-  border-color: #dc2626 !important;
+  background: var(--fd-color-danger-hover-bg) !important;
+  border-color: var(--fd-color-danger) !important;
 }
 
 html[data-app='filodiretto'] .fd-btn-danger-outline:focus-visible {
@@ -25,13 +25,13 @@ html[data-app='filodiretto'] .btn.danger:not(#a2wDeleteBrandConfirmBtn),
 html[data-app='filodiretto'] .btn.small.danger {
   background: var(--surface, #fff) !important;
   color: var(--fd-danger, #dc2626) !important;
-  border: 1px solid rgba(220, 38, 38, 0.45) !important;
+  border: 1px solid var(--fd-color-danger-border) !important;
   filter: none !important;
 }
 
 html[data-app='filodiretto'] .btn.danger:not(#a2wDeleteBrandConfirmBtn):hover:not(:disabled),
 html[data-app='filodiretto'] .btn.small.danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.08) !important;
+  background: var(--fd-color-danger-hover-bg) !important;
 }
 
 html[data-app='filodiretto'] #appConfirmDialog .btn.danger {
@@ -48,8 +48,8 @@ html[data-app='filodiretto'] #a2wDeleteBrandConfirmBtn.btn.danger {
 
 html[data-app='filodiretto'] .pass-action-btn--danger {
   background: var(--surface, #fff) !important;
-  border: 1px solid rgba(220, 38, 38, 0.45) !important;
-  color: #dc2626 !important;
+  border: 1px solid var(--fd-color-danger-border) !important;
+  color: var(--fd-color-danger) !important;
 }
 
 /* Media library header */
@@ -81,9 +81,9 @@ html[data-app='filodiretto'] #media-library .fd-media-page-menu__panel {
   min-width: 168px;
   padding: 4px;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 10px;
+  border-radius: var(--fd-radius-md);
   background: var(--surface, #fff);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--fd-shadow-menu);
 }
 
 html[data-app='filodiretto'] #media-library .fd-media-page-menu__panel[hidden] {

@@ -1,5 +1,17 @@
 # Filo Diretto UI Changelog
 
+## FD-09 — Design tokens (`[FD] tokens`)
+
+### Added
+- `src/filodiretto/fd-theme.css` — bridge `--fd-*` → variabili dashboard su `[data-app=filodiretto]`
+
+### Changed
+- `src/filodiretto/tokens.css` — scala primary 50/100/500/700, semantici, neutrals, spacing, radius 12px, shadow
+- HR boot: `fd-theme.css` dopo `tokens.css`
+- Moduli `fd-*.css` aggiornati a usare token al posto di hex hard-coded (radius, shadow, danger/success)
+
+---
+
 ## FD-08 — Empty state arricchiti (`[FD] empty-states`)
 
 ### Added

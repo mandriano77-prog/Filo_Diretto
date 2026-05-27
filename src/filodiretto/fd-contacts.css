@@ -25,7 +25,7 @@ html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu__trigger {
   width: 32px;
   height: 32px;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 8px;
+  border-radius: var(--fd-radius-sm);
   background: var(--surface, #fff);
   cursor: pointer;
   color: var(--text2);
@@ -42,7 +42,7 @@ html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu__trigger[ar
 }
 
 html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu__trigger:focus-visible {
-  outline: 2px solid var(--accent, #2563eb);
+  outline: 2px solid var(--fd-color-primary-500);
   outline-offset: 2px;
 }
 
@@ -59,9 +59,9 @@ html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu__panel {
   min-width: 180px;
   padding: 4px;
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 10px;
+  border-radius: var(--fd-radius-md);
   background: var(--surface, #fff);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--fd-shadow-menu);
 }
 
 html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu__panel[hidden] {

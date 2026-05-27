@@ -30,15 +30,15 @@ html[data-app='filodiretto'] #brand-identity .a2w-bi-state-badge {
 }
 
 html[data-app='filodiretto'] #brand-identity .a2w-bi-state-badge.is-dirty {
-  border-color: rgba(234, 179, 8, 0.55);
-  background: rgba(234, 179, 8, 0.1);
-  color: #a16207;
+  border-color: var(--fd-color-warning-border);
+  background: var(--fd-color-warning-bg);
+  color: var(--fd-color-warning-text);
 }
 
 html[data-app='filodiretto'] #brand-identity .a2w-bi-state-badge.is-saving {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
+  border-color: var(--fd-color-info-border);
+  background: var(--fd-color-info-bg);
+  color: var(--fd-color-info-text);
 }
 
 html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:disabled {
@@ -81,9 +81,9 @@ html[data-app='filodiretto'] #templateModal .fd-form-dirty-badge {
 }
 
 html[data-app='filodiretto'] #templateModal .fd-form-dirty-badge.is-dirty {
-  border-color: rgba(234, 179, 8, 0.55);
-  background: rgba(234, 179, 8, 0.1);
-  color: #a16207;
+  border-color: var(--fd-color-warning-border);
+  background: var(--fd-color-warning-bg);
+  color: var(--fd-color-warning-text);
 }
 
 html[data-app='filodiretto'] #templateModal #fdTplSaveBtn:disabled {

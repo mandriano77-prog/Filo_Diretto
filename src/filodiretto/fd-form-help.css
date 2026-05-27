@@ -1,12 +1,7 @@
 /**
  * FD-07 — FiloDiretto helper text contrast (WCAG AA) and readable hints.
  */
-html[data-app='filodiretto'] {
-  --fd-text-helper: #475569;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --text2: #475569;
-}
+/* Text contrast overrides — values from tokens + fd-theme bridge */
 
 html[data-app='filodiretto'] .form-hint,
 html[data-app='filodiretto'] .a2w-bi-field-help,
@@ -24,7 +19,7 @@ html[data-app='filodiretto'] .bulk-select-hint {
 
 html[data-app='filodiretto'] input::placeholder,
 html[data-app='filodiretto'] textarea::placeholder {
-  color: #64748b;
+  color: var(--fd-color-text-muted);
   opacity: 1;
 }
 
