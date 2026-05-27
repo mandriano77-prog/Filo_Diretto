@@ -6065,6 +6065,35 @@ function pushClearStrip() {
     if (clr) clr.style.display = 'none';
 }
 
+let pushHistoryCache = [];
+
+function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
+    const apnsSent = data.sent_apns ?? data.sent ?? 0;
+    const apnsTotal = data.total_apns ?? data.total ?? 0;
+    const gwSynced = data.google?.updated ?? 0;
+    let msg = `${intro}\nAPNs: ${apnsSent}/${apnsTotal}`;
+    if (data.google && data.google.skipped) msg += `\nGoogle Wallet: non configurato`;
+    else msg += `\nGoogle Wallet: ${gwSynced} aggiornati`;
+    if (data.samsung) {
+        if (data.samsung.skipped) msg += `\nSamsung Wallet: non configurato o canale non incluso`;
+        else msg += `\nSamsung Wallet: update notify ${data.samsung.notified ?? 0}/${data.samsung.attempted ?? 0}`;
+    }
+    if (data.apns_results && data.apns_results.length > 0) {
+        const fails = data.apns_results.filter(r => !r.success);
+        if (fails.length > 0) msg += `\n\nErrori APNs:\n` + fails.map(f => `${f.token}: ${f.reason || f.error || 'unknown'}`).join('\n');
+        else msg += '\nAPNs OK';
+    }
+    if (apnsTotal === 0) {
+        msg += `\n\nDiagnostica APNs: nessun iPhone registrato per questo target.`;
+        msg += `\n- Reinstalla il pass sul telefono (Wallet deve registrare il token push)`;
+        msg += `\n- Apri il pass dopo l'installazione e riprova l'invio`;
+    } else if (apnsSent === 0) {
+        msg += `\n\nDiagnostica APNs: invio senza consegne.`;
+        msg += `\nControlla certificati APNs e token registrati nel debug push.`;
+    }
+    return msg;
+}
+
 async function sendImmediatePush() {
     const title = document.getElementById('pushTitle').value;
     const message = document.getElementById('pushMessage').value;
@@ -6102,22 +6131,7 @@ async function sendImmediatePush() {
     const res = await fetch(`${API}/push/send`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) { alert('Errore push: ' + data.error); return; }
-    const apnsSent = data.sent_apns ?? data.sent ?? 0;
-    const apnsTotal = data.total_apns ?? data.total ?? 0;
-    const gwSynced = data.google?.updated ?? 0;
-    let msg = `Invio completato.\nAPNs: ${apnsSent}/${apnsTotal}`;
-    if (data.google && data.google.skipped) msg += `\nGoogle Wallet: non configurato`;
-    else msg += `\nGoogle Wallet: ${gwSynced} aggiornati`;
-    if (data.samsung) {
-        if (data.samsung.skipped) msg += `\nSamsung Wallet: non configurato o canale non incluso`;
-        else msg += `\nSamsung Wallet: update notify ${data.samsung.notified ?? 0}/${data.samsung.attempted ?? 0} (richiede JWT partner in produzione)`;
-    }
-    if (data.apns_results && data.apns_results.length > 0) {
-        const fails = data.apns_results.filter(r => !r.success);
-        if (fails.length > 0) msg += `\n\nErrori APNs:\n` + fails.map(f => `${f.token}: ${f.reason || f.error || 'unknown'}`).join('\n');
-        else msg += '\nAPNs OK';
-    }
-    alert(msg);
+    alert(buildPushDeliveryMessage(data));
     document.getElementById('pushTitle').value = '';
     document.getElementById('pushMessage').value = '';
     const incl = document.getElementById('pushIncludePassLink');
@@ -6515,18 +6529,77 @@ async function loadPushHistory() {
     if (!brandId) return;
     const res = await fetch(`${API}/push/history?brand_id=${brandId}&limit=20`);
     const logs = await res.json();
+    pushHistoryCache = Array.isArray(logs) ? logs : [];
     const el = document.getElementById('pushHistory');
     if (!logs.length) { el.innerHTML = '<p style="color:var(--text2)">Nessuna notifica inviata.</p>'; return; }
     el.innerHTML = `<table class="table">
-        <thead><tr><th>Data</th><th>Canale</th><th>Titolo</th><th>Messaggio</th><th>Inviati</th></tr></thead>
+        <thead><tr><th>Data</th><th>Canale</th><th>Titolo</th><th>Messaggio</th><th>Inviati</th><th>Azioni</th></tr></thead>
         <tbody>${logs.map(l => `<tr>
             <td style="font-size:12px;">${new Date(l.sent_at||l.created_at).toLocaleString('it')}</td>
             <td>${pushChannelDisplayLabel(l.channel || 'apple')}</td>
             <td>${esc(l.title)}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.message)}</td>
             <td>${l.sent_count||0}</td>
+            <td style="white-space:nowrap;">
+                <button class="btn small" onclick="resendPushFromHistory('${String(l.id)}')">Reinvia</button>
+                <button class="btn small danger" onclick="deletePushFromHistory('${String(l.id)}')">Elimina</button>
+            </td>
         </tr>`).join('')}</tbody>
     </table>`;
+}
+
+async function resendPushFromHistory(pushId) {
+    const log = pushHistoryCache.find((row) => String(row.id) === String(pushId));
+    if (!log) return toast('Voce storico non trovata');
+    if (!brandId) return toast('Seleziona un brand');
+    const ok = await appConfirm({
+        title: 'Reinvia notifica',
+        message: `Vuoi reinviare "${log.title || 'Notifica'}"?`,
+        confirmLabel: 'Reinvia'
+    });
+    if (!ok) return;
+    try {
+        const body = {
+            brand_id: brandId,
+            title: log.title,
+            message: log.message,
+            channel: log.channel || 'apple',
+            update_pass: true
+        };
+        if (log.campaign_id) body.campaign_id = log.campaign_id;
+        const res = await fetch(`${API}/push/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) throw new Error(data.error || 'Reinvio non riuscito');
+        alert(buildPushDeliveryMessage(data, 'Reinvio completato.'));
+        toast('Push reinviata');
+        await loadPushHistory();
+    } catch (err) {
+        toast('Errore reinvio: ' + (err.message || err));
+    }
+}
+
+async function deletePushFromHistory(pushId) {
+    const log = pushHistoryCache.find((row) => String(row.id) === String(pushId));
+    const ok = await appConfirm({
+        title: 'Elimina dallo storico',
+        message: `Eliminare la voce "${log?.title || 'Push'}"?`,
+        confirmLabel: 'Elimina',
+        tone: 'danger'
+    });
+    if (!ok) return;
+    try {
+        const res = await fetch(`${API}/push/${encodeURIComponent(pushId)}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) throw new Error(data.error || 'Eliminazione non riuscita');
+        toast('Voce eliminata');
+        await loadPushHistory();
+    } catch (err) {
+        toast('Errore eliminazione: ' + (err.message || err));
+    }
 }
 
 // ==================== STRIP PROMOS ====================
