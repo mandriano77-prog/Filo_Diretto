@@ -46,19 +46,6 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:disabled {
   cursor: not-allowed;
 }
 
-html[data-app='filodiretto'] #brand-identity .a2w-bi-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 24px;
-  align-items: start;
-}
-
-@media (max-width: 1023px) {
-  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 html[data-app='filodiretto'] #templateModal .fd-form-dirty-bar {
   display: flex;
   align-items: center;

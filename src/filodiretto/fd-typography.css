@@ -12,8 +12,7 @@ html[data-app='filodiretto'] .section {
 /* H1 — page titles */
 html[data-app='filodiretto'] .section > h1.page-title,
 html[data-app='filodiretto'] .section > .page-title,
-html[data-app='filodiretto'] .section > h1.sec-title.page-title,
-html[data-app='filodiretto'] #brand-identity .a2w-bi-title {
+html[data-app='filodiretto'] .section > h1.sec-title.page-title {
   font-size: var(--fd-font-size-h1);
   font-weight: var(--fd-font-weight-bold);
   line-height: var(--fd-line-height-tight);

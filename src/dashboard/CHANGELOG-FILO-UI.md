@@ -1,5 +1,17 @@
 # Filo Diretto UI Changelog
 
+## Fix — Identità brand Filo (`[FD] brand-identity`)
+
+### Added
+- `src/filodiretto/fd-brand-identity.css` — layout 2 colonne, card sezioni, griglia asset, anteprima pass sticky (light shell)
+
+### Changed
+- Tipografia: titolo pagina BI a 24px (non più H1 globale 30px)
+- Breadcrumb interno nascosto; header sticky con Salva
+- Zona pericolosa meno invasiva (bordo tratteggiato, copy breve)
+
+---
+
 ## FD-14 — Push & Notifiche (`[FD] push`)
 
 ### Added

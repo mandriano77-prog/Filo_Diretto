@@ -1,12 +1,13 @@
 /**
  * FD-12 — FiloDiretto danger zone + confirm-by-typing modals.
  */
+/* Base danger block — toned down on brand identity via fd-brand-identity.css */
 html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone {
-  margin-top: var(--fd-space-6);
-  padding: var(--fd-space-5);
-  border: 1px solid var(--fd-color-danger);
+  margin-top: var(--fd-space-4);
+  padding: var(--fd-space-4);
+  border: 1px dashed var(--fd-color-danger-border);
   border-radius: var(--fd-radius-md);
-  background: var(--fd-color-danger-bg);
+  background: var(--fd-color-bg-canvas);
 }
 
 html[data-app='filodiretto'] #brand-identity .fd-danger-zone__head {

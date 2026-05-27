@@ -1,0 +1,369 @@
+/**
+ * Filo HR — Identità brand (layout + componenti mancanti sul light shell).
+ * Il redesign a2w-bi è scoped solo a .a2w-shell dark; questo file ripristina la UX Filo.
+ */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-breadcrumb {
+  display: none;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-header {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  margin-bottom: var(--fd-space-5);
+  padding: var(--fd-space-3) 0 var(--fd-space-4);
+  background: color-mix(in srgb, var(--fd-color-bg-canvas) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--fd-border);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-title {
+  font-size: 24px;
+  font-weight: var(--fd-font-weight-semibold);
+  line-height: var(--fd-line-height-tight);
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--fd-space-2);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-subtitle {
+  margin: 0;
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+  max-width: 58ch;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-header__actions {
+  flex-shrink: 0;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: var(--fd-space-5);
+  align-items: start;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-4);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section.card {
+  margin-bottom: 0;
+  border-radius: var(--fd-radius-md);
+  border-color: var(--fd-border);
+  box-shadow: var(--fd-shadow-sm);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head h2 {
+  margin: 0 0 var(--fd-space-1);
+  font-size: 16px;
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head p {
+  margin: 0 0 var(--fd-space-4);
+  font-size: var(--fd-font-size-body);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head--row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--fd-space-3);
+  flex-wrap: wrap;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section__head--row > div p {
+  margin-bottom: 0;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-field-help {
+  margin-top: var(--fd-space-1);
+  font-size: var(--fd-font-size-sm);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-field-error {
+  min-height: 16px;
+  margin-top: var(--fd-space-1);
+  color: var(--fd-color-danger);
+  font-size: var(--fd-font-size-sm);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-slug-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-slug-status {
+  flex-shrink: 0;
+  min-width: 28px;
+  text-align: center;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-assets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-card {
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-bg-subtle);
+  padding: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-title {
+  margin: 0 0 var(--fd-space-1);
+  font-size: var(--fd-font-size-body);
+  font-weight: var(--fd-font-weight-semibold);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-spec {
+  margin: 0 0 var(--fd-space-2);
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-dropzone {
+  border: 1px dashed var(--fd-border-strong);
+  border-radius: var(--fd-radius-sm);
+  padding: var(--fd-space-2);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-dropzone.is-dragover {
+  border-color: var(--fd-color-primary-500);
+  background: var(--fd-color-primary-50);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-preview {
+  height: 104px;
+  border-radius: var(--fd-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fd-color-bg-canvas);
+  overflow: hidden;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-placeholder {
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-asset-actions {
+  margin-top: var(--fd-space-2);
+  display: flex;
+  gap: var(--fd-space-2);
+  flex-wrap: wrap;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--fd-color-primary-700);
+  text-decoration: underline;
+  font-size: var(--fd-font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-accordion-trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fd-color-text-primary);
+  text-align: left;
+  font-size: 16px;
+  font-weight: var(--fd-font-weight-semibold);
+  cursor: pointer;
+  margin: 0 0 var(--fd-space-2);
+  padding: 0;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-column {
+  position: relative;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-mobile-toggle {
+  display: none;
+  margin-bottom: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-card {
+  position: sticky;
+  top: calc(var(--fd-space-6) + 72px);
+  margin: 0;
+  border-radius: var(--fd-radius-md);
+  border-color: var(--fd-border);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-tabs {
+  display: inline-flex;
+  gap: var(--fd-space-2);
+  margin-bottom: var(--fd-space-3);
+  flex-wrap: wrap;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-tabs button {
+  border: 1px solid var(--fd-border-strong);
+  border-radius: var(--fd-radius-pill);
+  background: var(--fd-color-bg-canvas);
+  color: var(--fd-color-text-secondary);
+  font-size: var(--fd-font-size-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-tabs button.is-active {
+  border-color: var(--fd-color-primary-500);
+  background: var(--fd-color-primary-50);
+  color: var(--fd-color-primary-700);
+  font-weight: var(--fd-font-weight-semibold);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-pass-preview {
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  overflow: hidden;
+  background: #1e1b4b;
+  margin-bottom: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-pass-preview__strip {
+  height: 88px;
+  background: linear-gradient(135deg, var(--fd-color-primary-100), var(--fd-color-primary-500));
+  background-size: cover;
+  background-position: center;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-pass-preview__body {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-3);
+  padding: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-pass-preview__body img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html[data-app='filodiretto'] #brand-identity #a2wBiPassName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: var(--fd-font-weight-semibold);
+  color: #fff;
+}
+
+html[data-app='filodiretto'] #brand-identity #a2wBiPassTagline {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-meta p {
+  margin: 0;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-secondary);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-qr {
+  min-height: 100px;
+  margin-top: var(--fd-space-3);
+  border: 1px dashed var(--fd-border);
+  border-radius: var(--fd-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fd-color-bg-subtle);
+}
+
+/* Zona pericolosa: visibile ma non dominante */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone {
+  margin-top: var(--fd-space-2);
+  padding: var(--fd-space-4);
+  border: 1px dashed var(--fd-color-danger-border);
+  background: var(--fd-color-bg-canvas);
+  border-radius: var(--fd-radius-md);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone h2 {
+  font-size: 15px;
+  color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-danger-zone__icon {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:not(:disabled) {
+  box-shadow: var(--fd-shadow-sm);
+}
+
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-mobile-toggle {
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+    border: 1px solid var(--fd-border-strong);
+    border-radius: var(--fd-radius-md);
+    background: var(--fd-color-bg-canvas);
+    font-size: var(--fd-font-size-body);
+    cursor: pointer;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-card {
+    position: static;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-card[hidden] {
+    display: none !important;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-assets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-header {
+    position: static;
+    backdrop-filter: none;
+  }
+}

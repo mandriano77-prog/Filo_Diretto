@@ -5,7 +5,7 @@
   'use strict';
 
   var HR_COPY =
-    'Elimina definitivamente il brand e tutti i dati collegati (pass dipendenti, campagne push, reward, media). L\'operazione è irreversibile.';
+    'Rimuove il brand e tutti i dati collegati. Operazione irreversibile.';
 
   function isFiloDangerApp() {
     if (document.documentElement.classList.contains('a2w-shell')) return false;
