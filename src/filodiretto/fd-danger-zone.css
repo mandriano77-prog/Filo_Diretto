@@ -1,0 +1,215 @@
+/**
+ * FD-12 — FiloDiretto danger zone + confirm-by-typing modals.
+ */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone {
+  margin-top: var(--fd-space-6);
+  padding: var(--fd-space-5);
+  border: 1px solid var(--fd-color-danger);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-danger-bg);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-danger-zone__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fd-space-3);
+  margin-bottom: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-danger-zone__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: var(--fd-radius-sm);
+  background: var(--fd-color-bg-canvas);
+  border: 1px solid var(--fd-color-danger-border);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-danger-zone__icon--sm {
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  margin-right: var(--fd-space-2);
+  vertical-align: middle;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone h2 {
+  margin: 0;
+  font-size: var(--fd-font-size-h3);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-danger);
+  line-height: var(--fd-line-height-tight);
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-danger-zone.fd-danger-zone > p {
+  margin: 0 0 var(--fd-space-4);
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-body);
+  max-width: 58ch;
+}
+
+html[data-app='filodiretto'] #brand-identity #a2wBiDangerActionHost .btn {
+  margin-top: var(--fd-space-1);
+}
+
+/* Fallback delete dialog (brand identity v2) */
+html[data-app='filodiretto'] #a2wDeleteBrandDialog.fd-delete-brand-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog.fd-delete-brand-dialog[hidden] {
+  display: none;
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .a2w-bi-delete-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .a2w-bi-delete-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(520px, calc(100vw - 32px));
+  padding: var(--fd-space-5);
+  border-radius: var(--fd-radius-md);
+  border: 1px solid var(--fd-color-danger);
+  background: var(--fd-color-bg-canvas);
+  box-shadow: var(--fd-shadow-lg);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .a2w-bi-delete-dialog__panel h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2);
+  margin: 0 0 var(--fd-space-3);
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .a2w-bi-delete-dialog__panel > p {
+  margin: 0 0 var(--fd-space-4);
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .fd-danger-zone__hint {
+  margin: var(--fd-space-2) 0 0;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog #a2wDeleteBrandConfirmInput {
+  width: 100%;
+  margin-top: var(--fd-space-2);
+  border-radius: var(--fd-radius-sm);
+  border: 1px solid var(--fd-border-strong);
+  padding: var(--fd-space-2) var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog #a2wDeleteBrandConfirmInput:focus-visible {
+  outline: 3px solid rgba(220, 38, 38, 0.3);
+  outline-offset: 2px;
+  border-color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] #a2wDeleteBrandDialog .a2w-bi-delete-dialog__actions {
+  margin-top: var(--fd-space-4);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fd-space-2);
+}
+
+/* Shared UI confirm dialog (requireTyping / delete brand) */
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm {
+  border: 1px solid var(--fd-color-danger);
+  border-radius: var(--fd-radius-md);
+  padding: 0;
+  max-width: min(520px, calc(100vw - 32px));
+  box-shadow: var(--fd-shadow-lg);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__inner {
+  padding: var(--fd-space-5);
+  margin: 0;
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__title {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2);
+  margin: 0 0 var(--fd-space-3);
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__description {
+  margin: 0 0 var(--fd-space-3);
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__impact {
+  margin: 0 0 var(--fd-space-4);
+  padding-left: var(--fd-space-4);
+  color: var(--fd-color-text-body);
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-body);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__type-label {
+  display: block;
+  font-size: var(--fd-font-size-body);
+  font-weight: var(--fd-font-weight-medium);
+  color: var(--fd-color-text-primary);
+  margin-bottom: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__type-input {
+  width: 100%;
+  border-radius: var(--fd-radius-sm);
+  border: 1px solid var(--fd-border-strong);
+  padding: var(--fd-space-2) var(--fd-space-3);
+  font-size: var(--fd-font-size-body);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__type-input:focus-visible {
+  outline: 3px solid rgba(220, 38, 38, 0.3);
+  outline-offset: 2px;
+  border-color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm .a2w-ui-confirm-dialog__actions {
+  margin-top: var(--fd-space-4);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm #a2wUiConfirmSubmit {
+  background: var(--fd-color-danger) !important;
+  color: var(--fd-color-text-on-accent) !important;
+  border: none !important;
+}
+
+html[data-app='filodiretto'] .a2w-ui-confirm-dialog.fd-danger-confirm #a2wUiConfirmSubmit:disabled {
+  opacity: 0.5;
+}

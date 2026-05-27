@@ -1,5 +1,17 @@
 # Filo Diretto UI Changelog
 
+## FD-12 — Zona pericolosa (`[FD] danger-zone`)
+
+### Added
+- `src/filodiretto/fd-danger-zone.css` — container bordo `--fd-color-danger`, icona ⚠️, copy HR
+- `src/filodiretto/fd-danger-zone.js` — enhance Identità brand, modale fallback e `A2W.UI.openConfirmDialog` con confirm-by-typing (trim)
+
+### Changed
+- CTA «Elimina brand» → outline danger; modali delete con bordo danger e hint accessibilità
+- Conferma finale disabilitata finché il nome brand digitato non coincide (trim)
+
+---
+
 ## FD-11 — Sistema bottoni (`[FD] buttons`)
 
 ### Added
