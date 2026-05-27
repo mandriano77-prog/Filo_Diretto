@@ -21,6 +21,10 @@
             var desc = document.querySelector('meta[name="description"]');
             if (desc) desc.content = base + (lock === 'hr' ? ' — piattaforma HR Wallet' : ' — dashboard');
             if (lock === 'hr') document.documentElement.setAttribute('data-shell', 'light');
+            var host = (window.location.hostname || '').toLowerCase();
+            if (host.includes('ads2wallet')) {
+                document.documentElement.classList.add('a2w-shell');
+            }
         } catch (e) {}
     })();
     </script>
@@ -34,7 +38,7 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v3">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v4">
     <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
@@ -7368,12 +7372,9 @@ function isLeadPassInstalled(lead) {
 /** Ads2Wallet Contatti redesign only — never FiloDiretto / HR dipendenti. */
 function isA2wLeadsRedesignActive() {
     if (leadsHrMode) return false;
-    const onA2wHost = (window.location.hostname || '').toLowerCase().includes('ads2wallet');
-    if (onA2wHost) {
-        return document.documentElement.classList.contains('a2w-shell');
-    }
-    if (typeof isA2wDeploy === 'function' && !isA2wDeploy()) return false;
+    if ((window.location.hostname || '').toLowerCase().includes('ads2wallet')) return true;
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
+    if (typeof isA2wDeploy === 'function' && !isA2wDeploy()) return false;
     return document.documentElement.classList.contains('a2w-shell');
 }
 
@@ -8072,6 +8073,9 @@ async function loadLeads() {
     if (!brandId) return;
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
     leadsHrMode = isHrBrandContext();
+    if ((window.location.hostname || '').toLowerCase().includes('ads2wallet')) {
+        document.documentElement.classList.add('a2w-shell');
+    }
     hrDistributionMode = getDistributionModeFromStorage();
     if (!leadsHrMode) leadsActiveKpiFilter = null;
     if (!leadsHrMode) leadsPage = 1;

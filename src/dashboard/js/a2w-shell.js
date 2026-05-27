@@ -27,6 +27,11 @@
     return isA2wDeploy() && document.documentElement.classList.contains('a2w-shell');
   }
 
+  A2W.isA2wDeploy = isA2wDeploy;
+  A2W.isA2wActive = isA2wActive;
+  window.isA2wDeploy = isA2wDeploy;
+  window.isA2wActive = isA2wActive;
+
   if (!isA2wDeploy()) return;
   console.debug('[A2W] shell loaded — FiloDiretto safe mode: ON');
 
@@ -1526,15 +1531,11 @@
   A2W.initA2WSidebarChrome = initA2WSidebarChrome;
   A2W.syncA2wHeaderChrome = syncA2wHeaderChrome;
   A2W.syncA2wWaiPadding = syncA2wWaiPadding;
-  A2W.isA2wDeploy = isA2wDeploy;
-  A2W.isA2wActive = isA2wActive;
   A2W.a2wLoadAnalytics = a2wLoadAnalytics;
 
   window.ensureA2wLeadsLayout = ensureA2wLeadsLayout;
   window.initA2wShell = initA2wShell;
   window.syncA2wHeaderChrome = syncA2wHeaderChrome;
   window.syncA2wWaiPadding = syncA2wWaiPadding;
-  window.isA2wDeploy = isA2wDeploy;
-  window.isA2wActive = isA2wActive;
   window.a2wLoadAnalytics = a2wLoadAnalytics;
 })();
