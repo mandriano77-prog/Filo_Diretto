@@ -1,5 +1,18 @@
 # Filo Diretto UI Changelog
 
+## FD-08 — Empty state arricchiti (`[FD] empty-states`)
+
+### Added
+- `src/filodiretto/fd-empty-states.css` — layout CTA + link guida
+- `src/filodiretto/fd-empty-states.js` — wrap `renderEmptyState()` su Filo HR con copy, CTA e link «Come funziona»
+
+### Changed
+- HR deploy injects `fd-empty-states.css` / `fd-empty-states.js`
+- Empty state per: Template Pass, Pass emessi, Reward, Challenge, Log attività, Contatti (dipendenti)
+- Link guida → `https://docs.filodiretto.app/guide#…` (placeholder documentazione)
+
+---
+
 ## FD-07 — Helper text e placeholder (`[FD] form-help`)
 
 ### Added

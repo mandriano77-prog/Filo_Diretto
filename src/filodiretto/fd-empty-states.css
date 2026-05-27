@@ -1,0 +1,46 @@
+/**
+ * FD-08 — FiloDiretto enriched empty states.
+ */
+html[data-app='filodiretto'] .empty-state.fd-empty-state,
+html[data-app='filodiretto'] .fd-empty-state {
+  padding: 28px 20px;
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+html[data-app='filodiretto'] .fd-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 14px;
+}
+
+html[data-app='filodiretto'] .fd-empty-state__help {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent, #7c3aed);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+html[data-app='filodiretto'] .fd-empty-state__help:hover {
+  text-decoration: underline;
+  background: var(--accent-subtle, #f5f3ff);
+}
+
+html[data-app='filodiretto'] .fd-empty-state .empty-state__desc {
+  color: var(--fd-text-helper, #475569);
+  line-height: 1.5;
+  max-width: 36ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-app='filodiretto'] td .fd-empty-state,
+html[data-app='filodiretto'] #leadsEmptyHost .fd-empty-state {
+  padding: 24px 16px;
+}
