@@ -1848,19 +1848,10 @@
                     </div>
                     <div class="card" style="margin:0;">
                         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-                            <div class="sec-title" style="font-size:15px;margin:0;">Strip per campagna</div>
-                            <input id="mediaStripSearch" type="search" placeholder="Filtra per campagna/nome..." oninput="loadMediaLibrary()" style="max-width:220px;">
+                            <div class="sec-title" style="font-size:15px;margin:0;">Strip</div>
+                            <input id="mediaStripSearch" type="search" placeholder="Cerca per nome..." oninput="loadMediaLibrary()" style="max-width:220px;">
                         </div>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                            <select id="mediaFilterCampaignId" onchange="loadMediaLibrary()" style="max-width:260px;">
-                                <option value="">Seleziona campagna</option>
-                            </select>
-                            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">
-                                <input type="checkbox" id="mediaOnlySelectedCampaign" style="width:auto;accent-color:var(--teal);" onchange="loadMediaLibrary()">
-                                Mostra solo campagna selezionata
-                            </label>
-                        </div>
-                        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Mantieni più varianti e assegna un riferimento campagna nel nome.</p>
+                        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Puoi caricare più varianti (es. promo, evento, default) e sceglierle in push o nel template.</p>
                         <div id="mediaStripGrid" class="strip-gallery"><p style="color:var(--text2)">Caricamento...</p></div>
                     </div>
                     <div class="card" style="margin:0;">
@@ -10241,7 +10232,7 @@ const BRAND_PASS_FIXED_COLORS = {
 const A2W_BRAND_IDENTITY_ASSET_SPECS = {
     logo: { label: 'Logo brand', hint: 'Consigliato 512x512 PNG/SVG', mediaType: 'logo' },
     wallet_icon: { label: 'Icona notifiche Wallet', hint: 'Quadrata 512×512 PNG — per push iPhone', mediaType: 'wallet_icon' },
-    strip: { label: 'Strip campagna default', hint: 'Consigliato 1125x432 px', mediaType: 'strip' },
+    strip: { label: 'Strip default', hint: 'Consigliato 1125x432 px', mediaType: 'strip' },
     thumbnail: { label: 'Thumbnail', hint: 'Consigliato 90x90 px', mediaType: 'thumbnail' },
     background: { label: 'Background pass', hint: 'Consigliato 360x440 px', mediaType: 'background' }
 };
@@ -11184,19 +11175,12 @@ async function loadMediaLibrary() {
     const thumbGrid = document.getElementById('mediaThumbnailGrid');
     const bgGrid = document.getElementById('mediaBackgroundGrid');
     const q = (document.getElementById('mediaStripSearch')?.value || '').trim().toLowerCase();
-    if (!campaignsCache || !campaignsCache.length) {
-        try { campaignsCache = await fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } }); } catch(_) {}
-    }
-    populateMediaCampaignFilters();
-    const selectedCampaignId = document.getElementById('mediaFilterCampaignId')?.value || '';
-    const onlySelected = !!document.getElementById('mediaOnlySelectedCampaign')?.checked;
-    const campaignQuery = (onlySelected && selectedCampaignId) ? `&campaign_id=${encodeURIComponent(selectedCampaignId)}` : '';
     if (logoBox) logoBox.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (stripGrid) stripGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (thumbGrid) thumbGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (bgGrid) bgGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     try {
-        const r = await fetch(`${API}/media?brand_id=${brandId}${campaignQuery}`);
+        const r = await fetch(`${API}/media?brand_id=${brandId}`);
         const items = await r.json();
         const logos = items.filter(it => it.type === 'logo');
         const strips = items.filter(it => it.type === 'strip');
@@ -11222,7 +11206,7 @@ async function loadMediaLibrary() {
         }
 
         if (stripGrid) {
-            const filteredStrips = q ? strips.filter(it => `${it.title || ''} ${it.campaign_name || ''}`.toLowerCase().includes(q)) : strips;
+            const filteredStrips = q ? strips.filter(it => `${it.title || ''}`.toLowerCase().includes(q)) : strips;
             if (!filteredStrips.length) {
                 stripGrid.innerHTML = '<p style="color:var(--text2)">Nessuna strip trovata.</p>';
             } else {
@@ -11230,7 +11214,6 @@ async function loadMediaLibrary() {
                     <div class="media-card" style="display:inline-block;width:150px;margin:8px;text-align:center;vertical-align:top">
                         <img src="/api/v1/media/${it.id}/image" style="width:130px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #333">
                         <div style="font-size:11px;color:#ccc;margin-top:4px;min-height:30px;">${esc(it.title || 'Strip')}</div>
-                        <div style="font-size:10px;color:var(--text2);min-height:16px;">${esc(it.campaign_name || 'Nessuna campagna')}</div>
                         <button onclick="deleteMediaItem('${it.id}')" style="font-size:10px;color:#f66;background:none;border:none;cursor:pointer;margin-top:2px">Elimina</button>
                     </div>
                 `).join('');
@@ -11244,20 +11227,6 @@ async function loadMediaLibrary() {
             bgGrid.innerHTML = renderMediaGalleryCards(backgrounds, 'Nessun background caricato.');
         }
     } catch (err) { console.error('loadMediaLibrary error:', err); }
-}
-
-function populateMediaCampaignFilters() {
-    const filterSel = document.getElementById('mediaFilterCampaignId');
-    if (!filterSel) return;
-    const current = filterSel.value;
-    filterSel.innerHTML = '<option value="">Seleziona campagna</option>';
-    (campaignsCache || []).forEach(c => {
-        const o = document.createElement('option');
-        o.value = c.id;
-        o.textContent = c.name;
-        filterSel.appendChild(o);
-    });
-    if (current) filterSel.value = current;
 }
 
 function onMediaUploadTypeChange() {
@@ -11509,7 +11478,7 @@ async function mpUpload() {
   reader.readAsDataURL(file);
 }
 
-async function openMediaUpload(selectedCampaignId = '') {
+async function openMediaUpload() {
     mediaUploadEditedBase64 = null;
     const fileInput = document.getElementById('mediaUploadFile');
     if (fileInput) {

@@ -487,15 +487,11 @@
     if (!file || !window.brandId) return;
     try {
       const b64 = await fileToBase64(file);
-      const campaignId = bucketKey === 'strip'
-        ? (document.getElementById('mediaFilterCampaignId')?.value || null)
-        : null;
       await fetch(`${API}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brand_id: brandId,
-          campaign_id: campaignId,
           type: bucketKey,
           title: file.name,
           image_base64: b64
@@ -516,7 +512,7 @@
 
     dropzone.addEventListener('click', function a2wDropzoneClick() {
       if (typeof openMediaUpload === 'function') {
-        openMediaUpload(bucketKey === 'strip' ? (document.getElementById('mediaFilterCampaignId')?.value || '') : '');
+        openMediaUpload();
       }
     }, { capture: false });
 
@@ -590,28 +586,6 @@
     host.innerHTML = a2wMediaSkeletonMarkup(kind);
   }
 
-  function a2wEnhanceStripBadges() {
-    const grid = document.getElementById('mediaStripGrid');
-    if (!grid) return;
-    grid.querySelectorAll('.media-card').forEach((card) => {
-      card.classList.add('a2w-media-item');
-      const rows = card.querySelectorAll('div');
-      const label = rows[1];
-      if (!label) return;
-      const raw = String(label.textContent || '').trim();
-      label.classList.add('a2w-media-campaign-badge');
-      if (!raw || /nessuna campagna/i.test(raw)) {
-        label.textContent = 'Non assegnata';
-        label.classList.add('a2w-badge-muted');
-        label.classList.remove('a2w-badge-info');
-      } else {
-        label.textContent = 'Campagna: ' + raw;
-        label.classList.add('a2w-badge-info');
-        label.classList.remove('a2w-badge-muted');
-      }
-    });
-  }
-
   function a2wEnhanceMediaCards() {
     ['mediaLogoBox', 'mediaStripGrid', 'mediaThumbnailGrid', 'mediaBackgroundGrid'].forEach((id) => {
       const host = document.getElementById(id);
@@ -647,7 +621,7 @@
         return;
       }
       if (action === 'replace') {
-        if (typeof openMediaUpload === 'function') openMediaUpload(document.getElementById('mediaFilterCampaignId')?.value || '');
+        if (typeof openMediaUpload === 'function') openMediaUpload();
         return;
       }
       toast('Rinomina media: in arrivo');
@@ -656,11 +630,7 @@
 
   function a2wNormalizeStripFilters() {
     const search = document.getElementById('mediaStripSearch');
-    const select = document.getElementById('mediaFilterCampaignId');
-    const check = document.getElementById('mediaOnlySelectedCampaign');
     if (search) search.classList.add('a2w-media-strip-search');
-    if (select) select.classList.add('a2w-media-strip-select');
-    if (check) check.closest('label')?.classList.add('a2w-media-strip-check');
   }
 
   function a2wEnhanceMediaLibraryDom() {
@@ -678,7 +648,6 @@
     a2wReplaceLoadingWithSkeleton('mediaThumbnailGrid', 'thumb');
     a2wReplaceLoadingWithSkeleton('mediaBackgroundGrid', 'bg');
     a2wEnhanceMediaCards();
-    a2wEnhanceStripBadges();
     a2wNormalizeStripFilters();
     a2wBindMediaItemActions(section);
   }
