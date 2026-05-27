@@ -31,10 +31,10 @@
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
@@ -3626,6 +3626,10 @@ let analyticsDateFrom = '';
 let analyticsDateTo = '';
 
 // ==================== INIT ====================
+document.addEventListener('a2w:shell:ready', () => {
+    if (getActiveSectionId() === 'leads' && typeof loadLeads === 'function') loadLeads();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     initDashboardProductTheme();
     togglePassBackEditorMode();
@@ -7321,8 +7325,9 @@ function isLeadPassInstalled(lead) {
 }
 
 function isA2wLeadsRedesignActive() {
-    return !leadsHrMode
-        && document.documentElement.getAttribute('data-shell') === 'dark'
+    if (leadsHrMode) return false;
+    if (typeof isA2wActive === 'function' && isA2wActive()) return true;
+    return document.documentElement.getAttribute('data-shell') === 'dark'
         && document.documentElement.classList.contains('a2w-shell');
 }
 

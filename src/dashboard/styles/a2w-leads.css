@@ -821,14 +821,17 @@ html[data-shell="dark"].a2w-shell .a2w-add-contact-modal[aria-hidden="false"] {
   display: flex;
 }
 
-html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__dialog {
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__dialog,
+html[data-shell="dark"].a2w-shell .a2w-add-contact-modal .import-modal-card.card {
   width: min(520px, 100%);
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: #0b1220;
+  background: #0b1220 !important;
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
   color: #e2e8f0;
   overflow: hidden;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 html[data-shell="dark"].a2w-shell .a2w-add-contact-modal__header,
