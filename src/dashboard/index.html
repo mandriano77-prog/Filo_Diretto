@@ -34,7 +34,7 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v2">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v3">
     <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
@@ -4379,6 +4379,7 @@ function initDashboardProductTheme() {
     syncFiloHeaderChrome();
     syncBreadcrumb(getActiveSectionId());
     if (typeof initA2wShell === 'function') initA2wShell();
+    if (getActiveSectionId() === 'leads' && typeof loadLeads === 'function') loadLeads();
 }
 
 function onDashboardProductLineChange() {
@@ -7367,6 +7368,10 @@ function isLeadPassInstalled(lead) {
 /** Ads2Wallet Contatti redesign only — never FiloDiretto / HR dipendenti. */
 function isA2wLeadsRedesignActive() {
     if (leadsHrMode) return false;
+    const onA2wHost = (window.location.hostname || '').toLowerCase().includes('ads2wallet');
+    if (onA2wHost) {
+        return document.documentElement.classList.contains('a2w-shell');
+    }
     if (typeof isA2wDeploy === 'function' && !isA2wDeploy()) return false;
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
     return document.documentElement.classList.contains('a2w-shell');

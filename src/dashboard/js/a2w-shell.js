@@ -11,13 +11,14 @@
   const A2W_ICON_STROKE = 'currentColor';
 
   function isA2wDeploy() {
+    const h = (window.location.hostname || '').toLowerCase();
+    // studio.ads2wallet.com is always the Ads2Wallet product — never treat as Filo light shell.
+    if (h.includes('ads2wallet')) return true;
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
     try {
       const locked = typeof getLockedProductLine === 'function' ? getLockedProductLine() : null;
       if (locked) return locked === 'ads';
     } catch (_) {}
-    const h = (window.location.hostname || '').toLowerCase();
-    if (h.includes('ads2wallet')) return true;
     const pl = typeof getDashboardProductLine === 'function' ? getDashboardProductLine() : null;
     return pl === 'ads';
   }
