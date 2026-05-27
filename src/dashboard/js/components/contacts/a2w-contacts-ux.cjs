@@ -69,10 +69,6 @@ function kpiDeltaClassName(delta) {
   return '';
 }
 
-function shouldHideKpiStripWhenEmpty(totalCount) {
-  return Number(totalCount) === 0;
-}
-
 module.exports = {
   parseLeadsFilterParam,
   nextFilterPopoverState,
@@ -80,6 +76,5 @@ module.exports = {
   kpiFilterToCheckboxState,
   shouldShowKpiDelta,
   kpiDeltaClassName,
-  shouldHideKpiStripWhenEmpty,
   VALID_FILTERS
 };

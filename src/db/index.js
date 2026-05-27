@@ -1278,8 +1278,6 @@ async function ensureMembersHrSchema() {
   await addColumn('privacy_policy_version_accepted', 'VARCHAR(32)');
   await addColumn('privacy_policy_accepted_at', 'TIMESTAMPTZ');
   await addColumn('privacy_policy_accepted_ip', 'VARCHAR(64)');
-  await addColumn('phone', 'TEXT');
-  await addColumn('lead_source', 'VARCHAR(32)');
 
   if (have.has('name') && have.has('first_name')) {
     await pool.query(`
@@ -1447,23 +1445,21 @@ async function createMemberRecord(data) {
     first_name = null,
     last_name = null,
     email = null,
-    phone = null,
     employee_id = null,
     department = null,
     office_location = null,
     hire_date = null,
     manager_name = null,
-    manager_email = null,
-    lead_source = null
+    manager_email = null
   } = data;
   await pool.query(
     `INSERT INTO members (
-      id, brand_id, pass_id, first_name, last_name, email, phone,
-      employee_id, department, office_location, hire_date, manager_name, manager_email, lead_source
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      id, brand_id, pass_id, first_name, last_name, email,
+      employee_id, department, office_location, hire_date, manager_name, manager_email
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
     [
-      id, brand_id, pass_id, first_name, last_name, email, phone,
-      employee_id, department, office_location, hire_date, manager_name, manager_email, lead_source
+      id, brand_id, pass_id, first_name, last_name, email,
+      employee_id, department, office_location, hire_date, manager_name, manager_email
     ]
   );
   const row = await pool.query('SELECT * FROM members WHERE id = $1', [id]);
@@ -1476,8 +1472,8 @@ async function updateMemberRecord(id, data) {
   const values = [];
   let p = 0;
   const allowed = [
-    'pass_id', 'first_name', 'last_name', 'email', 'phone', 'employee_id',
-    'department', 'office_location', 'hire_date', 'manager_name', 'manager_email', 'lead_source'
+    'pass_id', 'first_name', 'last_name', 'email', 'employee_id',
+    'department', 'office_location', 'hire_date', 'manager_name', 'manager_email'
   ];
   for (const key of allowed) {
     if (data[key] !== undefined) {

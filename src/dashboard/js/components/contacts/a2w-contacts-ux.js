@@ -46,17 +46,12 @@
     return '';
   }
 
-  function shouldHideKpiStripWhenEmpty(totalCount) {
-    return Number(totalCount) === 0;
-  }
-
   global.A2wContactsUx = {
     parseLeadsFilterParam: parseLeadsFilterParam,
     nextFilterPopoverState: nextFilterPopoverState,
     toggleKpiFilter: toggleKpiFilter,
     kpiFilterToCheckboxState: kpiFilterToCheckboxState,
     shouldShowKpiDelta: shouldShowKpiDelta,
-    kpiDeltaClassName: kpiDeltaClassName,
-    shouldHideKpiStripWhenEmpty: shouldHideKpiStripWhenEmpty
+    kpiDeltaClassName: kpiDeltaClassName
   };
 })(typeof window !== 'undefined' ? window : global);
