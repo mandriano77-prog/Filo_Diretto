@@ -437,6 +437,7 @@
         a2wCloseAllDropdownMenus();
         if (wasHidden) {
           panel.hidden = false;
+          a2wPositionDropdownMenu(trigger, panel);
           trigger.setAttribute('aria-expanded', 'true');
         }
       }, { capture: false });
@@ -784,9 +785,31 @@
     meta.innerHTML = chips.join('');
   }
 
+  /** Flip dropdown horizontal alignment so panels stay in content (not under left sidebar). Ads2Wallet only. */
+  function a2wPositionDropdownMenu(trigger, panel) {
+    if (!trigger || !panel || !document.documentElement.classList.contains('a2w-shell')) return;
+    panel.style.left = '';
+    panel.style.right = '';
+    panel.hidden = false;
+    const sidebar = document.querySelector('.layout > .sidebar, .sidebar');
+    const sidebarRight = sidebar ? sidebar.getBoundingClientRect().right : 0;
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelWidth = panel.offsetWidth || 180;
+    const opensLeft = (triggerRect.left - panelWidth) < (sidebarRight + 12);
+    if (opensLeft) {
+      panel.style.left = '0';
+      panel.style.right = 'auto';
+    } else {
+      panel.style.right = '0';
+      panel.style.left = 'auto';
+    }
+  }
+
   function a2wCloseAllDropdownMenus() {
-    document.querySelectorAll('.a2w-row-kebab-menu, .a2w-media-kebab-menu, #leads .a2w-leads-row-menu, .a2w-ui-action-menu__panel').forEach((menu) => {
+    document.querySelectorAll('.a2w-row-kebab-menu, .a2w-media-kebab-menu, #leads .a2w-leads-row-menu, #leads .a2w-contacts-filter-popover, .a2w-ui-action-menu__panel').forEach((menu) => {
       menu.hidden = true;
+      menu.style.left = '';
+      menu.style.right = '';
     });
     document.querySelectorAll('.a2w-row-kebab-trigger, .a2w-media-kebab-btn, .a2w-ui-action-menu__trigger').forEach((btn) => {
       btn.setAttribute('aria-expanded', 'false');
@@ -873,6 +896,7 @@
       a2wCloseAllDropdownMenus();
       if (wasHidden) {
         menu.hidden = false;
+        a2wPositionDropdownMenu(kebabBtn, menu);
         kebabBtn.setAttribute('aria-expanded', 'true');
       }
     }, { capture: false });
@@ -937,6 +961,7 @@
       a2wCloseAllDropdownMenus();
       if (wasHidden) {
         menu.hidden = false;
+        a2wPositionDropdownMenu(kebabBtn, menu);
         kebabBtn.setAttribute('aria-expanded', 'true');
       }
     }, { capture: false });
@@ -1496,6 +1521,7 @@
 
   A2W.ensureA2wLeadsLayout = ensureA2wLeadsLayout;
   A2W.closeDropdownMenus = a2wCloseAllDropdownMenus;
+  A2W.positionDropdown = a2wPositionDropdownMenu;
   A2W.initA2wShell = initA2wShell;
   A2W.initA2WSidebarChrome = initA2WSidebarChrome;
   A2W.syncA2wHeaderChrome = syncA2wHeaderChrome;

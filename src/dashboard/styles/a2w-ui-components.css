@@ -287,6 +287,22 @@ html[data-shell="dark"].a2w-shell .a2w-ui-confirm-dialog__actions {
 html[data-shell="dark"].a2w-shell .a2w-ui-action-menu {
   position: relative;
   display: inline-flex;
+  z-index: calc(var(--a2w-z-dropdown) + 1);
+}
+
+html[data-shell="dark"].a2w-shell .a2w-ui-action-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  border: 1px solid var(--a2w-border-default);
+  border-radius: 10px;
+  background: #0f172a;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  z-index: var(--a2w-z-dropdown);
+  display: grid;
+  gap: 4px;
 }
 
 html[data-shell="dark"].a2w-shell .a2w-ui-action-menu__panel[hidden] {

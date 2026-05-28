@@ -50,7 +50,7 @@
     <link rel="stylesheet" href="/dashboard/styles/filo-a11y.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-layout.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-tokens.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css">
+    <link rel="stylesheet" href="/dashboard/styles/a2w-chrome.css?v=20260528-dropdown">
     <link rel="stylesheet" href="/dashboard/styles/a2w-ui-components.css?v=20260527-contacts">
     <link rel="stylesheet" href="/dashboard/styles/a2w-analytics.css">
     <link rel="stylesheet" href="/dashboard/styles/a2w-push.css">
@@ -8207,6 +8207,9 @@ function renderLeadsToolbar() {
             filtersBtn.addEventListener('click', function () {
                 const open = filtersPanel.hidden;
                 filtersPanel.hidden = !open;
+                if (open && window.A2W && typeof window.A2W.positionDropdown === 'function') {
+                    window.A2W.positionDropdown(filtersBtn, filtersPanel);
+                }
                 filtersBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
             document.addEventListener('click', function (event) {
@@ -8841,8 +8844,13 @@ function renderLeadsTable(leads) {
                 const isOpen = !menu.hidden;
                 table.querySelectorAll('.a2w-leads-row-menu').forEach((node) => {
                     node.hidden = true;
+                    node.style.left = '';
+                    node.style.right = '';
                 });
                 menu.hidden = isOpen;
+                if (!isOpen && window.A2W && typeof window.A2W.positionDropdown === 'function') {
+                    window.A2W.positionDropdown(btn, menu);
+                }
             });
         });
         tbody.querySelectorAll('.a2w-leads-row-menu button').forEach((btn) => {

@@ -29,6 +29,17 @@ html[data-shell="dark"].a2w-shell .layout {
   transition: grid-template-columns var(--a2w-dur-sidebar) ease;
 }
 
+/* Ads2Wallet only: keep main content (and its dropdowns) above the left sidebar column */
+html[data-shell="dark"].a2w-shell .layout > .sidebar {
+  position: relative;
+  z-index: 10;
+}
+
+html[data-shell="dark"].a2w-shell .layout > .main {
+  position: relative;
+  z-index: 20;
+}
+
 html[data-shell="dark"].a2w-shell .sidebar {
   width: var(--a2w-sidebar-expanded-w);
   transition: width var(--a2w-dur-sidebar) ease, padding var(--a2w-dur-sidebar) ease;
@@ -482,6 +493,7 @@ html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-actions {
 
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-menu {
   position: relative;
+  z-index: calc(var(--a2w-z-dropdown) + 2);
 }
 
 html[data-shell="dark"].a2w-shell .a2w-icon-btn {
@@ -509,6 +521,28 @@ html[data-shell="dark"].a2w-shell .a2w-media-kebab-menu {
   padding: 6px;
   display: grid;
   gap: 4px;
+}
+
+/* Media Library — dropdowns stay inside content (not under left sidebar) */
+html[data-shell="dark"].a2w-shell #media-library > div:first-child,
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-actions,
+html[data-shell="dark"].a2w-shell #media-library .card,
+html[data-shell="dark"].a2w-shell #media-library .strip-gallery,
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-host {
+  overflow: visible;
+}
+
+html[data-shell="dark"].a2w-shell #media-library [data-a2w-dropdown-root] {
+  position: relative;
+  z-index: calc(var(--a2w-z-dropdown) + 2);
+}
+
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-item {
+  overflow: visible;
+}
+
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-item-actions {
+  z-index: calc(var(--a2w-z-dropdown) + 1);
 }
 
 html[data-shell="dark"].a2w-shell .a2w-media-kebab-item {

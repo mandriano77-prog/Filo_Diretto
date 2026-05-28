@@ -60,6 +60,10 @@
       open: function () {
         ctx().notifyOpened(menuId);
         panel.hidden = false;
+        if (document.documentElement.classList.contains('a2w-shell') &&
+            global.A2W && typeof global.A2W.positionDropdown === 'function') {
+          global.A2W.positionDropdown(trigger, panel);
+        }
         trigger.setAttribute('aria-expanded', 'true');
       },
       toggle: function () {
