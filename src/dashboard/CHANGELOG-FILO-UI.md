@@ -1,5 +1,62 @@
 # Filo Diretto UI Changelog
 
+## Fix — Avatar account header (`[FD] header`)
+
+### Changed
+- `src/filodiretto/fd-header.css` — trigger account con allineamento e clipping corretti; avatar `AD` fissato a 28×28 per evitare rendering a metà
+
+---
+
+## Fix — Media Library layout Filo (`[FD] media-library`)
+
+### Added
+- `src/filodiretto/fd-media-library.css` / `fd-media-library.js` — layout a sezioni verticali, specifiche in `<details>`, CTA «Carica» per tipo
+- Sezione **Icona notifiche Wallet** (512×512) in libreria e nel modal upload
+
+### Changed
+- Tutti i tipi restano visibili: Logo, Icona Wallet, Strip, Thumbnail, Background
+- Copy HR: deposito file → assegnazione in Template Pass; card light shell (no grigio scuro legacy)
+- Link «Template Pass» in fondo pagina
+
+---
+
+## Fix — Glossario HR Fase A (`[FD] hr-copy`)
+
+### Added
+- `src/filodiretto/fd-hr-copy.js` — nav/pagina **Dipendenti**, CTA **Aggiungi dipendente** / **Importa dipendenti**
+
+### Changed
+- `PRODUCT_MENU_COPY.hr` — `nav_leads`, titolo e blurb pagina
+- `fd-home.js` — checklist: dati azienda → template (logo/strip) → dipendenti
+- `loadLeads()` — allinea CTA header in modalità HR
+
+---
+
+## Fix — Sidebar toggle, menu floating, Utenti (`[FD] layout`)
+
+### Added
+- `src/filodiretto/fd-layout.css` / `fd-layout.js` — hamburger sempre visibile; collapse sidebar su desktop; menu ⋮ in `position: fixed` sopra la sidebar
+
+### Changed
+- Media Library: pannello kebab non finisce più sotto il menu laterale
+- Setup → Utenti: ripristinato **+ Nuovo Utente** per admin HR (anche con login allowlist)
+- `loadUsers()` usa tabella Filo su tutta la dashboard HR
+
+---
+
+## Fix — Separazione Identità brand / Template pass (`[FD] brand-scope`)
+
+### Added
+- `src/filodiretto/fd-brand-scope.css` — nasconde tagline, griglia asset pass e anteprima wallet su Identità brand HR
+- `src/filodiretto/fd-brand-scope.js` — hint verso Template Pass; nasconde contatti HR duplicati nel modal template
+
+### Changed
+- Identità brand HR: solo nome, slug, settore, lingua, homepage, contatti (inclusi DPO ed emergenze), social
+- Salvataggio brand HR: non sovrascrive `brand_identity_assets` / tagline; sincronizza colonne `hr_email`, `hr_phone`, `dpo_email`, `emergency_phone`
+- Template pass HR: logo, strip, header e link fisso; contatti retro ereditati dal brand
+
+---
+
 ## Fix — Media Library kebab menu (`[FD] media-library`)
 
 ### Changed

@@ -7,6 +7,11 @@ html[data-app='filodiretto'] #users.users--fd .fd-users-toolbar {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 16px;
+  overflow: visible;
+}
+
+html[data-app='filodiretto'] #users.users--fd #createUserBtn {
+  flex-shrink: 0;
 }
 
 html[data-app='filodiretto'] #users.users--fd .fd-users-lead {
@@ -142,7 +147,7 @@ html[data-app='filodiretto'] .fd-users-kebab-menu {
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
-  z-index: 40;
+  z-index: 9200;
   min-width: 168px;
   padding: 4px;
   border: 1px solid var(--fd-border, var(--border));

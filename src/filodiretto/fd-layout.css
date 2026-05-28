@@ -1,0 +1,92 @@
+/* Filo HR — sidebar toggle (desktop + mobile) + stacking for floating menus */
+
+html[data-app='filodiretto'] .sidebar-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+html[data-app='filodiretto'] .layout {
+  position: relative;
+}
+
+html[data-app='filodiretto'] .sidebar {
+  z-index: 120;
+}
+
+html[data-app='filodiretto'] .main {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .app-header {
+  position: relative;
+  z-index: 200;
+  overflow: visible;
+}
+
+html[data-app='filodiretto'] #media-library > div:first-child,
+html[data-app='filodiretto'] #users.users--fd .fd-users-toolbar {
+  overflow: visible;
+}
+
+html[data-app='filodiretto'] .fd-floating-menu-panel {
+  position: fixed;
+  z-index: 9200;
+}
+
+html[data-app='filodiretto'] .fd-media-page-menu__panel.fd-floating-menu-panel,
+html[data-app='filodiretto'] .fd-users-kebab-menu.fd-floating-menu-panel {
+  right: auto;
+  top: auto;
+  left: auto;
+}
+
+html[data-app='filodiretto'] .fd-sidebar-collapse-btn {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  background: var(--surface, #fff);
+  color: var(--text2);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+html[data-app='filodiretto'] .fd-sidebar-collapse-btn:hover {
+  border-color: var(--fd-border-strong, #d1d5db);
+  color: var(--text1);
+  background: var(--bg3, #f9fafb);
+}
+
+@media (min-width: 768px) {
+  html[data-app='filodiretto'] body.fd-sidebar-collapsed .layout {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+
+  html[data-app='filodiretto'] body.fd-sidebar-collapsed .sidebar {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 767px) {
+  html[data-app='filodiretto'] .sidebar-backdrop {
+    z-index: 180;
+  }
+
+  html[data-app='filodiretto'] .sidebar {
+    z-index: 200;
+  }
+}

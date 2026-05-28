@@ -15,7 +15,10 @@
   function closeMediaMenu() {
     var panel = document.getElementById('fdMediaPageMenuPanel');
     var trigger = document.getElementById('fdMediaPageMenuBtn');
-    if (panel) panel.hidden = true;
+    if (panel) {
+      panel.hidden = true;
+      panel.classList.remove('fd-floating-menu-panel');
+    }
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
 
@@ -54,8 +57,12 @@
         var open = panel.hidden;
         closeMediaMenu();
         if (open) {
-          panel.hidden = false;
           trigger.setAttribute('aria-expanded', 'true');
+          if (typeof window.fdPositionFloatingMenu === 'function') {
+            window.fdPositionFloatingMenu(trigger, panel);
+          } else {
+            panel.hidden = false;
+          }
         }
       });
     }

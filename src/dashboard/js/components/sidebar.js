@@ -5,6 +5,7 @@
     var STORAGE_KEY = 'fd:sidebar:mobileOpen';
 
     function bindMobileSidebar() {
+        if (document.documentElement.getAttribute('data-app') === 'filodiretto') return;
         var toggle = document.getElementById('sidebarToggle');
         var backdrop = document.getElementById('sidebarBackdrop');
         if (!toggle || toggle.dataset.bound === '1') return;

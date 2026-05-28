@@ -1,0 +1,209 @@
+/* Filo HR — Media Library: layout semplificato, tutti i tipi asset visibili */
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout {
+  max-width: 960px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  overflow: visible;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header__copy .page-title {
+  margin-bottom: 6px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fd-text-secondary, var(--text2));
+  max-width: 52ch;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-specs {
+  margin-bottom: 16px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-md, 10px);
+  background: var(--fd-surface-muted, #f8fafc);
+  padding: 0 14px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-specs summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fd-text-primary, var(--text1));
+  padding: 12px 0;
+  list-style: none;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-specs summary::-webkit-details-marker {
+  display: none;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-specs__body {
+  padding-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fd-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-specs__body strong {
+  color: var(--fd-text-primary, var(--text1));
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section.card {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-md, 10px);
+  background: var(--surface, #fff);
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fd-text-primary, var(--text1));
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fd-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__search {
+  max-width: 200px;
+  font-size: 13px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-section__body {
+  min-height: 48px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .strip-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .media-card {
+  display: inline-flex !important;
+  flex-direction: column;
+  align-items: center;
+  width: 148px !important;
+  margin: 0 !important;
+  padding: 8px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  background: var(--fd-surface-muted, #f9fafb);
+  vertical-align: top;
+  text-align: center;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .media-card img {
+  width: 128px !important;
+  height: auto;
+  max-height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--fd-border, var(--border)) !important;
+  background: #fff;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .media-card--icon img {
+  width: 72px !important;
+  height: 72px !important;
+  object-fit: cover;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .media-card__title {
+  font-size: 11px;
+  color: var(--fd-text-secondary, var(--text2));
+  margin-top: 6px;
+  min-height: 28px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout #mediaLogoBox .fd-media-logo-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout #mediaLogoBox img {
+  width: 140px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--fd-border, var(--border));
+  background: #fff;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-empty {
+  font-size: 13px;
+  color: var(--fd-text-secondary, var(--text2));
+  margin: 0;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-link-template {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-link-template a {
+  color: var(--fd-accent, #0d9488);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-link-template a:hover {
+  text-decoration: underline;
+}

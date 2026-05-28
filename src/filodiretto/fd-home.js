@@ -120,22 +120,22 @@
     return [
       {
         id: 'identity',
-        label: 'Identità brand',
-        desc: 'Logo, colori e dati azienda',
+        label: 'Dati azienda',
+        desc: 'Nome, slug, contatti HR e DPO',
         section: 'brand-identity',
         done: function (ctx) { return !!ctx.hasBrandIdentity; }
       },
       {
         id: 'template',
         label: 'Template pass dipendente',
-        desc: 'Configura il design del pass HR',
+        desc: 'Logo, strip e testi del pass Wallet',
         section: 'templates',
         done: function (ctx) { return ctx.templateCount > 0; }
       },
       {
         id: 'employees',
-        label: 'Anagrafica dipendenti',
-        desc: 'Aggiungi o importa i dipendenti',
+        label: 'Dipendenti',
+        desc: 'Importa o aggiungi anagrafica',
         section: 'leads',
         done: function (ctx) { return ctx.employeeCount > 0; }
       },

@@ -23,14 +23,14 @@
             if (lock === 'hr') {
                 document.documentElement.setAttribute('data-shell', 'light');
                 document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css'];
+                var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css'];
                 fdCss.forEach(function (href) {
                     var link = document.createElement('link');
                     link.rel = 'stylesheet';
                     link.href = href;
                     document.head.appendChild(link);
                 });
-                ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js'].forEach(function (src) {
+                ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js'].forEach(function (src) {
                     var fdScript = document.createElement('script');
                     fdScript.src = src;
                     fdScript.defer = true;
@@ -1814,6 +1814,18 @@
                                     <input type="text" id="biSupportPhone" placeholder="+39 02 1234 5678">
                                     <p class="a2w-bi-field-error" id="biSupportPhoneError" role="alert"></p>
                                 </div>
+                                <div class="form-row fd-bi-hr-contact-extra">
+                                    <div class="form-group">
+                                        <label class="form-label" for="biDpoEmail">Privacy / DPO email</label>
+                                        <input type="email" id="biDpoEmail" placeholder="dpo@azienda.it">
+                                        <p class="a2w-bi-field-error" id="biDpoEmailError" role="alert"></p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="biEmergencyPhone">Emergenze (telefono)</label>
+                                        <input type="text" id="biEmergencyPhone" placeholder="+39 ...">
+                                        <p class="a2w-bi-field-error" id="biEmergencyPhoneError" role="alert"></p>
+                                    </div>
+                                </div>
                             </section>
 
                             <section class="card a2w-bi-section">
@@ -1937,6 +1949,7 @@
                         <select id="mediaUploadType" onchange="onMediaUploadTypeChange()">
                             <option value="strip">Strip Image</option>
                             <option value="logo">Logo</option>
+                            <option value="wallet_icon">Icona notifiche Wallet</option>
                             <option value="thumbnail">Thumbnail</option>
                             <option value="background">Background</option>
                         </select>
@@ -2930,21 +2943,8 @@
                         <p class="form-hint">Questi dati vengono auto-popolati dai dipendenti importati. Nessun input richiesto.</p>
                     </details>
 
-                    <details class="hr-fieldset" open>
-                        <summary>2 — Contatti HR aziendali</summary>
-                        <p class="form-hint">Salvati su questo template (con fallback ai valori brand se lasci vuoto).</p>
-                        <div class="form-row">
-                            <div class="form-group"><label class="form-label">People Operations email</label><input type="email" id="hrBrandEmail" placeholder="people@azienda.it" oninput="updatePassPreview()"></div>
-                            <div class="form-group"><label class="form-label">Telefono HR</label><input type="text" id="hrBrandPhone" placeholder="+39 ..." oninput="updatePassPreview()"></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group"><label class="form-label">Privacy / DPO email</label><input type="email" id="hrBrandDpo" placeholder="dpo@azienda.it" oninput="updatePassPreview()"></div>
-                            <div class="form-group"><label class="form-label">Emergenze telefono</label><input type="text" id="hrBrandEmergency" placeholder="+39 ..." oninput="updatePassPreview()"></div>
-                        </div>
-                    </details>
-
                     <details class="hr-fieldset">
-                        <summary>3 — Profilo personale (auto)</summary>
+                        <summary>2 — Profilo personale (auto)</summary>
                         <p class="form-hint">Il link profilo viene generato automaticamente per ogni dipendente nel pass emesso.</p>
                     </details>
                 </div>
@@ -3837,7 +3837,8 @@ function updateNavState() {
     const createUserBtn = document.getElementById('createUserBtn');
     if (createUserBtn) {
         const allowlist = getDashboardLoginAllowlist();
-        createUserBtn.style.display = (isAdmin && !allowlist) ? '' : 'none';
+        const filoHr = typeof isHrDashboard === 'function' && isHrDashboard();
+        createUserBtn.style.display = (isAdmin && (!allowlist || filoHr)) ? '' : 'none';
     }
 
     // Hide Dashboard/Inizio once a brand is selected (Filo HR keeps Inizio as operational home).
@@ -4185,9 +4186,9 @@ const PRODUCT_MENU_COPY = {
     ads: {},
     live: {},
     hr: {
-        nav_leads: 'Contatti',
-        leads_page_title: 'Contatti',
-        leads_page_blurb: 'Anagrafica dipendenti: importa da CSV/Excel, crea pass e monitora installazioni.',
+        nav_leads: 'Dipendenti',
+        leads_page_title: 'Dipendenti',
+        leads_page_blurb: 'Anagrafica dipendenti: importa da CSV/Excel, crea pass Wallet e monitora installazioni.',
         leads_stat_total: 'Dipendenti',
         leads_stat_device: 'Pass installati (device)',
         leads_stat_phone: 'Con matricola',
@@ -5678,11 +5679,12 @@ function hrAddResourceRow() { hrAddLinkRow('hrResourcesRows'); }
 function hrAddDocumentRow() { hrAddLinkRow('hrDocumentsRows'); }
 
 function hrTemplateBackPayloadFromForm() {
+    /* Contatti HR sul retro pass: solo da Identità Brand (colonne brand + fallback in passkit). */
     return {
-        hr_email: document.getElementById('hrBrandEmail')?.value.trim() || null,
-        hr_phone: document.getElementById('hrBrandPhone')?.value.trim() || null,
-        dpo_email: document.getElementById('hrBrandDpo')?.value.trim() || null,
-        emergency_phone: document.getElementById('hrBrandEmergency')?.value.trim() || null,
+        hr_email: null,
+        hr_phone: null,
+        dpo_email: null,
+        emergency_phone: null,
         back_resources: [],
         back_documents: []
     };
@@ -5692,17 +5694,6 @@ async function loadHrTemplateBackFields(t) {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
     set('hrFixedLinkLabel', t?.back_fixed_link_label);
     set('hrFixedLinkUrl', t?.back_fixed_link_url);
-    let brand = {};
-    if (brandId) {
-        try {
-            brand = await fetch(`${API}/brands/${brandId}`, { headers: { ...getAuthHeaders() } }).then(r => r.json());
-        } catch (_) {}
-    }
-    const pick = (key) => (t && t[key] != null && String(t[key]).trim() !== '') ? t[key] : (brand[key] || '');
-    set('hrBrandEmail', pick('hr_email'));
-    set('hrBrandPhone', pick('hr_phone'));
-    set('hrBrandDpo', pick('dpo_email'));
-    set('hrBrandEmergency', pick('emergency_phone'));
     updatePassPreview();
 }
 
@@ -5941,8 +5932,7 @@ function updatePassPreview() {
             document.getElementById('hrFixedLinkLabel')?.value.trim(),
             document.getElementById('hrFixedLinkUrl')?.value.trim()
         );
-        addBackText('PEOPLE OPERATIONS', document.getElementById('hrBrandEmail')?.value.trim());
-        addBackText('PRIVACY / DPO', document.getElementById('hrBrandDpo')?.value.trim());
+        addBackText('CONTATTI HR', 'Gestiti in Identità Brand');
         addBackLink('PROFILO PERSONALE', `${window.location.origin}/portal/?t=TOKEN_AUTOMATICO`);
         document.getElementById('ppBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Configura il retro HR</div>';
         return;
@@ -6177,6 +6167,7 @@ function mediaTypeLabel(type) {
 function getMediaSpecHint(type) {
     const hints = {
         logo: 'Spec target: max 320x100 px (logo)',
+        wallet_icon: 'Spec target: 512x512 px (icona notifiche Wallet)',
         strip: 'Spec target: 750x246 px (strip)',
         thumbnail: 'Spec target: 90x90 px (thumbnail)',
         background: 'Spec target: 360x440 px (background)'
@@ -8452,6 +8443,18 @@ async function loadLeads() {
     setLeadsTableHead(leadsHrMode);
     const cardTitle = document.getElementById('contactsCardATitle');
     if (cardTitle) cardTitle.textContent = leadsHrMode ? 'Anagrafica dipendenti' : 'Contatti';
+    if (leadsHrMode) {
+        const addBtn = document.getElementById('a2wContactsAddBtn');
+        if (addBtn) {
+            addBtn.textContent = '＋ Aggiungi dipendente';
+            addBtn.setAttribute('aria-label', 'Aggiungi dipendente');
+        }
+        const importBtnHr = document.getElementById('a2wContactsImportBtn');
+        if (importBtnHr) {
+            importBtnHr.textContent = 'Importa dipendenti';
+            importBtnHr.setAttribute('aria-label', 'Importa dipendenti da CSV o Excel');
+        }
+    }
     const searchEl = document.getElementById('leadsSearch');
     if (searchEl) {
         searchEl.placeholder = leadsHrMode
@@ -10546,6 +10549,11 @@ function isA2wBrandIdentityV2Enabled() {
     return true;
 }
 
+/** Filo HR: Identità brand = anagrafica/contatti; immagini e testi pass → Template Pass. */
+function isBrandIdentityPassFieldsExcluded() {
+    return typeof isHrDashboard === 'function' && isHrDashboard();
+}
+
 function a2wBiSlugify(value) {
     return String(value || '')
         .toLowerCase()
@@ -10579,14 +10587,18 @@ function a2wBiSerializeState(data, selectedAssets) {
         socialLinkedin: data.socialLinkedin || '',
         socialTiktok: data.socialTiktok || '',
         socialX: data.socialX || '',
-        assets: {
+        dpoEmail: data.dpoEmail || '',
+        emergencyPhone: data.emergencyPhone || ''
+    };
+    if (!isBrandIdentityPassFieldsExcluded()) {
+        payload.assets = {
             logo: selectedAssets.logo?.id || '',
             wallet_icon: selectedAssets.wallet_icon?.id || '',
             strip: selectedAssets.strip?.id || '',
             thumbnail: selectedAssets.thumbnail?.id || '',
             background: selectedAssets.background?.id || ''
-        }
-    };
+        };
+    }
     return JSON.stringify(payload);
 }
 
@@ -10600,7 +10612,8 @@ function a2wBiClearErrors() {
     [
         'biName', 'biSlug', 'biTagline', 'biSettore', 'biLang', 'biHomepage',
         'biSupportEmail', 'biSupportPhone',
-        'biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'
+        'biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX',
+        'biDpoEmail', 'biEmergencyPhone'
     ].forEach((id) => a2wBiSetFieldError(id, ''));
 }
 
@@ -10618,7 +10631,9 @@ function a2wBiCollectFormData() {
         socialFacebook: (a2wBiField('biSocialFacebook')?.value || '').trim(),
         socialLinkedin: (a2wBiField('biSocialLinkedin')?.value || '').trim(),
         socialTiktok: (a2wBiField('biSocialTiktok')?.value || '').trim(),
-        socialX: (a2wBiField('biSocialX')?.value || '').trim()
+        socialX: (a2wBiField('biSocialX')?.value || '').trim(),
+        dpoEmail: (a2wBiField('biDpoEmail')?.value || '').trim(),
+        emergencyPhone: (a2wBiField('biEmergencyPhone')?.value || '').trim()
     };
 }
 
@@ -10637,6 +10652,8 @@ function a2wBiValidate(data) {
     if (data.homepage && !/^https:\/\//i.test(data.homepage)) errors.biHomepage = 'Inserisci un URL https:// valido';
     if (data.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.supportEmail)) errors.biSupportEmail = 'Email non valida';
     if (data.supportPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(data.supportPhone)) errors.biSupportPhone = 'Telefono non valido';
+    if (data.dpoEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.dpoEmail)) errors.biDpoEmail = 'Email non valida';
+    if (data.emergencyPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(data.emergencyPhone)) errors.biEmergencyPhone = 'Telefono non valido';
 
     const socialRules = [
         ['biSocialInstagram', data.socialInstagram, /instagram\.com/i],
@@ -11091,6 +11108,7 @@ function a2wBiEnsureUiBound() {
 
     const formIds = [
         'biName', 'biSlug', 'biTagline', 'biSettore', 'biLang', 'biHomepage', 'biSupportEmail', 'biSupportPhone',
+        'biDpoEmail', 'biEmergencyPhone',
         'biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'
     ];
     formIds.forEach((id) => {
@@ -11191,10 +11209,10 @@ async function loadBrandIdentity() {
         if (stateBadge) stateBadge.textContent = '';
     }
     if (!brandId) {
-        ['biName','biSlug','biTagline','biSettore','biLang','biHomepage','biSupportEmail','biSupportPhone','biSocialInstagram','biSocialFacebook','biSocialLinkedin','biSocialTiktok','biSocialX']
+        ['biName','biSlug','biTagline','biSettore','biLang','biHomepage','biSupportEmail','biSupportPhone','biDpoEmail','biEmergencyPhone','biSocialInstagram','biSocialFacebook','biSocialLinkedin','biSocialTiktok','biSocialX']
             .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         brandIdentityState.selectedAssets = { logo: null, wallet_icon: null, strip: null, thumbnail: null, background: null };
-        a2wBiRenderAssetsGrid();
+        if (!isBrandIdentityPassFieldsExcluded()) a2wBiRenderAssetsGrid();
         a2wBiUpdatePreviewCard();
         brandIdentityState.baseline = a2wBiSerializeState(a2wBiCollectFormData(), brandIdentityState.selectedAssets);
         brandIdentityState.dirty = false;
@@ -11213,8 +11231,10 @@ async function loadBrandIdentity() {
     if (biTagline) biTagline.value = c.tagline || '';
     document.getElementById('biHomepage').value = c.homepage || '';
     const support = c.support || {};
-    if (document.getElementById('biSupportEmail')) document.getElementById('biSupportEmail').value = support.email || '';
-    if (document.getElementById('biSupportPhone')) document.getElementById('biSupportPhone').value = support.phone || '';
+    if (document.getElementById('biSupportEmail')) document.getElementById('biSupportEmail').value = support.email || brand.hr_email || '';
+    if (document.getElementById('biSupportPhone')) document.getElementById('biSupportPhone').value = support.phone || brand.hr_phone || '';
+    if (document.getElementById('biDpoEmail')) document.getElementById('biDpoEmail').value = brand.dpo_email || c.dpo_email || '';
+    if (document.getElementById('biEmergencyPhone')) document.getElementById('biEmergencyPhone').value = brand.emergency_phone || c.emergency_phone || '';
     const social = c.social || {};
     if (document.getElementById('biSocialInstagram')) document.getElementById('biSocialInstagram').value = social.instagram || '';
     if (document.getElementById('biSocialFacebook')) document.getElementById('biSocialFacebook').value = social.facebook || '';
@@ -11227,9 +11247,11 @@ async function loadBrandIdentity() {
     if (a2wEnabled) {
         brandIdentityState.slugEdited = !!brand.slug;
         brandIdentityState.lastSavedAt = c.brand_identity_last_saved_at ? new Date(c.brand_identity_last_saved_at).getTime() : Date.now();
-        await a2wBiLoadMediaByType();
-        a2wBiApplySelectedAssetsFromConfig(c);
-        a2wBiRenderAssetsGrid();
+        if (!isBrandIdentityPassFieldsExcluded()) {
+            await a2wBiLoadMediaByType();
+            a2wBiApplySelectedAssetsFromConfig(c);
+            a2wBiRenderAssetsGrid();
+        }
         a2wBiUpdatePreviewCard();
         a2wBiClearErrors();
         brandIdentityState.touched = {};
@@ -11268,7 +11290,6 @@ async function saveBrandIdentity() {
         const config = {
             settore: data.settore,
             homepage: data.homepage,
-            tagline: data.tagline,
             language: data.lang,
             support: {
                 email: data.supportEmail,
@@ -11282,25 +11303,32 @@ async function saveBrandIdentity() {
                 x: data.socialX
             }
         };
+        if (!isBrandIdentityPassFieldsExcluded()) {
+            config.tagline = data.tagline;
+        }
         const slug = data.slug || a2wBiSlugify(name);
-        const assets = {
+        const assets = isBrandIdentityPassFieldsExcluded() ? null : {
             logo: brandIdentityState.selectedAssets.logo?.id || null,
             wallet_icon: brandIdentityState.selectedAssets.wallet_icon?.id || null,
             strip: brandIdentityState.selectedAssets.strip?.id || null,
             thumbnail: brandIdentityState.selectedAssets.thumbnail?.id || null,
             background: brandIdentityState.selectedAssets.background?.id || null
         };
+        const hrBrandScalars = isBrandIdentityPassFieldsExcluded() ? {
+            hr_email: data.supportEmail || null,
+            hr_phone: data.supportPhone || null,
+            dpo_email: data.dpoEmail || null,
+            emergency_phone: data.emergencyPhone || null
+        } : {};
         if (!brandId) {
             // CREATE new brand
             const productLine = getLockedProductLine() || getUnscopedDashboardProductLine();
+            const createConfig = { ...BRAND_PASS_FIXED_COLORS, ...config, brand_identity_last_saved_at: new Date().toISOString(), product_line: productLine };
+            if (assets) createConfig.brand_identity_assets = assets;
             const res = await fetch(`${API}/brands`, {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    name,
-                    slug,
-                    config: { ...BRAND_PASS_FIXED_COLORS, ...config, brand_identity_assets: assets, brand_identity_last_saved_at: new Date().toISOString(), product_line: productLine }
-                })
+                body: JSON.stringify({ name, slug, config: createConfig, ...hrBrandScalars })
             });
             const newBrand = await res.json().catch(() => ({}));
             if (!res.ok || !newBrand.id) {
@@ -11321,13 +11349,13 @@ async function saveBrandIdentity() {
             const mergedConfig = {
                 ...(existing.config || {}),
                 ...config,
-                brand_identity_assets: assets,
                 brand_identity_last_saved_at: new Date().toISOString()
             };
+            if (assets) mergedConfig.brand_identity_assets = assets;
             const saveRes = await fetch(`${API}/brands/${brandId}`, {
                 method: 'PUT',
                 headers: {'Content-Type':'application/json', ...getAuthHeaders()},
-                body: JSON.stringify({ name, slug, config: mergedConfig })
+                body: JSON.stringify({ name, slug, config: mergedConfig, ...hrBrandScalars })
             });
             if (!saveRes.ok) {
                 const err = await saveRes.json().catch(() => ({}));
@@ -11460,10 +11488,13 @@ async function loadMediaLibrary() {
     if (stripGrid) stripGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (thumbGrid) thumbGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (bgGrid) bgGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
+    const walletGrid = document.getElementById('mediaWalletIconGrid');
+    if (walletGrid) walletGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     try {
         const r = await fetch(`${API}/media?brand_id=${brandId}`);
         const items = await r.json();
         const logos = items.filter(it => it.type === 'logo');
+        const walletIcons = items.filter(it => it.type === 'wallet_icon');
         const strips = items.filter(it => it.type === 'strip');
         const thumbnails = items.filter(it => it.type === 'thumbnail');
         const backgrounds = items.filter(it => it.type === 'background');
@@ -11474,7 +11505,7 @@ async function loadMediaLibrary() {
             } else {
                 const latestLogo = logos[0];
                 logoBox.innerHTML = `
-                    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                    <div class="fd-media-logo-row" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
                         <img src="/api/v1/media/${latestLogo.id}/image" style="width:140px;height:90px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.02);">
                         <div style="flex:1;min-width:160px;">
                             <div style="font-size:12px;font-weight:600;">${esc(latestLogo.title || 'Logo brand')}</div>
@@ -11484,6 +11515,10 @@ async function loadMediaLibrary() {
                     </div>
                 `;
             }
+        }
+
+        if (walletGrid) {
+            walletGrid.innerHTML = renderMediaGalleryCards(walletIcons, 'Nessuna icona notifiche caricata.');
         }
 
         if (stripGrid) {
@@ -11532,6 +11567,7 @@ let mediaUploadEditedBase64 = null;
 function getMediaTargetConfig(type) {
     const configs = {
         logo: { w: 320, h: 100, mode: 'contain', bg: 'rgba(0,0,0,0)' },
+        wallet_icon: { w: 512, h: 512, mode: 'cover', bg: '#ffffff' },
         strip: { w: 750, h: 246, mode: 'cover', bg: '#0b0b0b' },
         thumbnail: { w: 90, h: 90, mode: 'cover', bg: '#0b0b0b' },
         background: { w: 360, h: 440, mode: 'cover', bg: '#0b0b0b' }
@@ -11783,7 +11819,7 @@ async function doMediaUpload() {
         let base64;
         if (mediaUploadEditedBase64) {
             base64 = mediaUploadEditedBase64;
-        } else if (autoFit && ['strip', 'logo', 'thumbnail', 'background'].includes(type)) {
+        } else if (autoFit && ['strip', 'logo', 'wallet_icon', 'thumbnail', 'background'].includes(type)) {
             base64 = await normalizeMediaForUpload(file, type);
         } else {
             base64 = await new Promise((resolve, reject) => {
@@ -11922,7 +11958,7 @@ async function savePassDesign() {
 
 // ==================== USERS ====================
 async function loadUsers() {
-    if (typeof fdLoadUsers === 'function' && isFiloOperationalHome()) {
+    if (typeof fdLoadUsers === 'function' && (isFiloOperationalHome() || (typeof isHrDashboard === 'function' && isHrDashboard()))) {
         return fdLoadUsers();
     }
     const res = await fetch(`${API}/users`, { headers: getAuthHeaders() });

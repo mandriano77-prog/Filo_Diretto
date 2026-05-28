@@ -1,0 +1,52 @@
+/* Filo HR — Identità brand = solo anagrafica brand (pass → Template Pass) */
+
+html:not([data-app='filodiretto']) #brand-identity .fd-bi-hr-contact-extra {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-hr-contact-extra {
+  display: flex;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-field--pass-only,
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section--pass-assets,
+html[data-app='filodiretto'] #brand-identity .a2w-bi-preview-column {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-brand-scope-hint {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: var(--fd-radius-md, 10px);
+  border: 1px solid var(--fd-border, #e2e8f0);
+  background: var(--fd-surface-muted, #f8fafc);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fd-text-secondary, #64748b);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-brand-scope-hint a {
+  color: var(--fd-accent, #0d9488);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-brand-scope-hint a:hover {
+  text-decoration: underline;
+}
+
+html[data-app='filodiretto'] #templateModal .fd-template-brand-contacts-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--fd-surface-muted, #f8fafc);
+  border: 1px solid var(--fd-border, #e2e8f0);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fd-text-secondary, #64748b);
+}
+

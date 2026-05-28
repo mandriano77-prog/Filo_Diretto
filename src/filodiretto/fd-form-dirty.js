@@ -33,8 +33,7 @@
     'tplSecLabel', 'tplSecValue', 'tplAuxLabel', 'tplAuxValue',
     'tplLink1Label', 'tplLink1Url', 'tplLink2Label', 'tplLink2Url',
     'tplLink3Label', 'tplLink3Url', 'tplRegolamento', 'tplContatti',
-    'hrFixedLinkLabel', 'hrFixedLinkUrl', 'hrBrandEmail', 'hrBrandPhone',
-    'hrBrandDpo', 'hrBrandEmergency'
+    'hrFixedLinkLabel', 'hrFixedLinkUrl'
   ];
 
   function serializeTemplateModalState() {

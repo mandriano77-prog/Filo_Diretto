@@ -40,6 +40,7 @@
   function closeAllMenus() {
     document.querySelectorAll('.fd-users-kebab-menu').forEach(function (m) {
       m.hidden = true;
+      m.classList.remove('fd-floating-menu-panel');
     });
     document.querySelectorAll('.fd-users-kebab').forEach(function (b) {
       b.setAttribute('aria-expanded', 'false');
@@ -70,10 +71,24 @@
     toast('Copia non supportata dal browser');
   }
 
+  function ensureCreateUserButton() {
+    var btn = document.getElementById('createUserBtn');
+    if (!btn) return;
+    var isAdmin = document.body.classList.contains('role-admin');
+    btn.style.display = isAdmin ? '' : 'none';
+    btn.classList.add('fd-btn-primary');
+  }
+
   function ensureUsersChrome() {
     var section = document.getElementById('users');
-    if (!section || section.classList.contains('users--fd')) return;
-    section.classList.add('users--fd');
+    if (!section) return;
+    if (!section.classList.contains('users--fd')) {
+      section.classList.add('users--fd');
+    }
+    ensureCreateUserButton();
+
+    if (section.classList.contains('fd-users-chrome-ready')) return;
+    section.classList.add('fd-users-chrome-ready');
 
     var legacyToolbar = section.querySelector(':scope > div[style*="justify-content"]');
     if (legacyToolbar && !section.querySelector('.fd-users-toolbar')) {
@@ -177,9 +192,13 @@
         var willOpen = menu.hidden;
         closeAllMenus();
         if (willOpen) {
-          menu.hidden = false;
           btn.setAttribute('aria-expanded', 'true');
           openMenuId = menuId;
+          if (typeof window.fdPositionFloatingMenu === 'function') {
+            window.fdPositionFloatingMenu(btn, menu);
+          } else {
+            menu.hidden = false;
+          }
         }
       });
     });
@@ -205,6 +224,7 @@
     if (!isFiloUsersApp()) return;
     ensureDismissBound();
     ensureUsersChrome();
+    ensureCreateUserButton();
 
     var tbody = document.querySelector('#usersTable tbody');
     if (!tbody) return;
