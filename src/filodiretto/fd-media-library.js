@@ -6,6 +6,11 @@
   var selectedIds = new Set();
   var pendingDeleteAsset = null;
 
+  function authHeaders() {
+    if (typeof window.getAuthHeaders === 'function') return window.getAuthHeaders();
+    return {};
+  }
+
   var SECTION_META = {
     logo: {
       title: 'Logo',
@@ -517,7 +522,7 @@
             if (!next || next.trim() === name) return;
             fetch((window.API || '/api/v1') + '/media/' + encodeURIComponent(id), {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...authHeaders() },
               body: JSON.stringify({ title: next.trim(), type: type, brand_id: window.brandId })
             }).then(function () {
               if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
@@ -656,7 +661,9 @@
       ensureMediaLayout();
       if (!window.brandId) return;
       var api = window.API || '/api/v1';
-      var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(window.brandId));
+      var res = await fetch(api + '/media?brand_id=' + encodeURIComponent(window.brandId), {
+        headers: authHeaders()
+      });
       var items = await res.json().catch(function () { return []; });
       var rows = Array.isArray(items) ? items : [];
       var keep = new Set(rows.map(function (x) { return String(x.id); }));
