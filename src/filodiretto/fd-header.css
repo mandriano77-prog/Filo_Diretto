@@ -36,22 +36,27 @@ html[data-app="filodiretto"] .user-menu-trigger {
   justify-content: center;
   gap: 6px;
   width: auto;
-  min-width: 40px;
+  min-width: 54px;
   height: 40px;
-  padding: 0 10px 0 4px;
+  padding: 0 10px 0 8px;
   border-radius: var(--radius-pill, 999px);
   overflow: visible;
 }
 
 html[data-app="filodiretto"] .user-menu-trigger .user-avatar {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  flex: 0 0 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  line-height: 1.1;
+  overflow: visible;
+  white-space: nowrap;
+  line-height: 1;
   font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 html[data-app="filodiretto"] .user-menu-chevron {
