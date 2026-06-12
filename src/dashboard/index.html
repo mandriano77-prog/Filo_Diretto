@@ -23,8 +23,8 @@
             if (lock === 'hr') {
                 document.documentElement.setAttribute('data-shell', 'light');
                 document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260612-allowlist-admin';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260612-allowlist-admin';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260612-rbac-user-fix';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260612-rbac-user-fix';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-push.js', '/filodiretto/fd-responsive-tables.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -3198,7 +3198,14 @@ function getDashboardFetchHeaders() {
 }
 let authToken = null;
 let currentUser = null;
+window.currentUser = null;
 let passwordResetToken = null;
+
+function setCurrentUser(user) {
+    currentUser = user ? applyAllowlistOperatorUser(user) : null;
+    window.currentUser = currentUser;
+    return currentUser;
+}
 
 function isPublicAuthApiPath(pathname) {
     return pathname.startsWith('/api/v1/auth/login')
@@ -3285,7 +3292,7 @@ function syncAuthUi() {
     }
     syncWaiUi();
     if (typeof FdRbac !== 'undefined' && typeof FdRbac.syncRbac === 'function' && isHrDashboard()) {
-        FdRbac.syncRbac(currentUser && currentUser.role);
+        FdRbac.syncRbac();
     }
 }
 
@@ -3428,7 +3435,7 @@ function syncWaiUi() {
 function logout() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     authToken = null;
-    currentUser = null;
+    setCurrentUser(null);
     brandId = null;
     try { localStorage.removeItem(LAST_BRAND_KEY); } catch (_) {}
     const gate = document.getElementById('loginGate');
@@ -3593,7 +3600,7 @@ async function bootstrapSession() {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) {
         authToken = null;
-        currentUser = null;
+        setCurrentUser(null);
         if (gate) gate.style.display = 'flex';
         if (main) main.style.display = 'none';
         showLoginPanel();
@@ -3608,7 +3615,7 @@ async function bootstrapSession() {
             return;
         }
         const data = await res.json();
-        currentUser = applyAllowlistOperatorUser(data.user);
+        setCurrentUser(data.user);
         syncAuthUi();
         if (gate) gate.style.display = 'none';
         if (main) main.style.display = 'grid';
@@ -3649,7 +3656,7 @@ async function submitLogin() {
         }
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         authToken = data.token;
-        currentUser = applyAllowlistOperatorUser(data.user);
+        setCurrentUser(data.user);
         syncAuthUi();
         const gate = document.getElementById('loginGate');
         const main = document.getElementById('mainLayout');
@@ -3935,7 +3942,7 @@ function updateNavState() {
     document.body.classList.toggle('role-sender', role === 'sender');
     document.body.classList.toggle('role-reporter', role === 'reporter');
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.applyNavGating === 'function') {
-        FdRbac.applyNavGating(role);
+        FdRbac.applyNavGating();
     }
     applyLegacyCampaignsUiMask();
     syncWaiUi();
@@ -3964,7 +3971,7 @@ function isFiloOperationalHome() {
 function getDefaultBrandSection() {
     if (isFiloOperationalHome()) return 'welcome';
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.defaultLandingSection === 'function') {
-        return FdRbac.defaultLandingSection(currentUser && currentUser.role);
+        return FdRbac.defaultLandingSection();
     }
     return isLegacyCampaignsUiEnabled() ? 'campaigns' : 'passes';
 }
@@ -4042,7 +4049,7 @@ function nav(id) {
     syncSectionDocumentTitle(id);
     syncBreadcrumb(id);
     if (isHrDashboard() && typeof FdRbac !== 'undefined' && typeof FdRbac.applyReadOnlyMode === 'function') {
-        FdRbac.applyReadOnlyMode(id, currentUser && currentUser.role);
+        FdRbac.applyReadOnlyMode(id);
     }
     const loaders = {
         welcome: () => {

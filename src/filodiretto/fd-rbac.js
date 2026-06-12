@@ -153,7 +153,7 @@
   }
 
   function defaultLandingSection(role) {
-    var r = normalizeRole(role || getCurrentRole());
+    var r = getCurrentRole();
     return DEFAULT_LANDING[r] || 'welcome';
   }
 
@@ -290,7 +290,7 @@
 
   function applyNavGating(role) {
     if (!isFiloApp()) return;
-    role = normalizeRole(role || getCurrentRole());
+    role = getCurrentRole();
     document.querySelectorAll('.nav-item[data-section-id]').forEach(function (el) {
       var sid = el.getAttribute('data-section-id');
       var perm = el.getAttribute('data-requires-perm') || sectionKey(sid);
@@ -314,7 +314,7 @@
 
   function applyReadOnlyMode(activeSectionId, role) {
     if (!isFiloApp()) return;
-    role = normalizeRole(role || getCurrentRole());
+    role = getCurrentRole();
     var sid = activeSectionId ||
       (typeof global.getActiveSectionId === 'function' ? global.getActiveSectionId() : '');
     var readonly = sid && !canWriteSection(sid, role);
@@ -350,7 +350,7 @@
 
   function syncRbac(role) {
     if (!isFiloApp()) return;
-    role = normalizeRole(role || getCurrentRole());
+    role = getCurrentRole();
     applyBodyRoleClasses(role);
     applyNavGating(role);
     applyReadOnlyMode(null, role);
