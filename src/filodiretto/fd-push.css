@@ -5,6 +5,13 @@ html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 300px;
 }
 
+html[data-app='filodiretto'] .pass-wallet-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
 html[data-app='filodiretto'] .push-field-error,
 .push-field-error {
   margin: 6px 0 0;
