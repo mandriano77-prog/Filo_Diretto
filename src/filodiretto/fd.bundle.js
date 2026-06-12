@@ -4330,11 +4330,18 @@
       }
     });
   }
+  function enhanceConfirmDialogA11y() {
+    var dlg = document.getElementById('appConfirmDialog');
+    if (!dlg) return;
+    dlg.setAttribute('role', 'dialog');
+    dlg.setAttribute('aria-modal', 'true');
+  }
   function run() {
     if (!isHr()) return;
     var main = document.getElementById('main-content') || document.body;
     wireFormLabels(main);
     fixPreviewImages(main);
+    enhanceConfirmDialogA11y();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', run);
@@ -4992,6 +4999,10 @@
     { value: 'samsung', label: 'Samsung Wallet', icon: '', tip: 'Aggiornamento contenuto su Samsung Wallet' },
     { value: 'all', label: 'Tutti i canali', icon: '⇄', tip: 'Apple APNs + Google Wallet + Samsung Wallet' }
   ];
+  function getApiBase() {
+    if (typeof window.API === 'string' && window.API) return window.API;
+    return '/api/v1';
+  }
   function isFiloPushApp() {
     if (document.documentElement.classList.contains('a2w-shell')) return false;
     try {
@@ -5129,10 +5140,15 @@
     if (!sel || !brandId) return;
     sel.innerHTML = '<option value="">— Caricamento… —</option>';
     try {
-      var api = window.API || '/api';
-      var res = await fetch(api + '/passes?brand_id=' + encodeURIComponent(brandId) + '&limit=200', {
-        headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {}
-      });
+      var res = await fetch(
+        getApiBase() + '/passes?brand_id=' + encodeURIComponent(brandId) + '&limit=600',
+        { headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {} }
+      );
+      if (!res.ok) {
+        console.warn('[fd-push] loadTestPasses HTTP', res.status);
+        sel.innerHTML = '<option value="">— Lista pass non disponibile —</option>';
+        return;
+      }
       var rows = await res.json();
       var list = Array.isArray(rows) ? rows : rows.passes || rows.items || [];
       var withPush = list.filter(function (p) {
@@ -5168,7 +5184,8 @@
         sel.value = saved;
       }
     } catch (e) {
-      sel.innerHTML = '<option value="">— Errore caricamento —</option>';
+      console.warn('[fd-push] loadTestPasses failed', e);
+      sel.innerHTML = '<option value="">— Lista pass non disponibile —</option>';
     }
   }
   async function sendTestPush() {
@@ -5211,8 +5228,7 @@
     }, 60000);
     try {
       var body = buildPushBody({ test_pass_id: passId });
-      var api = window.API || '/api';
-      var res = await fetch(api + '/push/send', {
+      var res = await fetch(getApiBase() + '/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(typeof getAuthHeaders === 'function' ? getAuthHeaders() : {}) },
         body: JSON.stringify(body),
@@ -5561,9 +5577,8 @@
     var brandId = syncBrandIdForPush();
     if (!brandId) return { counts: null, note: null };
     try {
-      var api = window.API || '/api';
       var res = await fetch(
-        api + '/passes?brand_id=' + encodeURIComponent(brandId) + '&limit=600',
+        getApiBase() + '/passes?brand_id=' + encodeURIComponent(brandId) + '&limit=600',
         { headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {} }
       );
       var rows = await res.json();
@@ -5686,8 +5701,7 @@
   }
   async function deletePushHistoryCore(pushId) {
     try {
-      var api = window.API || '/api';
-      var res = await fetch(api + '/push/' + encodeURIComponent(pushId), {
+      var res = await fetch(getApiBase() + '/push/' + encodeURIComponent(pushId), {
         method: 'DELETE',
         headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {}
       });
@@ -5703,10 +5717,9 @@
   async function deleteSelectedPushHistoryCore(ids) {
     var ok = 0;
     var fail = 0;
-    var api = window.API || '/api';
     for (var i = 0; i < ids.length; i += 1) {
       try {
-        var res = await fetch(api + '/push/' + encodeURIComponent(ids[i]), {
+        var res = await fetch(getApiBase() + '/push/' + encodeURIComponent(ids[i]), {
           method: 'DELETE',
           headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {}
         });

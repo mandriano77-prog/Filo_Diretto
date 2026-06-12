@@ -52,11 +52,19 @@
     });
   }
 
+  function enhanceConfirmDialogA11y() {
+    var dlg = document.getElementById('appConfirmDialog');
+    if (!dlg) return;
+    dlg.setAttribute('role', 'dialog');
+    dlg.setAttribute('aria-modal', 'true');
+  }
+
   function run() {
     if (!isHr()) return;
     var main = document.getElementById('main-content') || document.body;
     wireFormLabels(main);
     fixPreviewImages(main);
+    enhanceConfirmDialogA11y();
   }
 
   if (document.readyState === 'loading') {
