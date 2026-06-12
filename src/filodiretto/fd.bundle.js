@@ -1081,20 +1081,27 @@
       });
       removeNavItemTextNodes(item);
       item.insertAdjacentHTML('afterbegin', navIconSvg(paths));
-      var labelSpan = document.createElement('span');
-      labelSpan.className = 'nav-label';
-      labelSpan.textContent = labelText;
-      var iconRef = item.querySelector('.nav-icon');
-      if (iconRef) iconRef.insertAdjacentElement('afterend', labelSpan);
-      else item.appendChild(labelSpan);
+      var iconOnly = sid === 'welcome';
+      if (iconOnly) {
+        item.classList.add('nav-item--icon-only');
+      } else {
+        item.classList.remove('nav-item--icon-only');
+        var labelSpan = document.createElement('span');
+        labelSpan.className = 'nav-label';
+        labelSpan.textContent = labelText;
+        var iconRef = item.querySelector('.nav-icon');
+        if (iconRef) iconRef.insertAdjacentElement('afterend', labelSpan);
+        else item.appendChild(labelSpan);
+      }
       preserved.forEach(function (el) {
         item.appendChild(el);
       });
       if (badge && !item.contains(badge)) item.appendChild(badge);
       removeNavItemTextNodes(item);
-      if (labelText) {
-        item.setAttribute('data-fd-tooltip', labelText);
-        item.setAttribute('aria-label', labelText);
+      var a11yLabel = labelText || (iconOnly ? 'Inizio' : '');
+      if (a11yLabel) {
+        item.setAttribute('data-fd-tooltip', a11yLabel);
+        item.setAttribute('aria-label', a11yLabel);
       }
     });
   }

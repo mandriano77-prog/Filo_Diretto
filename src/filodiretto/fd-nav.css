@@ -11,6 +11,8 @@ html[data-app='filodiretto'] #campaignModal {
 }
 
 html[data-app='filodiretto'] .sidebar {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding: var(--space-4, 16px) var(--space-3, 12px);
 }
@@ -18,6 +20,8 @@ html[data-app='filodiretto'] .sidebar {
 html[data-app='filodiretto'] .sidebar-nav {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -30,10 +34,24 @@ html[data-app='filodiretto'] .logo {
 
 html[data-app='filodiretto'] .nav-item--standalone {
   margin-bottom: var(--space-2, 8px);
+  flex-shrink: 0;
+}
+
+html[data-app='filodiretto'] .nav-item--icon-only {
+  justify-content: center;
+  width: 38px;
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+html[data-app='filodiretto'] .nav-item--icon-only .nav-label,
+html[data-app='filodiretto'] .nav-item--icon-only .a2w-nav-label {
+  display: none;
 }
 
 html[data-app='filodiretto'] .nav-group {
   margin: 0;
+  flex-shrink: 0;
 }
 
 html[data-app='filodiretto'] .nav-group-label {
@@ -115,9 +133,10 @@ html[data-app='filodiretto'] .nav-item:focus-visible {
 }
 
 html[data-app='filodiretto'] .nav-group--setup {
-  margin-top: var(--space-3, 12px);
+  margin-top: auto;
   padding-top: var(--space-3, 12px);
   border-top: 1px solid var(--border, var(--border-default));
+  opacity: 1;
 }
 
 html[data-app='filodiretto'] .fd-sidebar-tooltip {
@@ -222,8 +241,12 @@ html[data-app='filodiretto'] .fd-sidebar-tooltip.is-visible {
   }
 
   html[data-app='filodiretto'] body.fd-sidebar-collapsed .nav-group--setup {
-    margin-top: var(--space-2, 8px);
+    margin-top: auto;
     padding-top: var(--space-2, 8px);
+  }
+
+  html[data-app='filodiretto'] body.fd-sidebar-collapsed .nav-item--icon-only {
+    width: auto;
   }
 
   html[data-app='filodiretto'] body.fd-sidebar-collapsed .fd-sidebar-collapse-btn {

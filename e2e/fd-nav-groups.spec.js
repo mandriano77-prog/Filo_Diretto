@@ -13,7 +13,8 @@ async function bootNavGroupsShell(page) {
 <html data-app="filodiretto" data-shell="light">
 <body>
   <aside class="sidebar">
-    <div class="nav-item active" data-section-id="welcome" onclick="nav('welcome')" role="button" tabindex="0">Inizio</div>
+    <div class="sidebar-nav">
+    <div class="nav-item nav-item--standalone nav-item--icon-only active" data-section-id="welcome" onclick="nav('welcome')" role="button" tabindex="0" aria-label="Inizio" data-fd-tooltip="Inizio">Inizio</div>
     <details class="nav-group" data-nav-group="brand-pass">
       <summary class="nav-group-label">Brand &amp; Pass</summary>
       <div class="nav-group-items">
@@ -40,6 +41,7 @@ async function bootNavGroupsShell(page) {
         <div class="nav-item" data-section-id="users" onclick="nav('users')">Utenti</div>
       </div>
     </details>
+    </div>
   </aside>
   <script>
     window.__2WALLET_PRODUCT_LOCK__ = 'hr';
@@ -78,6 +80,31 @@ test.describe('Filo nav groups accordion', () => {
     await expect(database).toHaveAttribute('open', '');
     await expect(database).toHaveClass(/nav-group--active/);
     await expect(page.locator('.nav-item[data-section-id="leads"]')).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('welcome is icon-only with aria-label and no visible label', async ({ page }) => {
+    await bootNavGroupsShell(page);
+    const welcome = page.locator('.nav-item[data-section-id="welcome"]');
+    await expect(welcome).toHaveClass(/nav-item--icon-only/);
+    await expect(welcome).toHaveAttribute('aria-label', 'Inizio');
+    await expect(welcome.locator('.nav-label')).toHaveCount(0);
+    await expect(welcome.locator('.nav-icon')).toHaveCount(1);
+  });
+
+  test('setup group is anchored at bottom of sidebar nav', async ({ page }) => {
+    await bootNavGroupsShell(page);
+    const anchored = await page.evaluate(() => {
+      const sidebar = document.querySelector('.sidebar');
+      const nav = document.querySelector('.sidebar-nav');
+      const setup = document.querySelector('.nav-group--setup');
+      if (!sidebar || !nav || !setup) return false;
+      sidebar.style.minHeight = '520px';
+      void sidebar.offsetHeight;
+      const marginTop = parseFloat(getComputedStyle(setup).marginTop || '0');
+      const tailGap = nav.getBoundingClientRect().bottom - setup.getBoundingClientRect().bottom;
+      return marginTop > 40 && tailGap < 8;
+    });
+    expect(anchored).toBe(true);
   });
 
   test('nav items receive stroke icons', async ({ page }) => {
