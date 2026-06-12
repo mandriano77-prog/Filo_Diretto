@@ -1,0 +1,136 @@
+html[data-app='filodiretto'] #templates .fd-tpl-card {
+  margin-bottom: 12px;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__grid {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__preview {
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1e1b4b;
+  min-height: 148px;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__strip {
+  height: 56px;
+  background: linear-gradient(135deg, #c4b5fd, #7c3aed);
+  background-size: cover;
+  background-position: center;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__body {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  align-items: center;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__logo--empty {
+  display: inline-block;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__line {
+  display: block;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__line--short {
+  width: 65%;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__status.is-ready {
+  color: #166534;
+  background: #dcfce7;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__status.is-incomplete {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__meta {
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-check {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--fd-border, var(--border));
+  color: var(--text2);
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-check.is-done {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  html[data-app='filodiretto'] #templates .fd-tpl-card__grid {
+    grid-template-columns: 1fr;
+  }
+}

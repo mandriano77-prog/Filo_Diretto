@@ -226,6 +226,7 @@
       clearBtn.addEventListener('click', function () {
         var dlg = document.getElementById('fdMediaClearDialog');
         if (dlg) dlg.hidden = true;
+        window.__fdSkipMediaAppConfirm = true;
         if (typeof window.deleteAllMedia === 'function') window.deleteAllMedia();
       });
     }
@@ -241,6 +242,7 @@
         var dlg = document.getElementById('fdMediaAssetDeleteDialog');
         if (dlg) dlg.hidden = true;
         if (pendingDeleteAsset && typeof window.deleteMediaItem === 'function') {
+          window.__fdSkipMediaAppConfirm = true;
           window.deleteMediaItem(pendingDeleteAsset.id);
         }
         pendingDeleteAsset = null;
@@ -260,6 +262,7 @@
         selectedIds.clear();
         syncBulkUi();
         ids.forEach(function (id) {
+          window.__fdSkipMediaAppConfirm = true;
           if (typeof window.deleteMediaItem === 'function') window.deleteMediaItem(id);
         });
       });
@@ -501,10 +504,16 @@
     return day + ' giorni fa';
   }
 
+  function fdIcon(name, label) {
+    if (window.FD_ICONS && typeof window.FD_ICONS.svg === 'function') {
+      return window.FD_ICONS.svg(name, 15);
+    }
+    return '';
+  }
+
   function renderAssetCard(item, type) {
     var name = item.title || item.filename || SECTION_META[type].title;
     var usedIn = Number(item.used_in_count || 0);
-    var usedText = usedIn > 0 ? ('Usato in: ' + usedIn + ' elementi') : 'Usato in: non assegnato';
     var metadata = estimateDims(type) + ' · ' + formatSize(item.size_bytes) + ' · ' + timeAgo(item.created_at);
     return (
       '<article class="media-card media-card--fd" data-asset-id="' + esc(item.id) + '" data-asset-type="' + esc(type) + '" data-asset-name="' + esc(name) + '" data-used-in="' + esc(usedIn) + '">' +
@@ -512,14 +521,13 @@
       '<label class="media-card__check-wrap"><input type="checkbox" class="media-card__check" data-action="select" aria-label="Seleziona asset"></label>' +
       '<img src="/api/v1/media/' + esc(item.id) + '/image" alt="' + esc(name) + '">' +
       '<div class="media-card__overlay">' +
-      '<button type="button" class="media-card__icon-btn" data-action="preview" aria-label="Preview asset">👁</button>' +
-      '<button type="button" class="media-card__icon-btn" data-action="rename" aria-label="Rinomina asset">✎</button>' +
-      '<button type="button" class="media-card__icon-btn media-card__icon-btn--danger" data-action="delete" aria-label="Elimina asset">🗑</button>' +
+      '<button type="button" class="media-card__icon-btn" data-action="preview" aria-label="Anteprima asset" title="Anteprima">' + fdIcon('eye') + '</button>' +
+      '<button type="button" class="media-card__icon-btn" data-action="rename" aria-label="Rinomina asset" title="Rinomina">' + fdIcon('pencil') + '</button>' +
       '</div>' +
       '</div>' +
       '<div class="media-card__title">' + esc(name) + '</div>' +
       '<div class="media-card__meta">' + esc(metadata) + '</div>' +
-      '<button type="button" class="media-card__used-in" data-action="used-in">' + esc(usedText) + '</button>' +
+      '<button type="button" class="media-card__delete-btn fd-btn-danger-outline" data-action="delete" aria-label="Elimina asset">Elimina</button>' +
       '</article>'
     );
   }
@@ -528,7 +536,7 @@
     var m = SECTION_META[type];
     return (
       '<button type="button" class="fd-media-dropzone" data-upload-type="' + esc(type) + '" aria-label="Carica ' + esc(m.title) + '">' +
-      '<div class="fd-media-dropzone__icon">⤴</div>' +
+      '<div class="fd-media-dropzone__icon">' + fdIcon('upload', 20) + '</div>' +
       '<div class="fd-media-dropzone__title">Trascina qui il tuo asset o clicca per caricare</div>' +
       '<div class="fd-media-dropzone__spec">' + esc(m.hint) + '</div>' +
       '</button>'
@@ -588,9 +596,6 @@
             }
             openDialog('fdMediaAssetDeleteDialog');
             return;
-          }
-          if (action === 'used-in') {
-            if (typeof window.toast === 'function') window.toast('Dettaglio utilizzi in arrivo');
           }
         });
       });
@@ -741,8 +746,59 @@
     };
   }
 
+  function patchMediaDeleteConfirm() {
+    if (window.__fdMediaDeletePatched) return;
+    window.__fdMediaDeletePatched = true;
+
+    if (typeof window.deleteMediaItem === 'function') {
+      var origItem = window.deleteMediaItem;
+      window.deleteMediaItem = async function (id) {
+        if (window.__fdSkipMediaAppConfirm) {
+          window.__fdSkipMediaAppConfirm = false;
+          try {
+            await fetch((window.API || '/api/v1') + '/media/' + encodeURIComponent(id), {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            if (typeof window.toast === 'function') window.toast('Media eliminato');
+            if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
+          } catch (err) {
+            if (typeof window.toast === 'function') window.toast('Errore: ' + err.message);
+          }
+          return;
+        }
+        return origItem.apply(this, arguments);
+      };
+    }
+
+    if (typeof window.deleteAllMedia === 'function') {
+      var origAll = window.deleteAllMedia;
+      window.deleteAllMedia = async function () {
+        if (window.__fdSkipMediaAppConfirm) {
+          window.__fdSkipMediaAppConfirm = false;
+          var brandId = getCurrentBrandId();
+          if (!brandId) return;
+          try {
+            var res = await fetch((window.API || '/api/v1') + '/media?brand_id=' + encodeURIComponent(brandId), {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            var data = await res.json();
+            if (typeof window.toast === 'function') window.toast((data.deleted || 0) + ' media eliminati');
+            if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
+          } catch (err) {
+            if (typeof window.toast === 'function') window.toast('Errore: ' + err.message);
+          }
+          return;
+        }
+        return origAll.apply(this, arguments);
+      };
+    }
+  }
+
   function boot() {
     if (!isFiloMedia()) return;
+    patchMediaDeleteConfirm();
     ensureUploadTypeOption();
     patchLoadMediaLibrary();
     ensureMediaLayout();

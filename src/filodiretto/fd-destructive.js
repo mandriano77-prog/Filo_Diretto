@@ -44,8 +44,14 @@
     var menu = document.createElement('div');
     menu.className = 'fd-media-page-menu';
     menu.id = 'fdMediaPageMenu';
+    var kebabIcon =
+      window.FD_ICONS && typeof window.FD_ICONS.svg === 'function'
+        ? window.FD_ICONS.svg('kebab', 18)
+        : '⋮';
     menu.innerHTML =
-      '<button type="button" class="fd-media-page-menu__trigger" id="fdMediaPageMenuBtn" aria-label="Azioni Media Library" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
+      '<button type="button" class="fd-media-page-menu__trigger" id="fdMediaPageMenuBtn" aria-label="Altre azioni libreria media" title="Altre azioni" aria-haspopup="menu" aria-expanded="false">' +
+      kebabIcon +
+      '</button>' +
       '<div class="fd-media-page-menu__panel" id="fdMediaPageMenuPanel" role="menu" hidden>' +
       '<button type="button" class="fd-media-page-menu__item" id="fdMediaExportBtn" role="menuitem">Esporta libreria (.zip)</button>' +
       '<button type="button" class="fd-media-page-menu__item" id="fdMediaSpecsBtn" role="menuitem">Specifiche tecniche</button>' +

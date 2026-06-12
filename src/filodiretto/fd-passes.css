@@ -1,0 +1,54 @@
+html[data-app='filodiretto'] #passes.passes--fd-layout #passWalletChannelsDiag {
+  margin-top: 20px;
+  margin-bottom: 0;
+}
+
+html[data-app='filodiretto'] #passes .fd-passes-cols-toggle {
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] #passes:not(.passes--advanced-cols) .pass-col-advanced {
+  display: none;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 160px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 8px;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+  z-index: 40;
+  padding: 4px;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel[hidden] {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item:hover {
+  background: var(--bg-hover, #f3f4f6);
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger {
+  color: #dc2626;
+}

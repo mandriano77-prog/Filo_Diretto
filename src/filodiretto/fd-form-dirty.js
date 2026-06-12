@@ -137,12 +137,68 @@
     }
   }
 
+  function ensureBrandIdentityStickyBar() {
+    var page = document.querySelector('#brand-identity .a2w-bi-page');
+    if (!page || document.getElementById('fdBiStickyBar')) return null;
+    var bar = document.createElement('div');
+    bar.id = 'fdBiStickyBar';
+    bar.className = 'fd-bi-sticky-bar';
+    bar.hidden = true;
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Salvataggio modifiche brand');
+    bar.innerHTML =
+      '<span class="fd-bi-sticky-bar__hint" id="fdBiStickyHint">Modifiche non salvate</span>' +
+      '<div class="fd-bi-sticky-bar__actions">' +
+      '<button type="button" class="btn sec" id="fdBiStickyCancelBtn">Annulla</button>' +
+      '<button type="button" class="btn" id="fdBiStickySaveBtn">Salva modifiche</button>' +
+      '</div>';
+    page.appendChild(bar);
+
+    document.getElementById('fdBiStickySaveBtn').addEventListener('click', function () {
+      if (typeof window.saveBrandIdentity === 'function') window.saveBrandIdentity();
+    });
+    document.getElementById('fdBiStickyCancelBtn').addEventListener('click', function () {
+      if (typeof window.loadBrandIdentity === 'function') window.loadBrandIdentity();
+    });
+    return bar;
+  }
+
+  function syncBrandIdentityStickyBar() {
+    if (!isFiloFormDirtyApp()) return;
+    var bar = document.getElementById('fdBiStickyBar') || ensureBrandIdentityStickyBar();
+    if (!bar) return;
+    var state = window.brandIdentityState || {};
+    var dirty = !!state.dirty;
+    var saving = !!state.saving;
+    bar.hidden = !dirty && !saving;
+    bar.classList.toggle('is-saving', saving);
+    var hint = document.getElementById('fdBiStickyHint');
+    if (hint) hint.textContent = saving ? 'Salvataggio in corso…' : 'Modifiche non salvate';
+    var saveBtn = document.getElementById('fdBiStickySaveBtn');
+    var cancelBtn = document.getElementById('fdBiStickyCancelBtn');
+    if (saveBtn) saveBtn.disabled = saving || !dirty;
+    if (cancelBtn) cancelBtn.disabled = saving;
+  }
+
+  function patchBrandIdentitySaveUi() {
+    if (window.__fdBiStickyPatched || typeof window.a2wBiUpdateSaveButton !== 'function') return;
+    window.__fdBiStickyPatched = true;
+    ensureBrandIdentityStickyBar();
+    var orig = window.a2wBiUpdateSaveButton;
+    window.a2wBiUpdateSaveButton = function () {
+      orig.apply(this, arguments);
+      syncBrandIdentityStickyBar();
+    };
+  }
+
   function initFdFormDirty() {
     if (!isFiloFormDirtyApp()) return;
     patchBrandIdentityV2Flag();
     patchTemplateFlows();
+    patchBrandIdentitySaveUi();
     bindTemplateModalDirty();
     document.getElementById('brand-identity')?.classList.add('brand-identity--fd-dirty');
+    syncBrandIdentityStickyBar();
   }
 
   window.fdInitFormDirty = initFdFormDirty;

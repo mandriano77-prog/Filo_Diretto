@@ -969,6 +969,39 @@
 })();
 (function () {
   'use strict';
+  var STROKE =
+    'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  var PATHS = {
+    eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+    trash:
+      '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+    kebab: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+    upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+    more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'
+  };
+  function svg(name, size) {
+    var paths = PATHS[name];
+    if (!paths) return '';
+    var s = size || 16;
+    return (
+      '<svg class="fd-icon fd-icon--' +
+      name +
+      '" viewBox="0 0 24 24" width="' +
+      s +
+      '" height="' +
+      s +
+      '" ' +
+      STROKE +
+      ' aria-hidden="true">' +
+      paths +
+      '</svg>'
+    );
+  }
+  window.FD_ICONS = { svg: svg, paths: PATHS };
+})();
+(function () {
+  'use strict';
   var STORAGE_KEY = 'filo_nav_group';
   var syncingNavGroups = false;
   var SECTION_ICONS = {
@@ -1422,6 +1455,252 @@
     bootAll();
   }
   window.addEventListener('load', bootAll);
+})();
+(function () {
+  'use strict';
+  var SOCIAL_IDS = ['biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'];
+  function isFiloBiApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function isConfirmTypingMatch(input, expected) {
+    if (window.A2W && window.A2W.UI && typeof window.A2W.UI.isConfirmTypingMatch === 'function') {
+      return window.A2W.UI.isConfirmTypingMatch(input, expected);
+    }
+    return String(input || '').trim() === String(expected || '').trim();
+  }
+  function countSocialProfiles() {
+    var n = 0;
+    SOCIAL_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && String(el.value || '').trim()) n += 1;
+    });
+    return n;
+  }
+  function syncSocialToggleUi() {
+    var toggle = document.getElementById('a2wBiSocialToggle');
+    var body = document.getElementById('a2wBiSocialBody');
+    var countEl = document.getElementById('fdBiSocialCount');
+    if (!toggle) return;
+    var count = countSocialProfiles();
+    if (countEl) {
+      countEl.textContent = count > 0 ? count + (count === 1 ? ' profilo' : ' profili') : 'Nessun profilo';
+      countEl.classList.toggle('has-profiles', count > 0);
+    }
+    if (body && count > 0 && body.hidden) {
+      body.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+  }
+  function enhanceSocialSection() {
+    var toggle = document.getElementById('a2wBiSocialToggle');
+    var body = document.getElementById('a2wBiSocialBody');
+    if (!toggle || toggle.dataset.fdSocialEnhanced === '1') return;
+    var section = toggle.closest('section');
+    toggle.dataset.fdSocialEnhanced = '1';
+    if (section && !section.querySelector('.fd-bi-social-head')) {
+      var head = document.createElement('div');
+      head.className = 'fd-bi-social-head';
+      head.innerHTML =
+        '<p class="fd-bi-social-lead">Collegamenti ai profili social del brand (opzionale). Appaiono nel pass e nelle comunicazioni.</p>';
+      section.insertBefore(head, toggle);
+    }
+    toggle.classList.add('fd-bi-social-trigger');
+    if (!toggle.querySelector('.fd-bi-social-trigger__chevron')) {
+      var labelWrap = document.createElement('span');
+      labelWrap.className = 'fd-bi-social-trigger__label';
+      labelWrap.innerHTML = '<span class="fd-bi-social-trigger__title">Social</span><span class="fd-bi-social-trigger__meta" id="fdBiSocialCount">Nessun profilo</span>';
+      var chevron = document.createElement('span');
+      chevron.className = 'fd-bi-social-trigger__chevron';
+      chevron.setAttribute('aria-hidden', 'true');
+      chevron.textContent = '›';
+      toggle.textContent = '';
+      toggle.appendChild(labelWrap);
+      toggle.appendChild(chevron);
+    }
+    if (body) body.classList.add('fd-bi-social-body');
+    SOCIAL_IDS.forEach(function (id) {
+      var input = document.getElementById(id);
+      if (!input || input.dataset.fdSocialBound === '1') return;
+      input.dataset.fdSocialBound = '1';
+      input.addEventListener('input', syncSocialToggleUi);
+    });
+    if (!toggle.dataset.fdSocialToggleBound) {
+      toggle.dataset.fdSocialToggleBound = '1';
+      toggle.addEventListener('click', function () {
+        requestAnimationFrame(syncSocialToggleUi);
+      });
+    }
+    syncSocialToggleUi();
+  }
+  function formatBadgeLabel(stateLabel) {
+    if (!stateLabel) return stateLabel;
+    if (stateLabel === 'Modifiche non salvate' || stateLabel === 'Salvataggio…') return stateLabel;
+    if (/^Salvato|^circa/i.test(stateLabel)) {
+      return 'Ultima modifica: ' + stateLabel.replace(/^Salvato\s*/i, '');
+    }
+    if (stateLabel === 'Salvato') return 'Ultima modifica: ora';
+    return stateLabel;
+  }
+  function patchSaveStateBadge() {
+    if (window.__fdBiBadgePatched || typeof window.a2wBiUpdateSaveStateBadge !== 'function') return;
+    window.__fdBiBadgePatched = true;
+    var orig = window.a2wBiUpdateSaveStateBadge;
+    window.a2wBiUpdateSaveStateBadge = function (stateLabel, modeClass, title) {
+      orig(formatBadgeLabel(stateLabel), modeClass, title);
+    };
+  }
+  function patchDeleteTypingHandler() {
+    var confirmInput = document.getElementById('a2wDeleteBrandConfirmInput');
+    var confirmBtn = document.getElementById('a2wDeleteBrandConfirmBtn');
+    if (!confirmInput || !confirmBtn || confirmInput.dataset.fdTypingPatched === '1') return;
+    confirmInput.dataset.fdTypingPatched = '1';
+    var fresh = confirmInput.cloneNode(true);
+    confirmInput.parentNode.replaceChild(fresh, confirmInput);
+    if (document.getElementById('a2wDeleteBrandDialogHint')) {
+      fresh.setAttribute('aria-describedby', 'a2wDeleteBrandDialogHint');
+    }
+    fresh.addEventListener('input', function () {
+      var expected = '';
+      if (typeof window.a2wBiCollectFormData === 'function') {
+        try {
+          expected = window.a2wBiCollectFormData().name || '';
+        } catch (_) {}
+      }
+      confirmBtn.disabled = !isConfirmTypingMatch(fresh.value, expected);
+    });
+  }
+  function patchLoadBrandIdentity() {
+    if (window.__fdBiLoadPatched || typeof window.loadBrandIdentity !== 'function') return;
+    window.__fdBiLoadPatched = true;
+    var orig = window.loadBrandIdentity;
+    window.loadBrandIdentity = async function () {
+      await orig.apply(this, arguments);
+      enhanceSocialSection();
+      syncSocialToggleUi();
+      patchDeleteTypingHandler();
+    };
+  }
+  function initFdBrandIdentity() {
+    if (!isFiloBiApp()) return;
+    patchSaveStateBadge();
+    patchLoadBrandIdentity();
+    patchDeleteTypingHandler();
+    enhanceSocialSection();
+    if (typeof window.fdInitFormDirty === 'function') window.fdInitFormDirty();
+  }
+  window.fdEnhanceBrandIdentity = enhanceSocialSection;
+  window.fdInitBrandIdentity = initFdBrandIdentity;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFdBrandIdentity);
+  } else {
+    initFdBrandIdentity();
+  }
+})();
+(function () {
+  'use strict';
+  var STEPS = [
+    { id: 'brand-identity', label: 'Identità' },
+    { id: 'media-library', label: 'Media' },
+    { id: 'templates', label: 'Template' },
+    { id: 'passes', label: 'Pass' }
+  ];
+  function isFiloFlowApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function esc(s) {
+    if (typeof window.esc === 'function') return window.esc(s);
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function renderFlowBar(activeId) {
+    return (
+      '<nav class="fd-brand-pass-flow" aria-label="Percorso configurazione pass">' +
+      STEPS.map(function (step, idx) {
+        var active = step.id === activeId ? ' is-active' : '';
+        var sep = idx < STEPS.length - 1 ? '<span class="fd-brand-pass-flow__sep" aria-hidden="true">›</span>' : '';
+        return (
+          '<button type="button" class="fd-brand-pass-flow__step' +
+          active +
+          '" data-fd-nav="' +
+          esc(step.id) +
+          '" onclick="nav(\'' +
+          esc(step.id) +
+          '\')">' +
+          esc(step.label) +
+          '</button>' +
+          sep
+        );
+      }).join('') +
+      '</nav>'
+    );
+  }
+  function injectFlowBar(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (!section || section.querySelector('.fd-brand-pass-flow')) return;
+    var title = section.querySelector('h1.page-title, h1.sec-title');
+    if (!title) return;
+    var host = document.createElement('div');
+    host.className = 'fd-brand-pass-flow-host';
+    host.innerHTML = renderFlowBar(sectionId);
+    title.parentNode.insertBefore(host, title.nextSibling);
+  }
+  function patchBrandSnapshot() {
+    if (window.__fdBrandSnapPatched || typeof window.loadBrandIdentity !== 'function') return;
+    window.__fdBrandSnapPatched = true;
+    var orig = window.loadBrandIdentity;
+    window.loadBrandIdentity = async function () {
+      await orig.apply(this, arguments);
+      try {
+        var data =
+          typeof window.a2wBiCollectFormData === 'function' ? window.a2wBiCollectFormData() : {};
+        window.__fdBrandPassSnapshot = {
+          id: window.brandId,
+          hr_email: data.supportEmail || data.hrEmail,
+          support_email: data.supportEmail
+        };
+      } catch (_) {}
+    };
+  }
+  function initFdBrandPassFlow() {
+    if (!isFiloFlowApp()) return;
+    patchBrandSnapshot();
+    STEPS.forEach(function (s) {
+      injectFlowBar(s.id);
+    });
+    var origNav = window.nav;
+    if (typeof origNav === 'function' && !window.__fdFlowNavPatched) {
+      window.__fdFlowNavPatched = true;
+      window.nav = function (id) {
+        var r = origNav.apply(this, arguments);
+        var done = function () {
+          if (STEPS.some(function (s) {
+            return s.id === id;
+          })) {
+            injectFlowBar(id);
+          }
+        };
+        if (r && typeof r.then === 'function') return r.then(done);
+        setTimeout(done, 0);
+        return r;
+      };
+    }
+  }
+  window.fdInitBrandPassFlow = initFdBrandPassFlow;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFdBrandPassFlow);
+  } else {
+    initFdBrandPassFlow();
+  }
 })();
 (function () {
   'use strict';
@@ -2591,6 +2870,7 @@
       clearBtn.addEventListener('click', function () {
         var dlg = document.getElementById('fdMediaClearDialog');
         if (dlg) dlg.hidden = true;
+        window.__fdSkipMediaAppConfirm = true;
         if (typeof window.deleteAllMedia === 'function') window.deleteAllMedia();
       });
     }
@@ -2605,6 +2885,7 @@
         var dlg = document.getElementById('fdMediaAssetDeleteDialog');
         if (dlg) dlg.hidden = true;
         if (pendingDeleteAsset && typeof window.deleteMediaItem === 'function') {
+          window.__fdSkipMediaAppConfirm = true;
           window.deleteMediaItem(pendingDeleteAsset.id);
         }
         pendingDeleteAsset = null;
@@ -2623,6 +2904,7 @@
         selectedIds.clear();
         syncBulkUi();
         ids.forEach(function (id) {
+          window.__fdSkipMediaAppConfirm = true;
           if (typeof window.deleteMediaItem === 'function') window.deleteMediaItem(id);
         });
       });
@@ -2838,10 +3120,15 @@
     var day = Math.floor(h / 24);
     return day + ' giorni fa';
   }
+  function fdIcon(name, label) {
+    if (window.FD_ICONS && typeof window.FD_ICONS.svg === 'function') {
+      return window.FD_ICONS.svg(name, 15);
+    }
+    return '';
+  }
   function renderAssetCard(item, type) {
     var name = item.title || item.filename || SECTION_META[type].title;
     var usedIn = Number(item.used_in_count || 0);
-    var usedText = usedIn > 0 ? ('Usato in: ' + usedIn + ' elementi') : 'Usato in: non assegnato';
     var metadata = estimateDims(type) + ' · ' + formatSize(item.size_bytes) + ' · ' + timeAgo(item.created_at);
     return (
       '<article class="media-card media-card--fd" data-asset-id="' + esc(item.id) + '" data-asset-type="' + esc(type) + '" data-asset-name="' + esc(name) + '" data-used-in="' + esc(usedIn) + '">' +
@@ -2849,14 +3136,13 @@
       '<label class="media-card__check-wrap"><input type="checkbox" class="media-card__check" data-action="select" aria-label="Seleziona asset"></label>' +
       '<img src="/api/v1/media/' + esc(item.id) + '/image" alt="' + esc(name) + '">' +
       '<div class="media-card__overlay">' +
-      '<button type="button" class="media-card__icon-btn" data-action="preview" aria-label="Preview asset">👁</button>' +
-      '<button type="button" class="media-card__icon-btn" data-action="rename" aria-label="Rinomina asset">✎</button>' +
-      '<button type="button" class="media-card__icon-btn media-card__icon-btn--danger" data-action="delete" aria-label="Elimina asset">🗑</button>' +
+      '<button type="button" class="media-card__icon-btn" data-action="preview" aria-label="Anteprima asset" title="Anteprima">' + fdIcon('eye') + '</button>' +
+      '<button type="button" class="media-card__icon-btn" data-action="rename" aria-label="Rinomina asset" title="Rinomina">' + fdIcon('pencil') + '</button>' +
       '</div>' +
       '</div>' +
       '<div class="media-card__title">' + esc(name) + '</div>' +
       '<div class="media-card__meta">' + esc(metadata) + '</div>' +
-      '<button type="button" class="media-card__used-in" data-action="used-in">' + esc(usedText) + '</button>' +
+      '<button type="button" class="media-card__delete-btn fd-btn-danger-outline" data-action="delete" aria-label="Elimina asset">Elimina</button>' +
       '</article>'
     );
   }
@@ -2864,7 +3150,7 @@
     var m = SECTION_META[type];
     return (
       '<button type="button" class="fd-media-dropzone" data-upload-type="' + esc(type) + '" aria-label="Carica ' + esc(m.title) + '">' +
-      '<div class="fd-media-dropzone__icon">⤴</div>' +
+      '<div class="fd-media-dropzone__icon">' + fdIcon('upload', 20) + '</div>' +
       '<div class="fd-media-dropzone__title">Trascina qui il tuo asset o clicca per caricare</div>' +
       '<div class="fd-media-dropzone__spec">' + esc(m.hint) + '</div>' +
       '</button>'
@@ -2922,9 +3208,6 @@
             }
             openDialog('fdMediaAssetDeleteDialog');
             return;
-          }
-          if (action === 'used-in') {
-            if (typeof window.toast === 'function') window.toast('Dettaglio utilizzi in arrivo');
           }
         });
       });
@@ -3064,8 +3347,56 @@
       }
     };
   }
+  function patchMediaDeleteConfirm() {
+    if (window.__fdMediaDeletePatched) return;
+    window.__fdMediaDeletePatched = true;
+    if (typeof window.deleteMediaItem === 'function') {
+      var origItem = window.deleteMediaItem;
+      window.deleteMediaItem = async function (id) {
+        if (window.__fdSkipMediaAppConfirm) {
+          window.__fdSkipMediaAppConfirm = false;
+          try {
+            await fetch((window.API || '/api/v1') + '/media/' + encodeURIComponent(id), {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            if (typeof window.toast === 'function') window.toast('Media eliminato');
+            if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
+          } catch (err) {
+            if (typeof window.toast === 'function') window.toast('Errore: ' + err.message);
+          }
+          return;
+        }
+        return origItem.apply(this, arguments);
+      };
+    }
+    if (typeof window.deleteAllMedia === 'function') {
+      var origAll = window.deleteAllMedia;
+      window.deleteAllMedia = async function () {
+        if (window.__fdSkipMediaAppConfirm) {
+          window.__fdSkipMediaAppConfirm = false;
+          var brandId = getCurrentBrandId();
+          if (!brandId) return;
+          try {
+            var res = await fetch((window.API || '/api/v1') + '/media?brand_id=' + encodeURIComponent(brandId), {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            var data = await res.json();
+            if (typeof window.toast === 'function') window.toast((data.deleted || 0) + ' media eliminati');
+            if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
+          } catch (err) {
+            if (typeof window.toast === 'function') window.toast('Errore: ' + err.message);
+          }
+          return;
+        }
+        return origAll.apply(this, arguments);
+      };
+    }
+  }
   function boot() {
     if (!isFiloMedia()) return;
+    patchMediaDeleteConfirm();
     ensureUploadTypeOption();
     patchLoadMediaLibrary();
     ensureMediaLayout();
@@ -3087,6 +3418,390 @@
       setTimeout(done, 0);
       return r;
     };
+  }
+})();
+(function () {
+  'use strict';
+  function isFiloTplApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function esc(s) {
+    if (typeof window.esc === 'function') return window.esc(s);
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function formatDateIt(value) {
+    if (!value) return '—';
+    try {
+      return new Intl.DateTimeFormat('it-IT', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }).format(new Date(value));
+    } catch (_) {
+      return '—';
+    }
+  }
+  function templateImages(t) {
+    var style = t.style;
+    if (typeof style === 'string') {
+      try {
+        style = JSON.parse(style);
+      } catch (_) {
+        style = {};
+      }
+    }
+    return (style && style.images) || {};
+  }
+  function evaluateCompleteness(t, brandSnapshot) {
+    var images = templateImages(t);
+    var checks = [
+      { id: 'logo', label: 'Logo', ok: !!images.logo },
+      { id: 'strip', label: 'Strip', ok: !!images.strip },
+      {
+        id: 'contacts',
+        label: 'Contatti HR',
+        ok: !!(brandSnapshot && (brandSnapshot.hr_email || brandSnapshot.support_email))
+      }
+    ];
+    var done = checks.filter(function (c) {
+      return c.ok;
+    }).length;
+    var ready = done === checks.length;
+    return { checks: checks, done: done, total: checks.length, ready: ready };
+  }
+  function renderPreview(t) {
+    var images = templateImages(t);
+    var strip = images.strip
+      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/strip'
+      : '';
+    var logo = images.logo
+      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/logo'
+      : '';
+    return (
+      '<div class="fd-tpl-card__preview">' +
+      '<div class="fd-tpl-card__strip"' +
+      (strip ? ' style="background-image:url(' + esc(strip) + ')"' : '') +
+      '></div>' +
+      '<div class="fd-tpl-card__body">' +
+      (logo
+        ? '<img class="fd-tpl-card__logo" src="' + esc(logo) + '" alt="">'
+        : '<span class="fd-tpl-card__logo fd-tpl-card__logo--empty" aria-hidden="true"></span>') +
+      '<div class="fd-tpl-card__fields">' +
+      '<span class="fd-tpl-card__line"></span><span class="fd-tpl-card__line fd-tpl-card__line--short"></span>' +
+      '</div></div></div>'
+    );
+  }
+  function renderTemplateCard(t, passCount, brandSnapshot) {
+    var completeness = evaluateCompleteness(t, brandSnapshot);
+    var statusClass = completeness.ready ? 'is-ready' : 'is-incomplete';
+    var statusLabel = completeness.ready ? 'Pronto' : 'Incompleto';
+    var checksHtml = completeness.checks
+      .map(function (c) {
+        return (
+          '<span class="fd-tpl-check' +
+          (c.ok ? ' is-done' : '') +
+          '" title="' +
+          esc(c.label) +
+          '">' +
+          esc(c.label) +
+          '</span>'
+        );
+      })
+      .join('');
+    var typeLabel =
+      typeof window.formatTemplatePassTypeLabel === 'function'
+        ? window.formatTemplatePassTypeLabel(t.pass_type)
+        : t.pass_type || 'Pass';
+    var updated = t.updated_at || t.created_at;
+    return (
+      '<article class="card fd-tpl-card">' +
+      '<div class="fd-tpl-card__grid">' +
+      renderPreview(t) +
+      '<div class="fd-tpl-card__content">' +
+      '<div class="fd-tpl-card__head">' +
+      '<h3 class="fd-tpl-card__title">' +
+      esc(t.name) +
+      '</h3>' +
+      '<span class="fd-tpl-card__status ' +
+      statusClass +
+      '">' +
+      esc(statusLabel) +
+      '</span></div>' +
+      '<p class="fd-tpl-card__meta">' +
+      esc(typeLabel) +
+      ' · ' +
+      (passCount > 0 ? passCount + ' pass emessi' : 'Nessun pass emesso') +
+      ' · Ultima modifica ' +
+      esc(formatDateIt(updated)) +
+      '</p>' +
+      '<div class="fd-tpl-card__checks" aria-label="Completezza template">' +
+      checksHtml +
+      '</div>' +
+      '<div class="fd-tpl-card__actions">' +
+      '<button type="button" class="btn small" onclick="editTemplate(\'' +
+      esc(t.id) +
+      '\')">Modifica</button>' +
+      '<button type="button" class="btn small danger" onclick="deleteTemplate(\'' +
+      esc(t.id) +
+      '\')">Elimina</button>' +
+      '</div></div></div></article>'
+    );
+  }
+  async function fetchBrandSnapshot() {
+    var brandId = window.brandId;
+    if (!brandId) return window.__fdBrandPassSnapshot || null;
+    if (window.__fdBrandPassSnapshot && window.__fdBrandPassSnapshot.id === brandId) {
+      return window.__fdBrandPassSnapshot;
+    }
+    try {
+      var api = window.API || '/api/v1';
+      var res = await fetch(api + '/brands/' + encodeURIComponent(brandId), {
+        headers: typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {}
+      });
+      if (!res.ok) return null;
+      var brand = await res.json();
+      window.__fdBrandPassSnapshot = {
+        id: brandId,
+        hr_email: brand.hr_email,
+        support_email: brand.support_email || (brand.config && brand.config.support_email)
+      };
+      return window.__fdBrandPassSnapshot;
+    } catch (_) {
+      return null;
+    }
+  }
+  async function fetchPassCountsByTemplate() {
+    var brandId = window.brandId;
+    if (!brandId) return {};
+    try {
+      var api = window.API || '/api/v1';
+      var res = await fetch(
+        api + '/passes?brand_id=' + encodeURIComponent(brandId) + '&limit=500&offset=0',
+        { headers: typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {} }
+      );
+      if (!res.ok) return {};
+      var payload = await res.json();
+      var rows = Array.isArray(payload) ? payload : payload.passes || [];
+      var map = {};
+      rows.forEach(function (p) {
+        if (!p.template_id) return;
+        map[p.template_id] = (map[p.template_id] || 0) + 1;
+      });
+      return map;
+    } catch (_) {
+      return {};
+    }
+  }
+  function patchLoadTemplates() {
+    if (window.__fdTplListPatched || typeof window.loadTemplates !== 'function') return;
+    window.__fdTplListPatched = true;
+    var orig = window.loadTemplates;
+    window.loadTemplates = async function () {
+      if (!isFiloTplApp() || !window.brandId) return orig.apply(this, arguments);
+      var el = document.getElementById('templatesList');
+      if (!el) return orig.apply(this, arguments);
+      try {
+        var api = window.API || '/api/v1';
+        var templates = await window.fetchCachedJson(api + '/templates?brand_id=' + window.brandId, {
+          headers: typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {}
+        });
+        var passCounts = await fetchPassCountsByTemplate();
+        var brandSnapshot = await fetchBrandSnapshot();
+        if (!templates.length) {
+          if (typeof window.renderEmptyState === 'function') {
+            el.innerHTML = window.renderEmptyState({
+              title: 'Nessun template',
+              description: 'Crea un template dipendente con logo, strip e testi del pass.',
+              ctaLabel: 'Nuovo template',
+              ctaOnclick: 'openTemplateModal()',
+              icon: 'inbox'
+            });
+          } else {
+            el.innerHTML = '<p>Nessun template</p>';
+          }
+          if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
+          return;
+        }
+        el.innerHTML = templates
+          .map(function (t) {
+            return renderTemplateCard(t, passCounts[t.id] || 0, brandSnapshot);
+          })
+          .join('');
+        if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
+      } catch (e) {
+        console.error('fd-templates loadTemplates', e);
+        return orig.apply(this, arguments);
+      }
+    };
+  }
+  function initFdTemplates() {
+    if (!isFiloTplApp()) return;
+    patchLoadTemplates();
+  }
+  window.fdInitTemplates = initFdTemplates;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFdTemplates);
+  } else {
+    initFdTemplates();
+  }
+})();
+(function () {
+  'use strict';
+  function isFiloPassesApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function ensurePassesLayout() {
+    var section = document.getElementById('passes');
+    var diag = document.getElementById('passWalletChannelsDiag');
+    var content = document.getElementById('passesContent');
+    if (!section || !diag || !content || section.dataset.fdPassesLayout === '1') return;
+    section.dataset.fdPassesLayout = '1';
+    section.classList.add('passes--fd-layout');
+    section.appendChild(diag);
+  }
+  function ensureAdvancedColumnsToggle() {
+    var content = document.getElementById('passesContent');
+    if (!content || document.getElementById('fdPassesColsToggle')) return;
+    var searchRow = content.querySelector('#passSearchInput')?.closest('div');
+    if (!searchRow) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'fdPassesColsToggle';
+    btn.className = 'btn small sec fd-passes-cols-toggle';
+    btn.textContent = 'Colonne avanzate';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.addEventListener('click', function () {
+      var section = document.getElementById('passes');
+      if (!section) return;
+      var on = !section.classList.contains('passes--advanced-cols');
+      section.classList.toggle('passes--advanced-cols', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.textContent = on ? 'Nascondi colonne avanzate' : 'Colonne avanzate';
+    });
+    searchRow.insertBefore(btn, searchRow.lastElementChild);
+  }
+  function markAdvancedColumns() {
+    var table = document.querySelector('#passesContent .pass-table');
+    if (!table) return;
+    var advancedIdx = [4, 5, 6];
+    var headCells = table.querySelectorAll('thead th');
+    advancedIdx.forEach(function (i) {
+      if (headCells[i]) headCells[i].classList.add('pass-col-advanced');
+    });
+    table.querySelectorAll('tbody tr').forEach(function (row) {
+      var cells = row.querySelectorAll('td');
+      advancedIdx.forEach(function (i) {
+        if (cells[i]) cells[i].classList.add('pass-col-advanced');
+      });
+    });
+  }
+  function enhancePassRowActions() {
+    document.querySelectorAll('#passesContent .pass-row-actions').forEach(function (wrap) {
+      if (wrap.dataset.fdActionsEnhanced === '1') return;
+      wrap.dataset.fdActionsEnhanced = '1';
+      var viewBtn = wrap.querySelector('.pass-action-btn--view');
+      var delBtn = wrap.querySelector('.pass-action-btn--danger');
+      if (!viewBtn || !delBtn) return;
+      var passId =
+        viewBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
+        delBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
+        '';
+      var menuId = 'fdPassMenu_' + passId.replace(/[^a-z0-9]/gi, '');
+      wrap.innerHTML =
+        '<div class="fd-pass-row-menu">' +
+        '<button type="button" class="btn small sec fd-pass-row-menu__trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="' +
+        menuId +
+        '">Azioni</button>' +
+        '<div class="fd-pass-row-menu__panel" id="' +
+        menuId +
+        '" role="menu" hidden>' +
+        '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="view">Dettaglio pass</button>' +
+        '<button type="button" class="fd-pass-row-menu__item fd-pass-row-menu__item--danger" role="menuitem" data-action="delete">Elimina pass</button>' +
+        '</div></div>';
+      var trigger = wrap.querySelector('.fd-pass-row-menu__trigger');
+      var panel = wrap.querySelector('.fd-pass-row-menu__panel');
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = panel.hidden;
+        document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
+          p.hidden = true;
+        });
+        document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
+          t.setAttribute('aria-expanded', 'false');
+        });
+        if (open) {
+          panel.hidden = false;
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+      wrap.querySelector('[data-action="view"]').addEventListener('click', function () {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (typeof window.viewPassDetail === 'function') window.viewPassDetail(passId);
+      });
+      wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (typeof window.deletePassInstance === 'function') window.deletePassInstance(passId);
+      });
+    });
+    if (!document.body.dataset.fdPassMenuDismiss) {
+      document.body.dataset.fdPassMenuDismiss = '1';
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
+          p.hidden = true;
+        });
+        document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
+          t.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+  }
+  function enhancePassesDom() {
+    ensurePassesLayout();
+    ensureAdvancedColumnsToggle();
+    markAdvancedColumns();
+    enhancePassRowActions();
+  }
+  function patchLoadPasses() {
+    if (window.__fdPassesPatched || typeof window.loadPasses !== 'function') return;
+    window.__fdPassesPatched = true;
+    var orig = window.loadPasses;
+    window.loadPasses = async function () {
+      if (!isFiloPassesApp()) return orig.apply(this, arguments);
+      var origDiag = window.loadPassWalletChannelsDiag;
+      window.loadPassWalletChannelsDiag = function () {};
+      try {
+        await orig.apply(this, arguments);
+        enhancePassesDom();
+        if (typeof origDiag === 'function') await origDiag();
+      } finally {
+        window.loadPassWalletChannelsDiag = origDiag;
+      }
+    };
+  }
+  function initFdPasses() {
+    if (!isFiloPassesApp()) return;
+    ensurePassesLayout();
+    patchLoadPasses();
+  }
+  window.fdInitPasses = initFdPasses;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFdPasses);
+  } else {
+    initFdPasses();
   }
 })();
 (function () {
@@ -3125,8 +3840,14 @@
     var menu = document.createElement('div');
     menu.className = 'fd-media-page-menu';
     menu.id = 'fdMediaPageMenu';
+    var kebabIcon =
+      window.FD_ICONS && typeof window.FD_ICONS.svg === 'function'
+        ? window.FD_ICONS.svg('kebab', 18)
+        : '⋮';
     menu.innerHTML =
-      '<button type="button" class="fd-media-page-menu__trigger" id="fdMediaPageMenuBtn" aria-label="Azioni Media Library" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
+      '<button type="button" class="fd-media-page-menu__trigger" id="fdMediaPageMenuBtn" aria-label="Altre azioni libreria media" title="Altre azioni" aria-haspopup="menu" aria-expanded="false">' +
+      kebabIcon +
+      '</button>' +
       '<div class="fd-media-page-menu__panel" id="fdMediaPageMenuPanel" role="menu" hidden>' +
       '<button type="button" class="fd-media-page-menu__item" id="fdMediaExportBtn" role="menuitem">Esporta libreria (.zip)</button>' +
       '<button type="button" class="fd-media-page-menu__item" id="fdMediaSpecsBtn" role="menuitem">Specifiche tecniche</button>' +
@@ -3361,12 +4082,64 @@
       };
     }
   }
+  function ensureBrandIdentityStickyBar() {
+    var page = document.querySelector('#brand-identity .a2w-bi-page');
+    if (!page || document.getElementById('fdBiStickyBar')) return null;
+    var bar = document.createElement('div');
+    bar.id = 'fdBiStickyBar';
+    bar.className = 'fd-bi-sticky-bar';
+    bar.hidden = true;
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Salvataggio modifiche brand');
+    bar.innerHTML =
+      '<span class="fd-bi-sticky-bar__hint" id="fdBiStickyHint">Modifiche non salvate</span>' +
+      '<div class="fd-bi-sticky-bar__actions">' +
+      '<button type="button" class="btn sec" id="fdBiStickyCancelBtn">Annulla</button>' +
+      '<button type="button" class="btn" id="fdBiStickySaveBtn">Salva modifiche</button>' +
+      '</div>';
+    page.appendChild(bar);
+    document.getElementById('fdBiStickySaveBtn').addEventListener('click', function () {
+      if (typeof window.saveBrandIdentity === 'function') window.saveBrandIdentity();
+    });
+    document.getElementById('fdBiStickyCancelBtn').addEventListener('click', function () {
+      if (typeof window.loadBrandIdentity === 'function') window.loadBrandIdentity();
+    });
+    return bar;
+  }
+  function syncBrandIdentityStickyBar() {
+    if (!isFiloFormDirtyApp()) return;
+    var bar = document.getElementById('fdBiStickyBar') || ensureBrandIdentityStickyBar();
+    if (!bar) return;
+    var state = window.brandIdentityState || {};
+    var dirty = !!state.dirty;
+    var saving = !!state.saving;
+    bar.hidden = !dirty && !saving;
+    bar.classList.toggle('is-saving', saving);
+    var hint = document.getElementById('fdBiStickyHint');
+    if (hint) hint.textContent = saving ? 'Salvataggio in corso…' : 'Modifiche non salvate';
+    var saveBtn = document.getElementById('fdBiStickySaveBtn');
+    var cancelBtn = document.getElementById('fdBiStickyCancelBtn');
+    if (saveBtn) saveBtn.disabled = saving || !dirty;
+    if (cancelBtn) cancelBtn.disabled = saving;
+  }
+  function patchBrandIdentitySaveUi() {
+    if (window.__fdBiStickyPatched || typeof window.a2wBiUpdateSaveButton !== 'function') return;
+    window.__fdBiStickyPatched = true;
+    ensureBrandIdentityStickyBar();
+    var orig = window.a2wBiUpdateSaveButton;
+    window.a2wBiUpdateSaveButton = function () {
+      orig.apply(this, arguments);
+      syncBrandIdentityStickyBar();
+    };
+  }
   function initFdFormDirty() {
     if (!isFiloFormDirtyApp()) return;
     patchBrandIdentityV2Flag();
     patchTemplateFlows();
+    patchBrandIdentitySaveUi();
     bindTemplateModalDirty();
     document.getElementById('brand-identity')?.classList.add('brand-identity--fd-dirty');
+    syncBrandIdentityStickyBar();
   }
   window.fdInitFormDirty = initFdFormDirty;
   if (document.readyState === 'loading') {

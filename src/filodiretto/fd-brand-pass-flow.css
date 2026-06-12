@@ -1,0 +1,33 @@
+html[data-app='filodiretto'] .fd-brand-pass-flow-host {
+  margin: 8px 0 16px;
+}
+
+html[data-app='filodiretto'] .fd-brand-pass-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-app='filodiretto'] .fd-brand-pass-flow__step {
+  border: 1px solid var(--fd-border, var(--border));
+  background: var(--surface, #fff);
+  color: var(--text2);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+html[data-app='filodiretto'] .fd-brand-pass-flow__step.is-active {
+  border-color: var(--accent, #7c3aed);
+  background: color-mix(in srgb, var(--accent, #7c3aed) 12%, white);
+  color: var(--accent-hover, var(--accent));
+}
+
+html[data-app='filodiretto'] .fd-brand-pass-flow__sep {
+  color: var(--text-muted, var(--text2));
+  font-size: 12px;
+  opacity: 0.6;
+}

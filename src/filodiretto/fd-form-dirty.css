@@ -77,3 +77,45 @@ html[data-app='filodiretto'] #templateModal #fdTplSaveBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--fd-color-warning-border, #f59e0b);
+  border-radius: var(--fd-radius-md, 10px);
+  background: var(--fd-color-warning-bg, #fffbeb);
+  box-shadow: var(--fd-shadow-md, 0 4px 16px rgba(0, 0, 0, 0.08));
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar[hidden] {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar.is-saving {
+  border-color: var(--fd-color-info-border, #93c5fd);
+  background: var(--fd-color-info-bg, #eff6ff);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar__hint {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fd-color-warning-text, #92400e);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar.is-saving .fd-bi-sticky-bar__hint {
+  color: var(--fd-color-info-text, #1d4ed8);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar__actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
