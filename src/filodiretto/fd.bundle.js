@@ -5150,18 +5150,51 @@
       e.stopPropagation();
     }, true);
   }
+  function cleanupStrayMainContentBanners() {
+    var main = document.getElementById('main-content');
+    if (!main) return;
+    main.querySelectorAll(':scope > .fd-rbac-readonly-banner').forEach(function (el) {
+      if (el.id !== 'fdRbacGlobalBanner') el.remove();
+    });
+  }
+  function ensureGlobalReadOnlyBanner(show) {
+    var main = document.getElementById('main-content');
+    if (!main) return;
+    cleanupStrayMainContentBanners();
+    var banner = document.getElementById('fdRbacGlobalBanner');
+    if (show) {
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'fdRbacGlobalBanner';
+        banner.className = 'fd-rbac-readonly-banner fd-rbac-readonly-banner--global';
+        banner.setAttribute('role', 'status');
+        banner.textContent = 'Sola lettura — il tuo ruolo consente solo consultazione in questa sezione.';
+        main.insertBefore(banner, main.firstChild);
+      }
+      banner.hidden = false;
+    } else if (banner) {
+      banner.hidden = true;
+    }
+  }
   function ensureReadOnlyBanner(sectionEl, show) {
-    var banner = sectionEl.querySelector(':scope > .fd-rbac-readonly-banner, :scope > div > .fd-rbac-readonly-banner');
-    if (!banner) banner = sectionEl.querySelector('.fd-rbac-readonly-banner');
+    if (!sectionEl || sectionEl.id === 'main-content') return;
+    var banner = sectionEl.querySelector(':scope > .fd-rbac-readonly-banner[data-rbac-section-banner]');
+    if (!banner) {
+      banner = sectionEl.querySelector(':scope > div > .fd-rbac-readonly-banner[data-rbac-section-banner]');
+    }
+    if (!banner) {
+      banner = sectionEl.querySelector('.fd-rbac-readonly-banner[data-rbac-section-banner]');
+    }
     if (show) {
       if (!banner) {
         banner = document.createElement('div');
         banner.className = 'fd-rbac-readonly-banner';
+        banner.setAttribute('data-rbac-section-banner', 'true');
         banner.setAttribute('role', 'status');
         banner.textContent = 'Sola lettura — il tuo ruolo consente solo consultazione in questa sezione.';
         var header = sectionEl.querySelector('.a2w-bi-header, .page-title, .sec-title');
-        if (header && header.parentElement) {
-          header.parentElement.insertAdjacentElement('afterend', banner);
+        if (header) {
+          header.insertAdjacentElement('afterend', banner);
         } else {
           sectionEl.insertBefore(banner, sectionEl.firstChild);
         }
@@ -5266,6 +5299,8 @@
     var readonly = sid && !canWriteSection(sid, role);
     document.body.classList.toggle('fd-rbac-readonly', !!readonly);
     document.body.classList.toggle('role-readonly', !!readonly);
+    ensureGlobalReadOnlyBanner(!!readonly);
+    cleanupStrayMainContentBanners();
     document.querySelectorAll('[data-requires-write]').forEach(function (el) {
       var section = el.getAttribute('data-requires-write') || sid;
       gateWriteElement(el, section, role);

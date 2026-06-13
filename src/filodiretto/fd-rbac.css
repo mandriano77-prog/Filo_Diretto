@@ -38,8 +38,11 @@ html[data-app='filodiretto'] [data-rbac-write-form] textarea:disabled {
   background-color: var(--fd-color-bg-subtle, var(--bg3, #f8fafc));
 }
 
-html[data-app='filodiretto'] .fd-rbac-readonly-banner {
+html[data-app='filodiretto'] .fd-rbac-readonly-banner--global {
   margin: 0 0 16px;
+}
+
+html[data-app='filodiretto'] .fd-rbac-readonly-banner {
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid var(--fd-border, var(--border));
