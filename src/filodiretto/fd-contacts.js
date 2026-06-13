@@ -37,67 +37,72 @@
     return section;
   }
 
-  function closeCardMenu() {
-    var panel = document.getElementById('fdContactsCardMenuPanel');
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
+  function closePageMenu() {
+    var panel = document.getElementById('contactsPageMenuPanel');
+    var trigger = document.getElementById('contactsPageMenuBtn');
     if (panel) panel.hidden = true;
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
 
-  function ensureCardMenu() {
-    var heading = document.querySelector('#contactsCardA .contacts-card__heading');
-    if (!heading || document.getElementById('fdContactsCardMenu')) return;
+  function consolidateLeadsPageMenu() {
+    if (!isFiloContactsApp() || !isHrLeadsActive()) return;
 
-    var wrap = document.createElement('div');
-    wrap.className = 'fd-contacts-card-menu';
-    wrap.id = 'fdContactsCardMenu';
-    wrap.innerHTML =
-      '<button type="button" class="fd-contacts-card-menu__trigger" id="fdContactsCardMenuBtn" aria-label="Azioni anagrafica" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
-      '<div class="fd-contacts-card-menu__panel" id="fdContactsCardMenuPanel" role="menu" hidden>' +
-      '<button type="button" class="fd-contacts-card-menu__item" id="fdContactsExportBtn" role="menuitem">Esporta CSV</button>' +
-      '</div>';
+    var cardMenu = document.getElementById('fdContactsCardMenu');
+    if (cardMenu) cardMenu.remove();
 
-    heading.appendChild(wrap);
+    var pageMenu = document.getElementById('contactsPageMenu');
+    var panel = document.getElementById('contactsPageMenuPanel');
+    if (!panel) return;
 
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
-    var panel = document.getElementById('fdContactsCardMenuPanel');
-    var exportItem = document.getElementById('fdContactsExportBtn');
-
-    if (trigger && panel) {
-      trigger.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (trigger.disabled) return;
-        var open = panel.hidden;
-        closeCardMenu();
-        if (open) {
-          panel.hidden = false;
-          trigger.setAttribute('aria-expanded', 'true');
-        }
-      });
-    }
-
-    if (exportItem) {
+    if (!document.getElementById('fdContactsPageExportBtn')) {
+      var exportItem = document.createElement('button');
+      exportItem.type = 'button';
+      exportItem.role = 'menuitem';
+      exportItem.className = 'contacts-page-menu__item';
+      exportItem.id = 'fdContactsPageExportBtn';
+      exportItem.textContent = 'Esporta CSV dipendenti';
+      panel.insertBefore(exportItem, panel.firstChild);
       exportItem.addEventListener('click', function (e) {
         e.stopPropagation();
-        closeCardMenu();
+        closePageMenu();
         if (exportItem.disabled) return;
         if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
       });
     }
 
-    if (document.body.dataset.fdContactsMenuBound !== '1') {
-      document.body.dataset.fdContactsMenuBound = '1';
-      document.addEventListener('click', closeCardMenu);
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeCardMenu();
-      });
-    }
+    if (pageMenu) pageMenu.hidden = false;
+  }
+
+  function simplifyCardHelp() {
+    var host = document.getElementById('contactsCardAHelp');
+    if (!host || host.dataset.fdHelpSimplified === '1') return;
+    host.dataset.fdHelpSimplified = '1';
+
+    var trigger = host.querySelector('.contacts-help__trigger');
+    var panel = host.querySelector('.contacts-help__panel');
+    if (!trigger) return;
+
+    var tip =
+      'Anagrafica dipendenti: cerca, filtra, importa ed esporta. ' +
+      'Le azioni aggiornano la tabella e i KPI sottostanti.';
+    trigger.textContent = 'ℹ';
+    trigger.classList.add('fd-contacts-info-tip');
+    trigger.setAttribute('title', tip);
+    trigger.setAttribute('aria-label', 'Guida anagrafica dipendenti. ' + tip);
+    if (panel) panel.remove();
+    trigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
+
+  function ensureCardMenu() {
+    /* Card-level kebab removed — actions live in page menu (consolidateLeadsPageMenu). */
   }
 
   function syncFiloExportMenuState() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var exportItem = document.getElementById('fdContactsExportBtn');
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
+    var exportItem = document.getElementById('fdContactsPageExportBtn');
     if (!exportItem) return;
 
     var total = 0;
@@ -111,10 +116,9 @@
 
     var disabled = total === 0 || !filteredLen;
     exportItem.disabled = disabled;
-    trigger.disabled = false;
     exportItem.title = total === 0
-      ? 'Nessun contatto da esportare'
-      : (filteredLen ? 'Esporta contatti in CSV' : 'Nessun risultato con i filtri attivi');
+      ? 'Nessun dipendente da esportare'
+      : (filteredLen ? 'Esporta dipendenti filtrati in CSV' : 'Nessun risultato con i filtri attivi');
   }
 
   function enhanceFiloKpiStrip() {
@@ -138,7 +142,8 @@
 
   function enhanceFiloContactsToolbar() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    ensureCardMenu();
+    consolidateLeadsPageMenu();
+    simplifyCardHelp();
     syncFiloExportMenuState();
   }
 
@@ -158,7 +163,10 @@
     if (typeof origToolbar === 'function') {
       window.renderLeadsToolbar = function () {
         origToolbar.apply(this, arguments);
-        if (isFiloContactsApp()) enhanceFiloContactsToolbar();
+        if (isFiloContactsApp()) {
+          enhanceFiloContactsToolbar();
+          setTimeout(simplifyCardHelp, 0);
+        }
       };
     }
 
@@ -175,9 +183,10 @@
     if (!isFiloContactsApp()) return;
     patchLeadsRenderers();
     ensureLeadsSection();
-    ensureCardMenu();
     if (isHrLeadsActive()) {
+      consolidateLeadsPageMenu();
       enhanceFiloKpiStrip();
+      simplifyCardHelp();
       syncFiloExportMenuState();
     }
   }

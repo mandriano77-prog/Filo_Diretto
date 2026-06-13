@@ -1,0 +1,126 @@
+/**
+ * FD — Audience: tab Comportamento metrics grid + KPI consistency.
+ */
+html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--fd-space-4);
+  margin-bottom: var(--fd-space-5);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .stat-card {
+  background: var(--fd-color-bg-canvas);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  padding: var(--fd-space-4);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .stat-card .stat-num {
+  font-size: var(--fd-font-size-h2, 1.5rem);
+  font-weight: var(--fd-font-weight-bold, 700);
+  color: var(--fd-color-text-primary);
+  line-height: 1.2;
+  margin-bottom: var(--fd-space-1);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .stat-card .stat-label {
+  font-size: var(--fd-font-size-sm);
+  font-weight: var(--fd-font-weight-medium);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fd-space-3);
+  margin-bottom: var(--fd-space-4);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2);
+  align-items: center;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-metrics {
+  margin-bottom: var(--fd-space-5);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--fd-space-2) var(--fd-space-4);
+  margin-bottom: var(--fd-space-4);
+  padding: var(--fd-space-3) var(--fd-space-4);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-bg-subtle);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-head__label {
+  margin: 0;
+  font-size: var(--fd-font-size-sm);
+  font-weight: var(--fd-font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fd-color-text-muted);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-head__value {
+  margin: 0;
+  font-size: var(--fd-font-size-h2, 1.75rem);
+  font-weight: var(--fd-font-weight-bold, 700);
+  color: var(--fd-color-text-primary);
+  line-height: 1.1;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
+  margin-bottom: 0;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--fd-space-2);
+  margin-top: var(--fd-space-2);
+  font-size: 12px;
+  text-align: center;
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid strong {
+  display: block;
+  font-size: 14px;
+  font-weight: var(--fd-font-weight-semibold);
+}
+
+html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid span {
+  color: var(--fd-color-text-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid,
+  html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  html[data-app='filodiretto'] #audiences.audiences--fd .stats-grid,
+  html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-behavior-grid {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-app='filodiretto'] #audiences.audiences--fd .fd-aud-funnel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -2528,59 +2528,61 @@
     section.classList.add('leads--fd');
     return section;
   }
-  function closeCardMenu() {
-    var panel = document.getElementById('fdContactsCardMenuPanel');
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
+  function closePageMenu() {
+    var panel = document.getElementById('contactsPageMenuPanel');
+    var trigger = document.getElementById('contactsPageMenuBtn');
     if (panel) panel.hidden = true;
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
-  function ensureCardMenu() {
-    var heading = document.querySelector('#contactsCardA .contacts-card__heading');
-    if (!heading || document.getElementById('fdContactsCardMenu')) return;
-    var wrap = document.createElement('div');
-    wrap.className = 'fd-contacts-card-menu';
-    wrap.id = 'fdContactsCardMenu';
-    wrap.innerHTML =
-      '<button type="button" class="fd-contacts-card-menu__trigger" id="fdContactsCardMenuBtn" aria-label="Azioni anagrafica" aria-haspopup="menu" aria-expanded="false">⋮</button>' +
-      '<div class="fd-contacts-card-menu__panel" id="fdContactsCardMenuPanel" role="menu" hidden>' +
-      '<button type="button" class="fd-contacts-card-menu__item" id="fdContactsExportBtn" role="menuitem">Esporta CSV</button>' +
-      '</div>';
-    heading.appendChild(wrap);
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
-    var panel = document.getElementById('fdContactsCardMenuPanel');
-    var exportItem = document.getElementById('fdContactsExportBtn');
-    if (trigger && panel) {
-      trigger.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (trigger.disabled) return;
-        var open = panel.hidden;
-        closeCardMenu();
-        if (open) {
-          panel.hidden = false;
-          trigger.setAttribute('aria-expanded', 'true');
-        }
-      });
-    }
-    if (exportItem) {
+  function consolidateLeadsPageMenu() {
+    if (!isFiloContactsApp() || !isHrLeadsActive()) return;
+    var cardMenu = document.getElementById('fdContactsCardMenu');
+    if (cardMenu) cardMenu.remove();
+    var pageMenu = document.getElementById('contactsPageMenu');
+    var panel = document.getElementById('contactsPageMenuPanel');
+    if (!panel) return;
+    if (!document.getElementById('fdContactsPageExportBtn')) {
+      var exportItem = document.createElement('button');
+      exportItem.type = 'button';
+      exportItem.role = 'menuitem';
+      exportItem.className = 'contacts-page-menu__item';
+      exportItem.id = 'fdContactsPageExportBtn';
+      exportItem.textContent = 'Esporta CSV dipendenti';
+      panel.insertBefore(exportItem, panel.firstChild);
       exportItem.addEventListener('click', function (e) {
         e.stopPropagation();
-        closeCardMenu();
+        closePageMenu();
         if (exportItem.disabled) return;
         if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
       });
     }
-    if (document.body.dataset.fdContactsMenuBound !== '1') {
-      document.body.dataset.fdContactsMenuBound = '1';
-      document.addEventListener('click', closeCardMenu);
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeCardMenu();
-      });
-    }
+    if (pageMenu) pageMenu.hidden = false;
+  }
+  function simplifyCardHelp() {
+    var host = document.getElementById('contactsCardAHelp');
+    if (!host || host.dataset.fdHelpSimplified === '1') return;
+    host.dataset.fdHelpSimplified = '1';
+    var trigger = host.querySelector('.contacts-help__trigger');
+    var panel = host.querySelector('.contacts-help__panel');
+    if (!trigger) return;
+    var tip =
+      'Anagrafica dipendenti: cerca, filtra, importa ed esporta. ' +
+      'Le azioni aggiornano la tabella e i KPI sottostanti.';
+    trigger.textContent = 'ℹ';
+    trigger.classList.add('fd-contacts-info-tip');
+    trigger.setAttribute('title', tip);
+    trigger.setAttribute('aria-label', 'Guida anagrafica dipendenti. ' + tip);
+    if (panel) panel.remove();
+    trigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  }
+  function ensureCardMenu() {
   }
   function syncFiloExportMenuState() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var exportItem = document.getElementById('fdContactsExportBtn');
-    var trigger = document.getElementById('fdContactsCardMenuBtn');
+    var exportItem = document.getElementById('fdContactsPageExportBtn');
     if (!exportItem) return;
     var total = 0;
     var filteredLen = 0;
@@ -2592,10 +2594,9 @@
     } catch (_) {}
     var disabled = total === 0 || !filteredLen;
     exportItem.disabled = disabled;
-    trigger.disabled = false;
     exportItem.title = total === 0
-      ? 'Nessun contatto da esportare'
-      : (filteredLen ? 'Esporta contatti in CSV' : 'Nessun risultato con i filtri attivi');
+      ? 'Nessun dipendente da esportare'
+      : (filteredLen ? 'Esporta dipendenti filtrati in CSV' : 'Nessun risultato con i filtri attivi');
   }
   function enhanceFiloKpiStrip() {
     if (!isFiloContactsApp()) return;
@@ -2616,7 +2617,8 @@
   }
   function enhanceFiloContactsToolbar() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    ensureCardMenu();
+    consolidateLeadsPageMenu();
+    simplifyCardHelp();
     syncFiloExportMenuState();
   }
   function patchLeadsRenderers() {
@@ -2633,7 +2635,10 @@
     if (typeof origToolbar === 'function') {
       window.renderLeadsToolbar = function () {
         origToolbar.apply(this, arguments);
-        if (isFiloContactsApp()) enhanceFiloContactsToolbar();
+        if (isFiloContactsApp()) {
+          enhanceFiloContactsToolbar();
+          setTimeout(simplifyCardHelp, 0);
+        }
       };
     }
     var origSyncExport = window.syncA2wLeadsExportButtonState;
@@ -2648,9 +2653,10 @@
     if (!isFiloContactsApp()) return;
     patchLeadsRenderers();
     ensureLeadsSection();
-    ensureCardMenu();
     if (isHrLeadsActive()) {
+      consolidateLeadsPageMenu();
       enhanceFiloKpiStrip();
+      simplifyCardHelp();
       syncFiloExportMenuState();
     }
   }
@@ -5923,6 +5929,177 @@
     updateGamStatsCompact();
   }
   window.fdInitRewardChallenge = init;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+(function () {
+  'use strict';
+  function isFilo() {
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function escHtml(s) {
+    if (typeof window.esc === 'function') return window.esc(s);
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function statCard(num, label) {
+    return (
+      '<div class="stat-card">' +
+      '<div class="stat-num">' + escHtml(num) + '</div>' +
+      '<div class="stat-label">' + escHtml(label) + '</div>' +
+      '</div>'
+    );
+  }
+  function renderBehaviorStatsHtml(b, f, days) {
+    return (
+      '<div class="fd-aud-behavior-metrics">' +
+      '<header class="fd-aud-behavior-head">' +
+      '<p class="fd-aud-behavior-head__label">Eventi (' + escHtml(days) + ' gg)</p>' +
+      '<p class="fd-aud-behavior-head__value">' + escHtml(b.total_events ?? 0) + '</p>' +
+      '</header>' +
+      '<div class="stats-grid fd-aud-behavior-grid">' +
+      statCard(b.unique_holders_active ?? 0, 'Possessori attivi') +
+      statCard(f.opened ?? 0, 'Aperture pass') +
+      statCard(f.link_clicks ?? 0, 'Click link retro') +
+      statCard(f.unique_clickers ?? 0, 'Utenti unici click') +
+      '</div></div>'
+    );
+  }
+  function renderLinkFunnels(funnels) {
+    if (!funnels.length) {
+      return '<span>Nessun click per link nel periodo. Rigenera i pass per attivare il tracking.</span>';
+    }
+    return funnels.map(function (item) {
+      return (
+        '<div class="fd-aud-funnel-row" style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">' +
+        '<strong>' + escHtml(item.target_label || item.target_key) + '</strong> ' +
+        '<span style="color:var(--text2);font-size:11px;">(' + escHtml(item.target_key) + ')</span>' +
+        '<div class="fd-aud-funnel-grid">' +
+        '<div><strong>' + escHtml(item.pass_holders) + '</strong><span>Pass</span></div>' +
+        '<div><strong>' + escHtml(item.installed) + '</strong><span>Install.</span></div>' +
+        '<div><strong>' + escHtml(item.opened) + '</strong><span>Aperti</span></div>' +
+        '<div><strong>' + escHtml(item.unique_clickers) + '</strong><span>Click unici</span></div>' +
+        '<div><strong>' + escHtml(item.ctr_from_opened_pct) + '%</strong><span>CTR/Aperti</span></div>' +
+        '</div></div>'
+      );
+    }).join('');
+  }
+  async function loadAudienceBehaviorFixed() {
+    var brandId = typeof window.ensureBrandIdFromContext === 'function'
+      ? window.ensureBrandIdFromContext()
+      : window.brandId;
+    if (!brandId) return;
+    var statsHost = document.getElementById('audienceBehaviorStats');
+    if (!statsHost) return;
+    try {
+      var days = document.getElementById('audBehaviorDays')?.value || 30;
+      var api = typeof window.API === 'string' && window.API ? window.API : '/api/v1';
+      var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+      var res = await fetch(api + '/brands/' + encodeURIComponent(brandId) + '/audiences/insights?days=' + encodeURIComponent(days), {
+        headers: headers
+      });
+      var data = res.ok ? await res.json() : {};
+      var b = data.behavior || {};
+      var f = b.funnel || {};
+      statsHost.innerHTML = renderBehaviorStatsHtml(b, f, days);
+      var funnelsEl = document.getElementById('audienceLinkFunnels');
+      if (funnelsEl) funnelsEl.innerHTML = renderLinkFunnels(b.link_funnels || []);
+      var links = b.top_link_clicks || [];
+      var linksEl = document.getElementById('audienceTopLinks');
+      if (linksEl) {
+        linksEl.innerHTML = links.length
+          ? links.map(function (l) {
+            return (
+              '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">' +
+              '<span>' + escHtml(l.target_label || l.target_key || 'Link') +
+              ' <span style="color:var(--text2);font-size:11px;">' + escHtml((l.target_url || '').slice(0, 40)) + '</span></span>' +
+              '<strong>' + escHtml(l.clicks) + '</strong></div>'
+            );
+          }).join('')
+          : '<span>Nessun click registrato ancora. I nuovi pass tracciano i link del retro.</span>';
+      }
+      var evRes = await fetch(api + '/brands/' + encodeURIComponent(brandId) + '/holder-events?limit=40', {
+        headers: headers
+      });
+      var events = evRes.ok ? await evRes.json() : [];
+      var eventsEl = document.getElementById('audienceRecentEvents');
+      if (eventsEl) {
+        eventsEl.innerHTML = events.length
+          ? events.map(function (e) {
+            return (
+              '<div style="padding:6px 0;border-bottom:1px solid var(--border);">' +
+              '<span style="color:var(--teal);">' + escHtml(e.event_action) + '</span>' +
+              (e.target_label ? ' · ' + escHtml(e.target_label) : '') +
+              '<span style="float:right;color:var(--text2);">' +
+              (e.created_at ? new Date(e.created_at).toLocaleString('it-IT') : '') +
+              '</span></div>'
+            );
+          }).join('')
+          : 'Nessun evento';
+      }
+    } catch (e) {
+      console.error('[fd-audiences] loadAudienceBehavior', e);
+      statsHost.innerHTML =
+        '<p style="color:var(--text2);margin:0;">Metriche comportamento non disponibili al momento.</p>';
+    }
+  }
+  function enhanceBehaviorPanel() {
+    var panel = document.getElementById('audPanel_behavior');
+    if (!panel || panel.dataset.fdAudEnhanced === '1') return;
+    panel.dataset.fdAudEnhanced = '1';
+    var toolbarRow = panel.querySelector('div[style*="justify-content:flex-end"]');
+    if (toolbarRow && !panel.querySelector('.fd-aud-behavior-toolbar')) {
+      toolbarRow.className = 'fd-aud-behavior-toolbar';
+      var select = toolbarRow.querySelector('#audBehaviorDays');
+      var exportBtn = toolbarRow.querySelector('button');
+      toolbarRow.innerHTML = '';
+      var actions = document.createElement('div');
+      actions.className = 'fd-aud-behavior-toolbar__actions';
+      if (select) actions.appendChild(select);
+      if (exportBtn) actions.appendChild(exportBtn);
+      toolbarRow.appendChild(actions);
+    }
+    var statsHost = document.getElementById('audienceBehaviorStats');
+    if (statsHost) statsHost.classList.add('fd-aud-behavior-stats-host');
+  }
+  function patchAudienceLoaders() {
+    if (window.__fdAudiencesPatched) return;
+    window.__fdAudiencesPatched = true;
+    window.loadAudienceBehavior = loadAudienceBehaviorFixed;
+  }
+  function patchNav() {
+    if (window.__fdAudiencesNavPatched || typeof window.nav !== 'function') return;
+    window.__fdAudiencesNavPatched = true;
+    var orig = window.nav;
+    window.nav = function (sectionId) {
+      var out = orig.apply(this, arguments);
+      if (sectionId === 'audiences') {
+        setTimeout(function () {
+          enhanceBehaviorPanel();
+          if (document.getElementById('audPanel_behavior')?.style.display !== 'none') {
+            loadAudienceBehaviorFixed();
+          }
+        }, 80);
+      }
+      return out;
+    };
+  }
+  function init() {
+    if (!isFilo()) return;
+    var section = document.getElementById('audiences');
+    if (section) section.classList.add('audiences--fd');
+    patchAudienceLoaders();
+    patchNav();
+    enhanceBehaviorPanel();
+  }
+  window.fdInitAudiences = init;
+  window.fdLoadAudienceBehavior = loadAudienceBehaviorFixed;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

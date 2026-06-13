@@ -39,6 +39,51 @@ html[data-app='filodiretto'] #leads.leads--fd .contacts-card__heading {
 }
 
 html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-page-menu {
+  display: block;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-info-tip {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: 50%;
+  background: var(--fd-color-bg-canvas, #fff);
+  color: var(--fd-color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  cursor: help;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-info-tip:hover,
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-info-tip:focus-visible {
+  border-color: var(--fd-color-primary-500);
+  color: var(--fd-color-primary-700);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
+
+html[data-app='filodiretto'] #leads.leads--fd #contactsCardAHelp {
+  order: 2;
+  margin-left: auto;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-card__heading {
+  align-items: center;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-kpi-item {
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-md, 8px);
+  background: var(--fd-color-bg-canvas, #fff);
+  padding: var(--fd-space-2, 8px) var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-card-menu {
   position: relative;
   margin-left: auto;
   order: 3;
