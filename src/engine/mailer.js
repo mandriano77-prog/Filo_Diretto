@@ -21,6 +21,218 @@ const getFromName = () => process.env.FROM_NAME || 'Ads2Wallet';
 const getHrFromEmail = () => process.env.HR_FROM_EMAIL || process.env.FROM_EMAIL || 'noreply@filodiretto.app';
 const getHrFromName = () => process.env.HR_FROM_NAME || 'FiloDiretto.App';
 
+/** FiloDiretto dashboard invite email palette (fixed — not brand colors). */
+const FD_INVITE_EMAIL = {
+  pageBg: '#F1F5F9',
+  card: '#FFFFFF',
+  border: '#E2E8F0',
+  primary: '#8B5CF6',
+  primaryDark: '#7C3AED',
+  textPrimary: '#0F172A',
+  textBody: '#334155',
+  textMuted: '#64748B',
+  textFooter: '#64748B',
+  fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+};
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function brandInitialsFromName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return 'BR';
+}
+
+function dashboardInviteRoleLabel(role) {
+  const map = {
+    admin: 'amministratore',
+    manager: 'manager',
+    sender: 'sender',
+    reporter: 'reporter',
+    viewer: 'reporter',
+  };
+  return map[String(role || '').toLowerCase()] || 'manager';
+}
+
+function isHrDashboardMailer() {
+  return String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr';
+}
+
+function inviteEmailFromIdentity() {
+  if (isHrDashboardMailer()) {
+    return { fromEmail: getHrFromEmail(), fromName: getHrFromName() };
+  }
+  return { fromEmail: getFromEmail(), fromName: getFromName() };
+}
+
+function buildInviteBrandBadgeHtml(brandName, brandLogoUrl) {
+  if (!brandName) return '';
+  const safeName = escapeHtml(brandName);
+  const initials = escapeHtml(brandInitialsFromName(brandName));
+  const logoCell = brandLogoUrl
+    ? `<img src="${escapeHtml(brandLogoUrl)}" alt="${safeName}" width="56" height="56" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;border-radius:12px;object-fit:contain;background-color:${FD_INVITE_EMAIL.card};" />`
+    : `<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" width="56" height="56" style="width:56px;height:56px;border-radius:28px;background-color:${FD_INVITE_EMAIL.primary};color:#FFFFFF;font-family:${FD_INVITE_EMAIL.fontStack};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</td></tr></table>`;
+
+  return `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+  <tr>
+    <td align="center" style="padding:20px 16px;background-color:#F8FAFC;border:1px solid ${FD_INVITE_EMAIL.border};border-radius:12px;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+        <tr>
+          <td align="center" style="padding-bottom:12px;">${logoCell}</td>
+        </tr>
+        <tr>
+          <td align="center" style="font-family:${FD_INVITE_EMAIL.fontStack};font-size:18px;font-weight:700;line-height:1.3;color:${FD_INVITE_EMAIL.textPrimary};">${safeName}</td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:8px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:14px;line-height:1.5;color:${FD_INVITE_EMAIL.textMuted};">Sei stato invitato a gestire ${safeName}.</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
+}
+
+function buildInviteEmailBulletproofCta(url, label) {
+  const safeUrl = escapeHtml(url);
+  const safeLabel = escapeHtml(label);
+  return `
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px auto;">
+  <tr>
+    <td align="center" bgcolor="${FD_INVITE_EMAIL.primary}" style="border-radius:8px;background-color:${FD_INVITE_EMAIL.primary};border:1px solid ${FD_INVITE_EMAIL.primaryDark};">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="${FD_INVITE_EMAIL.primaryDark}" fillcolor="${FD_INVITE_EMAIL.primary}">
+        <w:anchorlock/>
+        <center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${safeLabel}</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-->
+      <a href="${safeUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:15px;font-weight:600;line-height:1.2;color:#FFFFFF;text-decoration:none;border-radius:8px;background-color:${FD_INVITE_EMAIL.primary};">${safeLabel}</a>
+      <!--<![endif]-->
+    </td>
+  </tr>
+</table>`;
+}
+
+function buildUserInviteEmailHtml({
+  productTitle,
+  userName,
+  role,
+  brandName,
+  brandLogoUrl,
+  activateUrl,
+}) {
+  const product = dashboardEmailProductTitle(productTitle);
+  const displayName = String(userName || '').trim() || 'utente';
+  const firstName = escapeHtml(displayName.split(/\s+/)[0]);
+  const roleLabel = escapeHtml(dashboardInviteRoleLabel(role));
+  const safeProduct = escapeHtml(product);
+  const safeBrand = brandName ? escapeHtml(brandName) : '';
+  const preheader = brandName
+    ? `Attiva il tuo accesso a ${brandName}`
+    : `Attiva il tuo accesso a ${product}`;
+
+  let accessParagraph;
+  if (brandName) {
+    accessParagraph = `Ti è stato creato un accesso alla dashboard ${safeProduct} come <strong style="color:${FD_INVITE_EMAIL.textPrimary};font-weight:600;">${roleLabel}</strong> per <strong style="color:${FD_INVITE_EMAIL.textPrimary};font-weight:600;">${safeBrand}</strong>. Attiva l'account e scegli una password personale per iniziare.`;
+  } else if (String(role || '').toLowerCase() === 'admin') {
+    accessParagraph = `Ti è stato creato un accesso alla dashboard ${safeProduct} come <strong style="color:${FD_INVITE_EMAIL.textPrimary};font-weight:600;">${roleLabel}</strong>, con visibilità su tutti i brand. Attiva l'account e scegli una password personale per iniziare.`;
+  } else {
+    accessParagraph = `Ti è stato creato un accesso alla dashboard ${safeProduct} come <strong style="color:${FD_INVITE_EMAIL.textPrimary};font-weight:600;">${roleLabel}</strong>. Attiva l'account e scegli una password personale per iniziare.`;
+  }
+
+  const brandBadge = buildInviteBrandBadgeHtml(brandName, brandLogoUrl);
+  const year = new Date().getFullYear();
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Attiva il tuo accesso</title>
+</head>
+<body style="margin:0;padding:0;background-color:${FD_INVITE_EMAIL.pageBg};font-family:${FD_INVITE_EMAIL.fontStack};color:${FD_INVITE_EMAIL.textBody};">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${FD_INVITE_EMAIL.pageBg};">${escapeHtml(preheader)}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${FD_INVITE_EMAIL.pageBg};">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="padding:24px 24px 16px;background-color:${FD_INVITE_EMAIL.card};border:1px solid ${FD_INVITE_EMAIL.border};border-bottom:none;border-radius:12px 12px 0 0;" align="center">
+              <span style="font-family:${FD_INVITE_EMAIL.fontStack};font-size:24px;font-weight:700;color:${FD_INVITE_EMAIL.textPrimary};letter-spacing:-0.03em;">filodiretto</span><span style="font-family:${FD_INVITE_EMAIL.fontStack};font-size:24px;font-weight:700;color:${FD_INVITE_EMAIL.primary};letter-spacing:-0.03em;">.app</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 28px 32px;background-color:${FD_INVITE_EMAIL.card};border:1px solid ${FD_INVITE_EMAIL.border};border-top:none;border-radius:0 0 12px 12px;">
+              ${brandBadge}
+              <h1 style="margin:0 0 16px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:22px;font-weight:700;line-height:1.3;color:${FD_INVITE_EMAIL.textPrimary};">Attiva il tuo accesso alla dashboard</h1>
+              <p style="margin:0 0 16px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:15px;line-height:1.6;color:${FD_INVITE_EMAIL.textBody};">Ciao <strong style="color:${FD_INVITE_EMAIL.textPrimary};font-weight:600;">${firstName}</strong>,</p>
+              <p style="margin:0 0 16px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:15px;line-height:1.6;color:${FD_INVITE_EMAIL.textBody};">${accessParagraph}</p>
+              <p style="margin:0 0 8px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:15px;line-height:1.6;color:${FD_INVITE_EMAIL.textBody};">Da qui potrai gestire pass, comunicazioni e audience del brand.</p>
+              ${buildInviteEmailBulletproofCta(activateUrl, 'Attiva il tuo accesso →')}
+              <p style="margin:0;font-family:${FD_INVITE_EMAIL.fontStack};font-size:13px;line-height:1.5;color:${FD_INVITE_EMAIL.textMuted};text-align:center;">Il link è valido per 72 ore. Se non hai richiesto questo accesso, ignora questa email.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 8px 0;" align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr><td style="border-top:1px solid ${FD_INVITE_EMAIL.border};font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+              <p style="margin:16px 0 4px;font-family:${FD_INVITE_EMAIL.fontStack};font-size:12px;line-height:1.5;color:${FD_INVITE_EMAIL.textFooter};">Powered by ${safeProduct}</p>
+              <p style="margin:0;font-family:${FD_INVITE_EMAIL.fontStack};font-size:11px;line-height:1.5;color:${FD_INVITE_EMAIL.textMuted};">© ${year} FiloDiretto</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildUserInviteEmailText({
+  productTitle,
+  userName,
+  role,
+  brandName,
+  activateUrl,
+}) {
+  const product = dashboardEmailProductTitle(productTitle);
+  const displayName = String(userName || '').trim() || 'utente';
+  const firstName = displayName.split(/\s+/)[0];
+  const roleLabel = dashboardInviteRoleLabel(role);
+  const lines = [`Ciao ${firstName},`, ''];
+  if (brandName) {
+    lines.push(`Sei stato invitato a gestire ${brandName}.`, '');
+    lines.push(`Ti è stato creato un accesso alla dashboard ${product} come ${roleLabel} per ${brandName}.`);
+  } else if (String(role || '').toLowerCase() === 'admin') {
+    lines.push(`Ti è stato creato un accesso alla dashboard ${product} come ${roleLabel}, con visibilità su tutti i brand.`);
+  } else {
+    lines.push(`Ti è stato creato un accesso alla dashboard ${product} come ${roleLabel}.`);
+  }
+  lines.push(
+    '',
+    'Attiva l\'account e scegli una password personale per iniziare.',
+    'Da qui potrai gestire pass, comunicazioni e audience del brand.',
+    '',
+    `Attiva il tuo accesso: ${activateUrl}`,
+    '',
+    'Il link è valido per 72 ore. Se non hai richiesto questo accesso, ignora questa email.',
+    '',
+    `Powered by ${product}`
+  );
+  return lines.join('\n');
+}
+
 /** FiloDiretto dashboard email tokens (aligned with src/filodiretto/tokens.css). */
 const FD_DASHBOARD_EMAIL = {
   bg: '#fafafa',
@@ -211,7 +423,7 @@ async function sendWelcomeEmail({ to, name, brandName, brandColor, points, downl
 /**
  * Send invite email when admin creates a new dashboard user (activation link, no password).
  */
-async function sendUserInviteEmail({ to, name, role, brandName, activateUrl, productTitle }) {
+async function sendUserInviteEmail({ to, name, role, brandName, brandLogoUrl, activateUrl, productTitle }) {
   console.log('📧 sendUserInviteEmail called — to:', to);
 
   const resend = getResend();
@@ -221,48 +433,33 @@ async function sendUserInviteEmail({ to, name, role, brandName, activateUrl, pro
   }
 
   const product = dashboardEmailProductTitle(productTitle);
-  const displayName = String(name || '').trim() || String(to).split('@')[0];
-  const firstName = displayName.split(/\s+/)[0];
-  const fromEmail = getFromEmail();
-  const fromName = getFromName();
-  const roleLabels = { admin: 'amministratore', manager: 'manager', viewer: 'viewer (solo lettura)' };
-  const roleLabel = roleLabels[role] || 'manager';
-
-  let accessLine;
-  if (brandName) {
-    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong> per <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${brandName}</strong>.`;
-  } else if (role === 'admin') {
-    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong>, con visibilità su tutti i brand.`;
-  } else {
-    accessLine = `Ti è stato creato un accesso alla dashboard ${product} come <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${roleLabel}</strong>.`;
-  }
-
-  const bodyHtml = `
-      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
-        Ciao <strong style="color:${FD_DASHBOARD_EMAIL.textPrimary};">${firstName}</strong>,
-      </p>
-      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0 0 16px;">
-        ${accessLine}
-      </p>
-      <p style="color:${FD_DASHBOARD_EMAIL.textBody};font-size:15px;line-height:1.6;margin:0;">
-        Per iniziare, fai clic sul pulsante qui sotto e scegli una password personale.
-      </p>`;
-
-  const html = filoDashboardEmailLayout({
+  const { fromEmail, fromName } = inviteEmailFromIdentity();
+  const html = buildUserInviteEmailHtml({
     productTitle: product,
-    headline: 'Accesso alla dashboard',
-    subtitle: 'Attiva il tuo account e imposta la password.',
-    bodyHtml,
-    ctaUrl: activateUrl,
-    ctaLabel: 'Attiva il tuo accesso →',
-    footnote: 'Il link è valido per 72 ore. Se non hai richiesto questo accesso, ignora questa email.'
+    userName: name,
+    role,
+    brandName: brandName || null,
+    brandLogoUrl: brandLogoUrl || null,
+    activateUrl,
   });
+  const text = buildUserInviteEmailText({
+    productTitle: product,
+    userName: name,
+    role,
+    brandName: brandName || null,
+    activateUrl,
+  });
+
+  const subject = brandName
+    ? `Attiva il tuo accesso a ${brandName} — ${product}`
+    : `Il tuo accesso a ${product}`;
 
   const result = await resend.emails.send({
     from: `${fromName} <${fromEmail}>`,
     to: [to],
-    subject: `Il tuo accesso a ${product}`,
-    html
+    subject,
+    html,
+    text,
   });
 
   console.log('✓ Invite email sent to', to, JSON.stringify(result));

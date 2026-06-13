@@ -337,22 +337,37 @@ function dashboardProductTitle() {
     || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
 }
 
-async function resolveUserInviteBrandName(user) {
-  if (!user?.brand_id) return null;
+function buildPublicMediaImageUrl(mediaId) {
+  if (!mediaId) return null;
+  const raw = String(process.env.CUSTOM_DOMAIN || process.env.BASE_URL || '').trim();
+  if (!raw) return null;
+  const host = raw.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  return `https://${host}/api/v1/media/${encodeURIComponent(mediaId)}/image`;
+}
+
+async function resolveUserInviteBrandContext(user) {
+  if (!user?.brand_id) return { brandName: null, brandLogoUrl: null };
   const brand = await getBrand(user.brand_id);
-  return brand?.name || null;
+  if (!brand) return { brandName: null, brandLogoUrl: null };
+  const cfg = typeof brand.config === 'string' ? JSON.parse(brand.config) : (brand.config || {});
+  const mediaId = cfg?.brand_identity_assets?.logo || null;
+  return {
+    brandName: brand.name || null,
+    brandLogoUrl: buildPublicMediaImageUrl(mediaId),
+  };
 }
 
 async function sendDashboardUserInviteEmail(req, user) {
   const token = await createPasswordResetToken(user.id, 72 * 60 * 60 * 1000);
   const activateUrl = buildDashboardPublicUrl(req, `reset=${encodeURIComponent(token)}`);
-  const brandName = await resolveUserInviteBrandName(user);
+  const { brandName, brandLogoUrl } = await resolveUserInviteBrandContext(user);
   const { sendUserInviteEmail } = require('../engine/mailer');
   await sendUserInviteEmail({
     to: user.email,
     name: user.name,
     role: user.role || 'manager',
     brandName,
+    brandLogoUrl,
     activateUrl,
     productTitle: dashboardProductTitle()
   });
