@@ -75,6 +75,7 @@ const {
 } = require('../engine/audience-prompt');
 const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } = require('../engine/holder-events');
 const { createPkpass } = require('../engine/passkit');
+const { buildPkpassCached } = require('../engine/pkpass-cache');
 const googleWallet = require('../engine/google-wallet');
 const samsungWallet = require('../engine/samsung-wallet');
 const { resolvePortalHref } = require('../engine/thank-you-html');
@@ -83,6 +84,7 @@ const { generateBanner, BANNER_TEMPLATES, IAB_FORMATS } = require('../engine/ban
 const { generateVideo, cleanupVideo, VIDEO_FORMATS, VIDEO_TEMPLATES } = require('../engine/video-builder');
 const { sendPushUpdate, sendPushBatch, shouldPruneApnsRegistration } = require('../engine/apns');
 const { executeWalletPush, enqueuePushJob } = require('../engine/push-dispatch');
+const { syncGoogleWalletObjectsForPasses } = require('../engine/google-wallet-sync');
 const { computeInitialScheduledRun } = require('../engine/scheduler');
 const { generateLandingCopy, generateCreativeCopy } = require('../engine/ai-copy');
 const { planScheduledPush } = require('../engine/push-assistant');
@@ -252,35 +254,6 @@ async function resolvePushStripBase64({ brand_id, strip_media_id, strip_base64 }
 
 async function notifySamsungSavedPasses(passes) {
   return samsungWallet.notifySavedPassesUpdates(passes);
-}
-
-async function syncGoogleWalletObjectsForPasses({ brand, passes, message }) {
-  if (!googleWallet.isConfigured()) return { attempted: 0, updated: 0, errors: 0, skipped: true };
-  if (!Array.isArray(passes) || passes.length === 0) return { attempted: 0, updated: 0, errors: 0, skipped: false };
-
-  let attempted = 0;
-  let updated = 0;
-  let errors = 0;
-
-  for (const pass of passes) {
-    if (!pass.google_wallet_object_id) continue;
-    attempted++;
-    try {
-      const template = await getTemplate(pass.template_id);
-      if (!template) continue;
-      const passObject = googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
-      await googleWallet.createPassObjectOnServer(passObject);
-      if (message) {
-        await googleWallet.updatePassMessage(pass.serial_number, message);
-      }
-      updated++;
-    } catch (err) {
-      errors++;
-      console.error('[GoogleWallet] Sync error for serial', pass.serial_number, err.message);
-    }
-  }
-
-  return { attempted, updated, errors, skipped: false };
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nudj-secret-change-me-in-prod';
@@ -796,7 +769,7 @@ router.get('/passes/:id/download', async (req, res) => {
 
     const baseUrl = resolveBaseUrl(req);
 
-    const pkpassBuffer = await createPkpass(template, passInstance, brand, {
+    const pkpassBuffer = await buildPkpassCached(template, passInstance, brand, {
       baseUrl,
       passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
@@ -981,7 +954,7 @@ router.get('/passes/:passTypeId/:serialNumber', async (req, res) => {
 
     const baseUrl = resolveBaseUrl(req);
 
-    const pkpassBuffer = await createPkpass(template, pass, brand, {
+    const pkpassBuffer = await buildPkpassCached(template, pass, brand, {
       baseUrl,
       passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID'
@@ -3921,10 +3894,10 @@ router.patch('/brands/:brand_id/members/:member_id', async (req, res) => {
         ) AND push_token IS NOT NULL AND push_token <> ''`,
         [updated.pass_id]
       );
-      for (const d of devices.rows) {
+      if (devices.rows.length) {
         try {
-          const result = await sendPushUpdate(d.push_token);
-          if (result.success) wallet_push_sent++;
+          const batch = await sendPushBatch(devices.rows.map((row) => row.push_token));
+          wallet_push_sent = batch.filter((r) => r.success).length;
         } catch (_) {}
       }
     }

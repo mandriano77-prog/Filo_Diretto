@@ -3,12 +3,12 @@
  *
  * Runs every hour. For each active strip promo whose date range is current:
  * 1. Swaps the brand's strip image with the promo strip
- * 2. Regenerates all active passes with the new strip
+ * 2. Touches passes so Apple Wallet fetches updated .pkpass on demand
  * 3. Sends push notification if configured (daily or hourly)
  *
  * When a promo expires:
  * 1. Restores the brand's default strip (stored in config.logos.strip_default)
- * 2. Regenerates passes with default strip
+ * 2. Touches passes and notifies devices
  */
 
 const {
@@ -17,20 +17,13 @@ const {
   getBrand,
   updateBrand,
   listPasses,
-  getTemplate,
-  touchPass,
+  touchPassesByIds,
   getDevicesForBrand,
   logPush,
   logEvent,
-  listStripPromos
 } = require('../db');
-const { createPkpass } = require('./passkit');
-const { sendPushUpdate, sendPushBatch } = require('./apns');
-const googleWallet = require('./google-wallet');
-const path = require('path');
-const fs = require('fs');
-
-const CACHE_DIR = path.join(__dirname, '..', '..', 'cache');
+const { sendPushBatch, closeApnsSession } = require('./apns');
+const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 
 /**
  * Check and apply active strip promos.
@@ -49,17 +42,12 @@ async function runStripPromoCheck() {
       }
     }
 
-    // Check for expired promos that need strip restored
     await checkExpiredPromos();
-
   } catch (e) {
     console.error('[StripPromo] Fatal error:', e.message);
   }
 }
 
-/**
- * Apply a strip promo: update brand strip, regen passes, send push if due
- */
 async function applyStripPromo(promo) {
   const brand = await getBrand(promo.brand_id);
   if (!brand) return;
@@ -67,36 +55,31 @@ async function applyStripPromo(promo) {
   const config = brand.config || {};
   const logos = config.logos || {};
 
-  // Save the default strip on first promo activation (so we can restore it later)
   if (!logos.strip_default && logos.strip) {
     const updConfig = { ...config, logos: { ...logos, strip_default: logos.strip } };
     await updateBrand(promo.brand_id, { config: updConfig });
   }
 
-  // Check if strip is already the promo strip (avoid unnecessary regen)
   const currentStripHash = logos.strip ? logos.strip.substring(0, 50) : '';
   const promoStripHash = promo.strip_base64 ? promo.strip_base64.substring(0, 50) : '';
 
   if (currentStripHash !== promoStripHash) {
-    // Swap strip
     const updConfig = {
       ...config,
-      logos: { ...logos, strip: promo.strip_base64, strip_default: logos.strip_default || logos.strip }
+      logos: { ...logos, strip: promo.strip_base64, strip_default: logos.strip_default || logos.strip },
     };
     await updateBrand(promo.brand_id, { config: updConfig });
     console.log(`[StripPromo] Applied strip for promo "${promo.title}" on brand ${promo.brand_name}`);
 
-    // Regenerate all active passes with new strip
-    await regenerateBrandPasses(promo.brand_id);
+    await regenerateBrandPasses(promo.brand_id, { sendPush: false });
 
     await logEvent({
       brand_id: promo.brand_id,
       event_type: 'strip_promo_applied',
-      metadata: { promo_id: promo.id, title: promo.title }
+      metadata: { promo_id: promo.id, title: promo.title },
     });
   }
 
-  // Send push notification if configured and due
   if (promo.push_message && promo.push_frequency !== 'none') {
     const shouldPush = shouldSendPush(promo);
     if (shouldPush) {
@@ -106,11 +89,8 @@ async function applyStripPromo(promo) {
   }
 }
 
-/**
- * Determine if a push should be sent based on frequency
- */
 function shouldSendPush(promo) {
-  if (!promo.last_push_sent) return true; // Never sent
+  if (!promo.last_push_sent) return true;
 
   const lastSent = new Date(promo.last_push_sent);
   const now = new Date();
@@ -122,21 +102,19 @@ function shouldSendPush(promo) {
     case 'daily':
       return hoursDiff >= 24;
     case 'once':
-      return false; // Already sent
+      return false;
     default:
       return false;
   }
 }
 
-/**
- * Send push notification for a promo to all brand devices
- */
 async function sendPromoPush(promo) {
   try {
     const devices = await getDevicesForBrand(promo.brand_id);
     if (!devices || devices.length === 0) return;
 
     const batch = await sendPushBatch(devices.map((d) => d.push_token));
+    closeApnsSession();
     const sent = batch.filter((r) => r.success).length;
 
     await logPush({
@@ -144,7 +122,7 @@ async function sendPromoPush(promo) {
       type: 'strip_promo',
       message: promo.push_message,
       sent_to: sent,
-      total_devices: devices.length
+      total_devices: devices.length,
     });
 
     console.log(`[StripPromo] Push sent for "${promo.title}": ${sent}/${devices.length} devices`);
@@ -153,12 +131,8 @@ async function sendPromoPush(promo) {
   }
 }
 
-/**
- * Check for expired promos and restore default strip
- */
 async function checkExpiredPromos() {
   try {
-    // Find promos that just expired (end_date passed, still marked active)
     const { pool } = require('../db');
     const expired = await pool.query(`
       SELECT sp.*, b.name as brand_name FROM strip_promos sp
@@ -167,17 +141,14 @@ async function checkExpiredPromos() {
     `);
 
     for (const promo of expired.rows) {
-      // Mark as inactive
       await updateStripPromo(promo.id, { active: false });
 
-      // Check if there's another active promo for this brand
       const otherActive = await pool.query(
         `SELECT id FROM strip_promos WHERE brand_id = $1 AND active = true AND start_date <= NOW() AND end_date >= NOW()`,
         [promo.brand_id]
       );
 
       if (otherActive.rows.length === 0) {
-        // No other active promo — restore default strip
         const brand = await getBrand(promo.brand_id);
         const config = brand.config || {};
         const logos = config.logos || {};
@@ -188,7 +159,6 @@ async function checkExpiredPromos() {
           await updateBrand(promo.brand_id, { config: updConfig });
           console.log(`[StripPromo] Restored default strip for brand ${promo.brand_name}`);
 
-          // Regenerate passes with default strip
           await regenerateBrandPasses(promo.brand_id);
         }
       }
@@ -196,7 +166,7 @@ async function checkExpiredPromos() {
       await logEvent({
         brand_id: promo.brand_id,
         event_type: 'strip_promo_expired',
-        metadata: { promo_id: promo.id, title: promo.title }
+        metadata: { promo_id: promo.id, title: promo.title },
       });
 
       console.log(`[StripPromo] Promo "${promo.title}" expired for brand ${promo.brand_name}`);
@@ -207,51 +177,47 @@ async function checkExpiredPromos() {
 }
 
 /**
- * Regenerate all active passes for a brand (after strip change)
+ * After strip change: bulk touch + optional Google sync + optional APNs nudge.
+ * Devices download fresh .pkpass on demand (no mass pre-signing).
  */
-async function regenerateBrandPasses(brand_id) {
+async function regenerateBrandPasses(brand_id, { sendPush = true } = {}) {
   try {
     const passes = await listPasses(brand_id);
-    const activePasses = passes.filter(p => p.status === 'active');
+    const activePasses = passes.filter((p) => p.status === 'active');
     const brand = await getBrand(brand_id);
 
     if (!activePasses.length || !brand) return;
 
-    const cacheDir = CACHE_DIR;
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const touched = await touchPassesByIds(activePasses.map((p) => p.id));
+    let googleSynced = { updated: 0 };
+    if (activePasses.some((p) => p.google_wallet_object_id)) {
+      googleSynced = await syncGoogleWalletObjectsForPasses({
+        brand,
+        passes: activePasses,
+        message: null,
+      });
+    }
 
-    let regenerated = 0;
-    let googleSynced = 0;
-    for (const pass of activePasses) {
-      try {
-        const template = await getTemplate(pass.template_id);
-        if (!template) continue;
-        await createPkpass(template, pass, brand);
-        await touchPass(pass.id);
-        if (googleWallet.isConfigured() && pass.google_wallet_object_id) {
-          const passObject = googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
-          await googleWallet.createPassObjectOnServer(passObject);
-          googleSynced++;
-        }
-        regenerated++;
-      } catch (e) {
-        // Skip failed passes silently
+    let pushSent = 0;
+    if (sendPush) {
+      const devices = await getDevicesForBrand(brand_id);
+      if (devices.length) {
+        const batch = await sendPushBatch(devices.map((d) => d.push_token));
+        closeApnsSession();
+        pushSent = batch.filter((r) => r.success).length;
       }
     }
 
-    console.log(`[StripPromo] Regenerated ${regenerated}/${activePasses.length} passes for brand ${brand.name} (google synced: ${googleSynced})`);
-
-    // Send push to all devices so they update
-    const devices = await getDevicesForBrand(brand_id);
-    if (devices.length) {
-      await sendPushBatch(devices.map((d) => d.push_token));
-    }
+    console.log(
+      `[StripPromo] Refreshed ${touched.touched}/${activePasses.length} passes for brand ${brand.name}`
+      + ` (google: ${googleSynced.updated || 0}, apns: ${pushSent})`
+    );
   } catch (e) {
-    console.error('[StripPromo] Pass regen error:', e.message);
+    console.error('[StripPromo] Pass refresh error:', e.message);
   }
 }
 
 module.exports = {
   runStripPromoCheck,
-  regenerateBrandPasses
+  regenerateBrandPasses,
 };

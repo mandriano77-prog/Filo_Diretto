@@ -19,6 +19,7 @@ const {
 } = require('../db');
 const { sendPushBatch, shouldPruneApnsRegistration, closeApnsSession } = require('./apns');
 const { getTargetPassesForPush, getAppleDevicesForAudience } = require('./audiences');
+const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
 
@@ -201,19 +202,12 @@ async function executeScheduledPush(schedule, baseUrl) {
   if (update_pass && sendGoogle && googleWallet.isConfigured()) {
     try {
       const syncedBrand = await getBrand(brand_id);
-      const { getTemplate } = require('../db');
-      for (const pass of targetPasses) {
-        if (!pass.google_wallet_object_id) continue;
-        try {
-          const template = await getTemplate(pass.template_id);
-          if (!template) continue;
-          const passObject = googleWallet.buildPassObject(syncedBrand, template, pass, pass.customer_data || {});
-          await googleWallet.createPassObjectOnServer(passObject);
-          await googleWallet.updatePassMessage(pass.serial_number, message);
-        } catch (e) {
-          console.error(`[GoogleWallet] Scheduled sync failed for ${pass.serial_number}:`, e.message);
-        }
-      }
+      const googleSync = await syncGoogleWalletObjectsForPasses({
+        brand: syncedBrand,
+        passes: targetPasses,
+        message,
+      });
+      console.log('[GoogleWallet] Scheduled sync', googleSync);
     } catch (e) {
       console.error('[GoogleWallet] Scheduled sync error:', e.message);
     }

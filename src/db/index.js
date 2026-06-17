@@ -1296,6 +1296,19 @@ async function getPushJob(id) {
   return result.rows[0] || null;
 }
 
+async function claimPushJob(id) {
+  const result = await pool.query(
+    `UPDATE push_jobs
+     SET status = 'running',
+         started_at = NOW(),
+         progress = $2::jsonb
+     WHERE id = $1 AND status = 'queued'
+     RETURNING *`,
+    [id, JSON.stringify({ phase: 'starting' })]
+  );
+  return result.rows[0] || null;
+}
+
 async function updatePushJob(id, fields = {}) {
   const updates = [];
   const values = [];
@@ -3048,6 +3061,7 @@ module.exports = {
   markPassPushStatus,
   createPushJob,
   getPushJob,
+  claimPushJob,
   updatePushJob,
   getMemberForPass,
   listEmployeesForBrand,

@@ -14,10 +14,12 @@ const {
   unregisterDevice,
   logPush,
   getPushJob,
+  claimPushJob,
   updatePushJob,
 } = require('../db');
 const { getTargetPassesForPush, getAppleDevicesForAudience } = require('./audiences');
 const { sendPushBatch, closeApnsSession, shouldPruneApnsRegistration } = require('./apns');
+const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
 
@@ -58,38 +60,6 @@ function parsePassLinkFromPushBody(body, title) {
 
 async function notifySamsungSavedPasses(passes) {
   return samsungWallet.notifySavedPassesUpdates(passes);
-}
-
-async function syncGoogleWalletObjectsForPasses({ brand, passes, message }) {
-  if (!googleWallet.isConfigured()) return { attempted: 0, updated: 0, errors: 0, skipped: true };
-  if (!Array.isArray(passes) || passes.length === 0) {
-    return { attempted: 0, updated: 0, errors: 0, skipped: false };
-  }
-
-  let attempted = 0;
-  let updated = 0;
-  let errors = 0;
-  const { getTemplate } = require('../db');
-
-  for (const pass of passes) {
-    if (!pass.google_wallet_object_id) continue;
-    attempted++;
-    try {
-      const template = await getTemplate(pass.template_id);
-      if (!template) continue;
-      const passObject = googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
-      await googleWallet.createPassObjectOnServer(passObject);
-      if (message) {
-        await googleWallet.updatePassMessage(pass.serial_number, message);
-      }
-      updated++;
-    } catch (err) {
-      errors++;
-      console.error('[GoogleWallet] Sync error for serial', pass.serial_number, err.message);
-    }
-  }
-
-  return { attempted, updated, errors, skipped: false };
 }
 
 async function applyApplePushResults(devices, batchResults, { onProgress } = {}) {
@@ -362,15 +332,17 @@ function enqueuePushJob(jobId, ctx = {}) {
 }
 
 async function runPushJob(jobId, ctx = {}) {
-  const job = await getPushJob(jobId);
-  if (!job) return;
+  const job = await claimPushJob(jobId);
+  if (!job) {
+    const existing = await getPushJob(jobId);
+    if (existing && (existing.status === 'running' || existing.status === 'completed')) {
+      return;
+    }
+    console.warn(`[PUSH JOB] ${jobId} not claimed (status=${existing?.status || 'missing'})`);
+    return;
+  }
 
-  await updatePushJob(jobId, {
-    status: 'running',
-    started_at: new Date(),
-    progress: { phase: 'starting' },
-  });
-
+  const startedAt = Date.now();
   try {
     const result = await executeWalletPush(job.payload, {
       ...ctx,
@@ -378,6 +350,11 @@ async function runPushJob(jobId, ctx = {}) {
         await updatePushJob(jobId, { progress });
       },
     });
+
+    const durationMs = Date.now() - startedAt;
+    console.log(
+      `[PUSH JOB] ${jobId} completed apns=${result.sent_apns}/${result.total_apns} duration_ms=${durationMs}`
+    );
 
     await updatePushJob(jobId, {
       status: 'completed',
@@ -387,6 +364,7 @@ async function runPushJob(jobId, ctx = {}) {
         phase: 'done',
         sent_apns: result.sent_apns,
         total_apns: result.total_apns,
+        duration_ms: durationMs,
       },
     });
   } catch (err) {
