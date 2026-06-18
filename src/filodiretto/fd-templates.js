@@ -1,5 +1,5 @@
 /**
- * FD — Template Pass: richer cards + completeness indicator.
+ * FD — Template Pass (FASE 4): DS layout, richer cards, completeness, skeleton loading.
  */
 (function () {
   'use strict';
@@ -135,7 +135,7 @@
         : t.pass_type || 'Pass';
     var updated = t.updated_at || t.created_at;
     return (
-      '<article class="card fd-tpl-card">' +
+      '<article class="fd-card fd-tpl-card">' +
       '<div class="fd-tpl-card__grid">' +
       renderPreview(t) +
       '<div class="fd-tpl-card__content">' +
@@ -159,14 +159,89 @@
       checksHtml +
       '</div>' +
       '<div class="fd-tpl-card__actions">' +
-      '<button type="button" class="btn small" onclick="editTemplate(\'' +
+      '<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" onclick="editTemplate(\'' +
       esc(t.id) +
       '\')">Modifica</button>' +
-      '<button type="button" class="btn small danger" onclick="deleteTemplate(\'' +
+      '<button type="button" class="fd-btn fd-btn--ghost fd-btn--sm fd-tpl-card__delete" onclick="deleteTemplate(\'' +
       esc(t.id) +
       '\')">Elimina</button>' +
       '</div></div></div></article>'
     );
+  }
+
+  function renderLoadingSkeleton() {
+    function cardSkeleton() {
+      return (
+        '<article class="fd-card fd-tpl-card fd-tpl-card--skeleton" aria-hidden="true">' +
+        '<div class="fd-tpl-card__grid">' +
+        '<div class="fd-skeleton fd-tpl-card__preview-skeleton"></div>' +
+        '<div class="fd-tpl-card__content">' +
+        '<span class="fd-skeleton fd-skeleton--title" style="width:52%"></span>' +
+        '<span class="fd-skeleton fd-skeleton--text" style="width:78%;margin-top:10px"></span>' +
+        '<span class="fd-skeleton fd-skeleton--text" style="width:42%;margin-top:6px"></span>' +
+        '</div></div></article>'
+      );
+    }
+    return (
+      '<div class="fd-tpl-list fd-tpl-skeleton" aria-busy="true" aria-live="polite">' +
+      cardSkeleton() +
+      cardSkeleton() +
+      '</div>'
+    );
+  }
+
+  function enhanceTemplatesSectionDesign() {
+    var section = document.getElementById('templates');
+    if (!section || section.dataset.fdDsSection === '1') return;
+    section.dataset.fdDsSection = '1';
+    section.classList.add('templates--fd-layout');
+
+    var headerWrap = section.querySelector(':scope > div');
+    var title = section.querySelector('h1.page-title, h1.sec-title');
+    var createBtn = section.querySelector('[onclick*="openTemplateModal"]');
+    if (headerWrap && title && !headerWrap.classList.contains('fd-page-header')) {
+      headerWrap.classList.add('fd-page-header', 'fd-tpl-header');
+      headerWrap.style.display = '';
+      headerWrap.style.justifyContent = '';
+      headerWrap.style.alignItems = '';
+      headerWrap.style.marginBottom = '';
+
+      var copy = headerWrap.querySelector('.fd-page-header__copy');
+      if (!copy) {
+        copy = document.createElement('div');
+        copy.className = 'fd-page-header__copy';
+        copy.appendChild(title);
+        var lead = document.createElement('p');
+        lead.className = 'fd-page-header__lead fd-tpl-lead';
+        lead.textContent =
+          'Definisci layout, immagini e testi del pass dipendente riutilizzabile in tutte le attivazioni.';
+        copy.appendChild(lead);
+        headerWrap.insertBefore(copy, headerWrap.firstChild);
+      }
+
+      title.classList.add('fd-page-header__title');
+      var existingLead = copy.querySelector('.fd-page-header__lead, .fd-tpl-lead');
+      if (existingLead) existingLead.classList.add('fd-page-header__lead');
+
+      if (createBtn) {
+        var actions = headerWrap.querySelector('.fd-page-header__actions');
+        if (!actions) {
+          actions = document.createElement('div');
+          actions.className = 'fd-page-header__actions fd-tpl-header__actions';
+          actions.appendChild(createBtn);
+          headerWrap.appendChild(actions);
+        }
+        createBtn.classList.add('fd-btn', 'fd-btn--primary');
+        createBtn.classList.remove('sec', 'small');
+      }
+    }
+
+    var list = document.getElementById('templatesList');
+    if (list) list.classList.add('fd-tpl-list-host');
+
+    if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
+      window.fdRelocateBrandPassFlowBar(section);
+    }
   }
 
   async function fetchBrandSnapshot() {
@@ -224,6 +299,8 @@
       if (!isFiloTplApp() || !window.brandId) return orig.apply(this, arguments);
       var el = document.getElementById('templatesList');
       if (!el) return orig.apply(this, arguments);
+      enhanceTemplatesSectionDesign();
+      el.innerHTML = renderLoadingSkeleton();
       try {
         var api = window.API || '/api/v1';
         var templates = await window.fetchCachedJson(api + '/templates?brand_id=' + window.brandId, {
@@ -246,11 +323,14 @@
           if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
           return;
         }
-        el.innerHTML = templates
-          .map(function (t) {
-            return renderTemplateCard(t, passCounts[t.id] || 0, brandSnapshot);
-          })
-          .join('');
+        el.innerHTML =
+          '<div class="fd-tpl-list">' +
+          templates
+            .map(function (t) {
+              return renderTemplateCard(t, passCounts[t.id] || 0, brandSnapshot);
+            })
+            .join('') +
+          '</div>';
         if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
       } catch (e) {
         console.error('fd-templates loadTemplates', e);
@@ -259,9 +339,26 @@
     };
   }
 
+  function patchNavForTemplates() {
+    if (window.__fdTplNavPatched || typeof window.nav !== 'function') return;
+    window.__fdTplNavPatched = true;
+    var origNav = window.nav;
+    window.nav = function (id) {
+      var r = origNav.apply(this, arguments);
+      var done = function () {
+        if (id === 'templates') enhanceTemplatesSectionDesign();
+      };
+      if (r && typeof r.then === 'function') return r.then(done);
+      setTimeout(done, 0);
+      return r;
+    };
+  }
+
   function initFdTemplates() {
     if (!isFiloTplApp()) return;
     patchLoadTemplates();
+    patchNavForTemplates();
+    enhanceTemplatesSectionDesign();
   }
 
   window.fdInitTemplates = initFdTemplates;

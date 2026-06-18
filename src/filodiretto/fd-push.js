@@ -1,5 +1,5 @@
 /**
- * FD-14 — FiloDiretto Push UI: preview, char limits, channel segmented, test send.
+ * FD-14 — FiloDiretto Push UI (FASE 4): preview, char limits, channel segmented, DS layout.
  */
 (function () {
   'use strict';
@@ -415,7 +415,7 @@
       '<p class="form-hint" style="margin:0 0 8px">Invia solo al pass selezionato (utile prima della campagna massiva).</p>' +
       '<div class="fd-push-test__row">' +
       '<select id="fdPushTestPass" aria-label="Pass di prova"></select>' +
-      '<button type="button" class="btn sec" id="fdPushTestBtn">Invia di prova</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" id="fdPushTestBtn">Invia di prova</button>' +
       '</div>';
     var sendBtn = card.querySelector('button[onclick*="sendImmediatePush"]');
     if (sendBtn) card.insertBefore(block, sendBtn);
@@ -513,8 +513,8 @@
       '<ul class="fd-push-confirm-summary" id="fdPushConfirmSummary"></ul>' +
       '<p class="fd-push-confirm-zero" id="fdPushConfirmZero" hidden>Nessun pass raggiungibile per questo canale.</p>' +
       '<div class="modal-actions">' +
-      '<button type="button" class="btn sec" id="fdPushConfirmCancel">Annulla</button>' +
-      '<button type="button" class="btn" id="fdPushConfirmSubmit">Conferma invio</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" id="fdPushConfirmCancel">Annulla</button>' +
+      '<button type="button" class="fd-btn fd-btn--primary" id="fdPushConfirmSubmit">Conferma invio</button>' +
       '</div></div>';
     document.body.appendChild(wrap);
     setupFdModal(wrap);
@@ -538,8 +538,8 @@
       '<div class="modal-header" id="fdPushHistoryConfirmTitle">Elimina dallo storico</div>' +
       '<p id="fdPushHistoryConfirmMessage" class="form-hint" style="margin:0"></p>' +
       '<div class="modal-actions">' +
-      '<button type="button" class="btn sec" id="fdPushHistoryConfirmCancel">Annulla</button>' +
-      '<button type="button" class="btn danger" id="fdPushHistoryConfirmSubmit">Elimina</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" id="fdPushHistoryConfirmCancel">Annulla</button>' +
+      '<button type="button" class="fd-btn fd-btn--danger" id="fdPushHistoryConfirmSubmit">Elimina</button>' +
       '</div></div>';
     document.body.appendChild(wrap);
     setupFdModal(wrap);
@@ -874,6 +874,7 @@
     panel.classList.add('fd-push-panel--enhanced');
 
     var card = panel.querySelector('.push-card');
+    if (card) card.classList.add('fd-card', 'fd-push-card');
     if (!card) return;
 
     var formCol = panel.querySelector(':scope > .fd-push-form-col');
@@ -910,15 +911,254 @@
     wirePushSendConfirm();
   }
 
-  function enhanceIntro() {
+  function enhancePushSectionDesign() {
     var push = document.getElementById('push');
-    if (!push) return;
-    var intro = push.querySelector('p');
-    if (!intro || intro.classList.contains('fd-push-intro')) return;
-    intro.classList.add('fd-push-intro');
-    intro.innerHTML =
-      'Invia notifiche ai dipendenti con pass in Wallet. Scegli il <strong>canale</strong>, ' +
-      'controlla i limiti di caratteri e usa l’<strong>anteprima</strong> prima dell’invio massivo.';
+    if (!push || push.dataset.fdDsSection === '1') return;
+    push.dataset.fdDsSection = '1';
+    push.classList.add('push--fd-ds');
+
+    var title = push.querySelector('h1.page-title, h1.sec-title');
+    var intro = push.querySelector(':scope > p');
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-push-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      if (intro) {
+        intro.classList.add('fd-page-header__lead', 'fd-push-intro');
+        intro.style.fontSize = '';
+        intro.style.color = '';
+        intro.style.marginBottom = '';
+        copy.appendChild(intro);
+      } else {
+        var lead = document.createElement('p');
+        lead.className = 'fd-page-header__lead fd-push-intro';
+        lead.innerHTML =
+          'Invia notifiche ai dipendenti con pass in Wallet. Scegli il <strong>canale</strong>, ' +
+          'controlla i limiti di caratteri e usa l’<strong>anteprima</strong> prima dell’invio massivo.';
+        copy.appendChild(lead);
+      }
+      header.appendChild(copy);
+      push.insertBefore(header, push.firstChild);
+    }
+
+    var tabs = push.querySelector('.tabs-bar');
+    if (tabs) tabs.classList.add('fd-push-tabs');
+  }
+
+  function enhancePushCards(scope) {
+    var root = scope || document.getElementById('push');
+    if (!root) return;
+    root.querySelectorAll('.push-card').forEach(function (card) {
+      card.classList.add('fd-card', 'fd-push-card');
+    });
+  }
+
+  function applyDsButtonClasses(scope) {
+    var root = scope || document.getElementById('push');
+    if (!root) return;
+
+    var sendBtn = root.querySelector('#pushSendBtn');
+    if (sendBtn) sendBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-push-send-btn');
+
+    root.querySelectorAll('#fdPushTestBtn').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--secondary');
+      btn.classList.remove('sec');
+    });
+
+    root.querySelectorAll('[onclick*="pushPickStripFromMedia"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+    });
+    root.querySelectorAll('#pushStripClearBtn').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm', 'fd-push-strip-clear');
+    });
+
+    root.querySelectorAll('[onclick*="createScheduledPush"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--primary', 'fd-push-send-btn');
+    });
+    root.querySelectorAll('[onclick*="addGeoLocation"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+    });
+    root.querySelectorAll('[onclick*="saveGeoConfig"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--primary');
+    });
+
+    root.querySelectorAll('#pushBulkBar .btn.small.sec, #pushBulkBar .btn.sec.small').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+    });
+    root.querySelectorAll('#pushBulkBar .btn.small.danger, #pushBulkBar .btn.danger.small').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--danger', 'fd-btn--sm');
+    });
+
+    ['fdPushConfirmCancel', 'fdPushHistoryConfirmCancel'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.classList.add('fd-btn', 'fd-btn--secondary');
+    });
+    ['fdPushConfirmSubmit', 'fdPushHistoryConfirmSubmit'].forEach(function (id) {
+      var btn = document.getElementById(id);
+      if (btn) {
+        btn.classList.add('fd-btn', 'fd-btn--sm');
+        if (btn.classList.contains('danger')) btn.classList.add('fd-btn--danger');
+        else btn.classList.add('fd-btn--primary');
+      }
+    });
+  }
+
+  function renderHistorySkeleton() {
+    return (
+      '<div class="fd-push-history-skeleton" aria-busy="true" aria-live="polite">' +
+      '<span class="fd-skeleton fd-skeleton--title" style="width:42%;max-width:220px"></span>' +
+      '<span class="fd-skeleton" style="display:block;width:100%;height:180px;margin-top:12px;border-radius:12px"></span>' +
+      '</div>'
+    );
+  }
+
+  function enhancePushHistoryDom() {
+    var history = document.getElementById('pushHistory');
+    if (!history) return;
+
+    var wrap = history.closest('.fd-push-history-wrap');
+    if (wrap) {
+      wrap.classList.add('fd-card', 'fd-push-history-section');
+      var historyTitle = wrap.querySelector('.sec-title');
+      if (historyTitle) historyTitle.classList.add('fd-push-history-title');
+    }
+
+    var bulkHint = history.querySelector('.bulk-select-hint');
+    if (bulkHint) bulkHint.classList.add('fd-pushes-bulk-hint');
+
+    var bulkBar = history.querySelector('#pushBulkBar');
+    if (bulkBar) bulkBar.classList.add('fd-passes-bulk-bar', 'fd-push-bulk-bar');
+
+    var table = history.querySelector('.pass-table, .table');
+    if (table) table.classList.add('fd-table');
+    var tableWrap = history.querySelector('.pass-table-wrap');
+    if (tableWrap) tableWrap.classList.add('fd-table-wrap');
+
+    enhancePushHistoryRowActions(history);
+    applyDsButtonClasses(document.getElementById('push'));
+
+    if (typeof window.fdEnhanceResponsiveTables === 'function') {
+      window.fdEnhanceResponsiveTables();
+    }
+  }
+
+  function enhancePushHistoryRowActions(scope) {
+    (scope || document).querySelectorAll('#pushHistory .pass-row-actions').forEach(function (wrap) {
+      if (wrap.dataset.fdActionsEnhanced === '1') return;
+      wrap.dataset.fdActionsEnhanced = '1';
+      var resendBtn = wrap.querySelector('[onclick*="resendPushFromHistory"]');
+      var delBtn = wrap.querySelector('.pass-action-btn--danger, [onclick*="deletePushFromHistory"]');
+      if (!resendBtn || !delBtn) return;
+      var pushId =
+        resendBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
+        delBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
+        '';
+      var menuId = 'fdPushHistMenu_' + pushId.replace(/[^a-z0-9]/gi, '');
+      wrap.innerHTML =
+        '<div class="fd-pass-row-menu fd-push-history-menu">' +
+        '<button type="button" class="fd-btn fd-btn--secondary fd-btn--sm fd-pass-row-menu__trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="' +
+        menuId +
+        '">Azioni</button>' +
+        '<div class="fd-pass-row-menu__panel" id="' +
+        menuId +
+        '" role="menu" hidden>' +
+        '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="resend">Reinvia</button>' +
+        '<button type="button" class="fd-pass-row-menu__item fd-pass-row-menu__item--danger" role="menuitem" data-action="delete">Elimina dallo storico</button>' +
+        '</div></div>';
+      var trigger = wrap.querySelector('.fd-pass-row-menu__trigger');
+      var panel = wrap.querySelector('.fd-pass-row-menu__panel');
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = panel.hidden;
+        document.querySelectorAll('#pushHistory .fd-pass-row-menu__panel').forEach(function (p) {
+          p.hidden = true;
+        });
+        document.querySelectorAll('#pushHistory .fd-pass-row-menu__trigger').forEach(function (t) {
+          t.setAttribute('aria-expanded', 'false');
+        });
+        if (open) {
+          panel.hidden = false;
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+      wrap.querySelector('[data-action="resend"]').addEventListener('click', function () {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (typeof window.resendPushFromHistory === 'function') window.resendPushFromHistory(pushId);
+      });
+      wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (typeof window.deletePushFromHistory === 'function') window.deletePushFromHistory(pushId);
+      });
+    });
+  }
+
+  function patchLoadPushHistory() {
+    if (window.__fdPushHistoryLoadPatched || typeof window.loadPushHistory !== 'function') return;
+    window.__fdPushHistoryLoadPatched = true;
+    var orig = window.loadPushHistory;
+    window.loadPushHistory = async function () {
+      if (!isFiloPushApp() || !window.brandId) return orig.apply(this, arguments);
+      var el = document.getElementById('pushHistory');
+      if (el) el.innerHTML = renderHistorySkeleton();
+      await orig.apply(this, arguments);
+      enhancePushHistoryDom();
+    };
+  }
+
+  function enhanceScheduledPanel() {
+    var panel = document.getElementById('pushPanel_scheduled');
+    if (!panel || panel.dataset.fdDsPanel === '1') return;
+    panel.dataset.fdDsPanel = '1';
+    panel.classList.add('fd-push-panel--ds');
+    enhancePushCards(panel);
+    var listTitle = panel.querySelector(':scope > .sec-title');
+    if (listTitle) {
+      var section = document.createElement('div');
+      section.className = 'fd-card fd-push-scheduled-list';
+      section.appendChild(listTitle);
+      var list = panel.querySelector('#scheduledList');
+      if (list) section.appendChild(list);
+      panel.appendChild(section);
+      listTitle.classList.add('fd-push-section-title');
+    }
+  }
+
+  function enhanceGeofencingPanel() {
+    var panel = document.getElementById('pushPanel_geofencing');
+    if (!panel || panel.dataset.fdDsPanel === '1') return;
+    panel.dataset.fdDsPanel = '1';
+    panel.classList.add('fd-push-panel--ds');
+    enhancePushCards(panel);
+    var empty = panel.querySelector('#geoEmptyMsg');
+    if (empty) empty.classList.add('fd-empty-state', 'fd-push-geo-empty');
+  }
+
+  function enhancePushPanelsDom() {
+    enhancePushCards(document.getElementById('push'));
+    enhanceScheduledPanel();
+    enhanceGeofencingPanel();
+    applyDsButtonClasses(document.getElementById('push'));
+    enhancePushHistoryDom();
+  }
+
+  function patchSwitchPushTab() {
+    if (window.__fdPushTabPatched || typeof window.switchPushTab !== 'function') return;
+    window.__fdPushTabPatched = true;
+    var orig = window.switchPushTab;
+    window.switchPushTab = function (tab) {
+      var out = orig.apply(this, arguments);
+      setTimeout(enhancePushPanelsDom, 0);
+      return out;
+    };
+  }
+
+  function enhanceIntro() {
+    /* intro merged into enhancePushSectionDesign */
   }
 
   function patchNavForPush() {
@@ -938,10 +1178,13 @@
     if (!isFiloPushApp()) return;
     var push = document.getElementById('push');
     if (push) push.classList.add('push--fd');
-    enhanceIntro();
-    enhanceImmediatePanel();
+    patchLoadPushHistory();
+    patchSwitchPushTab();
     patchNavForPush();
     patchPushHistoryDelete();
+    enhancePushSectionDesign();
+    enhanceImmediatePanel();
+    enhancePushPanelsDom();
   }
 
   window.fdInitPush = initFdPush;

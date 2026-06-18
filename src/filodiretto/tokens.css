@@ -1,15 +1,24 @@
 /**
  * FD-09 — FiloDiretto design tokens (--fd-*).
  * Loaded only on HR deploy; map to dashboard vars via fd-theme.css.
+ *
+ * Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48
+ * Breakpoints (reference): desktop ≥1280 · tablet-L 1024 · tablet-P 768 · mobile gate <768
  */
 :root {
   /* Primary scale */
   --fd-color-primary-50: #f5f3ff;
   --fd-color-primary-100: #ede9fe;
   --fd-color-primary-500: #8b5cf6;
+  --fd-color-primary-600: #7c3aed;
   --fd-color-primary-700: #6d28d9;
 
-  /* Semantic */
+  /* Surfaces */
+  --fd-color-surface: #ffffff;
+  --fd-color-surface-muted: #f8fafc;
+  --fd-color-surface-raised: #ffffff;
+
+  /* Semantic states */
   --fd-color-success: #10b981;
   --fd-color-success-bg: #ecfdf5;
   --fd-color-success-border: rgba(16, 185, 129, 0.35);
@@ -39,33 +48,37 @@
   --fd-color-text-primary: #0f172a;
   --fd-color-text-body: #334155;
   --fd-color-text-secondary: #3f4d5e;
-  --fd-color-text-muted: #4b5563;
+  --fd-color-text-muted: #64748b;
   --fd-color-text-on-accent: #ffffff;
 
   --fd-border: #e5e7eb;
   --fd-border-strong: #d1d5db;
 
-  /* Spacing */
+  /* Spacing — 4 / 8 / 12 / 16 / 24 / 32 / 48 */
   --fd-space-1: 4px;
   --fd-space-2: 8px;
   --fd-space-3: 12px;
   --fd-space-4: 16px;
   --fd-space-5: 24px;
   --fd-space-6: 32px;
+  --fd-space-7: 48px;
 
-  /* Radius — 12px standard (md) */
+  /* Radius — sm / md / lg / full */
   --fd-radius-sm: 6px;
   --fd-radius-md: 12px;
   --fd-radius-lg: 16px;
+  --fd-radius-full: 9999px;
   --fd-radius-pill: 9999px;
   --fd-radius-header: 0;
 
-  /* Typography (FD-10) */
+  /* Typography scale */
   --fd-font-size-h1: 30px;
   --fd-font-size-h2: 20px;
   --fd-font-size-h3: 16px;
+  --fd-font-size-h4: 14px;
   --fd-font-size-body: 14px;
   --fd-font-size-sm: 12px;
+  --fd-font-size-caption: 11px;
   --fd-font-weight-regular: 400;
   --fd-font-weight-medium: 500;
   --fd-font-weight-semibold: 600;
@@ -74,11 +87,33 @@
   --fd-line-height-body: 1.5;
   --fd-line-height-relaxed: 1.6;
 
-  /* Shadows */
+  /* Shadows — sm / md / lg */
   --fd-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
   --fd-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --fd-shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
   --fd-shadow-menu: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* Z-index (semantic) */
+  --fd-z-base: 1;
+  --fd-z-sticky: 100;
+  --fd-z-dropdown: 200;
+  --fd-z-overlay: 400;
+  --fd-z-modal: 500;
+  --fd-z-toast: 600;
+
+  /* Layout — applied in fd-layout.css (FASE 2) */
+  --fd-layout-max-width: 1280px;
+  --fd-layout-gutter: 24px;
+  --fd-layout-gutter-sm: 16px;
+
+  /* Breakpoints — for reference in @media and JS matchMedia */
+  --fd-bp-mobile-max: 767px;
+  --fd-bp-tablet-portrait-min: 768px;
+  --fd-bp-tablet-landscape-min: 1024px;
+  --fd-bp-desktop-min: 1280px;
+
+  /* Touch target minimum (tablet) */
+  --fd-touch-target: 40px;
 
   /* Module aliases (FD-01–FD-08) */
   --fd-danger: var(--fd-color-danger);

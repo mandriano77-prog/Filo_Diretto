@@ -1,5 +1,5 @@
 /**
- * FD-03 — FiloDiretto users table (brand names, copy ID, kebab actions, protected badge).
+ * FD — FiloDiretto users (FASE 4): DS layout, page header, table UX, kebab actions.
  */
 (function () {
   'use strict';
@@ -76,7 +76,8 @@
     if (!btn) return;
     var isAdmin = document.body.classList.contains('role-admin');
     btn.style.display = isAdmin ? '' : 'none';
-    btn.classList.add('fd-btn-primary');
+    btn.classList.add('fd-btn', 'fd-btn--primary');
+    btn.classList.remove('fd-btn-primary');
   }
 
   function getUserBrandGroup() {
@@ -166,33 +167,80 @@
     }
   }
 
+  function enhanceUserModal() {
+    var modal = document.getElementById('userModal');
+    if (!modal || modal.dataset.fdDsModal === '1') return;
+    modal.dataset.fdDsModal = '1';
+    var panel = modal.querySelector('.modal-content');
+    if (panel) panel.classList.add('fd-card', 'fd-users-modal');
+    modal.querySelectorAll('.btn.fd-btn-primary, .btn:not(.sec):not(.danger)').forEach(function (btn) {
+      if (btn.closest('#userModal')) {
+        btn.classList.add('fd-btn', 'fd-btn--primary');
+      }
+    });
+    modal.querySelectorAll('.btn.sec').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
+    });
+  }
+
   function ensureUsersChrome() {
     var section = document.getElementById('users');
     if (!section) return;
     if (!section.classList.contains('users--fd')) {
       section.classList.add('users--fd');
     }
+    section.classList.add('users--fd-ds');
     ensureCreateUserButton();
     wireCreateUserForm();
     ensureConfirmDialogCentering();
+    enhanceUserModal();
 
     if (section.classList.contains('fd-users-chrome-ready')) return;
     section.classList.add('fd-users-chrome-ready');
 
+    var title = section.querySelector('h1.page-title, h1.sec-title');
     var legacyToolbar = section.querySelector(':scope > div[style*="justify-content"]');
-    if (legacyToolbar && !section.querySelector('.fd-users-toolbar')) {
-      legacyToolbar.classList.add('fd-users-toolbar');
-      var lead = legacyToolbar.querySelector('p');
-      if (lead) lead.classList.add('fd-users-lead');
+    var lead = legacyToolbar && legacyToolbar.querySelector('p');
+
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-users-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      if (lead) {
+        lead.classList.add('fd-page-header__lead', 'fd-users-lead');
+        lead.style.color = '';
+        lead.style.fontSize = '';
+        copy.appendChild(lead);
+      }
+      header.appendChild(copy);
+      section.insertBefore(header, section.firstChild);
+    }
+
+    if (legacyToolbar && !legacyToolbar.classList.contains('fd-toolbar')) {
+      legacyToolbar.classList.add('fd-toolbar', 'fd-users-toolbar');
+      legacyToolbar.style.display = '';
+      legacyToolbar.style.justifyContent = '';
+      legacyToolbar.style.alignItems = '';
+      legacyToolbar.style.marginBottom = '';
+      if (!lead) {
+        var fallbackLead = legacyToolbar.querySelector('p');
+        if (fallbackLead) fallbackLead.classList.add('fd-users-lead');
+      } else if (lead.parentNode === legacyToolbar && lead.closest('.fd-page-header')) {
+        legacyToolbar.removeChild(lead);
+      }
     }
 
     var table = document.getElementById('usersTable');
-    if (table && !table.closest('.fd-users-table-wrap')) {
+    if (table && !table.closest('.fd-table-wrap, .fd-users-table-wrap')) {
       var wrap = document.createElement('div');
-      wrap.className = 'fd-users-table-wrap';
+      wrap.className = 'fd-table-wrap fd-users-table-wrap';
       table.parentNode.insertBefore(wrap, table);
       wrap.appendChild(table);
     }
+    if (table) table.classList.add('fd-table');
 
     var actionsTh = table && table.querySelector('thead th:last-child');
     if (actionsTh) actionsTh.textContent = '';
@@ -349,6 +397,9 @@
     ensureUsersChrome();
     ensureCreateUserButton();
 
+    var section = document.getElementById('users');
+    if (section) section.classList.add('fd-users--loading');
+
     var tbody = document.querySelector('#usersTable tbody');
     if (!tbody) return;
 
@@ -411,7 +462,27 @@
       } else {
         tbody.innerHTML = '<tr><td colspan="6" style="color:var(--red)">Errore: ' + esc(e.message) + '</td></tr>';
       }
+    } finally {
+      if (section) section.classList.remove('fd-users--loading');
+      if (typeof window.fdEnhanceResponsiveTables === 'function') {
+        window.fdEnhanceResponsiveTables();
+      }
     }
+  }
+
+  function patchUsersNav() {
+    if (window.__fdUsersNavPatched || typeof window.nav !== 'function') return;
+    window.__fdUsersNavPatched = true;
+    var orig = window.nav;
+    window.nav = function (sectionId) {
+      var out = orig.apply(this, arguments);
+      if (sectionId === 'users') {
+        setTimeout(function () {
+          if (isFiloUsersApp()) ensureUsersChrome();
+        }, 80);
+      }
+      return out;
+    };
   }
 
   window.fdLoadUsers = fdLoadUsers;
@@ -421,11 +492,13 @@
       if (!isFiloUsersApp()) return;
       ensureConfirmDialogCentering();
       wireCreateUserForm();
+      patchUsersNav();
       ensureUsersChrome();
     });
   } else if (isFiloUsersApp()) {
     ensureConfirmDialogCentering();
     wireCreateUserForm();
+    patchUsersNav();
     ensureUsersChrome();
   }
 })();

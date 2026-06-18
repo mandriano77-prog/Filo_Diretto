@@ -106,3 +106,187 @@ html[data-app='filodiretto'] .fd-sidebar-collapse-btn:hover {
     display: flex !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * FD-DS FASE 2 — Layout shell, content container, responsive grid
+ *
+ * Breakpoints (synced on <html> via fd-layout.js):
+ *   fd-bp-desktop           ≥1280px — sidebar fissa, layout pieno
+ *   fd-bp-tablet-landscape  1024–1279px — sidebar fissa/collassabile, KPI 3–4 col
+ *   fd-bp-tablet-portrait   768–1023px — sidebar off-canvas, KPI 2 col, touch ≥40px
+ *   fd-bp-mobile            <768px — gate smartphone (FASE 6)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shell: prevent horizontal bleed ── */
+html[data-app='filodiretto'] .layout,
+html[data-app='filodiretto'] .main,
+html[data-app='filodiretto'] .content,
+html[data-app='filodiretto'] .content > .section {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+html[data-app='filodiretto'] .content {
+  padding: var(--fd-layout-gutter);
+  overflow-x: clip;
+}
+
+html[data-app='filodiretto'] .content > .section {
+  width: 100%;
+  max-width: var(--fd-layout-max-width);
+  margin-inline: auto;
+}
+
+html[data-app='filodiretto'] .card,
+html[data-app='filodiretto'] .stat-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ── Central page container (alias fd-page on sections) ── */
+html[data-app='filodiretto'] .fd-page,
+html[data-app='filodiretto'] .content > .section.active {
+  max-width: var(--fd-layout-max-width);
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+/* Page-specific narrower rails keep their own max-width (e.g. media-library) */
+
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] .content {
+    padding: var(--fd-layout-gutter-sm);
+  }
+}
+
+/* ── KPI / stat bands — always wrap, never overflow ── */
+html[data-app='filodiretto'] .stats-grid,
+html[data-app='filodiretto'] .fd-stat-grid,
+html[data-app='filodiretto'] .fd-grid--stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--fd-space-4);
+  margin-bottom: var(--fd-space-5);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Override index.html 2-col lock at <768px — auto-fit wraps naturally */
+@media (max-width: 767px) {
+  html[data-app='filodiretto'] .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+html[data-app='filodiretto'].fd-bp-tablet-portrait .stats-grid,
+html[data-app='filodiretto'].fd-bp-tablet-portrait .fd-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+/* ── Generic responsive grids (utility classes for FASE 4+) ── */
+html[data-app='filodiretto'] .fd-grid {
+  display: grid;
+  gap: var(--fd-space-4);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] .fd-grid--auto {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+html[data-app='filodiretto'] .fd-grid--auto-sm {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+html[data-app='filodiretto'] .fd-grid--auto-md {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+html[data-app='filodiretto'] .fd-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-app='filodiretto'] .fd-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html[data-app='filodiretto'] .fd-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] .fd-grid--3,
+  html[data-app='filodiretto'] .fd-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  html[data-app='filodiretto'] .fd-grid--2,
+  html[data-app='filodiretto'] .fd-grid--3,
+  html[data-app='filodiretto'] .fd-grid--4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Legacy inline grids inside sections — soften fixed column counts */
+html[data-app='filodiretto'] .content > .section [style*='grid-template-columns:repeat(5,1fr)'],
+html[data-app='filodiretto'] .content > .section [style*='grid-template-columns: repeat(5, 1fr)'] {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+}
+
+html[data-app='filodiretto'] .content > .section [style*='grid-template-columns:1fr 1fr'],
+html[data-app='filodiretto'] .content > .section [style*='grid-template-columns: 1fr 1fr'] {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+}
+
+/* ── Toolbars / action bars — wrap instead of clip ── */
+html[data-app='filodiretto'] .fd-toolbar,
+html[data-app='filodiretto'] .contacts-toolbar,
+html[data-app='filodiretto'] .analytics-toolbar,
+html[data-app='filodiretto'] .fd-users-toolbar,
+html[data-app='filodiretto'] #passes > div:first-child,
+html[data-app='filodiretto'] #templates > div:first-child,
+html[data-app='filodiretto'] #passesContent > div[style*='flex-wrap'] {
+  flex-wrap: wrap;
+  gap: var(--fd-space-2);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-toolbar__actions,
+html[data-app='filodiretto'] .analytics-actions,
+html[data-app='filodiretto'] .contacts-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2);
+  min-width: 0;
+}
+
+/* ── Tablet portrait: touch targets ── */
+html[data-app='filodiretto'].fd-bp-tablet-portrait .btn,
+html[data-app='filodiretto'].fd-bp-tablet-portrait .tabs-bar__tab,
+html[data-app='filodiretto'].fd-bp-tablet-portrait .nav-item,
+html[data-app='filodiretto'].fd-bp-tablet-portrait input[type='search'],
+html[data-app='filodiretto'].fd-bp-tablet-portrait select,
+html[data-app='filodiretto'].fd-bp-tablet-portrait .brand-sel {
+  min-height: var(--fd-touch-target);
+}
+
+/* ── Pass / contacts dynamic regions ── */
+html[data-app='filodiretto'] #passesContent,
+html[data-app='filodiretto'] #passesContent .stats-grid,
+html[data-app='filodiretto'] #passesContent .pass-table-legend,
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-kpi,
+html[data-app='filodiretto'] #leads.leads--fd .contacts-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] #passesContent .pass-table-wrap {
+  max-width: 100%;
+}

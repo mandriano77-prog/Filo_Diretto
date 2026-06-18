@@ -9,6 +9,7 @@ const root = path.join(__dirname, '..');
 const indexHtml = fs.readFileSync(path.join(root, 'src/dashboard/index.html'), 'utf8');
 const biCss = fs.readFileSync(path.join(root, 'src/dashboard/styles/a2w-brand-identity.css'), 'utf8');
 const chromeCss = fs.readFileSync(path.join(root, 'src/dashboard/styles/a2w-chrome.css'), 'utf8');
+const shellJs = fs.readFileSync(path.join(root, 'src/dashboard/js/a2w-shell.js'), 'utf8');
 
 test('brand identity traccia dirty state con baseline serializzato', () => {
   assert.match(indexHtml, /brandIdentityState\s*=\s*\{[\s\S]*dirty:\s*false[\s\S]*baseline:/);
@@ -37,58 +38,62 @@ test('css distingue bottone salvataggio inattivo vs dirty attivo', () => {
   assert.match(biCss, /--a2w-action-primary/);
 });
 
-test('brand identity mostra riepilogo identità senza anteprima pass wallet', () => {
-  assert.match(indexHtml, /a2w-bi-identity-summary/);
-  assert.match(indexHtml, /a2wBiSummaryName/);
-  assert.match(indexHtml, /a2wBiSummarySettore/);
-  assert.match(indexHtml, /Il design dei pass si configura in/);
-  assert.match(indexHtml, /onclick="nav\('templates'\)">Template Pass/);
+test('brand identity senza riepilogo collassabile o anteprima pass wallet', () => {
+  assert.doesNotMatch(indexHtml, /a2wBiSummaryDisclosure/);
+  assert.doesNotMatch(indexHtml, /a2w-bi-summary-disclosure/);
+  assert.doesNotMatch(indexHtml, /a2w-bi-preview-column/);
   assert.doesNotMatch(indexHtml, /a2w-bi-preview-tabs/);
   assert.doesNotMatch(indexHtml, /a2w-bi-pass-preview/);
-  assert.doesNotMatch(indexHtml, /Apple Wallet[\s\S]{0,80}a2wBiPreviewCard/);
-  assert.match(biCss, /\.a2w-bi-identity-summary/);
+  assert.doesNotMatch(biCss, /\.a2w-bi-summary-disclosure/);
   assert.doesNotMatch(biCss, /\.a2w-bi-pass-preview/);
-  assert.match(biCss, /\.a2w-bi-identity-summary__initial\[hidden\][\s\S]*display:\s*none\s*!important/);
-  assert.match(biCss, /\.a2w-bi-identity-summary__logo\[hidden\][\s\S]*display:\s*none\s*!important/);
 });
 
-test('brand identity layout: form due colonne e riepilogo collassabile in fondo', () => {
-  assert.match(indexHtml, /id="a2wBiSummaryDisclosure"/);
-  assert.match(indexHtml, /a2w-bi-summary-disclosure/);
+test('brand identity layout: colonna unica con sezioni a griglia interna', () => {
   assert.doesNotMatch(indexHtml, /id="a2wBiPreviewMobileToggle"/);
-  assert.doesNotMatch(indexHtml, /a2w-bi-preview-column/);
-  assert.match(biCss, /\.a2w-bi-main[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(biCss, /\.a2w-bi-layout[\s\S]*flex-direction:\s*column/);
+  assert.match(biCss, /\.a2w-bi-layout[\s\S]*display:\s*block/);
   assert.match(biCss, /\.a2w-bi-layout[\s\S]*width:\s*100%/);
+  assert.match(biCss, /\.a2w-bi-main[\s\S]*flex-direction:\s*column/);
   assert.match(biCss, /\.a2w-bi-main[\s\S]*width:\s*100%/);
-  assert.match(biCss, /\.a2w-bi-summary-disclosure/);
-  assert.match(biCss, /\.a2w-bi-danger-zone[\s\S]*grid-column:\s*1\s*\/\s*-1/);
-  assert.match(biCss, /\.a2w-bi-section--contacts/);
+  assert.match(biCss, /\.a2w-bi-section[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(biCss, /\.a2w-bi-section \.a2w-bi-section__head[\s\S]*grid-column:\s*1\s*\/\s*-1/);
   assert.match(biCss, /\.a2w-bi-contact-grid/);
-  assert.match(indexHtml, /a2wBiSummaryDisclosure[\s\S]*addEventListener\('toggle'/);
+  assert.match(biCss, /max-width:\s*1400px/);
 });
 
-test('media library layout: griglia fluida a tutta larghezza', () => {
-  assert.match(indexHtml, /class="a2w-media-page"/);
-  assert.match(indexHtml, /class="a2w-media-buckets-grid"/);
-  assert.match(chromeCss, /\.a2w-media-page[\s\S]*max-width:\s*1200px/);
-  assert.match(chromeCss, /\.a2w-media-buckets-grid[\s\S]*repeat\(auto-fit,\s*minmax\(360px,\s*1fr\)\)/);
+test('media library layout: tab singolo bucket e crop editor intatto', () => {
+  assert.match(indexHtml, /id="a2wMediaTabs"/);
+  assert.match(indexHtml, /a2w-media-buckets-grid--tabs/);
+  assert.match(indexHtml, /data-media-type="wallet_icon"/);
+  assert.match(indexHtml, /id="mediaCropModal"/);
+  assert.match(indexHtml, /id="mediaCropCanvas"/);
+  assert.match(indexHtml, /id="mediaCropZoom"/);
+  assert.match(indexHtml, /id="mediaCropSpecLabel"/);
+  assert.match(indexHtml, /function openMediaCropEditor\(/);
+  assert.match(indexHtml, /function drawMediaCropCanvas\(/);
+  assert.match(indexHtml, /function onMediaCropZoomInput\(/);
+  assert.match(indexHtml, /function applyMediaCropEditor\(/);
+  assert.match(indexHtml, /function resetMediaCropEditor\(/);
+  assert.match(indexHtml, /function bindMediaCropCanvasEvents\(/);
+  assert.match(indexHtml, /onclick="openMediaCropEditor\(\)"/);
+  assert.match(indexHtml, /onclick="applyMediaCropEditor\(\)"/);
+  assert.doesNotMatch(indexHtml, /id="mediaCropModal"[\s\S]{0,400}a2w-media-buckets-grid/);
+  assert.match(chromeCss, /\.a2w-media-buckets-grid--tabs/);
+  assert.match(chromeCss, /\.a2w-media-tabs__tab/);
+  assert.match(chromeCss, /\.a2w-media-buckets-grid--tabs > \.a2w-media-bucket\.is-active/);
+  assert.match(shellJs, /function a2wEnsureMediaTabs/);
+  assert.match(shellJs, /window\.getA2wActiveMediaTabType/);
+  ['logo', 'wallet_icon', 'strip', 'thumbnail', 'background'].forEach((type) => {
+    assert.match(indexHtml, new RegExp(`${type}:\\s*\\{[^}]+w:\\s*\\d+`));
+  });
 });
 
-test('brand identity asset slots: compact library picker senza upload inline', () => {
-  assert.match(indexHtml, /a2w-bi-asset-slot/);
+test('brand identity non mostra sezione asset inline (solo Media Library)', () => {
+  assert.doesNotMatch(indexHtml, /a2w-bi-section--assets/);
+  assert.doesNotMatch(indexHtml, /Logo e immagini chiave/);
+  assert.doesNotMatch(indexHtml, /id="a2wBiAssetsGrid"/);
+  assert.doesNotMatch(indexHtml, /id="a2wBiOpenMediaLibraryBtn"/);
+  assert.match(indexHtml, /function a2wBiRenderAssetsGrid/);
   assert.match(indexHtml, /Scegli da libreria/);
-  assert.match(indexHtml, /a2wBiBindAssetSlotActions/);
-  assert.doesNotMatch(indexHtml, /a2wBiAssetBrowseBtn/);
-  assert.doesNotMatch(indexHtml, /a2wBiAssetUploadInput/);
-  assert.doesNotMatch(indexHtml, /a2w-bi-asset-dropzone/);
-  assert.doesNotMatch(indexHtml, /function a2wBiBindAssetDropzone/);
-  assert.doesNotMatch(indexHtml, /function a2wBiUploadAsset/);
-  assert.match(biCss, /\.a2w-bi-asset-slot/);
-  assert.match(biCss, /max-width:\s*1200px/);
-  assert.match(biCss, /\.a2w-bi-section--assets[\s\S]*grid-column:\s*1\s*\/\s*-1/);
-  assert.match(indexHtml, /a2w-bi-section--assets/);
-  assert.match(indexHtml, /Seleziona gli asset dalla Media Library/);
 });
 
 test('media library include bucket wallet_icon', () => {

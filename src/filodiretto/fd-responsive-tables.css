@@ -1,6 +1,11 @@
 /**
- * FD — Mobile table cards (Filo HR). Stacks rows as labeled cards ≤640px.
+ * FD-DS FASE 3 — Responsive tables (FiloDiretto).
+ *
+ * ≥768px (tablet portrait+): horizontal scroll wrapper + edge fade hint.
+ * <768px: stacked card rows with data-label from thead (smartphone gate in FASE 6).
  */
+
+/* Undo index.html column hiding for Filo — full columns via scroll or cards */
 @media (max-width: 980px) {
   html[data-app='filodiretto'] .table thead th:nth-child(8),
   html[data-app='filodiretto'] .table thead th:nth-child(9),
@@ -10,14 +15,93 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   html[data-app='filodiretto'] .table:not(.import-preview-table):not(.fd-table-cards) thead th,
   html[data-app='filodiretto'] .table:not(.import-preview-table):not(.fd-table-cards) tbody td {
     display: revert !important;
   }
 }
 
-@media (max-width: 640px) {
+/* ── Medium+ viewports: scroll wrapper ── */
+@media (min-width: 768px) {
+  html[data-app='filodiretto'] .fd-table-wrap,
+  html[data-app='filodiretto'] .pass-table-wrap,
+  html[data-app='filodiretto'] .fd-users-table-wrap,
+  html[data-app='filodiretto'] .table-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--fd-border, var(--border, #e5e7eb));
+    border-radius: var(--fd-radius-md, 12px);
+    background: var(--fd-color-surface, var(--surface, #fff));
+    box-shadow: var(--fd-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap .table,
+  html[data-app='filodiretto'] .pass-table-wrap .table,
+  html[data-app='filodiretto'] .fd-users-table-wrap .table,
+  html[data-app='filodiretto'] .table-wrap .table {
+    width: max-content;
+    min-width: 100%;
+    margin: 0;
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap thead th,
+  html[data-app='filodiretto'] .pass-table-wrap thead th,
+  html[data-app='filodiretto'] .fd-users-table-wrap thead th {
+    white-space: nowrap;
+  }
+
+  /* Edge fade indicators (toggled by fd-responsive-tables.js) */
+  html[data-app='filodiretto'] .fd-table-wrap--fade::before,
+  html[data-app='filodiretto'] .fd-table-wrap--fade::after {
+    content: '';
+    position: sticky;
+    top: 0;
+    width: 22px;
+    height: 100%;
+    min-height: 48px;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap--fade::before {
+    left: 0;
+    float: left;
+    margin-right: -22px;
+    background: linear-gradient(to right, var(--fd-color-surface, #fff) 30%, transparent);
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap--fade::after {
+    right: 0;
+    float: right;
+    margin-left: -22px;
+    background: linear-gradient(to left, var(--fd-color-surface, #fff) 30%, transparent);
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap--scrollable:not(.fd-table-wrap--at-start)::before {
+    opacity: 1;
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap--scrollable:not(.fd-table-wrap--at-end)::after {
+    opacity: 1;
+  }
+
+  html[data-app='filodiretto'] .pass-table-wrap {
+    max-height: 66vh;
+  }
+}
+
+/* ── Card layout below tablet portrait (<768px) ── */
+@media (max-width: 767px) {
+  html[data-app='filodiretto'] .fd-table-wrap,
   html[data-app='filodiretto'] .fd-users-table-wrap,
   html[data-app='filodiretto'] .pass-table-wrap,
   html[data-app='filodiretto'] .table-wrap {
@@ -25,6 +109,13 @@
     border: none;
     background: transparent;
     border-radius: 0;
+    box-shadow: none;
+    max-height: none;
+  }
+
+  html[data-app='filodiretto'] .fd-table-wrap--fade::before,
+  html[data-app='filodiretto'] .fd-table-wrap--fade::after {
+    display: none;
   }
 
   html[data-app='filodiretto'] .fd-table-cards thead {
@@ -39,12 +130,12 @@
 
   html[data-app='filodiretto'] .fd-table-cards tbody tr {
     display: block !important;
-    margin-bottom: 12px;
+    margin-bottom: var(--fd-space-3, 12px);
     border: 1px solid var(--fd-border, var(--border, #e5e7eb));
-    border-radius: var(--radius-md, 10px);
-    padding: 12px 14px;
-    background: var(--surface, #fff);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    border-radius: var(--fd-radius-md, 12px);
+    padding: var(--fd-space-3, 12px) var(--fd-space-4, 16px);
+    background: var(--fd-color-surface, var(--surface, #fff));
+    box-shadow: var(--fd-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
   }
 
   html[data-app='filodiretto'] .fd-table-cards tbody tr:hover td {
@@ -55,9 +146,9 @@
     display: flex !important;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-default, #f0f0f0);
+    gap: var(--fd-space-3, 12px);
+    padding: var(--fd-space-2, 8px) 0;
+    border-bottom: 1px solid var(--fd-border, #f0f0f0);
     text-align: right;
     width: 100%;
     box-sizing: border-box;
@@ -74,11 +165,11 @@
 
   html[data-app='filodiretto'] .fd-table-cards tbody td::before {
     content: attr(data-label);
-    font-weight: 600;
-    font-size: 11px;
+    font-weight: var(--fd-font-weight-semibold, 600);
+    font-size: var(--fd-font-size-caption, 11px);
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--text-secondary, var(--text2));
+    color: var(--fd-color-text-secondary, var(--text2));
     text-align: left;
     flex: 0 0 42%;
     max-width: 46%;
@@ -109,7 +200,7 @@
   }
 
   html[data-app='filodiretto'] .fd-table-cards tbody tr.table-skeleton-row {
-    padding: 14px;
+    padding: var(--fd-space-4, 16px);
   }
 
   html[data-app='filodiretto'] .fd-table-cards tbody tr.table-skeleton-row td {

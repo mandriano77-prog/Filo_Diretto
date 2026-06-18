@@ -1,6 +1,99 @@
 /**
- * FD — Reward & Challenge: KPI compatte a zero campagne, tooltip colonne tabella.
+ * FD — Reward & Challenge (FASE 4): DS layout, KPI, table UX.
  */
+
+html[data-app='filodiretto'] #instant-win.instant-win--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-header {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-lead,
+html[data-app='filodiretto'] #instant-win .fd-page-header__lead {
+  max-width: 65ch;
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-stat-grid {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-toolbar {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-list-title {
+  margin: 0;
+  font-size: var(--fd-font-size-lg, 18px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-table-wrap {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-table-skeleton {
+  padding: var(--fd-space-2, 8px) 0;
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2, 8px);
+  white-space: normal;
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-row-delete {
+  color: var(--fd-color-danger, #b91c1c);
+}
+
+html[data-app='filodiretto'] #instant-win .fd-reward-row-delete:hover:not(:disabled) {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+html[data-app='filodiretto'] #instant-win #iwEmptyHost:not([hidden]) {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] .fd-reward-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] .fd-reward-modal-overlay[style*='display: flex'],
+html[data-app='filodiretto'] .fd-reward-modal-overlay[style*='display:flex'] {
+  display: flex !important;
+}
+
+html[data-app='filodiretto'] .fd-reward-modal {
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--fd-space-5, 24px);
+  margin: 0;
+}
+
+html[data-app='filodiretto'] .fd-reward-modal .block-title {
+  font-size: var(--fd-font-size-h3, 20px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] .fd-reward-modal-save {
+  width: 100%;
+  margin-top: var(--fd-space-3, 12px);
+}
+
 html[data-app='filodiretto'] #iwStats.stats-grid--compact,
 html[data-app='filodiretto'] #gamStats.stats-grid--compact {
   display: flex;
@@ -56,4 +149,111 @@ html[data-app='filodiretto'] #gamTable th .fd-th-help {
   border: 1px solid var(--fd-border-strong);
   cursor: help;
   vertical-align: middle;
+}
+
+@media (max-width: 720px) {
+  html[data-app='filodiretto'] #instant-win .fd-reward-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+/* ── Challenge (#gamification) — mirror Reward DS ── */
+
+html[data-app='filodiretto'] #gamification.gamification--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-header {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-lead,
+html[data-app='filodiretto'] #gamification .fd-page-header__lead {
+  max-width: 65ch;
+}
+
+html[data-app='filodiretto'] #gamification .fd-reward-stat-grid,
+html[data-app='filodiretto'] #gamification .fd-challenge-stat-grid {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-toolbar {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-list-title {
+  margin: 0;
+  font-size: var(--fd-font-size-lg, 18px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-table-wrap {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-table-skeleton {
+  padding: var(--fd-space-2, 8px) 0;
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2, 8px);
+  white-space: normal;
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-row-delete {
+  color: var(--fd-color-danger, #b91c1c);
+}
+
+html[data-app='filodiretto'] #gamification .fd-challenge-row-delete:hover:not(:disabled) {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+html[data-app='filodiretto'] #gamification #gamEmptyHost:not([hidden]) {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] .fd-challenge-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] .fd-challenge-modal-overlay[style*='display: flex'],
+html[data-app='filodiretto'] .fd-challenge-modal-overlay[style*='display:flex'] {
+  display: flex !important;
+}
+
+html[data-app='filodiretto'] .fd-challenge-modal {
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--fd-space-5, 24px);
+  margin: 0;
+}
+
+html[data-app='filodiretto'] .fd-challenge-modal .block-title {
+  font-size: var(--fd-font-size-h3, 20px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] .fd-challenge-modal-save {
+  width: 100%;
+  margin-top: var(--fd-space-3, 12px);
+}
+
+@media (max-width: 720px) {
+  html[data-app='filodiretto'] #gamification .fd-reward-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
 }

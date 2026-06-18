@@ -1,0 +1,125 @@
+/**
+ * FD — Analytics (FASE 4): DS layout, KPI grid, chart cards, table UX.
+ */
+
+html[data-app='filodiretto'] #analytics.analytics--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-header {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-lead {
+  max-width: 65ch;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-tabs {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-stat-grid {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-stats-skeleton {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-card {
+  padding: var(--fd-space-5, 24px);
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-toolbar {
+  margin-bottom: var(--fd-space-4, 16px);
+  flex-wrap: wrap;
+  gap: var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-toolbar__title {
+  margin: 0;
+  font-size: var(--fd-font-size-lg, 16px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  margin-left: auto;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-control {
+  min-height: 36px;
+  padding: var(--fd-space-2, 8px) var(--fd-space-3, 12px);
+  border: 1px solid var(--fd-border-strong, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  font-size: var(--fd-font-size-sm, 13px);
+  background: var(--fd-color-bg-canvas, var(--surface));
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-chip {
+  border: 1px solid var(--fd-border-strong, var(--border));
+  background: var(--fd-color-bg-canvas, var(--surface));
+  color: var(--fd-color-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-chip.is-active,
+html[data-app='filodiretto'] #analytics .analytics-chip.active {
+  border-color: var(--accent, #2563eb);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent, #2563eb);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-chart-skeleton {
+  padding: var(--fd-space-2, 8px) 0;
+  min-height: 120px;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-section-title {
+  margin: var(--fd-space-5, 24px) 0 var(--fd-space-3, 12px);
+  font-size: var(--fd-font-size-lg, 18px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-table-wrap {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-stat-card__hint {
+  font-size: var(--fd-font-size-sm, 11px);
+  color: var(--fd-color-text-muted, var(--text2));
+  margin-top: var(--fd-space-1, 4px);
+  line-height: 1.4;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-activity-toolbar {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-activity-lead {
+  margin: 0;
+  max-width: 42rem;
+  font-size: var(--fd-font-size-sm, 12px);
+  color: var(--fd-color-text-muted, var(--text2));
+  line-height: 1.45;
+}
+
+html[data-app='filodiretto'] #analytics .fd-analytics-activity-table-wrap {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+@media (max-width: 720px) {
+  html[data-app='filodiretto'] #analytics .fd-analytics-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  html[data-app='filodiretto'] #analytics .fd-analytics-toolbar__actions {
+    margin-left: 0;
+    width: 100%;
+  }
+}

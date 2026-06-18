@@ -1,0 +1,602 @@
+/**
+ * FD-DS — FiloDiretto design system components (FASE 1).
+ * Scoped to [data-app="filodiretto"]. Definitions only — apply in FASE 4+.
+ *
+ * Usage: add classes alongside existing markup (.card, .btn) during migration.
+ * Do not remove legacy classes until page redesign is complete.
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-page-header — titolo + sottotitolo + azioni a destra
+ *
+ * <header class="fd-page-header">
+ *   <div class="fd-page-header__copy">
+ *     <h1 class="fd-page-header__title">Titolo pagina</h1>
+ *     <p class="fd-page-header__lead">Descrizione breve.</p>
+ *   </div>
+ *   <div class="fd-page-header__actions">
+ *     <button type="button" class="fd-btn fd-btn--primary">Azione</button>
+ *   </div>
+ * </header>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--fd-space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--fd-space-5);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-page-header__copy {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-page-header__title {
+  margin: 0;
+  font-size: var(--fd-font-size-h1);
+  font-weight: var(--fd-font-weight-bold);
+  line-height: var(--fd-line-height-tight);
+  letter-spacing: -0.02em;
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .fd-page-header__lead {
+  margin: var(--fd-space-2) 0 0;
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+  max-width: 65ch;
+}
+
+html[data-app='filodiretto'] .fd-page-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2);
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-page — container contenuto (FASE 2 applicherà alle section)
+ *
+ * <div class="fd-page">
+ *   <header class="fd-page-header">…</header>
+ *   …
+ * </div>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-page {
+  width: 100%;
+  max-width: var(--fd-layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--fd-layout-gutter);
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  html[data-app='filodiretto'] .fd-page {
+    padding-inline: var(--fd-layout-gutter-sm);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-card — superficie elevata (alternativa/canonical a .card)
+ *
+ * <section class="fd-card">
+ *   <div class="fd-card__head">…</div>
+ *   <div class="fd-card__body">…</div>
+ * </section>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-card {
+  background: var(--fd-color-surface);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  padding: var(--fd-space-5);
+  box-shadow: var(--fd-shadow-sm);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--fd-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--fd-space-4);
+}
+
+html[data-app='filodiretto'] .fd-card__title {
+  margin: 0;
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .fd-card__body {
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-card--flat {
+  box-shadow: none;
+  background: var(--fd-color-surface-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-stat-grid + fd-stat-card — KPI responsive (no overflow)
+ *
+ * <div class="fd-stat-grid">
+ *   <div class="fd-stat-card">
+ *     <span class="fd-stat-card__label">Pass totali</span>
+ *     <span class="fd-stat-card__value">128</span>
+ *   </div>
+ * </div>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--fd-space-4);
+  margin-bottom: var(--fd-space-5);
+  width: 100%;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-1);
+  padding: var(--fd-space-4);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-surface);
+  min-width: 0;
+  transition: border-color 0.15s ease;
+}
+
+html[data-app='filodiretto'] .fd-stat-card:hover {
+  border-color: var(--fd-border-strong);
+}
+
+html[data-app='filodiretto'] .fd-stat-card__label {
+  font-size: var(--fd-font-size-sm);
+  font-weight: var(--fd-font-weight-medium);
+  color: var(--fd-color-text-secondary);
+  line-height: var(--fd-line-height-body);
+}
+
+html[data-app='filodiretto'] .fd-stat-card__value {
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-bold);
+  line-height: var(--fd-line-height-tight);
+  color: var(--fd-color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-app='filodiretto'] .fd-stat-card__hint {
+  font-size: var(--fd-font-size-caption);
+  color: var(--fd-color-text-muted);
+  margin-top: var(--fd-space-1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-table-wrap + fd-table — scroll orizzontale + fade (FASE 3 in fd-responsive-tables.css)
+ *
+ * <div class="fd-table-wrap">
+ *   <table class="fd-table table">…</table>
+ * </div>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-surface);
+  box-shadow: var(--fd-shadow-sm);
+}
+
+html[data-app='filodiretto'] .fd-table-wrap--fade {
+  position: relative;
+}
+
+html[data-app='filodiretto'] .fd-table-wrap--fade::after {
+  content: '';
+  position: sticky;
+  right: 0;
+  top: 0;
+  float: right;
+  width: 24px;
+  height: 100%;
+  margin-left: -24px;
+  pointer-events: none;
+  background: linear-gradient(to left, var(--fd-color-surface), transparent);
+}
+
+html[data-app='filodiretto'] .fd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fd-font-size-body);
+}
+
+html[data-app='filodiretto'] .fd-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--fd-z-sticky);
+  background: var(--fd-color-bg-subtle);
+  text-align: left;
+  padding: var(--fd-space-3) var(--fd-space-4);
+  font-size: var(--fd-font-size-sm);
+  font-weight: var(--fd-font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fd-color-text-secondary);
+  border-bottom: 1px solid var(--fd-border);
+}
+
+html[data-app='filodiretto'] .fd-table tbody td {
+  padding: var(--fd-space-3) var(--fd-space-4);
+  border-bottom: 1px solid var(--fd-border);
+  vertical-align: middle;
+  color: var(--fd-color-text-body);
+}
+
+html[data-app='filodiretto'] .fd-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+html[data-app='filodiretto'] .fd-table tbody tr:hover td {
+  background: var(--fd-color-bg-hover);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-empty-state — lista vuota con CTA
+ *
+ * <div class="fd-empty-state" role="status">
+ *   <div class="fd-empty-state__icon" aria-hidden="true">…</div>
+ *   <h2 class="fd-empty-state__title">Nessun elemento</h2>
+ *   <p class="fd-empty-state__desc">Descrizione.</p>
+ *   <div class="fd-empty-state__actions">
+ *     <button type="button" class="fd-btn fd-btn--primary">Crea</button>
+ *   </div>
+ * </div>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--fd-space-7) var(--fd-space-5);
+  border: 1px dashed var(--fd-border-strong);
+  border-radius: var(--fd-radius-md);
+  background: var(--fd-color-surface-muted);
+}
+
+html[data-app='filodiretto'] .fd-empty-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--fd-space-4);
+  border-radius: var(--fd-radius-full);
+  background: var(--fd-color-primary-50);
+  color: var(--fd-color-primary-700);
+}
+
+html[data-app='filodiretto'] .fd-empty-state__title {
+  margin: 0 0 var(--fd-space-2);
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .fd-empty-state__desc {
+  margin: 0;
+  max-width: 42ch;
+  font-size: var(--fd-font-size-body);
+  line-height: var(--fd-line-height-relaxed);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] .fd-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2);
+  justify-content: center;
+  margin-top: var(--fd-space-5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-form-section + fd-field — blocchi form
+ *
+ * <section class="fd-form-section">
+ *   <h2 class="fd-form-section__title">Dati brand</h2>
+ *   <div class="fd-field">
+ *     <label class="fd-field__label" for="x">Nome</label>
+ *     <input class="fd-field__control" id="x" type="text">
+ *     <p class="fd-field__hint">Testo di aiuto.</p>
+ *     <p class="fd-field__error" role="alert">Errore.</p>
+ *   </div>
+ * </section>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-4);
+  margin-bottom: var(--fd-space-6);
+}
+
+html[data-app='filodiretto'] .fd-form-section__title {
+  margin: 0;
+  font-size: var(--fd-font-size-h2);
+  font-weight: var(--fd-font-weight-semibold);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .fd-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-1);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-field__label {
+  font-size: var(--fd-font-size-body);
+  font-weight: var(--fd-font-weight-medium);
+  color: var(--fd-color-text-primary);
+}
+
+html[data-app='filodiretto'] .fd-field__control {
+  min-height: var(--fd-touch-target);
+  padding: var(--fd-space-2) var(--fd-space-3);
+  border: 1px solid var(--fd-border-strong);
+  border-radius: var(--fd-radius-sm);
+  font-size: var(--fd-font-size-body);
+  color: var(--fd-color-text-primary);
+  background: var(--fd-color-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+html[data-app='filodiretto'] .fd-field__control:focus {
+  outline: none;
+  border-color: var(--fd-color-primary-500);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+html[data-app='filodiretto'] .fd-field__hint {
+  margin: 0;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+  line-height: var(--fd-line-height-body);
+}
+
+html[data-app='filodiretto'] .fd-field__error {
+  margin: 0;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] .fd-field--error .fd-field__control {
+  border-color: var(--fd-color-danger);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-badge — stati e etichette
+ *
+ * <span class="fd-badge fd-badge--success">Pronto</span>
+ * Varianti: --neutral | --success | --warning | --danger | --info | --accent
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fd-space-1);
+  padding: 2px var(--fd-space-2);
+  border-radius: var(--fd-radius-full);
+  font-size: var(--fd-font-size-caption);
+  font-weight: var(--fd-font-weight-semibold);
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] .fd-badge--neutral {
+  color: var(--fd-color-text-secondary);
+  background: var(--fd-color-bg-subtle);
+  border: 1px solid var(--fd-border);
+}
+
+html[data-app='filodiretto'] .fd-badge--accent {
+  color: var(--fd-color-primary-700);
+  background: var(--fd-color-primary-50);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+html[data-app='filodiretto'] .fd-badge--success {
+  color: #166534;
+  background: var(--fd-color-success-bg);
+  border: 1px solid var(--fd-color-success-border);
+}
+
+html[data-app='filodiretto'] .fd-badge--warning {
+  color: var(--fd-color-warning-text);
+  background: var(--fd-color-warning-bg);
+  border: 1px solid var(--fd-color-warning-border);
+}
+
+html[data-app='filodiretto'] .fd-badge--danger {
+  color: var(--fd-color-danger);
+  background: var(--fd-color-danger-bg);
+  border: 1px solid var(--fd-color-danger-border);
+}
+
+html[data-app='filodiretto'] .fd-badge--info {
+  color: var(--fd-color-info-text);
+  background: var(--fd-color-info-bg);
+  border: 1px solid var(--fd-color-info-border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-btn — alias espliciti (complementano fd-buttons.css / .btn legacy)
+ *
+ * <button type="button" class="fd-btn fd-btn--primary">Salva</button>
+ * <button type="button" class="fd-btn fd-btn--secondary">Annulla</button>
+ * <button type="button" class="fd-btn fd-btn--ghost">Link</button>
+ * <button type="button" class="fd-btn fd-btn--danger">Elimina</button>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fd-space-2);
+  min-height: var(--fd-touch-target);
+  padding: var(--fd-space-2) var(--fd-space-4);
+  border-radius: var(--fd-radius-md);
+  font-size: var(--fd-font-size-body);
+  font-weight: var(--fd-font-weight-medium);
+  line-height: var(--fd-line-height-body);
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+html[data-app='filodiretto'] .fd-btn:focus-visible {
+  outline: 3px solid rgba(109, 40, 217, 0.35);
+  outline-offset: 2px;
+}
+
+html[data-app='filodiretto'] .fd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+html[data-app='filodiretto'] .fd-btn--primary {
+  background: var(--fd-color-primary-500);
+  color: var(--fd-color-text-on-accent);
+  box-shadow: var(--fd-shadow-sm);
+}
+
+html[data-app='filodiretto'] .fd-btn--primary:hover:not(:disabled) {
+  background: var(--fd-color-primary-700);
+  box-shadow: var(--fd-shadow-md);
+}
+
+html[data-app='filodiretto'] .fd-btn--secondary {
+  background: var(--fd-color-surface);
+  color: var(--fd-color-text-primary);
+  border-color: var(--fd-border-strong);
+}
+
+html[data-app='filodiretto'] .fd-btn--secondary:hover:not(:disabled) {
+  background: var(--fd-color-primary-50);
+  border-color: var(--fd-color-primary-500);
+  color: var(--fd-color-primary-700);
+}
+
+html[data-app='filodiretto'] .fd-btn--ghost {
+  background: transparent;
+  color: var(--fd-color-primary-700);
+  border-color: transparent;
+  min-height: auto;
+  padding: var(--fd-space-1) var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] .fd-btn--ghost:hover:not(:disabled) {
+  background: var(--fd-color-primary-50);
+}
+
+html[data-app='filodiretto'] .fd-btn--danger {
+  background: var(--fd-color-surface);
+  color: var(--fd-color-danger);
+  border-color: var(--fd-color-danger-border);
+}
+
+html[data-app='filodiretto'] .fd-btn--danger:hover:not(:disabled) {
+  background: var(--fd-color-danger-bg);
+  border-color: var(--fd-color-danger);
+}
+
+html[data-app='filodiretto'] .fd-btn--sm {
+  min-height: 32px;
+  padding: var(--fd-space-1) var(--fd-space-3);
+  font-size: var(--fd-font-size-sm);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-skeleton — placeholder loading (FASE 5)
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-skeleton {
+  display: block;
+  border-radius: var(--fd-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--fd-color-bg-subtle) 0%,
+    var(--fd-color-bg-hover) 50%,
+    var(--fd-color-bg-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: fd-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes fd-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+html[data-app='filodiretto'] .fd-skeleton--text {
+  height: 14px;
+  width: 100%;
+}
+
+html[data-app='filodiretto'] .fd-skeleton--title {
+  height: 24px;
+  width: 60%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app='filodiretto'] .fd-skeleton {
+    animation: none;
+    background: var(--fd-color-bg-hover);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * fd-toolbar — barra azioni con wrap (tabelle/liste)
+ *
+ * <div class="fd-toolbar">
+ *   <div class="fd-toolbar__start">…</div>
+ *   <div class="fd-toolbar__end">…</div>
+ * </div>
+ * ───────────────────────────────────────────────────────────────────────────── */
+html[data-app='filodiretto'] .fd-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fd-space-2) var(--fd-space-3);
+  margin-bottom: var(--fd-space-4);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-toolbar__start,
+html[data-app='filodiretto'] .fd-toolbar__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] .fd-toolbar__end {
+  margin-left: auto;
+}

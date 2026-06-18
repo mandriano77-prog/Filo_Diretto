@@ -8,6 +8,47 @@ html[data-app='filodiretto'] #leads.leads--fd {
 }
 
 html[data-app='filodiretto'] #leads.leads--fd .contacts-toolbar,
+html[data-app='filodiretto'] #leads.leads--fd #contactsToolbarHost.a2w-contacts-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-toolbar__search,
+html[data-app='filodiretto'] #leads.leads--fd .a2w-contacts-search-wrap {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-toolbar__actions,
+html[data-app='filodiretto'] #leads.leads--fd .a2w-contacts-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-page-header {
+  flex-wrap: wrap;
+  gap: var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .a2w-contacts-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2, 8px);
+}
+
+html[data-app='filodiretto'] #leads.leads--fd #leadsTable {
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .contacts-toolbar,
 html[data-app='filodiretto'] #leads.leads--fd .contacts-card,
 html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-kpi,
 html[data-app='filodiretto'] #leads.leads--fd .contacts-kpi-strip {

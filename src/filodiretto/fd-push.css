@@ -1,9 +1,120 @@
-/**
- * FD-14 — FiloDiretto Push & Notifiche: preview, counters, channel segmented control.
- */
 html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 300px;
 }
+
+html[data-app='filodiretto'] #push.push--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-header {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-tabs {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-card {
+  padding: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-send-btn {
+  width: 100%;
+  margin-top: var(--fd-space-3, 12px);
+  font-weight: var(--fd-font-weight-semibold, 600);
+}
+
+html[data-app='filodiretto'] #push .fd-push-strip-clear {
+  color: var(--fd-color-danger, #b91c1c);
+}
+
+html[data-app='filodiretto'] #push .fd-push-history-section {
+  margin-top: var(--fd-space-5, 24px);
+  padding: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-history-title,
+html[data-app='filodiretto'] #push .fd-push-section-title {
+  margin: 0 0 var(--fd-space-4, 16px);
+  font-size: var(--fd-font-size-lg, 16px);
+  font-weight: 600;
+}
+
+html[data-app='filodiretto'] #push .fd-pushes-bulk-hint {
+  margin: 0 0 var(--fd-space-3, 12px);
+  font-size: var(--fd-font-size-sm, 12px);
+  color: var(--fd-color-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #push .fd-push-bulk-bar {
+  margin-bottom: var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-history-skeleton {
+  padding: var(--fd-space-2, 8px) 0;
+  min-height: 80px;
+}
+
+html[data-app='filodiretto'] #push .fd-push-scheduled-list {
+  margin-top: var(--fd-space-5, 24px);
+  padding: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #push .fd-push-geo-empty {
+  padding: var(--fd-space-5, 24px);
+  text-align: center;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-app='filodiretto'] #push .fd-push-preview {
+  background: var(--fd-color-surface, #fff);
+}
+
+html[data-app='filodiretto'] #push .fd-pass-row-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 168px;
+  background: var(--fd-color-surface, #fff);
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  box-shadow: var(--fd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+  z-index: 40;
+  padding: 4px;
+}
+
+html[data-app='filodiretto'] #push .fd-pass-row-menu__panel[hidden] {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #push .fd-pass-row-menu__item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: var(--fd-font-size-body, 13px);
+  cursor: pointer;
+}
+
+html[data-app='filodiretto'] #push .fd-pass-row-menu__item:hover {
+  background: var(--fd-color-surface-muted, #f3f4f6);
+}
+
+html[data-app='filodiretto'] #push .fd-pass-row-menu__item--danger {
+  color: var(--fd-color-danger, #dc2626);
+}
+
+html[data-app='filodiretto'] #push .fd-push-panel--ds .push-card {
+  margin-top: 0;
+}
+
 
 html[data-app='filodiretto'] .pass-wallet-badges {
   display: inline-flex;
