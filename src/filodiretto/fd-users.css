@@ -1,12 +1,31 @@
 /**
- * FD-03 — FiloDiretto users table. Scoped to [data-app="filodiretto"].
+ * FD — FiloDiretto users (FASE 4): DS layout, page header, table UX.
  */
+html[data-app='filodiretto'] #users.users--fd.users--fd-ds {
+  width: 100%;
+  max-width: var(--fd-layout-max-width, 1280px);
+  padding-bottom: var(--fd-space-7, 48px);
+}
+
+html[data-app='filodiretto'] #users.users--fd .fd-users-header {
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #users.users--fd .fd-users-lead,
+html[data-app='filodiretto'] #users.users--fd .fd-page-header__lead {
+  max-width: 52ch;
+  color: var(--fd-color-text-muted, var(--text2));
+  font-size: var(--fd-font-size-body, 13px);
+  margin: 0;
+  line-height: 1.5;
+}
+
 html[data-app='filodiretto'] #users.users--fd .fd-users-toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  justify-content: flex-end;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: var(--fd-space-4, 16px);
   overflow: visible;
 }
 
@@ -223,4 +242,13 @@ html[data-app='filodiretto'] #userModal .fd-users-invite-hint {
 
 html[data-app='filodiretto'] #userModal .fd-users-invite-hint[hidden] {
   display: none;
+}
+
+html[data-app='filodiretto'] #userModal .fd-users-modal {
+  padding: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] #users.users--fd.fd-users--loading .fd-users-table-wrap {
+  opacity: 0.72;
+  pointer-events: none;
 }
