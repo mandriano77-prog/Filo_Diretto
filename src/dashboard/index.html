@@ -1947,43 +1947,49 @@
                         </div>
 
                         <aside class="a2w-bi-preview-column">
-                            <button type="button" class="a2w-bi-preview-mobile-toggle" id="a2wBiPreviewMobileToggle" aria-expanded="false" aria-controls="a2wBiPreviewCard">Riepilogo identità</button>
-                            <div class="card a2w-bi-preview-card" id="a2wBiPreviewCard">
-                                <h2 class="a2w-bi-summary__title">Riepilogo identità</h2>
-                                <div class="a2w-bi-identity-summary" id="a2wBiIdentitySummary">
-                                    <div class="a2w-bi-identity-summary__brand">
-                                        <img id="a2wBiSummaryLogo" class="a2w-bi-identity-summary__logo" alt="" hidden>
-                                        <span class="a2w-bi-identity-summary__initial" id="a2wBiSummaryInitial" aria-hidden="true">B</span>
-                                        <div class="a2w-bi-identity-summary__headings">
-                                            <p class="a2w-bi-identity-summary__name" id="a2wBiSummaryName">Brand</p>
-                                            <p class="a2w-bi-identity-summary__tagline" id="a2wBiSummaryTagline">Tagline</p>
+                            <details class="a2w-bi-summary-disclosure" id="a2wBiSummaryDisclosure">
+                                <summary class="a2w-bi-summary-disclosure__trigger">
+                                    <span class="a2w-bi-summary-disclosure__label">Riepilogo identità</span>
+                                    <span class="a2w-bi-summary-disclosure__chevron" aria-hidden="true"></span>
+                                </summary>
+                                <div class="a2w-bi-summary-disclosure__body" id="a2wBiPreviewCard">
+                                    <div class="a2w-bi-identity-summary" id="a2wBiIdentitySummary">
+                                        <div class="a2w-bi-identity-summary__brand">
+                                            <img id="a2wBiSummaryLogo" class="a2w-bi-identity-summary__logo" alt="" hidden>
+                                            <span class="a2w-bi-identity-summary__initial" id="a2wBiSummaryInitial" aria-hidden="true">B</span>
+                                            <div class="a2w-bi-identity-summary__headings">
+                                                <p class="a2w-bi-identity-summary__name" id="a2wBiSummaryName">Brand</p>
+                                                <p class="a2w-bi-identity-summary__tagline" id="a2wBiSummaryTagline">Tagline</p>
+                                            </div>
                                         </div>
+                                        <dl class="a2w-bi-identity-summary__details">
+                                            <div class="a2w-bi-identity-summary__row">
+                                                <dt>Settore</dt>
+                                                <dd id="a2wBiSummarySettore">—</dd>
+                                            </div>
+                                            <div class="a2w-bi-identity-summary__row">
+                                                <dt>Lingua</dt>
+                                                <dd id="a2wBiSummaryLang">—</dd>
+                                            </div>
+                                            <div class="a2w-bi-identity-summary__row">
+                                                <dt>Slug</dt>
+                                                <dd id="a2wBiPreviewSlug">—</dd>
+                                            </div>
+                                            <div class="a2w-bi-identity-summary__row">
+                                                <dt>URL pubblico</dt>
+                                                <dd id="a2wBiPreviewUrl" class="a2w-bi-identity-summary__url">wallet.ads2wallet.com/</dd>
+                                            </div>
+                                        </dl>
                                     </div>
-                                    <dl class="a2w-bi-identity-summary__details">
-                                        <div class="a2w-bi-identity-summary__row">
-                                            <dt>Settore</dt>
-                                            <dd id="a2wBiSummarySettore">—</dd>
-                                        </div>
-                                        <div class="a2w-bi-identity-summary__row">
-                                            <dt>Lingua</dt>
-                                            <dd id="a2wBiSummaryLang">—</dd>
-                                        </div>
-                                        <div class="a2w-bi-identity-summary__row">
-                                            <dt>Slug</dt>
-                                            <dd id="a2wBiPreviewSlug">—</dd>
-                                        </div>
-                                        <div class="a2w-bi-identity-summary__row">
-                                            <dt>URL pubblico</dt>
-                                            <dd id="a2wBiPreviewUrl" class="a2w-bi-identity-summary__url">wallet.ads2wallet.com/</dd>
-                                        </div>
-                                    </dl>
+                                    <div class="a2w-bi-preview-qr-wrap">
+                                        <div class="a2w-bi-preview-qr" id="a2wBiPreviewQr" aria-label="QR code URL brand"></div>
+                                        <p class="a2w-bi-summary__templates-hint">
+                                            Il design dei pass si configura in
+                                            <button type="button" class="a2w-bi-link-btn" onclick="nav('templates')">Template Pass</button>.
+                                        </p>
+                                    </div>
                                 </div>
-                                <div class="a2w-bi-preview-qr" id="a2wBiPreviewQr" aria-label="QR code URL brand"></div>
-                                <p class="a2w-bi-summary__templates-hint">
-                                    Il design dei pass si configura in
-                                    <button type="button" class="a2w-bi-link-btn" onclick="nav('templates')">Template Pass</button>.
-                                </p>
-                            </div>
+                            </details>
                         </aside>
                     </div>
                 </div>
@@ -11888,24 +11894,31 @@ function a2wBiEnsureUiBound() {
     }
 
     const previewMobileToggle = a2wBiField('a2wBiPreviewMobileToggle');
-    const previewCard = a2wBiField('a2wBiPreviewCard');
-    if (previewMobileToggle && previewCard) {
-        const syncPreviewVisibility = () => {
-            const mobile = window.matchMedia('(max-width: 1023px)').matches;
-            if (!mobile) {
-                previewCard.hidden = false;
-                previewMobileToggle.setAttribute('aria-expanded', 'true');
-            } else if (previewMobileToggle.getAttribute('aria-expanded') !== 'true') {
-                previewCard.hidden = true;
-            }
-        };
-        syncPreviewVisibility();
-        window.addEventListener('resize', syncPreviewVisibility, { passive: true });
-        previewMobileToggle.addEventListener('click', () => {
-            const open = previewCard.hidden;
-            previewCard.hidden = !open;
-            previewMobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const summaryDisclosure = a2wBiField('a2wBiSummaryDisclosure');
+    if (summaryDisclosure) {
+        summaryDisclosure.addEventListener('toggle', () => {
+            if (summaryDisclosure.open) a2wBiUpdatePreviewCard();
         });
+    } else if (previewMobileToggle) {
+        const previewCard = a2wBiField('a2wBiPreviewCard');
+        if (previewCard) {
+            const syncPreviewVisibility = () => {
+                const mobile = window.matchMedia('(max-width: 1023px)').matches;
+                if (!mobile) {
+                    previewCard.hidden = false;
+                    previewMobileToggle.setAttribute('aria-expanded', 'true');
+                } else if (previewMobileToggle.getAttribute('aria-expanded') !== 'true') {
+                    previewCard.hidden = true;
+                }
+            };
+            syncPreviewVisibility();
+            window.addEventListener('resize', syncPreviewVisibility, { passive: true });
+            previewMobileToggle.addEventListener('click', () => {
+                const open = previewCard.hidden;
+                previewCard.hidden = !open;
+                previewMobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
     }
 
     const mediaLibBtn = a2wBiField('a2wBiOpenMediaLibraryBtn');

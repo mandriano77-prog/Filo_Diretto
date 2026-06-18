@@ -50,3 +50,14 @@ test('brand identity mostra riepilogo identità senza anteprima pass wallet', ()
   assert.match(biCss, /\.a2w-bi-identity-summary__initial\[hidden\][\s\S]*display:\s*none\s*!important/);
   assert.match(biCss, /\.a2w-bi-identity-summary__logo\[hidden\][\s\S]*display:\s*none\s*!important/);
 });
+
+test('brand identity layout: form due colonne e riepilogo collassabile in fondo', () => {
+  assert.match(indexHtml, /id="a2wBiSummaryDisclosure"/);
+  assert.match(indexHtml, /a2w-bi-summary-disclosure/);
+  assert.doesNotMatch(indexHtml, /id="a2wBiPreviewMobileToggle"/);
+  assert.match(biCss, /\.a2w-bi-main[\s\S]*grid-template-columns:\s*1fr\s+1fr/);
+  assert.match(biCss, /\.a2w-bi-layout[\s\S]*flex-direction:\s*column/);
+  assert.match(biCss, /\.a2w-bi-summary-disclosure/);
+  assert.match(biCss, /\.a2w-bi-danger-zone[\s\S]*grid-column:\s*1\s*\/\s*-1/);
+  assert.match(indexHtml, /a2wBiSummaryDisclosure[\s\S]*addEventListener\('toggle'/);
+});
