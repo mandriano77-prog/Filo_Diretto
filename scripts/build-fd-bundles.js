@@ -12,7 +12,7 @@ const ROOT = path.join(__dirname, '..');
 const FD = path.join(ROOT, 'src', 'filodiretto');
 
 const CSS_FILES = [
-  'tokens.css', 'fd-theme.css', 'fd-typography.css', 'fd-buttons.css', 'fd-header.css',
+  'tokens.css', 'fd-theme.css', 'fd-typography.css', 'fd-buttons.css', 'fd-components.css', 'fd-header.css',
   'fd-layout.css', 'fd-wai.css', 'fd-brand-switcher.css', 'fd-nav.css', 'fd-brand-identity.css',
   'fd-brand-scope.css', 'fd-brand-pass-flow.css', 'fd-home.css', 'fd-users.css', 'fd-contacts.css',
   'fd-media-library.css', 'fd-templates.css', 'fd-passes.css',
