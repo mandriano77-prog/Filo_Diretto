@@ -593,6 +593,19 @@ html[data-shell="dark"].a2w-shell.a2w-sidebar-collapsed .sidebar-footer-text {
   display: none;
 }
 
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-buckets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-actions {
   display: inline-flex;
   align-items: center;
@@ -632,7 +645,7 @@ html[data-shell="dark"].a2w-shell .a2w-media-kebab-menu {
 }
 
 /* Media Library — dropdowns stay inside content (not under left sidebar) */
-html[data-shell="dark"].a2w-shell #media-library > div:first-child,
+html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-head,
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-page-actions,
 html[data-shell="dark"].a2w-shell #media-library .card,
 html[data-shell="dark"].a2w-shell #media-library .strip-gallery,
@@ -675,6 +688,10 @@ html[data-shell="dark"].a2w-shell .a2w-media-kebab-item--danger {
 
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-bucket {
   border-color: var(--a2w-border-default);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
 }
 
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-bucket-head {
@@ -693,7 +710,7 @@ html[data-shell="dark"].a2w-shell #media-library .a2w-media-spec-btn {
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-dropzone {
   border: 1px dashed var(--a2w-border-default);
   border-radius: 10px;
-  min-height: 84px;
+  min-height: 96px;
   padding: 12px;
   margin-bottom: 12px;
   display: grid;
@@ -702,6 +719,7 @@ html[data-shell="dark"].a2w-shell #media-library .a2w-media-dropzone {
   gap: 4px;
   background: rgba(255, 255, 255, 0.02);
   color: var(--a2w-text-secondary);
+  flex-shrink: 0;
 }
 
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-dropzone__title {
@@ -742,6 +760,9 @@ html[data-shell="dark"].a2w-shell #media-library .a2w-media-host {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-height: 140px;
+  flex: 1;
+  align-content: flex-start;
 }
 
 html[data-shell="dark"].a2w-shell #media-library .a2w-media-item {
@@ -842,6 +863,12 @@ html[data-shell="dark"].a2w-shell #media-library .a2w-skeleton {
 @keyframes a2w-skeleton-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+@media (max-width: 767px) {
+  html[data-shell="dark"].a2w-shell #media-library .a2w-media-buckets-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 html[data-shell="dark"].a2w-shell .a2w-row-actions {

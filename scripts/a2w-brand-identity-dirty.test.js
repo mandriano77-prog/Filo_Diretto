@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const indexHtml = fs.readFileSync(path.join(root, 'src/dashboard/index.html'), 'utf8');
 const biCss = fs.readFileSync(path.join(root, 'src/dashboard/styles/a2w-brand-identity.css'), 'utf8');
+const chromeCss = fs.readFileSync(path.join(root, 'src/dashboard/styles/a2w-chrome.css'), 'utf8');
 
 test('brand identity traccia dirty state con baseline serializzato', () => {
   assert.match(indexHtml, /brandIdentityState\s*=\s*\{[\s\S]*dirty:\s*false[\s\S]*baseline:/);
@@ -55,11 +56,23 @@ test('brand identity layout: form due colonne e riepilogo collassabile in fondo'
   assert.match(indexHtml, /id="a2wBiSummaryDisclosure"/);
   assert.match(indexHtml, /a2w-bi-summary-disclosure/);
   assert.doesNotMatch(indexHtml, /id="a2wBiPreviewMobileToggle"/);
+  assert.doesNotMatch(indexHtml, /a2w-bi-preview-column/);
   assert.match(biCss, /\.a2w-bi-main[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(biCss, /\.a2w-bi-layout[\s\S]*flex-direction:\s*column/);
+  assert.match(biCss, /\.a2w-bi-layout[\s\S]*width:\s*100%/);
+  assert.match(biCss, /\.a2w-bi-main[\s\S]*width:\s*100%/);
   assert.match(biCss, /\.a2w-bi-summary-disclosure/);
   assert.match(biCss, /\.a2w-bi-danger-zone[\s\S]*grid-column:\s*1\s*\/\s*-1/);
+  assert.match(biCss, /\.a2w-bi-section--contacts/);
+  assert.match(biCss, /\.a2w-bi-contact-grid/);
   assert.match(indexHtml, /a2wBiSummaryDisclosure[\s\S]*addEventListener\('toggle'/);
+});
+
+test('media library layout: griglia fluida a tutta larghezza', () => {
+  assert.match(indexHtml, /class="a2w-media-page"/);
+  assert.match(indexHtml, /class="a2w-media-buckets-grid"/);
+  assert.match(chromeCss, /\.a2w-media-page[\s\S]*max-width:\s*1200px/);
+  assert.match(chromeCss, /\.a2w-media-buckets-grid[\s\S]*repeat\(auto-fit,\s*minmax\(360px,\s*1fr\)\)/);
 });
 
 test('brand identity asset slots: compact library picker senza upload inline', () => {
