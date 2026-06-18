@@ -68,19 +68,13 @@ test('media library layout: griglia fluida a tutta larghezza', () => {
   assert.match(chromeCss, /\.content[\s\S]*max-width:\s*none/);
 });
 
-test('brand identity asset slots: compact library picker senza upload inline', () => {
-  assert.match(indexHtml, /a2w-bi-asset-slot/);
+test('brand identity non mostra sezione asset inline (solo Media Library)', () => {
+  assert.doesNotMatch(indexHtml, /a2w-bi-section--assets/);
+  assert.doesNotMatch(indexHtml, /Logo e immagini chiave/);
+  assert.doesNotMatch(indexHtml, /id="a2wBiAssetsGrid"/);
+  assert.doesNotMatch(indexHtml, /id="a2wBiOpenMediaLibraryBtn"/);
+  assert.match(indexHtml, /function a2wBiRenderAssetsGrid/);
   assert.match(indexHtml, /Scegli da libreria/);
-  assert.match(indexHtml, /a2wBiBindAssetSlotActions/);
-  assert.doesNotMatch(indexHtml, /a2wBiAssetBrowseBtn/);
-  assert.doesNotMatch(indexHtml, /a2wBiAssetUploadInput/);
-  assert.doesNotMatch(indexHtml, /a2w-bi-asset-dropzone/);
-  assert.doesNotMatch(indexHtml, /function a2wBiBindAssetDropzone/);
-  assert.doesNotMatch(indexHtml, /function a2wBiUploadAsset/);
-  assert.match(biCss, /\.a2w-bi-asset-slot/);
-  assert.match(biCss, /\.a2w-bi-section \.a2w-bi-assets-grid[\s\S]*grid-column:\s*1\s*\/\s*-1/);
-  assert.match(indexHtml, /a2w-bi-section--assets/);
-  assert.match(indexHtml, /Seleziona gli asset dalla Media Library/);
 });
 
 test('media library include bucket wallet_icon', () => {
