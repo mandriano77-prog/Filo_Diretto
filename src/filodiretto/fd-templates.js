@@ -46,6 +46,32 @@
     return (style && style.images) || {};
   }
 
+  function templateStyle(t) {
+    var style = t.style;
+    if (typeof style === 'string') {
+      try {
+        style = JSON.parse(style);
+      } catch (_) {
+        style = {};
+      }
+    }
+    return style || {};
+  }
+
+  function apiBase() {
+    return window.API || '/api/v1';
+  }
+
+  function walletImageSrc(templateId, imageType, rawValue) {
+    if (!rawValue) return '';
+    var value = String(rawValue);
+    if (value.indexOf('data:image/') === 0) return value;
+    if (value.length > 120 && !/^https?:\/\//i.test(value)) {
+      return 'data:image/png;base64,' + value;
+    }
+    return apiBase() + '/templates/' + encodeURIComponent(templateId) + '/wallet-image/' + imageType;
+  }
+
   function evaluateCompleteness(t, brandSnapshot) {
     var images = templateImages(t);
     var checks = [
@@ -65,17 +91,16 @@
   }
 
   function renderPreview(t) {
+    var style = templateStyle(t);
     var images = templateImages(t);
-    var strip = images.strip
-      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/strip'
-      : '';
-    var logo = images.logo
-      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/logo'
-      : '';
+    var strip = walletImageSrc(t.id, 'strip', images.strip);
+    var logo = walletImageSrc(t.id, 'logo', images.logo);
+    var bg = style.backgroundColor || style.background || '#1e1b4b';
+    var fg = style.foregroundColor || style.foreground || '#ffffff';
     return (
-      '<div class="fd-tpl-card__preview">' +
+      '<div class="fd-tpl-card__preview" style="background:' + esc(bg) + ';color:' + esc(fg) + '">' +
       '<div class="fd-tpl-card__strip"' +
-      (strip ? ' style="background-image:url(' + esc(strip) + ')"' : '') +
+      (strip ? ' style="background-image:url(\'' + esc(strip) + '\')"' : '') +
       '></div>' +
       '<div class="fd-tpl-card__body">' +
       (logo

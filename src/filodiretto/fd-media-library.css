@@ -148,13 +148,21 @@ html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-s
   margin-left: auto;
 }
 
-html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header {
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header,
+html[data-app='filodiretto'] #media-library.media-library--fd-layout .a2w-media-page-head.fd-media-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 20px;
   overflow: visible;
+  flex-wrap: nowrap;
+}
+
+html[data-app='filodiretto'] #media-library .fd-brand-pass-flow-host {
+  margin: 0 0 16px;
+  width: 100%;
+  max-width: 760px;
 }
 
 html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header__copy {
@@ -171,7 +179,7 @@ html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-l
   font-size: 13px;
   line-height: 1.5;
   color: var(--fd-text-secondary, var(--text2));
-  max-width: 52ch;
+  max-width: none;
 }
 
 html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-header__actions {

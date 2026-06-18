@@ -1647,8 +1647,8 @@
   var STEPS = [
     { id: 'brand-identity', label: 'Identità' },
     { id: 'media-library', label: 'Media' },
-    { id: 'templates', label: 'Template' },
-    { id: 'passes', label: 'Pass' }
+    { id: 'templates', label: 'Template Pass' },
+    { id: 'passes', label: 'Pass emessi' }
   ];
   function isFiloFlowApp() {
     if (document.documentElement.classList.contains('a2w-shell')) return false;
@@ -1689,12 +1689,30 @@
   function injectFlowBar(sectionId) {
     var section = document.getElementById(sectionId);
     if (!section || section.querySelector('.fd-brand-pass-flow')) return;
-    var title = section.querySelector('h1.page-title, h1.sec-title');
-    if (!title) return;
+    var page = section.querySelector('.a2w-media-page') || section;
+    var anchor =
+      page.querySelector('.a2w-media-page-head') ||
+      page.querySelector('.fd-media-header') ||
+      page.querySelector('h1.page-title, h1.sec-title');
     var host = document.createElement('div');
     host.className = 'fd-brand-pass-flow-host';
     host.innerHTML = renderFlowBar(sectionId);
-    title.parentNode.insertBefore(host, title.nextSibling);
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(host, anchor);
+    } else {
+      page.insertBefore(host, page.firstChild);
+    }
+    relocateFlowBarOutOfHeader(section);
+  }
+  function relocateFlowBarOutOfHeader(section) {
+    if (!section) return;
+    var page = section.querySelector('.a2w-media-page') || section;
+    var header = page.querySelector('.a2w-media-page-head, .fd-media-header');
+    var flowHost = section.querySelector('.fd-brand-pass-flow-host');
+    if (!flowHost || !header) return;
+    if (flowHost.parentNode === header || header.contains(flowHost)) {
+      header.parentNode.insertBefore(flowHost, header);
+    }
   }
   function patchBrandSnapshot() {
     if (window.__fdBrandSnapPatched || typeof window.loadBrandIdentity !== 'function') return;
@@ -1738,6 +1756,7 @@
     }
   }
   window.fdInitBrandPassFlow = initFdBrandPassFlow;
+  window.fdRelocateBrandPassFlowBar = relocateFlowBarOutOfHeader;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdBrandPassFlow);
   } else {
@@ -3443,6 +3462,9 @@
     var grid = page.querySelector('.a2w-media-buckets-grid, .fd-media-grid');
     if (section.dataset.fdMediaLayout === '1') {
       if (grid) rebuildMediaSections(grid);
+      if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
+        window.fdRelocateBrandPassFlowBar(section);
+      }
       ensureMediaCategoryTabs();
       return;
     }
@@ -3494,6 +3516,9 @@
     grid.style.display = '';
     grid.style.gridTemplateColumns = '';
     rebuildMediaSections(grid);
+    if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
+      window.fdRelocateBrandPassFlowBar(section);
+    }
     ensureMediaCategoryTabs();
     if (!section.querySelector('#fdMediaBulkBar')) {
       var bulk = document.createElement('div');
@@ -3897,6 +3922,29 @@
     }
     return (style && style.images) || {};
   }
+  function templateStyle(t) {
+    var style = t.style;
+    if (typeof style === 'string') {
+      try {
+        style = JSON.parse(style);
+      } catch (_) {
+        style = {};
+      }
+    }
+    return style || {};
+  }
+  function apiBase() {
+    return window.API || '/api/v1';
+  }
+  function walletImageSrc(templateId, imageType, rawValue) {
+    if (!rawValue) return '';
+    var value = String(rawValue);
+    if (value.indexOf('data:image/') === 0) return value;
+    if (value.length > 120 && !/^https?:\/\
+      return 'data:image/png;base64,' + value;
+    }
+    return apiBase() + '/templates/' + encodeURIComponent(templateId) + '/wallet-image/' + imageType;
+  }
   function evaluateCompleteness(t, brandSnapshot) {
     var images = templateImages(t);
     var checks = [
@@ -3915,17 +3963,16 @@
     return { checks: checks, done: done, total: checks.length, ready: ready };
   }
   function renderPreview(t) {
+    var style = templateStyle(t);
     var images = templateImages(t);
-    var strip = images.strip
-      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/strip'
-      : '';
-    var logo = images.logo
-      ? '/api/templates/' + encodeURIComponent(t.id) + '/wallet-image/logo'
-      : '';
+    var strip = walletImageSrc(t.id, 'strip', images.strip);
+    var logo = walletImageSrc(t.id, 'logo', images.logo);
+    var bg = style.backgroundColor || style.background || '#1e1b4b';
+    var fg = style.foregroundColor || style.foreground || '#ffffff';
     return (
-      '<div class="fd-tpl-card__preview">' +
+      '<div class="fd-tpl-card__preview" style="background:' + esc(bg) + ';color:' + esc(fg) + '">' +
       '<div class="fd-tpl-card__strip"' +
-      (strip ? ' style="background-image:url(' + esc(strip) + ')"' : '') +
+      (strip ? ' style="background-image:url(\'' + esc(strip) + '\')"' : '') +
       '></div>' +
       '<div class="fd-tpl-card__body">' +
       (logo

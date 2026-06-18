@@ -7,8 +7,8 @@
   var STEPS = [
     { id: 'brand-identity', label: 'Identità' },
     { id: 'media-library', label: 'Media' },
-    { id: 'templates', label: 'Template' },
-    { id: 'passes', label: 'Pass' }
+    { id: 'templates', label: 'Template Pass' },
+    { id: 'passes', label: 'Pass emessi' }
   ];
 
   function isFiloFlowApp() {
@@ -53,12 +53,31 @@
   function injectFlowBar(sectionId) {
     var section = document.getElementById(sectionId);
     if (!section || section.querySelector('.fd-brand-pass-flow')) return;
-    var title = section.querySelector('h1.page-title, h1.sec-title');
-    if (!title) return;
+    var page = section.querySelector('.a2w-media-page') || section;
+    var anchor =
+      page.querySelector('.a2w-media-page-head') ||
+      page.querySelector('.fd-media-header') ||
+      page.querySelector('h1.page-title, h1.sec-title');
     var host = document.createElement('div');
     host.className = 'fd-brand-pass-flow-host';
     host.innerHTML = renderFlowBar(sectionId);
-    title.parentNode.insertBefore(host, title.nextSibling);
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(host, anchor);
+    } else {
+      page.insertBefore(host, page.firstChild);
+    }
+    relocateFlowBarOutOfHeader(section);
+  }
+
+  function relocateFlowBarOutOfHeader(section) {
+    if (!section) return;
+    var page = section.querySelector('.a2w-media-page') || section;
+    var header = page.querySelector('.a2w-media-page-head, .fd-media-header');
+    var flowHost = section.querySelector('.fd-brand-pass-flow-host');
+    if (!flowHost || !header) return;
+    if (flowHost.parentNode === header || header.contains(flowHost)) {
+      header.parentNode.insertBefore(flowHost, header);
+    }
   }
 
   function patchBrandSnapshot() {
@@ -105,6 +124,7 @@
   }
 
   window.fdInitBrandPassFlow = initFdBrandPassFlow;
+  window.fdRelocateBrandPassFlowBar = relocateFlowBarOutOfHeader;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdBrandPassFlow);

@@ -737,6 +737,9 @@
 
     if (section.dataset.fdMediaLayout === '1') {
       if (grid) rebuildMediaSections(grid);
+      if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
+        window.fdRelocateBrandPassFlowBar(section);
+      }
       ensureMediaCategoryTabs();
       return;
     }
@@ -793,6 +796,9 @@
     grid.style.gridTemplateColumns = '';
 
     rebuildMediaSections(grid);
+    if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
+      window.fdRelocateBrandPassFlowBar(section);
+    }
     ensureMediaCategoryTabs();
 
     if (!section.querySelector('#fdMediaBulkBar')) {

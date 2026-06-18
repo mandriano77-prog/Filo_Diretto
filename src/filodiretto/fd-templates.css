@@ -4,24 +4,26 @@ html[data-app='filodiretto'] #templates .fd-tpl-card {
 
 html[data-app='filodiretto'] #templates .fd-tpl-card__grid {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
 html[data-app='filodiretto'] #templates .fd-tpl-card__preview {
   border: 1px solid var(--fd-border, var(--border));
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: #1e1b4b;
-  min-height: 148px;
+  min-height: 176px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 html[data-app='filodiretto'] #templates .fd-tpl-card__strip {
-  height: 56px;
+  height: 72px;
   background: linear-gradient(135deg, #c4b5fd, #7c3aed);
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 html[data-app='filodiretto'] #templates .fd-tpl-card__body {
@@ -32,8 +34,8 @@ html[data-app='filodiretto'] #templates .fd-tpl-card__body {
 }
 
 html[data-app='filodiretto'] #templates .fd-tpl-card__logo {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.12);
