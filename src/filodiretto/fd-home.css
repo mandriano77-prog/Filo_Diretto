@@ -1,12 +1,34 @@
 /**
  * FD-02 — FiloDiretto home (KPI, onboarding, attività). Scoped to [data-app="filodiretto"].
+ * FASE 4 — uses fd-page-header, fd-stat-grid, fd-card, fd-btn, fd-empty-state, fd-skeleton.
  */
+html[data-app='filodiretto'] #welcome > .page-title,
+html[data-app='filodiretto'] #welcome .page-lead,
+html[data-app='filodiretto'] #welcome .fd-welcome-legacy {
+  display: none !important;
+}
+
 html[data-app='filodiretto'] .fd-home-root {
   display: block;
+  min-width: 0;
 }
 
 html[data-app='filodiretto'] #welcome[data-fd-home-state='loading'] .fd-home-root {
-  min-height: 120px;
+  min-height: 160px;
+}
+
+html[data-app='filodiretto'] .fd-home-page-header {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] .fd-home-page-header .fd-home-status {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: var(--fd-space-1, 4px);
+}
+
+html[data-app='filodiretto'] .fd-home-skeleton {
+  padding: var(--fd-space-2, 8px) 0;
 }
 
 html[data-app='filodiretto'] .fd-home-loading {
@@ -17,8 +39,8 @@ html[data-app='filodiretto'] .fd-home-loading {
   padding: 24px 16px;
 }
 
-html[data-app='filodiretto'] #welcome[data-fd-home-state='error'] .fd-home-empty {
-  color: var(--red, #dc2626);
+html[data-app='filodiretto'] #welcome[data-fd-home-state='error'] .fd-empty-state__desc {
+  color: var(--fd-color-danger, #dc2626);
 }
 
 html[data-app='filodiretto'] .fd-home-hero {
@@ -157,69 +179,25 @@ html[data-app='filodiretto'] .fd-onboarding-list--compact .fd-onboarding-item__d
 }
 
 html[data-app='filodiretto'] .fd-home-kpi-grid--primary {
-  margin-bottom: 20px;
+  margin-bottom: var(--fd-space-5, 24px);
 }
 
-html[data-app='filodiretto'] .fd-home-kpi-grid--compact .fd-home-kpi {
-  padding: 10px 12px;
+html[data-app='filodiretto'] .fd-home-kpi-grid--compact {
+  margin-bottom: var(--fd-space-4, 16px);
 }
 
-html[data-app='filodiretto'] .fd-home-kpi-grid--compact .fd-home-kpi__value {
-  font-size: 22px;
+html[data-app='filodiretto'] .fd-home-shortcuts {
+  margin-bottom: var(--fd-space-5, 24px);
+}
+
+html[data-app='filodiretto'] .fd-home-shortcuts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2, 8px);
 }
 
 html[data-app='filodiretto'] .fd-home-grid-2--operational .fd-home-onboarding {
   order: 2;
-}
-
-html[data-app='filodiretto'] .fd-home-quick__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text2);
-  margin: 0 0 8px;
-  width: 100%;
-}
-
-html[data-app='filodiretto'] .fd-home-quick__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-html[data-app='filodiretto'] .fd-home-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-html[data-app='filodiretto'] .fd-home-kpi {
-  border: 1px solid var(--fd-border, var(--border));
-  border-radius: var(--fd-radius-md);
-  padding: 14px 16px;
-  background: var(--surface, #fff);
-}
-
-html[data-app='filodiretto'] .fd-home-kpi__label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text2);
-  margin-bottom: 6px;
-}
-
-html[data-app='filodiretto'] .fd-home-kpi__value {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-html[data-app='filodiretto'] .fd-home-kpi__hint {
-  font-size: 11px;
-  color: var(--text2);
-  margin-top: 6px;
 }
 
 html[data-app='filodiretto'] .fd-home-grid-2 {
@@ -236,10 +214,14 @@ html[data-app='filodiretto'] .fd-home-grid-2 {
 }
 
 html[data-app='filodiretto'] .fd-home-card {
-  border: 1px solid var(--fd-border, var(--border));
-  border-radius: var(--fd-radius-md);
-  padding: 16px 18px;
-  background: var(--surface, #fff);
+  margin-bottom: 0;
+}
+
+html[data-app='filodiretto'] .fd-home-card .fd-empty-state {
+  padding: var(--fd-space-2, 8px) 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-app='filodiretto'] .fd-home-card__title {
@@ -379,9 +361,5 @@ html[data-app='filodiretto'] .fd-home-lead {
 }
 
 html[data-app='filodiretto'] .fd-home-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  align-items: flex-start;
+  display: none;
 }

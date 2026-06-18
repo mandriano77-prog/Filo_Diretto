@@ -1799,6 +1799,7 @@
     var el = document.createElement('style');
     el.id = 'fdHomeWelcomeCritical';
     el.textContent =
+      "html[data-app='filodiretto'] #welcome > .page-title," +
       "html[data-app='filodiretto'] #welcome .page-lead," +
       "html[data-app='filodiretto'] #welcome .fd-welcome-legacy{display:none!important}";
     (document.head || document.documentElement).appendChild(el);
@@ -1928,9 +1929,19 @@
     var welcome = document.getElementById('welcome');
     setHomeState(welcome, 'loading');
     root.innerHTML =
-      '<div class="fd-home-loading" aria-live="polite" aria-busy="true">' +
-      '<p class="fd-home-empty">Caricamento dati brand…</p>' +
-      '</div>';
+      '<div class="fd-home-skeleton" aria-live="polite" aria-busy="true">' +
+      '<div class="fd-skeleton fd-skeleton--title" style="max-width:280px;margin-bottom:20px"></div>' +
+      '<div class="fd-skeleton fd-skeleton--text" style="max-width:420px;margin-bottom:24px"></div>' +
+      '<div class="fd-stat-grid fd-home-kpi-grid">' +
+      '<div class="fd-stat-card"><span class="fd-skeleton fd-skeleton--text"></span>' +
+      '<span class="fd-skeleton fd-skeleton--title" style="margin-top:10px;width:45%"></span></div>' +
+      '<div class="fd-stat-card"><span class="fd-skeleton fd-skeleton--text"></span>' +
+      '<span class="fd-skeleton fd-skeleton--title" style="margin-top:10px;width:45%"></span></div>' +
+      '<div class="fd-stat-card"><span class="fd-skeleton fd-skeleton--text"></span>' +
+      '<span class="fd-skeleton fd-skeleton--title" style="margin-top:10px;width:45%"></span></div>' +
+      '<div class="fd-stat-card"><span class="fd-skeleton fd-skeleton--text"></span>' +
+      '<span class="fd-skeleton fd-skeleton--title" style="margin-top:10px;width:45%"></span></div>' +
+      '</div></div>';
   }
   function buildHomeContext(data) {
     var a = data.analytics || {};
@@ -1971,15 +1982,18 @@
   function renderNoBrand(root) {
     setHomeState(document.getElementById('welcome'), 'no-brand');
     root.innerHTML =
-      '<header class="fd-home-hero fd-home-hero--no-brand">' +
-      '<p class="fd-home-hero__eyebrow">Inizio</p>' +
-      '<h2 class="fd-home-hero__title">Scegli un brand per iniziare</h2>' +
-      '<p class="fd-home-hero__desc">Seleziona un brand dall’header o creane uno nuovo per vedere KPI, setup e attività.</p>' +
-      '</header>' +
-      '<div class="fd-home-primary">' +
-      '<p class="fd-home-primary__label">Azione consigliata</p>' +
-      '<button type="button" class="btn" data-fd-nav="brand-identity">Crea o seleziona brand</button>' +
-      '</div>';
+      '<header class="fd-page-header fd-home-page-header">' +
+      '<div class="fd-page-header__copy">' +
+      '<h1 class="fd-page-header__title">Inizio</h1>' +
+      '<p class="fd-page-header__lead">Seleziona un brand dall’header o creane uno nuovo per vedere KPI, setup e attività recenti.</p>' +
+      '</div></header>' +
+      '<div class="fd-empty-state fd-card">' +
+      '<p class="fd-empty-state__title">Nessun brand selezionato</p>' +
+      '<p class="fd-empty-state__desc">Scegli un brand esistente o configura Identità Brand per iniziare.</p>' +
+      '<div class="fd-empty-state__actions">' +
+      '<button type="button" class="fd-btn fd-btn--primary" onclick="document.getElementById(\'brandSelector\').focus()">Seleziona brand</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" data-fd-nav="brand-identity">Crea brand</button>' +
+      '</div></div>';
     bindNavButtons(root);
   }
   function bindNavButtons(container) {
@@ -1993,6 +2007,27 @@
           return;
         }
         if (typeof window.nav === 'function') window.nav(id);
+      });
+    });
+    container.querySelectorAll('[data-fd-action="import-employees"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof window.openEmployeeImportModal === 'function') {
+          window.openEmployeeImportModal();
+          return;
+        }
+        if (typeof window.nav === 'function') window.nav('leads');
+      });
+    });
+    container.querySelectorAll('[data-fd-action="new-template"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof window.nav === 'function') window.nav('templates');
+        if (typeof window.openTemplateModal === 'function') {
+          setTimeout(function () { window.openTemplateModal(); }, 120);
+        }
       });
     });
   }
@@ -2059,7 +2094,7 @@
       ? 'Tutti i passaggi sono completati.'
       : 'Completa questi passaggi per rendere il brand pienamente operativo.';
     return (
-      '<div class="fd-home-card fd-home-onboarding' + compactClass + '">' +
+      '<div class="fd-card fd-home-card fd-home-onboarding' + compactClass + '">' +
       '<h2 class="fd-home-card__title">' + esc(title) + '</h2>' +
       '<p class="fd-home-progress" aria-live="polite">' + doneCount + ' di ' + steps.length + ' completati</p>' +
       '<p class="fd-home-card__intro">' + esc(intro) + '</p>' +
@@ -2068,35 +2103,39 @@
     );
   }
   function renderKpiGrid(ctx, compact) {
-    var gridClass = 'fd-home-kpi-grid' + (compact ? ' fd-home-kpi-grid--compact' : ' fd-home-kpi-grid--primary');
+    var gridClass = 'fd-stat-grid fd-home-kpi-grid' + (compact ? ' fd-home-kpi-grid--compact' : ' fd-home-kpi-grid--primary');
     return (
       '<div class="' + gridClass + '">' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Pass totali</div><div class="fd-home-kpi__value">' + esc(ctx.totalPasses) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Install Wallet</div><div class="fd-home-kpi__value">' + esc(ctx.walletInstalls) + '</div>' +
-      '<div class="fd-home-kpi__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) + ' · Samsung ' + esc(ctx.samsung) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Dipendenti</div><div class="fd-home-kpi__value">' + esc(ctx.employeeCount) + '</div>' +
-      '<div class="fd-home-kpi__hint">Con pass: ' + esc(ctx.employeesWithPass) + '</div></div>' +
-      '<div class="fd-home-kpi"><div class="fd-home-kpi__label">Push inviate</div><div class="fd-home-kpi__value">' + esc(ctx.pushCount) + '</div></div>' +
+      '<div class="fd-stat-card">' +
+      '<span class="fd-stat-card__label">Pass totali</span>' +
+      '<span class="fd-stat-card__value">' + esc(ctx.totalPasses) + '</span>' +
+      '</div>' +
+      '<div class="fd-stat-card">' +
+      '<span class="fd-stat-card__label">Installazioni Wallet</span>' +
+      '<span class="fd-stat-card__value">' + esc(ctx.walletInstalls) + '</span>' +
+      '<span class="fd-stat-card__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) + ' · Samsung ' + esc(ctx.samsung) + '</span>' +
+      '</div>' +
+      '<div class="fd-stat-card">' +
+      '<span class="fd-stat-card__label">Push inviate</span>' +
+      '<span class="fd-stat-card__value">' + esc(ctx.pushCount) + '</span>' +
+      '</div>' +
+      '<div class="fd-stat-card">' +
+      '<span class="fd-stat-card__label">Template pass</span>' +
+      '<span class="fd-stat-card__value">' + esc(ctx.templateCount) + '</span>' +
+      '<span class="fd-stat-card__hint">Dipendenti: ' + esc(ctx.employeeCount) + ' (con pass: ' + esc(ctx.employeesWithPass) + ')</span>' +
+      '</div>' +
       '</div>'
     );
   }
-  function renderQuickActions(primarySection, secondarySections) {
-    var secondary = (secondarySections || []).map(function (id) {
-      var labels = {
-        leads: 'Dipendenti',
-        push: 'Push',
-        analytics: 'Analytics',
-        templates: 'Template pass',
-        passes: 'Pass emessi',
-        'brand-identity': 'Dati azienda'
-      };
-      return '<button type="button" class="btn sec small" data-fd-nav="' + esc(id) + '">' + esc(labels[id] || id) + '</button>';
-    }).join('');
+  function renderShortcuts() {
     return (
-      '<div class="fd-home-quick">' +
-      '<p class="fd-home-quick__label">Collegamenti rapidi</p>' +
-      '<div class="fd-home-quick__actions">' + secondary + '</div>' +
-      '</div>'
+      '<div class="fd-card fd-home-shortcuts">' +
+      '<h2 class="fd-home-card__title">Azioni frequenti</h2>' +
+      '<div class="fd-home-shortcuts__actions">' +
+      '<button type="button" class="fd-btn fd-btn--secondary" data-fd-action="new-template">+ Nuovo template</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" data-fd-nav="push">Invia push</button>' +
+      '<button type="button" class="fd-btn fd-btn--secondary" data-fd-action="import-employees">Importa dipendenti</button>' +
+      '</div></div>'
     );
   }
   function renderPrimaryAction(progress, brandName) {
@@ -2107,7 +2146,7 @@
         '<p class="fd-home-primary__label">Stato brand</p>' +
         '<h3 class="fd-home-primary__title">Configurazione completata</h3>' +
         '<p class="fd-home-primary__desc">' + esc(brandName) + ' è operativo. Monitora KPI e invia comunicazioni ai dipendenti.</p>' +
-        '<button type="button" class="btn" data-fd-nav="push">Invia una push</button>' +
+        '<button type="button" class="fd-btn fd-btn--primary" data-fd-nav="push">Invia una push</button>' +
         '</div>'
       );
     }
@@ -2116,7 +2155,7 @@
       '<p class="fd-home-primary__label">Prossimo passo</p>' +
       '<h3 class="fd-home-primary__title">' + esc(step.label) + '</h3>' +
       '<p class="fd-home-primary__desc">' + esc(step.desc) + '</p>' +
-      '<button type="button" class="btn" data-fd-nav="' + esc(step.section) + '">Continua setup →</button>' +
+      '<button type="button" class="fd-btn fd-btn--primary" data-fd-nav="' + esc(step.section) + '">Continua setup →</button>' +
       '</div>'
     );
   }
@@ -2127,11 +2166,14 @@
   function renderActivity(events) {
     if (!events.length) {
       return (
-        '<div class="fd-home-card">' +
+        '<div class="fd-card fd-home-card">' +
         '<h2 class="fd-home-card__title">Ultime attività</h2>' +
-        '<p class="fd-home-empty">Nessuna attività registrata. Gli eventi su pass e notifiche compariranno qui.</p>' +
-        '<button type="button" class="btn sec small" style="margin-top:10px" data-fd-nav="activity-log">Apri log completo</button>' +
-        '</div>'
+        '<div class="fd-empty-state">' +
+        '<p class="fd-empty-state__title">Nessuna attività recente</p>' +
+        '<p class="fd-empty-state__desc">Gli eventi su pass, installazioni Wallet e notifiche compariranno qui.</p>' +
+        '<div class="fd-empty-state__actions">' +
+        '<button type="button" class="fd-btn fd-btn--ghost" data-fd-nav="activity-log">Apri log completo</button>' +
+        '</div></div></div>'
       );
     }
     var list = events.slice(0, 5).map(function (ev) {
@@ -2150,11 +2192,22 @@
       );
     }).join('');
     return (
-      '<div class="fd-home-card">' +
+      '<div class="fd-card fd-home-card">' +
       '<h2 class="fd-home-card__title">Ultime attività</h2>' +
       '<ul class="fd-home-activity-list">' + list + '</ul>' +
-      '<button type="button" class="btn sec small" style="margin-top:12px" data-fd-nav="activity-log">Vedi tutto</button>' +
+      '<button type="button" class="fd-btn fd-btn--ghost" style="margin-top:12px" data-fd-nav="activity-log">Vedi tutto</button>' +
       '</div>'
+    );
+  }
+  function renderPageHeader(title, lead, badgeHtml) {
+    return (
+      '<header class="fd-page-header fd-home-page-header">' +
+      '<div class="fd-page-header__copy">' +
+      '<h1 class="fd-page-header__title">' + esc(title) + '</h1>' +
+      (lead ? '<p class="fd-page-header__lead">' + esc(lead) + '</p>' : '') +
+      '</div>' +
+      (badgeHtml || '') +
+      '</header>'
     );
   }
   function renderBrandHome(root, data) {
@@ -2166,38 +2219,34 @@
     setHomeState(welcome, isOperational ? 'operational' : 'setup');
     if (isOperational) {
       root.innerHTML =
-        '<header class="fd-home-hero fd-home-hero--operational">' +
-        '<div class="fd-home-hero__head">' +
-        '<p class="fd-home-hero__eyebrow">Brand operativo</p>' +
-        '<h2 class="fd-home-hero__title">' + esc(brandName) + '</h2>' +
-        '</div>' +
-        '<span class="fd-home-status fd-home-status--ok">Operativo</span>' +
-        '</header>' +
+        renderPageHeader(
+          brandName,
+          'Panoramica operativa: KPI, attività recenti e collegamenti rapidi.',
+          '<span class="fd-badge fd-badge--success fd-home-status">Operativo</span>'
+        ) +
         renderPrimaryAction(progress, brandName) +
         renderKpiGrid(ctx, false) +
-        renderQuickActions(null, ['leads', 'push', 'analytics']) +
+        renderShortcuts() +
         '<div class="fd-home-grid-2 fd-home-grid-2--operational">' +
         renderOnboarding(ctx, { compact: true }) +
         renderActivity(data.events || []) +
         '</div>';
     } else {
       root.innerHTML =
-        '<header class="fd-home-hero fd-home-hero--setup">' +
-        '<div class="fd-home-hero__head">' +
-        '<p class="fd-home-hero__eyebrow">Configurazione in corso</p>' +
-        '<h2 class="fd-home-hero__title">' + esc(brandName) + '</h2>' +
-        '</div>' +
-        '<span class="fd-home-status fd-home-status--setup">' + esc(progress.doneCount) + '/' + esc(progress.total) + '</span>' +
-        '</header>' +
+        renderPageHeader(
+          brandName,
+          'Completa il setup guidato per attivare pass Wallet e comunicazioni HR.',
+          '<span class="fd-badge fd-badge--warning fd-home-status">' + esc(progress.doneCount) + '/' + esc(progress.total) + ' setup</span>'
+        ) +
         renderPrimaryAction(progress, brandName) +
+        renderKpiGrid(ctx, true) +
         '<div class="fd-home-layout-setup">' +
         renderOnboarding(ctx, { compact: false }) +
         '<aside class="fd-home-aside">' +
-        renderKpiGrid(ctx, true) +
         renderActivity(data.events || []) +
         '</aside>' +
         '</div>' +
-        renderQuickActions(null, ['brand-identity', 'templates', 'leads']);
+        renderShortcuts();
     }
     bindNavButtons(root);
   }
@@ -2262,9 +2311,9 @@
       } catch (e) {
         setHomeState(welcome, 'error');
         root.innerHTML =
-          '<div class="fd-home-loading" aria-live="polite">' +
-          '<p class="fd-home-empty">Errore caricamento home: ' + esc(e.message) + '</p>' +
-          '<button type="button" class="btn sec small" style="margin-top:10px" id="fdHomeRetryBtn">Riprova</button>' +
+          '<div class="fd-home-skeleton" aria-live="polite">' +
+          '<p class="fd-empty-state__desc" style="color:var(--fd-color-danger,#dc2626)">Errore caricamento home: ' + esc(e.message) + '</p>' +
+          '<button type="button" class="fd-btn fd-btn--secondary" style="margin-top:12px" id="fdHomeRetryBtn">Riprova</button>' +
           '</div>';
         var retry = document.getElementById('fdHomeRetryBtn');
         if (retry && retry.dataset.fdBound !== '1') {
