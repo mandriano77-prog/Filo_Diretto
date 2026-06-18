@@ -1,5 +1,5 @@
 /* FILE A2W-ONLY — brand identity redesign */
-.a2w-bi-page.a2w-bi-legacy-shell .a2w-bi-preview-column,
+.a2w-bi-page.a2w-bi-legacy-shell .a2w-bi-summary-disclosure,
 .a2w-bi-page.a2w-bi-legacy-shell .a2w-bi-section:nth-of-type(2),
 .a2w-bi-page.a2w-bi-legacy-shell .a2w-bi-section:nth-of-type(4) {
   display: none;
@@ -18,6 +18,7 @@
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-page {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
@@ -113,6 +114,7 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-layout {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  width: 100%;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-main {
@@ -120,10 +122,24 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-main {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   align-items: start;
+  width: 100%;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section--assets {
   grid-column: 1 / -1;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section--contacts,
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section--social {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section {
@@ -301,11 +317,6 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-danger-zone p {
   margin: 0 0 12px;
   color: #fecaca;
   font-size: 13px;
-}
-
-html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-preview-column {
-  width: 100%;
-  margin-top: 8px;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-summary-disclosure {
@@ -542,6 +553,10 @@ html[data-shell="dark"].a2w-shell #brand-identity button:focus-visible {
 
 @media (max-width: 1023px) {
   html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-main {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-contact-grid {
     grid-template-columns: 1fr;
   }
 

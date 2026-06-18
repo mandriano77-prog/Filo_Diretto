@@ -643,7 +643,7 @@
 
   function a2wEnsureMediaPageMenu(section) {
     if (!section) return;
-    const head = section.querySelector(':scope > div');
+    const head = section.querySelector('.a2w-media-page-head') || section.querySelector(':scope > div');
     if (!head) return;
     const actions = head.querySelector('div');
     if (!actions) return;
