@@ -13,7 +13,7 @@ const FD = path.join(ROOT, 'src', 'filodiretto');
 
 const CSS_FILES = [
   'tokens.css', 'fd-theme.css', 'fd-typography.css', 'fd-buttons.css', 'fd-components.css', 'fd-header.css',
-  'fd-layout.css', 'fd-wai.css', 'fd-brand-switcher.css', 'fd-nav.css', 'fd-brand-identity.css',
+  'fd-layout.css', 'fd-mobile-gate.css', 'fd-wai.css', 'fd-brand-switcher.css', 'fd-nav.css', 'fd-brand-identity.css',
   'fd-brand-scope.css', 'fd-brand-pass-flow.css', 'fd-home.css', 'fd-users.css', 'fd-contacts.css',
   'fd-media-library.css', 'fd-templates.css', 'fd-passes.css',
   'fd-destructive.css', 'fd-form-dirty.css', 'fd-form-help.css', 'fd-empty-states.css', 'fd-page-states.css',
@@ -21,7 +21,7 @@ const CSS_FILES = [
 ];
 
 const JS_FILES = [
-  'fd-buttons.js', 'fd-header.js', 'fd-layout.js', 'fd-wai.js', 'fd-brand-switcher.js',
+  'fd-buttons.js', 'fd-header.js', 'fd-layout.js', 'fd-mobile-gate.js', 'fd-wai.js', 'fd-brand-switcher.js',
   'fd-icons.js', 'fd-nav.js', 'fd-legacy-campaigns.js', 'fd-hr-copy.js', 'fd-brand-scope.js', 'fd-brand-identity.js',
   'fd-brand-pass-flow.js', 'fd-home.js', 'fd-users.js', 'fd-contacts.js', 'fd-media-library.js',
   'fd-templates.js', 'fd-passes.js', 'fd-destructive.js', 'fd-form-dirty.js',
