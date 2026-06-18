@@ -211,6 +211,139 @@
     }
   }
 
+  function enhanceChallengeSectionDesign() {
+    var section = document.getElementById('gamification');
+    if (!section || section.dataset.fdDsSection === '1') return;
+    section.dataset.fdDsSection = '1';
+    section.classList.add('gamification--fd-ds');
+
+    var title = section.querySelector('h1.page-title, h1.sec-title');
+    var blurb = section.querySelector('#gamPageBlurb, :scope > p');
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-challenge-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      if (blurb) {
+        blurb.classList.add('fd-page-header__lead', 'fd-challenge-lead');
+        blurb.style.color = '';
+        blurb.style.fontSize = '';
+        blurb.style.marginBottom = '';
+        copy.appendChild(blurb);
+      }
+      header.appendChild(copy);
+      section.insertBefore(header, section.firstChild);
+    }
+
+    enhanceStatsGrid('gamStats');
+
+    var toolbar = section.querySelector(':scope > div[style*="justify-content"]');
+    var listTitle = toolbar?.querySelector('.sec-title');
+    var createBtn = section.querySelector('[onclick*="openGamModal"]');
+    if (toolbar && listTitle && !toolbar.classList.contains('fd-toolbar')) {
+      toolbar.classList.add('fd-toolbar', 'fd-challenge-toolbar');
+      toolbar.style.display = '';
+      toolbar.style.justifyContent = '';
+      toolbar.style.alignItems = '';
+      toolbar.style.marginBottom = '';
+      listTitle.classList.add('fd-challenge-list-title');
+      if (createBtn) {
+        createBtn.classList.add('fd-btn', 'fd-btn--primary');
+      }
+    }
+
+    wrapChallengeTable();
+    enhanceChallengeModal();
+  }
+
+  function wrapChallengeTable() {
+    var table = document.getElementById('gamTable');
+    if (!table || table.closest('.fd-table-wrap, .fd-challenge-table-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'fd-table-wrap fd-challenge-table-wrap';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+    table.classList.add('fd-table');
+  }
+
+  function enhanceChallengeModal() {
+    var modal = document.getElementById('gamModal');
+    if (!modal || modal.dataset.fdDsModal === '1') return;
+    modal.dataset.fdDsModal = '1';
+    modal.classList.add('fd-challenge-modal-overlay');
+    var panel = modal.querySelector(':scope > div');
+    if (panel) panel.classList.add('fd-card', 'fd-challenge-modal');
+    modal.querySelectorAll('[onclick*="closeGamModal"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
+      btn.classList.remove('sec');
+    });
+    modal.querySelectorAll('[onclick*="saveGamCampaign"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--primary', 'fd-challenge-modal-save');
+      btn.style.width = '';
+      btn.style.marginTop = '';
+    });
+  }
+
+  function renderChallengeTableSkeleton() {
+    return (
+      '<tr class="table-skeleton-row" aria-hidden="true">' +
+      '<td colspan="8">' +
+      '<div class="fd-challenge-table-skeleton" aria-busy="true">' +
+      '<span class="fd-skeleton" style="display:block;width:100%;height:160px;border-radius:12px"></span>' +
+      '</div></td></tr>'
+    );
+  }
+
+  function showChallengeLoadingState() {
+    var tbody = document.querySelector('#gamTable tbody');
+    if (tbody) tbody.innerHTML = renderChallengeTableSkeleton();
+    var section = document.getElementById('gamification');
+    if (section) section.classList.add('fd-challenge--loading');
+  }
+
+  function clearChallengeLoadingState() {
+    var section = document.getElementById('gamification');
+    if (section) section.classList.remove('fd-challenge--loading');
+  }
+
+  function enhanceChallengeRowActions() {
+    document.querySelectorAll('#gamTable tbody tr').forEach(function (tr) {
+      if (tr.classList.contains('table-skeleton-row') || tr.classList.contains('table-empty-row')) return;
+      var actions = tr.querySelector('td:last-child');
+      if (!actions || actions.dataset.fdDsActions === '1') return;
+      var modBtn = actions.querySelector('[onclick*="editGamCampaign"]');
+      var delBtn = actions.querySelector('[onclick*="deleteGamCampaign"]');
+      if (!modBtn || !delBtn) return;
+      actions.dataset.fdDsActions = '1';
+      actions.classList.add('fd-challenge-row-actions');
+      modBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-btn--sm');
+      delBtn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm', 'fd-challenge-row-delete');
+      modBtn.classList.remove('sec');
+      delBtn.classList.remove('sec');
+      modBtn.style.fontSize = '';
+      modBtn.style.padding = '';
+      delBtn.style.fontSize = '';
+      delBtn.style.padding = '';
+      delBtn.style.color = '';
+    });
+  }
+
+  function enhanceChallengeDom() {
+    enhanceChallengeSectionDesign();
+    enhanceStatsGrid('gamStats');
+    wrapChallengeTable();
+    var table = document.getElementById('gamTable');
+    if (table) table.classList.add('fd-table');
+    enhanceChallengeRowActions();
+    enhanceTableHeaders();
+    updateGamStatsCompact();
+    if (typeof window.fdEnhanceResponsiveTables === 'function') {
+      window.fdEnhanceResponsiveTables();
+    }
+  }
+
   function patchLoaders() {
     if (window.__fdRcPatched) return;
     window.__fdRcPatched = true;
@@ -231,8 +364,14 @@
     if (typeof window.loadGamification === 'function') {
       var origGam = window.loadGamification;
       window.loadGamification = async function () {
-        await origGam.apply(this, arguments);
-        updateGamStatsCompact();
+        if (isFilo() && window.brandId) showChallengeLoadingState();
+        try {
+          await origGam.apply(this, arguments);
+        } finally {
+          clearChallengeLoadingState();
+        }
+        if (isFilo()) enhanceChallengeDom();
+        else updateGamStatsCompact();
       };
     }
   }
@@ -248,6 +387,9 @@
           if (sectionId === 'instant-win' && isFilo()) {
             enhanceRewardSectionDesign();
             enhanceRewardDom();
+          } else if (sectionId === 'gamification' && isFilo()) {
+            enhanceChallengeSectionDesign();
+            enhanceChallengeDom();
           } else {
             enhanceTableHeaders();
             if (sectionId === 'instant-win') updateIwStatsCompact();
@@ -265,6 +407,8 @@
     patchNav();
     enhanceRewardSectionDesign();
     enhanceRewardDom();
+    enhanceChallengeSectionDesign();
+    enhanceChallengeDom();
     enhanceTableHeaders();
     updateGamStatsCompact();
   }

@@ -2648,7 +2648,8 @@
     if (!btn) return;
     var isAdmin = document.body.classList.contains('role-admin');
     btn.style.display = isAdmin ? '' : 'none';
-    btn.classList.add('fd-btn-primary');
+    btn.classList.add('fd-btn', 'fd-btn--primary');
+    btn.classList.remove('fd-btn-primary');
   }
   function getUserBrandGroup() {
     var brandSel = document.getElementById('userBrand');
@@ -2724,30 +2725,74 @@
       document.body.appendChild(dlg);
     }
   }
+  function enhanceUserModal() {
+    var modal = document.getElementById('userModal');
+    if (!modal || modal.dataset.fdDsModal === '1') return;
+    modal.dataset.fdDsModal = '1';
+    var panel = modal.querySelector('.modal-content');
+    if (panel) panel.classList.add('fd-card', 'fd-users-modal');
+    modal.querySelectorAll('.btn.fd-btn-primary, .btn:not(.sec):not(.danger)').forEach(function (btn) {
+      if (btn.closest('#userModal')) {
+        btn.classList.add('fd-btn', 'fd-btn--primary');
+      }
+    });
+    modal.querySelectorAll('.btn.sec').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
+    });
+  }
   function ensureUsersChrome() {
     var section = document.getElementById('users');
     if (!section) return;
     if (!section.classList.contains('users--fd')) {
       section.classList.add('users--fd');
     }
+    section.classList.add('users--fd-ds');
     ensureCreateUserButton();
     wireCreateUserForm();
     ensureConfirmDialogCentering();
+    enhanceUserModal();
     if (section.classList.contains('fd-users-chrome-ready')) return;
     section.classList.add('fd-users-chrome-ready');
+    var title = section.querySelector('h1.page-title, h1.sec-title');
     var legacyToolbar = section.querySelector(':scope > div[style*="justify-content"]');
-    if (legacyToolbar && !section.querySelector('.fd-users-toolbar')) {
-      legacyToolbar.classList.add('fd-users-toolbar');
-      var lead = legacyToolbar.querySelector('p');
-      if (lead) lead.classList.add('fd-users-lead');
+    var lead = legacyToolbar && legacyToolbar.querySelector('p');
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-users-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      if (lead) {
+        lead.classList.add('fd-page-header__lead', 'fd-users-lead');
+        lead.style.color = '';
+        lead.style.fontSize = '';
+        copy.appendChild(lead);
+      }
+      header.appendChild(copy);
+      section.insertBefore(header, section.firstChild);
+    }
+    if (legacyToolbar && !legacyToolbar.classList.contains('fd-toolbar')) {
+      legacyToolbar.classList.add('fd-toolbar', 'fd-users-toolbar');
+      legacyToolbar.style.display = '';
+      legacyToolbar.style.justifyContent = '';
+      legacyToolbar.style.alignItems = '';
+      legacyToolbar.style.marginBottom = '';
+      if (!lead) {
+        var fallbackLead = legacyToolbar.querySelector('p');
+        if (fallbackLead) fallbackLead.classList.add('fd-users-lead');
+      } else if (lead.parentNode === legacyToolbar && lead.closest('.fd-page-header')) {
+        legacyToolbar.removeChild(lead);
+      }
     }
     var table = document.getElementById('usersTable');
-    if (table && !table.closest('.fd-users-table-wrap')) {
+    if (table && !table.closest('.fd-table-wrap, .fd-users-table-wrap')) {
       var wrap = document.createElement('div');
-      wrap.className = 'fd-users-table-wrap';
+      wrap.className = 'fd-table-wrap fd-users-table-wrap';
       table.parentNode.insertBefore(wrap, table);
       wrap.appendChild(table);
     }
+    if (table) table.classList.add('fd-table');
     var actionsTh = table && table.querySelector('thead th:last-child');
     if (actionsTh) actionsTh.textContent = '';
     if (actionsTh) actionsTh.setAttribute('aria-label', 'Azioni');
@@ -2892,6 +2937,8 @@
     ensureDismissBound();
     ensureUsersChrome();
     ensureCreateUserButton();
+    var section = document.getElementById('users');
+    if (section) section.classList.add('fd-users--loading');
     var tbody = document.querySelector('#usersTable tbody');
     if (!tbody) return;
     if (typeof window.renderTableSkeletonRows === 'function') {
@@ -2949,7 +2996,26 @@
       } else {
         tbody.innerHTML = '<tr><td colspan="6" style="color:var(--red)">Errore: ' + esc(e.message) + '</td></tr>';
       }
+    } finally {
+      if (section) section.classList.remove('fd-users--loading');
+      if (typeof window.fdEnhanceResponsiveTables === 'function') {
+        window.fdEnhanceResponsiveTables();
+      }
     }
+  }
+  function patchUsersNav() {
+    if (window.__fdUsersNavPatched || typeof window.nav !== 'function') return;
+    window.__fdUsersNavPatched = true;
+    var orig = window.nav;
+    window.nav = function (sectionId) {
+      var out = orig.apply(this, arguments);
+      if (sectionId === 'users') {
+        setTimeout(function () {
+          if (isFiloUsersApp()) ensureUsersChrome();
+        }, 80);
+      }
+      return out;
+    };
   }
   window.fdLoadUsers = fdLoadUsers;
   if (document.readyState === 'loading') {
@@ -2957,11 +3023,13 @@
       if (!isFiloUsersApp()) return;
       ensureConfirmDialogCentering();
       wireCreateUserForm();
+      patchUsersNav();
       ensureUsersChrome();
     });
   } else if (isFiloUsersApp()) {
     ensureConfirmDialogCentering();
     wireCreateUserForm();
+    patchUsersNav();
     ensureUsersChrome();
   }
 })();
@@ -7675,6 +7743,127 @@
       window.fdEnhanceResponsiveTables();
     }
   }
+  function enhanceChallengeSectionDesign() {
+    var section = document.getElementById('gamification');
+    if (!section || section.dataset.fdDsSection === '1') return;
+    section.dataset.fdDsSection = '1';
+    section.classList.add('gamification--fd-ds');
+    var title = section.querySelector('h1.page-title, h1.sec-title');
+    var blurb = section.querySelector('#gamPageBlurb, :scope > p');
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-challenge-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      if (blurb) {
+        blurb.classList.add('fd-page-header__lead', 'fd-challenge-lead');
+        blurb.style.color = '';
+        blurb.style.fontSize = '';
+        blurb.style.marginBottom = '';
+        copy.appendChild(blurb);
+      }
+      header.appendChild(copy);
+      section.insertBefore(header, section.firstChild);
+    }
+    enhanceStatsGrid('gamStats');
+    var toolbar = section.querySelector(':scope > div[style*="justify-content"]');
+    var listTitle = toolbar?.querySelector('.sec-title');
+    var createBtn = section.querySelector('[onclick*="openGamModal"]');
+    if (toolbar && listTitle && !toolbar.classList.contains('fd-toolbar')) {
+      toolbar.classList.add('fd-toolbar', 'fd-challenge-toolbar');
+      toolbar.style.display = '';
+      toolbar.style.justifyContent = '';
+      toolbar.style.alignItems = '';
+      toolbar.style.marginBottom = '';
+      listTitle.classList.add('fd-challenge-list-title');
+      if (createBtn) {
+        createBtn.classList.add('fd-btn', 'fd-btn--primary');
+      }
+    }
+    wrapChallengeTable();
+    enhanceChallengeModal();
+  }
+  function wrapChallengeTable() {
+    var table = document.getElementById('gamTable');
+    if (!table || table.closest('.fd-table-wrap, .fd-challenge-table-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'fd-table-wrap fd-challenge-table-wrap';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+    table.classList.add('fd-table');
+  }
+  function enhanceChallengeModal() {
+    var modal = document.getElementById('gamModal');
+    if (!modal || modal.dataset.fdDsModal === '1') return;
+    modal.dataset.fdDsModal = '1';
+    modal.classList.add('fd-challenge-modal-overlay');
+    var panel = modal.querySelector(':scope > div');
+    if (panel) panel.classList.add('fd-card', 'fd-challenge-modal');
+    modal.querySelectorAll('[onclick*="closeGamModal"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
+      btn.classList.remove('sec');
+    });
+    modal.querySelectorAll('[onclick*="saveGamCampaign"]').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--primary', 'fd-challenge-modal-save');
+      btn.style.width = '';
+      btn.style.marginTop = '';
+    });
+  }
+  function renderChallengeTableSkeleton() {
+    return (
+      '<tr class="table-skeleton-row" aria-hidden="true">' +
+      '<td colspan="8">' +
+      '<div class="fd-challenge-table-skeleton" aria-busy="true">' +
+      '<span class="fd-skeleton" style="display:block;width:100%;height:160px;border-radius:12px"></span>' +
+      '</div></td></tr>'
+    );
+  }
+  function showChallengeLoadingState() {
+    var tbody = document.querySelector('#gamTable tbody');
+    if (tbody) tbody.innerHTML = renderChallengeTableSkeleton();
+    var section = document.getElementById('gamification');
+    if (section) section.classList.add('fd-challenge--loading');
+  }
+  function clearChallengeLoadingState() {
+    var section = document.getElementById('gamification');
+    if (section) section.classList.remove('fd-challenge--loading');
+  }
+  function enhanceChallengeRowActions() {
+    document.querySelectorAll('#gamTable tbody tr').forEach(function (tr) {
+      if (tr.classList.contains('table-skeleton-row') || tr.classList.contains('table-empty-row')) return;
+      var actions = tr.querySelector('td:last-child');
+      if (!actions || actions.dataset.fdDsActions === '1') return;
+      var modBtn = actions.querySelector('[onclick*="editGamCampaign"]');
+      var delBtn = actions.querySelector('[onclick*="deleteGamCampaign"]');
+      if (!modBtn || !delBtn) return;
+      actions.dataset.fdDsActions = '1';
+      actions.classList.add('fd-challenge-row-actions');
+      modBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-btn--sm');
+      delBtn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm', 'fd-challenge-row-delete');
+      modBtn.classList.remove('sec');
+      delBtn.classList.remove('sec');
+      modBtn.style.fontSize = '';
+      modBtn.style.padding = '';
+      delBtn.style.fontSize = '';
+      delBtn.style.padding = '';
+      delBtn.style.color = '';
+    });
+  }
+  function enhanceChallengeDom() {
+    enhanceChallengeSectionDesign();
+    enhanceStatsGrid('gamStats');
+    wrapChallengeTable();
+    var table = document.getElementById('gamTable');
+    if (table) table.classList.add('fd-table');
+    enhanceChallengeRowActions();
+    enhanceTableHeaders();
+    updateGamStatsCompact();
+    if (typeof window.fdEnhanceResponsiveTables === 'function') {
+      window.fdEnhanceResponsiveTables();
+    }
+  }
   function patchLoaders() {
     if (window.__fdRcPatched) return;
     window.__fdRcPatched = true;
@@ -7694,8 +7883,14 @@
     if (typeof window.loadGamification === 'function') {
       var origGam = window.loadGamification;
       window.loadGamification = async function () {
-        await origGam.apply(this, arguments);
-        updateGamStatsCompact();
+        if (isFilo() && window.brandId) showChallengeLoadingState();
+        try {
+          await origGam.apply(this, arguments);
+        } finally {
+          clearChallengeLoadingState();
+        }
+        if (isFilo()) enhanceChallengeDom();
+        else updateGamStatsCompact();
       };
     }
   }
@@ -7710,6 +7905,9 @@
           if (sectionId === 'instant-win' && isFilo()) {
             enhanceRewardSectionDesign();
             enhanceRewardDom();
+          } else if (sectionId === 'gamification' && isFilo()) {
+            enhanceChallengeSectionDesign();
+            enhanceChallengeDom();
           } else {
             enhanceTableHeaders();
             if (sectionId === 'instant-win') updateIwStatsCompact();
@@ -7726,10 +7924,246 @@
     patchNav();
     enhanceRewardSectionDesign();
     enhanceRewardDom();
+    enhanceChallengeSectionDesign();
+    enhanceChallengeDom();
     enhanceTableHeaders();
     updateGamStatsCompact();
   }
   window.fdInitRewardChallenge = init;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+(function () {
+  'use strict';
+  function isFiloAnalyticsApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  function renderStatsSkeleton() {
+    function statSkel() {
+      return (
+        '<div class="fd-stat-card fd-stat-card--skeleton" aria-hidden="true">' +
+        '<span class="fd-skeleton fd-skeleton--text" style="width:72%"></span>' +
+        '<span class="fd-skeleton fd-skeleton--title" style="width:38%;margin-top:8px"></span>' +
+        '</div>'
+      );
+    }
+    return (
+      '<div class="fd-analytics-stats-skeleton" aria-busy="true" aria-live="polite">' +
+      '<div class="fd-stat-grid fd-analytics-stat-grid">' +
+      statSkel() + statSkel() + statSkel() + statSkel() +
+      statSkel() + statSkel() + statSkel() + statSkel() +
+      '</div></div>'
+    );
+  }
+  function renderChartSkeleton(height) {
+    return (
+      '<div class="fd-analytics-chart-skeleton" aria-busy="true">' +
+      '<span class="fd-skeleton" style="display:block;width:100%;height:' + (height || 220) +
+      'px;border-radius:var(--fd-radius-md,12px)"></span></div>'
+    );
+  }
+  function enhanceAnalyticsSectionDesign() {
+    var section = document.getElementById('analytics');
+    if (!section || section.dataset.fdDsSection === '1') return;
+    section.dataset.fdDsSection = '1';
+    section.classList.add('analytics--fd-ds');
+    var title = section.querySelector('h1.page-title, h1.sec-title');
+    if (title && !title.closest('.fd-page-header')) {
+      var header = document.createElement('header');
+      header.className = 'fd-page-header fd-analytics-header';
+      var copy = document.createElement('div');
+      copy.className = 'fd-page-header__copy';
+      copy.appendChild(title);
+      title.classList.add('fd-page-header__title');
+      var lead = document.createElement('p');
+      lead.className = 'fd-page-header__lead fd-analytics-lead';
+      lead.textContent =
+        'Metriche pass, installazioni wallet e andamento campagne per monitorare l\'adozione HR.';
+      copy.appendChild(lead);
+      header.appendChild(copy);
+      section.insertBefore(header, section.firstChild);
+    }
+    var tabs = section.querySelector('#analyticsSectionTabs');
+    if (tabs) tabs.classList.add('fd-analytics-tabs');
+    var perfTitle = section.querySelector('#analyticsTabPanel_metrics > .sec-title');
+    if (perfTitle) perfTitle.classList.add('fd-analytics-section-title');
+    enhanceAnalyticsCards();
+    enhanceAnalyticsToolbars();
+    wrapCampaignTable();
+    enhanceActivityLogPanel();
+  }
+  function enhanceStatsGrid() {
+    var grid = document.getElementById('analyticsStats');
+    if (!grid || grid.dataset.fdDsStats === '1') return;
+    if (!grid.querySelector('.stat-card')) return;
+    grid.dataset.fdDsStats = '1';
+    grid.classList.add('fd-stat-grid', 'fd-analytics-stat-grid');
+    grid.querySelectorAll('.stat-card').forEach(function (card) {
+      card.classList.add('fd-stat-card');
+      var label = card.querySelector('.stat-label');
+      if (label) label.classList.add('fd-stat-card__label');
+      var value = card.querySelector('.stat-value');
+      if (value) value.classList.add('fd-stat-card__value');
+      card.querySelectorAll('div[style*="font-size:11px"], div[style*="font-size: 11px"]').forEach(function (hint) {
+        hint.classList.add('fd-stat-card__hint');
+        hint.style.fontSize = '';
+        hint.style.color = '';
+        hint.style.marginTop = '';
+      });
+    });
+  }
+  function enhanceAnalyticsCards() {
+    var panel = document.getElementById('analyticsTabPanel_metrics');
+    if (!panel) return;
+    panel.querySelectorAll(':scope > .form-row .card, :scope > .card').forEach(function (card) {
+      if (card.dataset.fdDsCard === '1') return;
+      card.dataset.fdDsCard = '1';
+      card.classList.add('fd-card', 'fd-analytics-card');
+      card.style.marginBottom = '';
+    });
+  }
+  function enhanceAnalyticsToolbars() {
+    document.querySelectorAll('#analytics .analytics-toolbar').forEach(function (bar) {
+      if (bar.dataset.fdDsToolbar === '1') return;
+      bar.dataset.fdDsToolbar = '1';
+      bar.classList.add('fd-toolbar', 'fd-analytics-toolbar');
+      var title = bar.querySelector('.sec-title');
+      if (title) title.classList.add('fd-analytics-toolbar__title');
+      var actions = bar.querySelector('.analytics-actions');
+      if (actions) actions.classList.add('fd-analytics-toolbar__actions');
+      bar.querySelectorAll('.analytics-chip').forEach(function (chip) {
+        chip.classList.add('fd-btn', 'fd-btn--sm', 'fd-analytics-chip');
+      });
+      bar.querySelectorAll('.btn.small.sec, .btn.sec.small').forEach(function (btn) {
+        btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+      });
+      bar.querySelectorAll('#analyticsTrendRange, .analytics-date').forEach(function (el) {
+        el.classList.add('fd-analytics-control');
+      });
+    });
+  }
+  function wrapCampaignTable() {
+    var table = document.getElementById('campaignAnalyticsTable');
+    if (!table || table.closest('.fd-table-wrap, .fd-analytics-table-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'fd-table-wrap fd-analytics-table-wrap';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+    table.classList.add('fd-table');
+  }
+  function enhanceActivityLogPanel() {
+    var panel = document.getElementById('activity-log');
+    if (!panel) return;
+    panel.classList.add('activity-log--fd');
+    var introRow = panel.querySelector(':scope > div[style*="justify-content"]');
+    if (introRow && !introRow.classList.contains('fd-toolbar')) {
+      introRow.classList.add('fd-toolbar', 'fd-analytics-activity-toolbar');
+      introRow.style.display = '';
+      introRow.style.justifyContent = '';
+      introRow.style.alignItems = '';
+      introRow.style.flexWrap = '';
+      introRow.style.gap = '';
+      introRow.style.marginBottom = '';
+      var intro = introRow.querySelector('p');
+      if (intro) {
+        intro.classList.add('fd-analytics-activity-lead');
+        intro.style.fontSize = '';
+        intro.style.color = '';
+        intro.style.margin = '';
+        intro.style.maxWidth = '';
+        intro.style.lineHeight = '';
+      }
+      introRow.querySelectorAll('.btn').forEach(function (btn) {
+        btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+      });
+    }
+    var tableWrap = panel.querySelector('.pass-table-wrap');
+    if (tableWrap && !tableWrap.classList.contains('fd-table-wrap')) {
+      tableWrap.classList.add('fd-table-wrap', 'fd-analytics-activity-table-wrap');
+    }
+    var table = document.getElementById('activityLogTable');
+    if (table) table.classList.add('fd-table');
+  }
+  function showAnalyticsLoadingState() {
+    var stats = document.getElementById('analyticsStats');
+    if (stats) stats.innerHTML = renderStatsSkeleton();
+    ['analyticsTrendChart', 'analyticsWalletSplit', 'analyticsTopCampaigns'].forEach(function (id, i) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = renderChartSkeleton(i === 1 ? 180 : 220);
+    });
+    var tbody = document.querySelector('#campaignAnalyticsTable tbody');
+    if (tbody) {
+      tbody.innerHTML = typeof window.renderTableSkeletonRows === 'function'
+        ? window.renderTableSkeletonRows(4, 6)
+        : '<tr><td colspan="6"><div class="fd-analytics-chart-skeleton" aria-busy="true">' +
+          '<span class="fd-skeleton" style="display:block;width:100%;height:120px;border-radius:12px"></span></div></td></tr>';
+    }
+    var section = document.getElementById('analytics');
+    if (section) section.classList.add('fd-analytics--loading');
+  }
+  function clearAnalyticsLoadingState() {
+    var section = document.getElementById('analytics');
+    if (section) section.classList.remove('fd-analytics--loading');
+  }
+  function enhanceAnalyticsDom() {
+    enhanceAnalyticsSectionDesign();
+    enhanceStatsGrid();
+    enhanceAnalyticsCards();
+    enhanceAnalyticsToolbars();
+    wrapCampaignTable();
+    enhanceActivityLogPanel();
+    if (typeof window.fdEnhanceResponsiveTables === 'function') {
+      window.fdEnhanceResponsiveTables();
+    }
+  }
+  function patchLoader() {
+    if (window.__fdAnalyticsPatched) return;
+    window.__fdAnalyticsPatched = true;
+    if (typeof window.loadAnalytics === 'function') {
+      var orig = window.loadAnalytics;
+      window.loadAnalytics = async function () {
+        if (isFiloAnalyticsApp() && window.brandId) showAnalyticsLoadingState();
+        try {
+          await orig.apply(this, arguments);
+        } finally {
+          clearAnalyticsLoadingState();
+        }
+        if (isFiloAnalyticsApp()) enhanceAnalyticsDom();
+      };
+    }
+  }
+  function patchNav() {
+    if (window.__fdAnalyticsNavPatched || typeof window.nav !== 'function') return;
+    window.__fdAnalyticsNavPatched = true;
+    var orig = window.nav;
+    window.nav = function (sectionId, options) {
+      var out = orig.apply(this, arguments);
+      options = options || {};
+      var resolved = typeof window.resolveNavTarget === 'function'
+        ? window.resolveNavTarget(sectionId, options)
+        : { section: sectionId, tab: options.tab || '' };
+      if (resolved.section === 'analytics' || sectionId === 'analytics' || sectionId === 'activity-log') {
+        setTimeout(function () {
+          if (isFiloAnalyticsApp()) enhanceAnalyticsDom();
+        }, 120);
+      }
+      return out;
+    };
+  }
+  function init() {
+    if (!isFiloAnalyticsApp()) return;
+    patchLoader();
+    patchNav();
+    enhanceAnalyticsDom();
+  }
+  window.fdInitAnalytics = init;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
