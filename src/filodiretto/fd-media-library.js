@@ -113,11 +113,12 @@
   }
 
   function isFiloMedia() {
-    if (document.documentElement.classList.contains('a2w-shell')) return false;
     try {
       if (window.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
     } catch (_) {}
-    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+    if (document.documentElement.getAttribute('data-app') === 'filodiretto') return true;
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    return false;
   }
 
   function esc(s) {
@@ -1150,7 +1151,11 @@
 
 
   function patchLoadMediaLibrary() {
-    if (window.__fdMediaLoadPatched || typeof window.loadMediaLibrary !== 'function') return;
+    if (window.__fdMediaLoadPatched) return;
+    if (typeof window.loadMediaLibrary !== 'function') {
+      window.setTimeout(patchLoadMediaLibrary, 50);
+      return;
+    }
     window.__fdMediaLoadPatched = true;
     window.loadMediaLibrary = async function () {
       ensureMediaLayout();
@@ -1257,18 +1262,54 @@
     }
   }
 
+  function reconcileLegacyMediaTabs() {
+    var section = document.getElementById('media-library');
+    if (!section) return;
+    hideLegacyA2wMediaTabs(section);
+    if (!section.querySelector('#fdMediaTabs')) {
+      ensureMediaCategoryTabs();
+    }
+  }
+
   function boot() {
     if (!isFiloMedia()) return;
     patchMediaDeleteConfirm();
     ensureUploadTypeOption();
     patchLoadMediaLibrary();
     ensureMediaLayout();
+    reconcileLegacyMediaTabs();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
+  function scheduleMediaLibraryBoot() {
     boot();
+    window.requestAnimationFrame(function () {
+      if (!isFiloMedia()) return;
+      reconcileLegacyMediaTabs();
+    });
+  }
+
+  window.fdEnsureMediaLibraryLayout = function () {
+    if (!isFiloMedia()) return;
+    ensureMediaLayout();
+    reconcileLegacyMediaTabs();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleMediaLibraryBoot);
+  } else {
+    scheduleMediaLibraryBoot();
+  }
+
+  window.addEventListener('load', scheduleMediaLibraryBoot);
+
+  var mediaLibrarySection = document.getElementById('media-library');
+  if (mediaLibrarySection && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(function () {
+      if (!mediaLibrarySection.classList.contains('active')) return;
+      if (document.getElementById('a2wMediaTabs')) {
+        window.fdEnsureMediaLibraryLayout();
+      }
+    }).observe(mediaLibrarySection, { attributes: true, attributeFilter: ['class'] });
   }
 
   var origNav = window.nav;
@@ -1277,7 +1318,7 @@
     window.nav = function (id) {
       var r = origNav.apply(this, arguments);
       var done = function () {
-        if (id === 'media-library') boot();
+        if (id === 'media-library') scheduleMediaLibraryBoot();
       };
       if (r && typeof r.then === 'function') return r.then(done);
       setTimeout(done, 0);

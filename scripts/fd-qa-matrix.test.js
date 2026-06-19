@@ -112,10 +112,11 @@ test('build-fd-bundles lists FASE 5–6 modules', () => {
   assert.match(build, /fd-mobile-gate\.js/);
 });
 
-test('index.html bundle cache references login-scopri-copy tag', () => {
+test('index.html bundle cache references media-library-fix2 tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260619-login-scopri-copy/);
-  assert.match(html, /fd\.bundle\.js\?v=20260619-login-scopri-copy/);
+  assert.match(html, /fd\.bundle\.css\?v=20260619-media-library-fix2/);
+  assert.match(html, /fd\.bundle\.js\?v=20260619-media-library-fix2/);
+  assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
   assert.match(html, /fd-page-states\.js/);
   assert.match(html, /fd-mobile-gate\.js/);
 });
@@ -130,6 +131,12 @@ test('FASE 5 page state helpers and tokens exist', () => {
   assert.match(css, /\.fd-error-state/);
   assert.match(css, /--fd-color-danger/);
   assert.match(css, /\.fd-loading-region/);
+});
+
+test('Filo media library hides legacy a2w tabs without fd-layout class', () => {
+  const css = readFd('fd-media-library.css');
+  assert.match(css, /html\[data-app='filodiretto'\] #media-library #a2wMediaTabs/);
+  assert.doesNotMatch(css, /media-library--fd-layout #a2wMediaTabs/);
 });
 
 test('FASE 6 smartphone gate blocks under 768px only', () => {
@@ -175,6 +182,8 @@ test('Filo media library hides legacy Ads2Wallet tabs markup', () => {
   const js = readFd('fd-media-library.js');
   const css = readFd('fd-media-library.css');
   assert.match(js, /hideLegacyA2wMediaTabs/);
+  assert.match(js, /reconcileLegacyMediaTabs/);
+  assert.match(js, /fdEnsureMediaLibraryLayout/);
   assert.match(js, /#a2wMediaTabs/);
   assert.match(css, /#a2wMediaTabs/);
 });
