@@ -112,10 +112,10 @@ test('build-fd-bundles lists FASE 5–6 modules', () => {
   assert.match(build, /fd-mobile-gate\.js/);
 });
 
-test('index.html bundle cache references login-media-fix tag', () => {
+test('index.html bundle cache references login-scopri-copy tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260619-login-media-fix/);
-  assert.match(html, /fd\.bundle\.js\?v=20260619-login-media-fix/);
+  assert.match(html, /fd\.bundle\.css\?v=20260619-login-scopri-copy/);
+  assert.match(html, /fd\.bundle\.js\?v=20260619-login-scopri-copy/);
   assert.match(html, /fd-page-states\.js/);
   assert.match(html, /fd-mobile-gate\.js/);
 });

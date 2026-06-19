@@ -147,12 +147,12 @@ html[data-app='filodiretto'] .stat-card {
 /* Login gate — keep card narrow (global .card max-width:100% would full-bleed) */
 html[data-app='filodiretto'] #loginGate .login-gate__inner {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   margin-inline: auto;
 }
 
 html[data-app='filodiretto'] #loginGate .login-card {
-  max-width: 440px;
+  max-width: 480px;
   width: 100%;
   margin-inline: auto;
   box-sizing: border-box;
@@ -163,18 +163,35 @@ html[data-app='filodiretto'] #loginGate .login-brand {
   margin-bottom: var(--fd-space-5, 20px);
 }
 
+html[data-app='filodiretto'] #loginGate .login-brand__eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fd-color-primary-600, var(--teal));
+}
+
 html[data-app='filodiretto'] #loginGate .login-brand__title {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.25;
   color: var(--fd-text-primary, var(--text-primary));
 }
 
-html[data-app='filodiretto'] #loginGate .login-brand__tagline {
-  margin: 6px 0 0;
+html[data-app='filodiretto'] #loginGate .login-brand__pitch {
+  margin: 10px 0 0;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
+  color: var(--fd-text-body, var(--text-body));
+}
+
+html[data-app='filodiretto'] #loginGate .login-brand__tagline {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--fd-text-secondary, var(--text-secondary));
 }
 
