@@ -141,16 +141,6 @@
             display: block;
             line-height: 1.25;
         }
-        .logo small, .logo .chrome-byline {
-            font-size: var(--text-xs);
-            color: var(--text-secondary);
-            font-weight: 500;
-            text-transform: none;
-            letter-spacing: 0;
-            display: block;
-            margin-top: var(--space-1);
-            opacity: 1;
-        }
 
         .nav-label {
             font-size: var(--text-xs);
@@ -1377,7 +1367,7 @@
 <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 <div class="layout" id="mainLayout" style="display:none;">
     <aside class="sidebar" role="navigation" aria-label="Menu principale">
-        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span><small class="chrome-byline">by Underdogs Group</small></div>
+        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span></div>
         <div class="sidebar-nav">
             <div class="nav-item nav-item--standalone nav-item--icon-only active" id="navItemWelcome" data-section-id="welcome" onclick="nav('welcome')" role="button" tabindex="0" aria-label="Inizio" data-fd-tooltip="Inizio">Inizio</div>
 
@@ -1423,7 +1413,7 @@
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-footer-text"><span class="chrome-product-title">Ads2Wallet</span><br><span class="chrome-byline">by Underdogs Group</span></div>
+            <div class="sidebar-footer-text"><span class="chrome-product-title">Ads2Wallet</span></div>
         </div>
     </aside>
 
@@ -4795,22 +4785,6 @@ function syncProductLineSelector() {
             : 'Seleziona la linea per filtrare i brand disponibili');
 }
 
-function syncChromeByline() {
-    let byline = 'by Underdogs Group';
-    try {
-        if (typeof window.__2WALLET_CHROME_BYLINE__ === 'string') byline = window.__2WALLET_CHROME_BYLINE__.trim();
-    } catch (_) {}
-    document.querySelectorAll('.chrome-byline').forEach((el) => {
-        if (!byline) {
-            el.textContent = '';
-            el.style.display = 'none';
-        } else {
-            el.textContent = byline;
-            el.style.display = '';
-        }
-    });
-}
-
 function bylineForTitle(productTitle) {
     let byline = 'by Underdogs Group';
     try {
@@ -4886,7 +4860,6 @@ function syncLoginGateCopy() {
 function syncChromeProductTitles(line) {
     const title = getDashboardProductDisplayTitle(line);
     document.querySelectorAll('.chrome-product-title').forEach((el) => { el.textContent = title; });
-    syncChromeByline();
     syncLoginGateCopy();
 }
 
