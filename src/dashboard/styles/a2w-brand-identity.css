@@ -113,12 +113,13 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-save-btn.is-saving:dis
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-layout {
   display: block;
   width: 100%;
+  margin-top: 8px;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
 }
 
@@ -129,6 +130,7 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-main > .a2w-bi-danger-
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section {
   margin: 0;
+  padding: 26px 28px;
   border: 1px solid var(--a2w-border-default);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.02);
@@ -153,13 +155,21 @@ html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-contact-grid {
   gap: 16px;
 }
 
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section__head {
+  margin-bottom: 18px;
+}
+
+html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section__head > *:first-child {
+  margin-bottom: 5px;
+}
+
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section__head h2 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 16px;
 }
 
 html[data-shell="dark"].a2w-shell #brand-identity .a2w-bi-section__head p {
-  margin: 0 0 14px;
+  margin: 0;
   color: var(--a2w-text-secondary);
   font-size: 12px;
 }
