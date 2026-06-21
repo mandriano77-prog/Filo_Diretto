@@ -193,3 +193,51 @@ html[data-app='filodiretto'] #templates .fd-tpl-skeleton {
     max-width: 280px;
   }
 }
+
+/* Template modal — anteprima pass fronte/retro (Filo HR; a2w-shell usa a2w-template-editor.js) */
+html[data-app='filodiretto'] #templateModal .a2w-tpl-preview-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+html[data-app='filodiretto'] #templateModal .a2w-tpl-preview-toggle__btn {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: var(--fd-radius-sm, 8px);
+  border: 1px solid var(--fd-border, var(--border));
+  background: var(--fd-color-bg-subtle, var(--surface));
+  color: var(--fd-color-text-secondary, var(--text2));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+html[data-app='filodiretto'] #templateModal .a2w-tpl-preview-toggle__btn.is-active {
+  border-color: var(--fd-color-primary-500, var(--accent));
+  background: var(--fd-color-primary-50, rgba(37, 99, 235, 0.08));
+  color: var(--fd-color-primary-700, var(--accent));
+}
+
+html[data-app='filodiretto'] #templateModal .pass-flip-container {
+  width: 260px;
+  height: 408px;
+  perspective: 900px;
+  margin: 0 auto;
+  cursor: default;
+}
+
+html[data-app='filodiretto'] #templateModal .pass-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html[data-app='filodiretto'] #templateModal .pass-flip-container.a2w-tpl-show-back .pass-flip-inner {
+  transform: rotateY(180deg);
+}
