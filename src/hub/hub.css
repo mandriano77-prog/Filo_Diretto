@@ -629,8 +629,136 @@ input {
   cursor: pointer;
 }
 
+.hub-pga-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.hub-pga-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .hub-pga-card + .hub-pga-card {
+  margin-top: 0;
+}
+
+.hub-pga-category {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hub-text-muted);
+}
+
+.hub-pga-desc {
+  margin: 8px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hub-pga-hint {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--hub-text-muted);
+}
+
+.hub-pga-limits {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  color: var(--hub-text-muted);
+  font-size: 0.85rem;
+}
+
+.hub-pga-blocked {
+  margin: 12px 0 0;
+  color: #f87171;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.hub-field {
+  display: block;
+  margin: 14px 0;
+}
+
+.hub-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--hub-text-muted);
+}
+
+.hub-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--hub-radius);
+  border: 1px solid var(--hub-border);
+  background: var(--hub-bg);
+  color: var(--hub-text);
+  font: inherit;
+}
+
+.hub-booking-cancel {
   margin-top: 10px;
+}
+
+.hub-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hub-modal.hidden {
+  display: none;
+}
+
+.hub-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hub-modal-panel {
+  position: relative;
+  width: min(100%, 420px);
+  margin: 16px;
+  padding: 20px;
+  border-radius: var(--hub-radius);
+  background: var(--hub-surface);
+  border: 1px solid var(--hub-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.hub-modal-title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+}
+
+.hub-modal-body {
+  color: var(--hub-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.hub-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hub-modal-actions .hub-btn {
+  flex: 1;
 }
 
 .hub-pga-cost {

@@ -777,6 +777,113 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
   }, { logLabel: 'activation reminder' });
 }
 
+function formatPgaScheduledAt(value) {
+  if (!value) return 'Da definire con HR';
+  try {
+    return new Date(value).toLocaleString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+async function sendPgaBookingHrNotification({
+  to,
+  brandName,
+  employeeName,
+  experienceName,
+  coinAmount,
+  scheduledAt,
+  bookingId
+}) {
+  const resend = getResend();
+  if (!resend) {
+    console.log('[Mailer] PGA HR notification skipped — RESEND_API_KEY not set');
+    return { skipped: true, reason: 'RESEND_API_KEY not set' };
+  }
+  if (!to) return { skipped: true, reason: 'no recipient' };
+
+  const fromEmail = getHrFromEmail();
+  const fromName = getHrFromName();
+  const brand = brandName || 'Azienda';
+  const employee = employeeName || 'Dipendente';
+  const experience = experienceName || 'Esperienza PGA';
+  const when = formatPgaScheduledAt(scheduledAt);
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
+  <div style="background:#fff;border-radius:12px;padding:28px 24px;border:1px solid #e2e8f0;">
+    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">PGA · FiloDiretto.App</p>
+    <h1 style="color:#0f172a;font-size:20px;margin:0 0 12px;">Nuova prenotazione esperienza</h1>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      <strong>${escapeHtml(employee)}</strong> ha richiesto il riscatto di <strong>${escapeHtml(experience)}</strong> per <strong>${escapeHtml(String(coinAmount))} coin</strong>.
+    </p>
+    <p style="color:#64748b;font-size:14px;line-height:1.5;margin:0 0 8px;"><strong>Data/ora richiesta:</strong> ${escapeHtml(when)}</p>
+    ${bookingId ? `<p style="color:#64748b;font-size:13px;margin:0;">ID prenotazione: ${escapeHtml(String(bookingId))}</p>` : ''}
+    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:16px 0 0;">Accedi alla dashboard HR per confermare o pianificare l&apos;esperienza.</p>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
+</div></body></html>`;
+
+  return sendViaResend({
+    from: `${fromName} <${fromEmail}>`,
+    to: [to],
+    subject: `${brand} · Nuova prenotazione PGA: ${experience}`,
+    html
+  }, { logLabel: 'pga booking hr notification' });
+}
+
+async function sendPgaBookingEmployeeConfirmation({
+  to,
+  employeeName,
+  experienceName,
+  coinAmount,
+  scheduledAt
+}) {
+  const resend = getResend();
+  if (!resend) {
+    console.log('[Mailer] PGA employee confirmation skipped — RESEND_API_KEY not set');
+    return { skipped: true, reason: 'RESEND_API_KEY not set' };
+  }
+  if (!to) return { skipped: true, reason: 'no recipient' };
+
+  const fromEmail = getHrFromEmail();
+  const fromName = getHrFromName();
+  const name = employeeName || 'Collega';
+  const experience = experienceName || 'Esperienza PGA';
+  const when = formatPgaScheduledAt(scheduledAt);
+  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
+  <div style="background:#fff;border-radius:12px;padding:28px 24px;border:1px solid #e2e8f0;">
+    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">PGA · FiloDiretto.App</p>
+    <h1 style="color:#0f172a;font-size:20px;margin:0 0 12px;">Prenotazione inviata</h1>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Ciao ${escapeHtml(name)}, la tua richiesta per <strong>${escapeHtml(experience)}</strong> è stata registrata.
+    </p>
+    <p style="color:#64748b;font-size:14px;line-height:1.5;margin:0 0 8px;"><strong>Coin scalati:</strong> ${escapeHtml(String(coinAmount))}</p>
+    <p style="color:#64748b;font-size:14px;line-height:1.5;margin:0;"><strong>Data/ora richiesta:</strong> ${escapeHtml(when)}</p>
+    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:16px 0 0;">HR ti contatterà per confermare i dettagli. Puoi annullare la prenotazione dal profilo finché è in attesa.</p>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
+</div></body></html>`;
+
+  return sendViaResend({
+    from: `${fromName} <${fromEmail}>`,
+    to: [to],
+    subject: `Prenotazione PGA confermata: ${experience}`,
+    html
+  }, { logLabel: 'pga booking employee confirmation' });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendUserInviteEmail,
@@ -784,5 +891,7 @@ module.exports = {
   sendScratchEmail,
   sendPasswordResetEmail,
   sendActivationEmail,
-  sendActivationReminderEmail
+  sendActivationReminderEmail,
+  sendPgaBookingHrNotification,
+  sendPgaBookingEmployeeConfirmation
 };

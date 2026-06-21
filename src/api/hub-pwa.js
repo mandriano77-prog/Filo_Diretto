@@ -3,6 +3,11 @@
 const QRCode = require('qrcode');
 const { verifyHubToken } = require('../engine/hub-jwt');
 const { signScanUrl, verifyScanSignature, getPartnerBaseUrl } = require('../engine/hub-qr');
+const { redeemExperience, cancelPendingBooking } = require('../engine/pga-redeem');
+const {
+  sendPgaBookingHrNotification,
+  sendPgaBookingEmployeeConfirmation
+} = require('../engine/mailer');
 const db = require('../db');
 
 const HUB_EVENT_TYPES = new Set([
@@ -134,6 +139,81 @@ function publicPgaSettings(settings) {
   return {
     enabled: !!settings?.enabled,
     welcome_message: settings?.welcome_message || null
+  };
+}
+
+function publicBooking(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    experience_id: row.experience_id,
+    experience_name: row.experience_name || null,
+    coin_amount: row.coin_amount,
+    status: row.status,
+    scheduled_at: row.scheduled_at,
+    notes: row.notes,
+    created_at: row.created_at
+  };
+}
+
+function isWeekday(date) {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+}
+
+function atNineAm(date) {
+  const d = new Date(date);
+  d.setHours(9, 0, 0, 0);
+  return d;
+}
+
+async function buildSuggestedSlots(brandId, experience) {
+  if (!experience?.requires_booking) return [];
+  const maxMonth = experience.max_total_per_month != null
+    ? Number(experience.max_total_per_month)
+    : null;
+  const monthCounts = new Map();
+  const slots = [];
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() + 1);
+  cursor.setHours(0, 0, 0, 0);
+
+  while (slots.length < 8) {
+    if (isWeekday(cursor)) {
+      const y = cursor.getFullYear();
+      const m = cursor.getMonth() + 1;
+      const monthKey = `${y}-${m}`;
+      if (!monthCounts.has(monthKey)) {
+        const count = await db.countExperienceBookingsMonth(brandId, experience.id, y, m);
+        monthCounts.set(monthKey, count);
+      }
+      const monthFull = maxMonth != null && monthCounts.get(monthKey) >= maxMonth;
+      if (!monthFull) {
+        slots.push(atNineAm(cursor).toISOString());
+      }
+    }
+    cursor.setDate(cursor.getDate() + 1);
+    if (slots.length === 0 && cursor.getTime() - Date.now() > 120 * 24 * 60 * 60 * 1000) break;
+    if (slots.length > 0 && cursor.getTime() - Date.now() > 90 * 24 * 60 * 60 * 1000) break;
+  }
+  return slots.slice(0, 8);
+}
+
+function mapRedeemError(err) {
+  const code = err.code || 'ERROR';
+  const statusMap = {
+    PGA_DISABLED: 403,
+    NOT_FOUND: 404,
+    INSUFFICIENT_BALANCE: 402,
+    MONTHLY_EXHAUSTED: 409,
+    YEARLY_LIMIT: 409,
+    NOT_AVAILABLE: 409,
+    NOT_CANCELLABLE: 409
+  };
+  return {
+    status: statusMap[code] || 400,
+    error: err.message || 'Errore riscatto',
+    code
   };
 }
 
@@ -479,8 +559,139 @@ function registerHubPwaRoutes(router) {
         return res.json({ experiences: [] });
       }
 
-      const experiences = await db.listExperiences(auth.claims.brand_id, { active: true });
+      const { category } = req.query;
+      const experiences = await db.listExperiences(auth.claims.brand_id, {
+        active: true,
+        category: category || undefined
+      });
       res.json({ experiences: experiences.map(publicExperience) });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get('/hub/experiences/:id', async (req, res) => {
+    try {
+      const auth = resolveHubAuth(req);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
+      const pgaSettings = await db.getPgaSettings(auth.claims.brand_id);
+      if (!pgaSettings.enabled) {
+        return res.status(403).json({ error: 'PGA non attivo' });
+      }
+
+      const experience = await db.getExperience(req.params.id, auth.claims.brand_id);
+      if (!experience || !experience.active) {
+        return res.status(404).json({ error: 'Esperienza non trovata' });
+      }
+
+      const availability = await db.getExperienceAvailability(
+        auth.claims.brand_id,
+        req.params.id,
+        auth.claims.pass_serial
+      );
+      const bal = await db.getPassCoinBalance(auth.claims.brand_id, auth.claims.pass_serial);
+      const suggested_slots = experience.requires_booking
+        ? await buildSuggestedSlots(auth.claims.brand_id, experience)
+        : [];
+
+      res.json({
+        experience: publicExperience(experience),
+        availability,
+        coin_balance: Number(bal.balance || 0),
+        suggested_slots
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/hub/experiences/:id/redeem', async (req, res) => {
+    try {
+      const auth = resolveHubAuth(req);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
+      const ctx = await loadHubContext(auth.claims);
+      if (ctx.error) return res.status(ctx.error.status).json({ error: ctx.error.message });
+
+      const { scheduled_at, notes } = req.body || {};
+      let result;
+      try {
+        result = await redeemExperience({
+          brandId: auth.claims.brand_id,
+          passSerial: auth.claims.pass_serial,
+          userId: auth.claims.user_id,
+          experienceId: req.params.id,
+          scheduled_at: scheduled_at || null,
+          notes: notes || null
+        });
+      } catch (err) {
+        const mapped = mapRedeemError(err);
+        return res.status(mapped.status).json({ error: mapped.error, code: mapped.code });
+      }
+
+      const pgaSettings = await db.getPgaSettings(auth.claims.brand_id);
+      const employeeName = employeeDisplayName(ctx.profile);
+      const experienceName = result.experience?.name || 'Esperienza';
+
+      if (ctx.profile.email) {
+        sendPgaBookingEmployeeConfirmation({
+          to: ctx.profile.email,
+          employeeName,
+          experienceName,
+          coinAmount: result.booking.coin_amount,
+          scheduledAt: result.booking.scheduled_at
+        }).catch((e) => console.warn('[hub-pwa] employee email failed:', e.message));
+      }
+
+      if (pgaSettings.notify_hr_on_booking && pgaSettings.notify_hr_email) {
+        sendPgaBookingHrNotification({
+          to: pgaSettings.notify_hr_email,
+          brandName: ctx.brand.name,
+          employeeName,
+          experienceName,
+          coinAmount: result.booking.coin_amount,
+          scheduledAt: result.booking.scheduled_at,
+          bookingId: result.booking.id
+        }).catch((e) => console.warn('[hub-pwa] HR email failed:', e.message));
+      }
+
+      res.status(201).json({
+        booking: publicBooking({
+          ...result.booking,
+          experience_name: experienceName
+        }),
+        new_balance: result.new_balance
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post('/hub/bookings/:id/cancel', async (req, res) => {
+    try {
+      const auth = resolveHubAuth(req);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
+      const ctx = await loadHubContext(auth.claims);
+      if (ctx.error) return res.status(ctx.error.status).json({ error: ctx.error.message });
+
+      let result;
+      try {
+        result = await cancelPendingBooking({
+          brandId: auth.claims.brand_id,
+          passSerial: auth.claims.pass_serial,
+          bookingId: req.params.id
+        });
+      } catch (err) {
+        const mapped = mapRedeemError(err);
+        return res.status(mapped.status).json({ error: mapped.error, code: mapped.code });
+      }
+
+      res.json({
+        booking: publicBooking(result.booking),
+        new_balance: result.new_balance
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -496,6 +707,8 @@ module.exports = {
   publicBrand,
   publicExperience,
   publicPgaSettings,
+  publicBooking,
+  buildSuggestedSlots,
   buildScanValidation,
   employeeDisplayName
 };

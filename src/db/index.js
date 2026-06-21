@@ -4107,6 +4107,138 @@ async function listBookingsForPass(brandId, passSerial, limit = 20) {
   return res.rows;
 }
 
+async function createExperienceBooking({
+  brand_id,
+  experience_id,
+  pass_serial,
+  user_id = null,
+  coin_amount,
+  status = 'pending',
+  scheduled_at = null,
+  notes = null,
+  metadata = null
+}) {
+  if (!brand_id || !experience_id || !pass_serial || coin_amount == null) {
+    throw new Error('brand_id, experience_id, pass_serial e coin_amount sono obbligatori');
+  }
+  const res = await pool.query(
+    `INSERT INTO experience_bookings (
+      brand_id, experience_id, pass_serial, user_id, coin_amount, status,
+      scheduled_at, notes, metadata
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)
+    RETURNING *`,
+    [
+      brand_id,
+      experience_id,
+      pass_serial,
+      user_id != null ? String(user_id) : null,
+      coin_amount,
+      status,
+      scheduled_at || null,
+      notes || null,
+      metadata != null ? JSON.stringify(metadata) : null
+    ]
+  );
+  return res.rows[0];
+}
+
+async function getExperienceBooking(id, brandId) {
+  const res = await pool.query(
+    'SELECT * FROM experience_bookings WHERE id = $1 AND brand_id = $2',
+    [id, brandId]
+  );
+  return res.rows[0] || null;
+}
+
+async function getExperienceBookingForPass(id, brandId, passSerial) {
+  const res = await pool.query(
+    `SELECT * FROM experience_bookings
+     WHERE id = $1 AND brand_id = $2 AND pass_serial = $3`,
+    [id, brandId, passSerial]
+  );
+  return res.rows[0] || null;
+}
+
+async function countPassExperienceBookingsYear(brandId, passSerial, experienceId, year) {
+  const y = parseInt(year, 10) || new Date().getFullYear();
+  const res = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM experience_bookings
+     WHERE brand_id = $1 AND pass_serial = $2 AND experience_id = $3
+       AND status <> 'cancelled'
+       AND EXTRACT(YEAR FROM created_at) = $4`,
+    [brandId, passSerial, experienceId, y]
+  );
+  return Number(res.rows[0]?.count || 0);
+}
+
+async function countExperienceBookingsMonth(brandId, experienceId, year, month) {
+  const y = parseInt(year, 10) || new Date().getFullYear();
+  const m = parseInt(month, 10) || (new Date().getMonth() + 1);
+  const res = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM experience_bookings
+     WHERE brand_id = $1 AND experience_id = $2
+       AND status IN ('pending', 'confirmed', 'delivered')
+       AND EXTRACT(YEAR FROM created_at) = $3
+       AND EXTRACT(MONTH FROM created_at) = $4`,
+    [brandId, experienceId, y, m]
+  );
+  return Number(res.rows[0]?.count || 0);
+}
+
+async function getExperienceAvailability(brandId, experienceId, passSerial) {
+  const experience = await getExperience(experienceId, brandId);
+  if (!experience) {
+    return {
+      user_bookings_this_year: 0,
+      max_per_user_per_year: null,
+      bookings_this_month: 0,
+      max_total_per_month: null,
+      slots_remaining_this_month: null,
+      can_redeem: false,
+      reason: 'NOT_FOUND'
+    };
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const userBookings = await countPassExperienceBookingsYear(
+    brandId, passSerial, experienceId, year
+  );
+  const monthBookings = await countExperienceBookingsMonth(
+    brandId, experienceId, year, month
+  );
+  const maxYear = experience.max_per_user_per_year != null
+    ? Number(experience.max_per_user_per_year)
+    : null;
+  const maxMonth = experience.max_total_per_month != null
+    ? Number(experience.max_total_per_month)
+    : null;
+  const slotsRemaining = maxMonth != null ? Math.max(0, maxMonth - monthBookings) : null;
+
+  let canRedeem = true;
+  let reason = null;
+  if (maxYear != null && userBookings >= maxYear) {
+    canRedeem = false;
+    reason = 'YEARLY_LIMIT';
+  } else if (maxMonth != null && monthBookings >= maxMonth) {
+    canRedeem = false;
+    reason = 'MONTHLY_EXHAUSTED';
+  }
+
+  return {
+    user_bookings_this_year: userBookings,
+    max_per_user_per_year: maxYear,
+    bookings_this_month: monthBookings,
+    max_total_per_month: maxMonth,
+    slots_remaining_this_month: slotsRemaining,
+    can_redeem: canRedeem,
+    reason
+  };
+}
+
 module.exports = {
   getDb,
   saveDb,
@@ -4298,6 +4430,12 @@ module.exports = {
   listMembersWithBirthdayToday,
   listCoinLedgerForPass,
   listBookingsForPass,
+  createExperienceBooking,
+  getExperienceBooking,
+  getExperienceBookingForPass,
+  countPassExperienceBookingsYear,
+  countExperienceBookingsMonth,
+  getExperienceAvailability,
   // Employee portal (see src/db/portal.js)
   ...require('./portal')
 };

@@ -9,7 +9,12 @@
     viaggi: 'Viaggi',
     tech: 'Tech',
     servizi: 'Servizi',
-    altro: 'Altro'
+    altro: 'Altro',
+    career: 'Carriera',
+    time: 'Tempo',
+    learning: 'Formazione',
+    softskill: 'Soft skill',
+    purpose: 'Purpose'
   };
 
   const STORAGE_KEY = 'hub_bootstrap_v1';
@@ -84,6 +89,64 @@
     el.classList.remove('hidden');
     clearTimeout(showToast._t);
     showToast._t = setTimeout(() => el.classList.add('hidden'), 2400);
+  }
+
+  function ensureModalShell() {
+    let modal = $('#hub-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'hub-modal';
+    modal.className = 'hub-modal hidden';
+    modal.innerHTML = `
+      <div class="hub-modal-backdrop" data-modal-close></div>
+      <div class="hub-modal-panel" role="dialog" aria-modal="true">
+        <h2 class="hub-modal-title" id="hub-modal-title"></h2>
+        <div class="hub-modal-body" id="hub-modal-body"></div>
+        <div class="hub-modal-actions" id="hub-modal-actions"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector('[data-modal-close]')?.addEventListener('click', hideModal);
+    return modal;
+  }
+
+  function hideModal() {
+    const modal = $('#hub-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function showModal({ title, bodyHtml, actions }) {
+    const modal = ensureModalShell();
+    const titleEl = $('#hub-modal-title');
+    const bodyEl = $('#hub-modal-body');
+    const actionsEl = $('#hub-modal-actions');
+    if (titleEl) titleEl.textContent = title || '';
+    if (bodyEl) bodyEl.innerHTML = bodyHtml || '';
+    if (actionsEl) {
+      actionsEl.innerHTML = '';
+      (actions || []).forEach((action) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `hub-btn${action.secondary ? ' secondary' : ''}`;
+        btn.textContent = action.label;
+        btn.addEventListener('click', () => {
+          if (action.close !== false) hideModal();
+          action.onClick?.();
+        });
+        actionsEl.appendChild(btn);
+      });
+    }
+    modal.classList.remove('hidden');
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(`${apiBase()}${path}?token=${encodeURIComponent(getToken())}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(body || {}), token: getToken() })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
   }
 
   function applyWhiteLabel() {
@@ -630,43 +693,133 @@
       ? `<div class="hub-welcome">${esc(state.pga_settings.welcome_message)}</div>`
       : '';
 
-    const rows = Array.isArray(state.experiences) ? state.experiences : [];
+    const rows = (Array.isArray(state.experiences) ? [...state.experiences] : [])
+      .sort((a, b) => (Number(a.display_order) || 100) - (Number(b.display_order) || 100));
+
     const cards = rows.length
-      ? rows.map((e) => `<button type="button" class="hub-pga-card" data-exp-id="${esc(e.id)}">
-          <strong>${esc(e.name)}</strong>
-          ${e.description ? `<p class="hub-meta">${esc(e.description)}</p>` : ''}
-          <span class="hub-pga-cost">${esc(String(e.coin_cost))} coin</span>
-        </button>`).join('')
+      ? `<div class="hub-pga-grid">${rows.map((e) => {
+        const cat = e.category ? (CATEGORY_LABELS[e.category] || e.category) : '';
+        const maxYear = e.max_per_user_per_year != null
+          ? `<span class="hub-pga-hint">Max ${esc(String(e.max_per_user_per_year))}/anno</span>`
+          : '';
+        return `<button type="button" class="hub-pga-card" data-exp-id="${esc(e.id)}">
+          <div class="hub-pga-card-head">
+            <strong>${esc(e.name)}</strong>
+            <span class="hub-pga-cost">${esc(String(e.coin_cost))} coin</span>
+          </div>
+          ${cat ? `<span class="hub-pga-category">${esc(cat)}</span>` : ''}
+          ${e.description ? `<p class="hub-meta hub-pga-desc">${esc(e.description)}</p>` : ''}
+          ${maxYear}
+        </button>`;
+      }).join('')}</div>`
       : '<div class="hub-empty">Nessuna esperienza disponibile.</div>';
 
     $('#hub-main').innerHTML = `${welcome}${cards}`;
-    $('#hub-main').addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-exp-id]');
-      if (!btn) return;
-      navigate(`/pga/${btn.getAttribute('data-exp-id')}`);
-    }, { once: true });
+    $('#hub-main').querySelectorAll('[data-exp-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        navigate(`/pga/${btn.getAttribute('data-exp-id')}`);
+      });
+    });
   }
 
-  function renderPgaDetail(id) {
+  async function renderPgaDetail(id) {
     $('#hub-back')?.classList.remove('hidden');
     $('#hub-title').textContent = 'Esperienza';
+    $('#hub-main').innerHTML = '<div class="hub-loading"><div class="hub-spinner"></div><div>Caricamento…</div></div>';
 
-    const exp = (state.experiences || []).find((e) => e.id === id);
-    if (!exp) {
-      $('#hub-main').innerHTML = '<div class="hub-empty">Esperienza non trovata.</div>';
-      return;
+    try {
+      const res = await fetch(`${apiBase()}/hub/experiences/${encodeURIComponent(id)}?token=${encodeURIComponent(getToken())}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Esperienza non trovata');
+
+      const exp = data.experience;
+      const avail = data.availability || {};
+      const balance = Number(data.coin_balance ?? state.coin_balance ?? 0);
+      state.coin_balance = balance;
+      updateCoinWidget();
+
+      const cat = exp.category ? (CATEGORY_LABELS[exp.category] || exp.category) : '';
+      const limits = [];
+      if (avail.max_per_user_per_year != null) {
+        limits.push(`Limite personale: ${avail.user_bookings_this_year}/${avail.max_per_user_per_year} quest&apos;anno`);
+      }
+      if (avail.max_total_per_month != null) {
+        limits.push(`Posti mese: ${avail.slots_remaining_this_month ?? 0} rimasti su ${avail.max_total_per_month}`);
+      }
+
+      let blockReason = '';
+      if (!avail.can_redeem) {
+        if (avail.reason === 'MONTHLY_EXHAUSTED') blockReason = 'esaurito questo mese';
+        else if (avail.reason === 'YEARLY_LIMIT') blockReason = 'limite annuale raggiunto';
+      } else if (balance < Number(exp.coin_cost)) {
+        blockReason = 'saldo insufficiente';
+      }
+
+      const canRedeem = avail.can_redeem && balance >= Number(exp.coin_cost);
+      const slots = Array.isArray(data.suggested_slots) ? data.suggested_slots : [];
+      const slotPicker = exp.requires_booking && slots.length
+        ? `<label class="hub-field">
+            <span class="hub-field-label">Scegli data e ora</span>
+            <select class="hub-select" id="hub-pga-slot">
+              ${slots.map((s) => `<option value="${esc(s)}">${esc(formatDateTime(s))}</option>`).join('')}
+            </select>
+          </label>`
+        : '';
+
+      const afterBalance = balance - Number(exp.coin_cost);
+
+      $('#hub-main').innerHTML = `
+        <section class="hub-section hub-pga-detail">
+          <h2 style="margin-top:0">${esc(exp.name)}</h2>
+          ${cat ? `<span class="hub-pga-category">${esc(cat)}</span>` : ''}
+          ${exp.description ? `<p>${esc(exp.description)}</p>` : ''}
+          <span class="hub-pga-cost">${esc(String(exp.coin_cost))} coin</span>
+          ${limits.length ? `<ul class="hub-pga-limits">${limits.map((l) => `<li>${l}</li>`).join('')}</ul>` : ''}
+          ${slotPicker}
+          ${blockReason ? `<p class="hub-pga-blocked">${esc(blockReason)}</p>` : ''}
+          <button type="button" class="hub-btn" id="hub-pga-redeem"${canRedeem ? '' : ' disabled'}>
+            Riscatta con ${esc(String(exp.coin_cost))} coin
+          </button>
+        </section>
+      `;
+
+      const redeemBtn = $('#hub-pga-redeem');
+      if (!redeemBtn || !canRedeem) return;
+
+      redeemBtn.addEventListener('click', () => {
+        showModal({
+          title: 'Conferma riscatto',
+          bodyHtml: `
+            <p>Stai per riscattare <strong>${esc(exp.name)}</strong> per <strong>${esc(String(exp.coin_cost))} coin</strong>.</p>
+            <p class="hub-meta">Saldo dopo il riscatto: <strong>${esc(String(afterBalance))} coin</strong></p>
+          `,
+          actions: [
+            { label: 'Annulla', secondary: true },
+            {
+              label: 'Conferma riscatto',
+              onClick: async () => {
+                redeemBtn.disabled = true;
+                const slotEl = $('#hub-pga-slot');
+                const payload = {};
+                if (slotEl?.value) payload.scheduled_at = slotEl.value;
+                const out = await apiPost(`/hub/experiences/${encodeURIComponent(id)}/redeem`, payload);
+                if (!out.ok) {
+                  redeemBtn.disabled = false;
+                  showToast(out.data.error || 'Riscatto non riuscito');
+                  return;
+                }
+                state.coin_balance = Number(out.data.new_balance ?? afterBalance);
+                updateCoinWidget();
+                showToast('Prenotazione inviata!');
+                navigate('/me');
+              }
+            }
+          ]
+        });
+      });
+    } catch (err) {
+      $('#hub-main').innerHTML = `<div class="hub-empty">${esc(err.message || 'Impossibile caricare l&apos;esperienza')}</div>`;
     }
-
-    $('#hub-main').innerHTML = `
-      <section class="hub-section">
-        <h2 style="margin-top:0">${esc(exp.name)}</h2>
-        ${exp.description ? `<p>${esc(exp.description)}</p>` : ''}
-        <span class="hub-pga-cost">${esc(String(exp.coin_cost))} coin</span>
-        <p class="hub-meta">${exp.requires_booking
-          ? 'Richiede prenotazione — riscatto disponibile a breve.'
-          : 'Riscatto disponibile a breve.'}</p>
-      </section>
-    `;
   }
 
   async function renderMe() {
@@ -713,10 +866,15 @@
       const bookingsHtml = bookings.length
         ? `<ul class="hub-booking-list">${bookings.map((b) => {
           const when = formatDateTime(b.created_at);
+          const sched = b.scheduled_at ? formatDateTime(b.scheduled_at) : null;
           const status = b.status || 'pending';
+          const cancelBtn = status === 'pending'
+            ? `<button type="button" class="hub-btn secondary hub-booking-cancel" data-booking-id="${esc(b.id)}">Annulla</button>`
+            : '';
           return `<li class="hub-booking-item">
             <strong>${esc(b.experience_name || 'Esperienza')}</strong>
-            <p class="hub-meta">${esc(status)}${when ? ` · ${esc(when)}` : ''}</p>
+            <p class="hub-meta">${esc(status)}${when ? ` · ${esc(when)}` : ''}${sched ? `<br>Slot: ${esc(sched)}` : ''}</p>
+            ${cancelBtn}
           </li>`;
         }).join('')}</ul>`
         : '';
@@ -730,6 +888,24 @@
         <section class="hub-section"><h2>Ultimi movimenti</h2>${ledgerHtml}</section>
         ${bookings.length ? `<section class="hub-section"><h2>Prenotazioni</h2>${bookingsHtml}</section>` : ''}
       `;
+
+      $('#hub-main').querySelectorAll('.hub-booking-cancel').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const bookingId = btn.getAttribute('data-booking-id');
+          if (!bookingId) return;
+          btn.disabled = true;
+          const out = await apiPost(`/hub/bookings/${encodeURIComponent(bookingId)}/cancel`, {});
+          if (!out.ok) {
+            btn.disabled = false;
+            showToast(out.data.error || 'Annullamento non riuscito');
+            return;
+          }
+          state.coin_balance = Number(out.data.new_balance ?? state.coin_balance);
+          updateCoinWidget();
+          showToast('Prenotazione annullata — coin rimborsati');
+          renderMe();
+        });
+      });
     } catch (err) {
       $('#hub-main').innerHTML = `<div class="hub-empty">${esc(err.message || 'Impossibile caricare il profilo')}</div>`;
     }
