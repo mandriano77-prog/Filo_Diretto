@@ -4982,13 +4982,61 @@
       return r;
     };
   }
+  function setPreviewFace(face) {
+    var container = document.getElementById('tplPassFlip');
+    if (!container) return;
+    var isBack = face === 'back';
+    container.classList.toggle('a2w-tpl-show-back', isBack);
+    container.classList.remove('flipped');
+    document.querySelectorAll('#templateModal .a2w-tpl-preview-toggle__btn').forEach(function (btn) {
+      var active = btn.getAttribute('data-tpl-face') === face;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+  function initPreviewToggle() {
+    var container = document.getElementById('tplPassFlip');
+    if (!container || container.dataset.fdTplToggleBound === '1') return;
+    container.dataset.fdTplToggleBound = '1';
+    container.classList.remove('flipped');
+    container.removeAttribute('onmouseenter');
+    container.removeAttribute('onmouseleave');
+    container.onmouseenter = null;
+    container.onmouseleave = null;
+    document.querySelectorAll('#templateModal .a2w-tpl-preview-toggle__btn').forEach(function (btn) {
+      if (btn.dataset.fdTplToggleBtn === '1') return;
+      btn.dataset.fdTplToggleBtn = '1';
+      btn.addEventListener('click', function () {
+        setPreviewFace(btn.getAttribute('data-tpl-face') || 'front');
+      });
+    });
+    setPreviewFace('front');
+  }
+  function patchTemplateModalFlip() {
+    if (window.__fdTplFlipPatched) return;
+    ['openTemplateModal', 'editTemplate'].forEach(function (name) {
+      if (typeof window[name] !== 'function') return;
+      var orig = window[name];
+      window[name] = async function () {
+        var out = orig.apply(this, arguments);
+        if (out && typeof out.then === 'function') await out;
+        if (!isFiloTplApp()) return out;
+        initPreviewToggle();
+        setPreviewFace('front');
+        return out;
+      };
+      window.__fdTplFlipPatched = true;
+    });
+  }
   function initFdTemplates() {
     if (!isFiloTplApp()) return;
     patchLoadTemplates();
     patchNavForTemplates();
+    patchTemplateModalFlip();
     enhanceTemplatesSectionDesign();
   }
   window.fdInitTemplates = initFdTemplates;
+  window.fdSetTplPreviewFace = setPreviewFace;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdTemplates);
   } else {
