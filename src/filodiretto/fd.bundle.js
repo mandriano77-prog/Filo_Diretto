@@ -646,20 +646,13 @@
   }
   function rationalizeAudienceCopy() {
     var section = document.getElementById('audiences');
-    if (!section || section.dataset.fdWaiCopy === '1') return;
-    section.dataset.fdWaiCopy = '1';
-    var intro = section.querySelector('p');
-    if (intro && /W\.AI/i.test(intro.textContent || '')) {
+    if (!section) return;
+    var intro = section.querySelector('.audiences-panel__intro, p');
+    if (intro && !intro.querySelector('[onclick*="openWaiForAudience"]')) {
       intro.innerHTML =
         'Segmentazione possessori pass, statistiche di apertura e clic sul retro, audience salvate. ' +
         'Per segmenti in linguaggio naturale usa l\'assistente ' +
-        '<button type="button" class="fd-wai-inline-link" data-fd-wai-open data-fd-wai-mode="audience">W.AI</button>.';
-    }
-    var pageCta = section.querySelector('button[onclick*="openWaiForAudience"]');
-    if (pageCta) {
-      pageCta.classList.add('fd-wai-page-cta--hidden');
-      pageCta.setAttribute('aria-hidden', 'true');
-      pageCta.tabIndex = -1;
+        '<button type="button" class="fd-wai-inline-link" onclick="openWaiForAudience()">W.AI</button>.';
     }
     bindInlineWaiLinks(section);
   }
@@ -765,6 +758,8 @@
   window.fdSyncWaiLayoutState = syncWaiLayoutState;
   window.fdCloseWaiPanel = closeWaiPanel;
   window.fdNavigateFromWai = handleFdNavWhileWaiOpen;
+  window.fdBindWaiLinks = bindInlineWaiLinks;
+  window.fdRationalizeAudienceCopy = rationalizeAudienceCopy;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdWai);
   } else {
@@ -1408,6 +1403,8 @@
   }
   function applyLeadsChrome() {
     if (!isFiloHr()) return;
+    var headerActions = document.getElementById('a2wContactsHeaderActions');
+    if (headerActions) headerActions.hidden = true;
     var add = document.getElementById('a2wContactsAddBtn');
     if (add) {
       add.textContent = '＋ Aggiungi dipendente';

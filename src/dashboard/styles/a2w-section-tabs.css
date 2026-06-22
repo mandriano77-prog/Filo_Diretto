@@ -58,6 +58,28 @@ html[data-shell="light"] .a2w-section-tabs {
   border-bottom: 1px solid var(--border-default);
 }
 
+html[data-shell="light"] #leadsTabPanel_audience .audiences-panel__intro {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  max-width: 45rem;
+  line-height: 1.45;
+}
+
+html[data-shell="light"] #leadsTabPanel_audience .fd-wai-inline-link {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 html[data-shell="light"] .a2w-section-tabs .tabs-bar__tab {
   padding: 10px 14px;
   border: none;

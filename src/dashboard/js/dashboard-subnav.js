@@ -162,6 +162,13 @@
       }
     }
     if (typeof global.fdRbacHook === 'function' && tab === 'audience') global.fdRbacHook('audiences');
+    if (tab === 'audience') {
+      if (typeof global.fdRationalizeAudienceCopy === 'function') global.fdRationalizeAudienceCopy();
+      else if (typeof global.fdBindWaiLinks === 'function') {
+        var aud = document.getElementById('audiences');
+        if (aud) global.fdBindWaiLinks(aud);
+      }
+    }
     if (!options.skipBreadcrumb && typeof global.syncBreadcrumb === 'function' && typeof global.getActiveSectionId === 'function' && global.getActiveSectionId() === 'leads') {
       global.syncBreadcrumb('leads', tab);
     }

@@ -33,6 +33,9 @@
   function applyLeadsChrome() {
     if (!isFiloHr()) return;
 
+    var headerActions = document.getElementById('a2wContactsHeaderActions');
+    if (headerActions) headerActions.hidden = true;
+
     var add = document.getElementById('a2wContactsAddBtn');
     if (add) {
       add.textContent = '＋ Aggiungi dipendente';
