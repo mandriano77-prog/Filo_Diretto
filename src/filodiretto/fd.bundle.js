@@ -5692,6 +5692,9 @@
     root.querySelectorAll('#passBulkBar .btn.small.sec, #passBulkBar .btn.sec.small').forEach(function (btn) {
       btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
     });
+    root.querySelectorAll('#passBulkBar #fdPassBulkRegenerateBtn').forEach(function (btn) {
+      btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+    });
     root.querySelectorAll('#passBulkBar .btn.small.danger, #passBulkBar .btn.danger.small').forEach(function (btn) {
       btn.classList.add('fd-btn', 'fd-btn--danger', 'fd-btn--sm');
     });
@@ -5785,6 +5788,133 @@
       badge.classList.add('fd-pass-status', meta.cls);
     });
   }
+  function fdPassToast(msg) {
+    if (typeof window.toast === 'function') window.toast(msg);
+  }
+  function fdPassConfirm(opts) {
+    if (typeof window.appConfirm === 'function') return window.appConfirm(opts);
+    return Promise.resolve(window.confirm(opts.message || opts.title || 'Confermi?'));
+  }
+  function passIdLabel(id) {
+    if (typeof window.formatPassIdShort === 'function') return window.formatPassIdShort(id);
+    var s = String(id || '');
+    if (s.length <= 14) return s;
+    return s.slice(0, 8) + '…' + s.slice(-4);
+  }
+  async function callRegeneratePassApi(passId) {
+    var api = typeof window.API !== 'undefined' ? window.API : '/api/v1';
+    var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+    var res = await fetch(api + '/passes/' + encodeURIComponent(passId) + '/regenerate?json=1', {
+      method: 'POST',
+      headers: Object.assign({}, headers, { Accept: 'application/json' })
+    });
+    var data = {};
+    try {
+      data = await res.json();
+    } catch (_) {}
+    if (!res.ok) throw new Error((data && data.error) || res.statusText || 'Errore rigenerazione');
+    return data;
+  }
+  function regenerateSuccessMessage(data) {
+    var msg = 'Pass rigenerato';
+    if (data && data.apns_sent > 0) msg += ' — notifica inviata (' + data.apns_sent + ')';
+    return msg;
+  }
+  async function regeneratePassInstance(passId, menuBtn) {
+    var label = passIdLabel(passId);
+    var ok = await fdPassConfirm({
+      title: 'Rigenera pass',
+      message:
+        'Rigenerare il pass ' +
+        label +
+        '? Verrà ricreato il file wallet e re-inviata la notifica di installazione al device, se disponibile.',
+      confirmLabel: 'Rigenera'
+    });
+    if (!ok) return false;
+    var btn = menuBtn || null;
+    var origText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.textContent = 'Rigenerazione…';
+    }
+    try {
+      var data = await callRegeneratePassApi(passId);
+      fdPassToast(regenerateSuccessMessage(data));
+      if (typeof window.loadPasses === 'function') window.loadPasses(false);
+      return true;
+    } catch (err) {
+      fdPassToast('Errore: ' + (err && err.message ? err.message : err));
+      return false;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.textContent = origText;
+      }
+    }
+  }
+  async function regenerateSelectedPasses() {
+    var set =
+      typeof window.getPassSelectedIds === 'function' ? window.getPassSelectedIds() : null;
+    var ids = set ? Array.from(set) : [];
+    if (!ids.length) return;
+    var ok = await fdPassConfirm({
+      title: 'Rigenera pass selezionati',
+      message:
+        'Rigenerare ' +
+        ids.length +
+        ' pass selezionati? Verranno ricreati i file wallet e re-inviate le notifiche di installazione ai device registrati.',
+      confirmLabel: 'Rigenera'
+    });
+    if (!ok) return;
+    var bulkBtn = document.getElementById('fdPassBulkRegenerateBtn');
+    var bulkOrig = bulkBtn ? bulkBtn.textContent : '';
+    if (bulkBtn) {
+      bulkBtn.disabled = true;
+      bulkBtn.setAttribute('aria-busy', 'true');
+      bulkBtn.textContent = 'Rigenerazione…';
+    }
+    var okCount = 0;
+    var failCount = 0;
+    var pushCount = 0;
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        var data = await callRegeneratePassApi(ids[i]);
+        okCount += 1;
+        if (data && data.apns_sent > 0) pushCount += data.apns_sent;
+      } catch (_) {
+        failCount += 1;
+      }
+    }
+    if (bulkBtn) {
+      bulkBtn.disabled = false;
+      bulkBtn.removeAttribute('aria-busy');
+      bulkBtn.textContent = bulkOrig;
+    }
+    if (okCount) {
+      var bulkMsg = 'Rigenerati ' + okCount + ' pass';
+      if (pushCount > 0) bulkMsg += ' — ' + pushCount + ' notifiche inviate';
+      fdPassToast(bulkMsg);
+    }
+    if (failCount) fdPassToast(failCount + ' pass non rigenerati');
+    if (okCount && typeof window.loadPasses === 'function') window.loadPasses(false);
+  }
+  function ensurePassBulkRegenerateButton() {
+    var bar = document.querySelector('#passBulkBar div[style*="display:flex"]');
+    if (!bar || document.getElementById('fdPassBulkRegenerateBtn')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'fdPassBulkRegenerateBtn';
+    btn.className = 'btn small sec';
+    btn.textContent = 'Rigenera selezionati';
+    btn.setAttribute('data-rbac-write', 'passes');
+    btn.addEventListener('click', regenerateSelectedPasses);
+    var deleteBtn = bar.querySelector('.btn.danger');
+    if (deleteBtn) bar.insertBefore(btn, deleteBtn);
+    else bar.appendChild(btn);
+    btn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
+  }
   function enhancePassRowActions() {
     document.querySelectorAll('#passesContent .pass-row-actions').forEach(function (wrap) {
       if (wrap.dataset.fdActionsEnhanced === '1') return;
@@ -5806,6 +5936,8 @@
         menuId +
         '" role="menu" hidden>' +
         '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="view">Dettaglio pass</button>' +
+        '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="regenerate" data-rbac-write="passes">Rigenera pass</button>' +
+        '<hr class="fd-pass-row-menu__sep" role="separator">' +
         '<button type="button" class="fd-pass-row-menu__item fd-pass-row-menu__item--danger" role="menuitem" data-action="delete" data-rbac-write="passes">Elimina pass</button>' +
         '</div></div>';
       var trigger = wrap.querySelector('.fd-pass-row-menu__trigger');
@@ -5828,6 +5960,12 @@
         panel.hidden = true;
         trigger.setAttribute('aria-expanded', 'false');
         if (typeof window.viewPassDetail === 'function') window.viewPassDetail(passId);
+      });
+      wrap.querySelector('[data-action="regenerate"]').addEventListener('click', function (e) {
+        var regenBtn = e.currentTarget;
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        regeneratePassInstance(passId, regenBtn);
       });
       wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
         panel.hidden = true;
@@ -5862,7 +6000,7 @@
       '<li><strong>Samsung</strong> — SW salvato · SW° in attesa</li>' +
       '<li><strong>Push (APNs)</strong> — ✔ consegnata · ✖ errore · Nx = numero invii</li>' +
       '<li><strong>Pass ID</strong> — clic per copiare l’identificativo</li>' +
-      '<li><strong>Selezione</strong> — ☑ prima colonna → Elimina selezionati</li>' +
+      '<li><strong>Selezione</strong> — ☑ prima colonna → Rigenera / Elimina selezionati</li>' +
       '</ul></div></div>'
     );
   }
@@ -5930,6 +6068,7 @@
     enhancePassesPagination(content);
     applyDsButtonClasses(content);
     enhancePassRowActions();
+    ensurePassBulkRegenerateButton();
     enhancePassIdCells(content);
     enhancePassStatusBadges(content);
     wirePassLegendPopover(content);

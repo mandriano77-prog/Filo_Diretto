@@ -249,6 +249,17 @@ html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger:hover {
   background: #fef2f2;
 }
 
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__sep {
+  border: 0;
+  border-top: 1px solid var(--fd-border, var(--border));
+  margin: 4px 6px;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item[aria-busy='true'] {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 html[data-app='filodiretto'] #passes .fd-passes-legend-hint {
   position: relative;
   margin-bottom: var(--fd-space-3, 12px);

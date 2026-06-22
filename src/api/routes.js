@@ -2341,6 +2341,7 @@ router.delete('/passes/:id', async (req, res) => {
 
 router.post('/passes/:id/regenerate', async (req, res) => {
   try {
+    if (!requireWriteAccess(req, res)) return;
     const pass = await getPassInstance(req.params.id);
     if (!pass) return res.status(404).json({ error: 'Pass non trovato' });
     if (!requireBrandId(req, res, pass.brand_id)) return;
@@ -2348,6 +2349,10 @@ router.post('/passes/:id/regenerate', async (req, res) => {
     const template = await getTemplate(pass.template_id);
 
     const baseUrl = resolveBaseUrl(req);
+    const wantsJson =
+      req.query.json === '1'
+      || String(req.get('accept') || '').includes('application/json')
+      || (req.body && req.body.json === true);
 
     const pkpassBuffer = await createPkpass(template, pass, brand, {
       baseUrl,
@@ -2356,12 +2361,56 @@ router.post('/passes/:id/regenerate', async (req, res) => {
       rotatePortalLink: true
     });
 
-    res.set({
-      'Content-Type': 'application/vnd.apple.pkpass',
-      'Content-Disposition': `attachment; filename="${brand.slug || 'pass'}.pkpass"`,
-      'Content-Length': pkpassBuffer.length
+    if (!wantsJson) {
+      res.set({
+        'Content-Type': 'application/vnd.apple.pkpass',
+        'Content-Disposition': `attachment; filename="${brand.slug || 'pass'}.pkpass"`,
+        'Content-Length': pkpassBuffer.length
+      });
+      return res.send(pkpassBuffer);
+    }
+
+    await touchPass(pass.id);
+
+    let apnsSent = 0;
+    const devices = await getDevicesForPass(pass.serial_number);
+    const tokens = devices.map((d) => d.push_token).filter(Boolean);
+    if (tokens.length) {
+      const batch = await sendPushBatch(tokens);
+      apnsSent = batch.filter((r) => r.success).length;
+    }
+
+    let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: true };
+    if (pass.google_wallet_object_id) {
+      googleSync = await syncGoogleWalletObjectsForPasses({
+        brand,
+        passes: [pass],
+        message: null
+      });
+      googleSync.skipped = false;
+    }
+
+    let samsungSync = { attempted: 0, notified: 0, skipped: true };
+    if (pass.samsung_wallet_ref_id && samsungWallet.isConfigured()) {
+      samsungSync = await notifySamsungSavedPasses([pass]);
+      samsungSync.skipped = false;
+    }
+
+    await logEvent({
+      pass_id: pass.id,
+      brand_id: pass.brand_id,
+      event_type: 'pass_regenerated',
+      metadata: { source: 'dashboard', apns_sent: apnsSent }
     });
-    res.send(pkpassBuffer);
+
+    res.json({
+      success: true,
+      pass_id: pass.id,
+      apns_sent: apnsSent,
+      google: googleSync,
+      samsung: samsungSync,
+      portal_link_rotated: true
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

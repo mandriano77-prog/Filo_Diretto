@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-checkbox-fix/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-checkbox-fix/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-pass-regenerate/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-pass-regenerate/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -249,6 +249,16 @@ test('Filo passes localize status badges and copy icon', () => {
   assert.match(js, /enhancePassIdCells/);
   assert.match(css, /fd-pass-status--active/);
   assert.match(css, /fd-stat-card--primary/);
+});
+
+test('Filo passes row menu includes regenerate action', () => {
+  const js = readFd('fd-passes.js');
+  const css = readFd('fd-passes.css');
+  assert.match(js, /data-action="regenerate"/);
+  assert.match(js, /Rigenera pass/);
+  assert.match(js, /fd-pass-row-menu__sep/);
+  assert.match(js, /regenerateSelectedPasses/);
+  assert.match(css, /fd-pass-row-menu__sep/);
 });
 
 test('contacts help popover uses floating panel positioning', () => {
