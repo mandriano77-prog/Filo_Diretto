@@ -87,6 +87,9 @@
     var accordion = document.getElementById('passWalletTechAccordion');
     if (accordion) accordion.classList.add('fd-card', 'fd-passes-tech-accordion');
 
+    if (typeof window.fdInjectBrandPassFlowBar === 'function') {
+      window.fdInjectBrandPassFlowBar('passes');
+    }
     if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
       window.fdRelocateBrandPassFlowBar(section);
     }
@@ -105,6 +108,18 @@
     else if (diag) section.appendChild(diag);
   }
 
+  function passStatusMeta(status) {
+    var key = String(status || '').toLowerCase();
+    var map = {
+      active: { label: 'Attivo', cls: 'fd-pass-status--active' },
+      expired: { label: 'Scaduto', cls: 'fd-pass-status--expired' },
+      revoked: { label: 'Revocato', cls: 'fd-pass-status--revoked' },
+      inactive: { label: 'Inattivo', cls: 'fd-pass-status--inactive' },
+      suspended: { label: 'Sospeso', cls: 'fd-pass-status--inactive' }
+    };
+    return map[key] || { label: status || '—', cls: 'fd-pass-status--neutral' };
+  }
+
   function enhanceStatsGrid(scope) {
     var root = scope || document.getElementById('passesContent');
     if (!root) return;
@@ -113,8 +128,11 @@
     grid.dataset.fdDsStats = '1';
     grid.classList.add('fd-stat-grid', 'fd-passes-stat-grid');
     grid.style.marginBottom = '';
-    grid.querySelectorAll('.stat-card').forEach(function (card) {
+    var cards = grid.querySelectorAll('.stat-card');
+    cards.forEach(function (card, idx) {
       card.classList.add('fd-stat-card');
+      if (idx === 0) card.classList.add('fd-stat-card--primary');
+      else card.classList.add('fd-stat-card--secondary');
       var label = card.querySelector('.stat-label');
       if (label) label.classList.add('fd-stat-card__label');
       var value = card.querySelector('.stat-value');
@@ -126,6 +144,14 @@
         hint.style.marginTop = '';
       });
     });
+    if (cards.length > 1) {
+      var secondaryWrap = document.createElement('div');
+      secondaryWrap.className = 'fd-passes-stat-secondary';
+      for (var i = 1; i < cards.length; i++) {
+        secondaryWrap.appendChild(cards[i]);
+      }
+      grid.appendChild(secondaryWrap);
+    }
   }
 
   function enhancePassesToolbar(scope) {
@@ -253,6 +279,37 @@
       advancedIdx.forEach(function (i) {
         if (cells[i]) cells[i].classList.add('pass-col-advanced');
       });
+    });
+  }
+
+  function enhancePassIdCells(scope) {
+    var root = scope || document.getElementById('passesContent');
+    if (!root) return;
+    root.querySelectorAll('.pass-id-copy').forEach(function (btn) {
+      if (btn.dataset.fdCopyEnhanced === '1') return;
+      btn.dataset.fdCopyEnhanced = '1';
+      btn.classList.add('fd-pass-id-copy');
+      var fullId = btn.getAttribute('title') || btn.textContent || '';
+      var text = btn.textContent || '';
+      btn.innerHTML =
+        '<span class="fd-pass-id-copy__icon" aria-hidden="true" title="Copia Pass ID">⧉</span>' +
+        '<span class="fd-pass-id-copy__text">' + text + '</span>';
+      btn.setAttribute('aria-label', 'Copia Pass ID ' + fullId);
+    });
+  }
+
+  function enhancePassStatusBadges(scope) {
+    var root = scope || document.getElementById('passesContent');
+    if (!root) return;
+    root.querySelectorAll('.pass-table tbody tr').forEach(function (row) {
+      var badge = row.querySelector('td .badge');
+      if (!badge || badge.dataset.fdStatusLocalized === '1') return;
+      var raw = (badge.textContent || '').trim();
+      var meta = passStatusMeta(raw);
+      badge.dataset.fdStatusLocalized = '1';
+      badge.textContent = meta.label;
+      badge.classList.remove('active', 'inactive');
+      badge.classList.add('fd-pass-status', meta.cls);
     });
   }
 
@@ -406,6 +463,8 @@
     enhancePassesPagination(content);
     applyDsButtonClasses(content);
     enhancePassRowActions();
+    enhancePassIdCells(content);
+    enhancePassStatusBadges(content);
     wirePassLegendPopover(content);
     collapsePassTableLegend(content);
     if (typeof window.fdEnhanceResponsiveTables === 'function') {

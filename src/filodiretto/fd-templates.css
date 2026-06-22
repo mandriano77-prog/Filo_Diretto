@@ -163,6 +163,49 @@ html[data-app='filodiretto'] #templates .fd-tpl-check.is-done {
   color: #166534;
 }
 
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu {
+  position: relative;
+  margin-left: auto;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 140px;
+  z-index: 30;
+  padding: 4px;
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-sm, 8px);
+  background: var(--fd-color-surface, #fff);
+  box-shadow: var(--fd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu__panel[hidden] {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu__item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--fd-color-text, var(--text));
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu__item--danger {
+  color: var(--fd-color-danger, #dc2626);
+}
+
+html[data-app='filodiretto'] #templates .fd-tpl-card-menu__item:hover {
+  background: var(--fd-color-surface-muted, #f3f4f6);
+}
+
 html[data-app='filodiretto'] #templates .fd-tpl-card__actions {
   display: flex;
   align-items: center;

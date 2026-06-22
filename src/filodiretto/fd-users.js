@@ -439,9 +439,10 @@
       tbody.innerHTML = users.map(function (u) {
         var protectedAdmin = allowlist && allowlist.includes(String(u.email || '').toLowerCase());
         var statusCell = protectedAdmin
-          ? '<span class="fd-users-protected" title="Utente di sistema, non eliminabile">' +
+          ? '<span class="fd-users-protected" title="Utente di sistema protetto, non eliminabile">' +
             '<span class="fd-users-protected__icon" aria-hidden="true">🔒</span> Protetto</span>'
-          : '<span class="badge active">Attivo</span>';
+          : '<span class="fd-users-status fd-users-status--active" title="Account attivo">' +
+            '<span class="fd-users-status__icon" aria-hidden="true">✓</span> Attivo</span>';
         return (
           '<tr>' +
           '<td>' + esc(u.name) + '</td>' +

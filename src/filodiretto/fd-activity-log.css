@@ -58,13 +58,57 @@ html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-det
   font-size: 12px;
   color: var(--fd-color-text-secondary);
   line-height: 1.45;
-  word-break: break-word;
+  max-width: 360px;
+  min-width: 140px;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-details__text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  cursor: help;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-log-device {
+  max-width: 180px;
+  min-width: 0;
 }
 
 html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-id-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
   cursor: pointer;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-id-copy__icon {
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.72;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-id-copy__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-event[title] {
+  cursor: help;
+}
+
+html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-analytics-activity-table-wrap,
+html[data-app='filodiretto'] #activity-log.activity-log--fd .pass-table-wrap.fd-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 html[data-app='filodiretto'] #activity-log.activity-log--fd .fd-activity-id-copy.is-copied {

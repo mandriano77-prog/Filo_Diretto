@@ -122,6 +122,28 @@ html[data-app='filodiretto'] #users.users--fd .badge.active {
   border: 1px solid #86efac;
 }
 
+html[data-app='filodiretto'] .fd-users-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+html[data-app='filodiretto'] .fd-users-status--active {
+  border: 1px solid var(--fd-color-info-border, rgba(37, 99, 235, 0.35));
+  background: var(--fd-color-info-bg, #eff6ff);
+  color: var(--fd-color-info-text, #1d4ed8);
+}
+
+html[data-app='filodiretto'] .fd-users-status__icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
 html[data-app='filodiretto'] .fd-users-protected {
   display: inline-flex;
   align-items: center;
@@ -130,9 +152,9 @@ html[data-app='filodiretto'] .fd-users-protected {
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid var(--fd-border-strong, #d1d5db);
-  background: var(--bg3, #f9fafb);
-  color: var(--text2);
+  border: 1px solid var(--fd-color-warning-border, rgba(245, 158, 11, 0.55));
+  background: var(--fd-color-warning-bg, #fffbeb);
+  color: var(--fd-color-warning-text, #a16207);
   cursor: help;
 }
 

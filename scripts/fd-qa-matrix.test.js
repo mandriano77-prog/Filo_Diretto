@@ -45,7 +45,7 @@ const SECTION_MATRIX = [
     sectionId: 'templates',
     js: 'fd-templates.js',
     css: 'fd-templates.css',
-    patterns: ['fd-skeleton', 'fd-tpl-list', 'fd-btn--secondary']
+    patterns: ['fd-skeleton', 'fd-tpl-list', 'fd-btn--primary|fd-tpl-card-menu']
   },
   {
     label: 'Pass Emessi',
@@ -83,11 +83,18 @@ const SECTION_MATRIX = [
     patterns: ['fd-analytics-stats-skeleton', 'fd-skeleton', 'aria-busy']
   },
   {
+    label: 'Log Attività',
+    sectionId: 'activity-log',
+    js: 'fd-activity-log.js',
+    css: 'fd-activity-log.css',
+    patterns: ['fd-activity-log-toolbar', 'EVENT_TYPE_LABELS', 'fd-activity-log-details__text']
+  },
+  {
     label: 'Utenti',
     sectionId: 'users',
     js: 'fd-users.js',
     css: 'fd-users.css',
-    patterns: ['fd-page-header', 'renderTableErrorRow|fdRenderTableErrorRow', 'fd-table-wrap']
+    patterns: ['fd-page-header', 'fd-users-protected', 'fd-users-status--active', 'fd-users-copy']
   },
   {
     label: 'Contatti',
@@ -125,10 +132,10 @@ test('fd.bundle.js is valid JavaScript after build', () => {
   );
 });
 
-test('index.html bundle cache references tpl-flip-fix tag', () => {
+test('index.html bundle cache references fd-ui-refactor tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260621-tpl-flip-fix/);
-  assert.match(html, /fd\.bundle\.js\?v=20260621-tpl-flip-fix/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-fd-ui-refactor/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-fd-ui-refactor/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
   assert.match(html, /fd-page-states\.js/);
   assert.match(html, /fd-mobile-gate\.js/);
@@ -190,6 +197,42 @@ for (const section of SECTION_MATRIX) {
     assert.match(read('src/dashboard/index.html'), new RegExp('id="' + section.sectionId + '"'));
   });
 }
+
+test('Filo brand identity aside reads camelCase form snapshot', () => {
+  const js = readFd('fd-brand-identity.js');
+  assert.match(js, /fieldVal\(data, 'supportEmail'/);
+  assert.match(js, /fieldVal\(data, 'supportPhone'/);
+  assert.match(js, /fieldVal\(data, 'dpoEmail'/);
+});
+
+test('Filo media library uses single contextual search', () => {
+  const js = readFd('fd-media-library.js');
+  assert.match(js, /fdMediaContextSearch/);
+  assert.match(js, /applyContextSearchFilter/);
+  assert.match(js, /fd-media-dropzone__specs/);
+  assert.match(js, /removeLegacyMediaSearches/);
+});
+
+test('Filo template delete moved to kebab menu', () => {
+  const js = readFd('fd-templates.js');
+  assert.match(js, /fd-tpl-card-menu/);
+  assert.doesNotMatch(js, /fd-btn--danger fd-btn--sm" onclick="deleteTemplate/);
+});
+
+test('Filo passes localize status badges and copy icon', () => {
+  const js = readFd('fd-passes.js');
+  const css = readFd('fd-passes.css');
+  assert.match(js, /passStatusMeta/);
+  assert.match(js, /enhancePassIdCells/);
+  assert.match(css, /fd-pass-status--active/);
+  assert.match(css, /fd-stat-card--primary/);
+});
+
+test('contacts help popover uses floating panel positioning', () => {
+  const help = read('src/dashboard/js/components/contacts/help-popover.js');
+  assert.match(help, /positionFloatingPanel/);
+  assert.match(help, /maxWidth/);
+});
 
 test('Filo media library hides legacy Ads2Wallet tabs markup', () => {
   const js = readFd('fd-media-library.js');

@@ -89,6 +89,7 @@
 
   var CATEGORY_ORDER = ['logo', 'wallet_icon', 'strip', 'thumbnail', 'background'];
   var STORAGE_KEY = 'fdMediaCategory';
+  var CONTEXT_SEARCH_ID = 'fdMediaContextSearch';
   var BUCKET_ID_BY_TYPE = {
     logo: 'fdMediaLogoCard',
     wallet_icon: 'fdMediaWalletIconCard',
@@ -238,6 +239,9 @@
     if (sel && sel.value !== type) sel.value = type;
 
     if (!options.skipPersist) persistCategory(type);
+
+    updateContextSearchUi(type);
+    applyContextSearchFilter();
 
     var live = document.getElementById('fdMediaAriaLive');
     if (live && !options.skipAnimation) {
@@ -403,32 +407,74 @@
    * }
    */
 
-  function getGlobalSearchValue() {
-    var el = document.getElementById('fdMediaGlobalSearch');
+  function getContextSearchValue() {
+    var el = document.getElementById(CONTEXT_SEARCH_ID);
     return (el && el.value ? el.value : '').trim().toLowerCase();
   }
 
-  function applyGlobalSearchFilter() {
-    var q = getGlobalSearchValue();
-    document.querySelectorAll('#media-library .media-card').forEach(function (card) {
+  function updateContextSearchUi(type) {
+    var el = document.getElementById(CONTEXT_SEARCH_ID);
+    if (!el) return;
+    var meta = SECTION_META[type] || {};
+    var label = (meta.tabLabel || meta.title || type).toLowerCase();
+    el.placeholder = 'Cerca ' + label + '…';
+    el.setAttribute('aria-label', 'Cerca ' + label);
+  }
+
+  function applyContextSearchFilter() {
+    var q = getContextSearchValue();
+    var panel = document.getElementById(panelIdForType(activeCategory));
+    if (!panel) return;
+    var body = panel.querySelector('.fd-media-section__body');
+    if (!body) return;
+    body.querySelectorAll('.media-card').forEach(function (card) {
       var titleNode = card.querySelector('.media-card__title') || card.querySelector('div');
       var title = (titleNode && titleNode.textContent ? titleNode.textContent : '').trim().toLowerCase();
       card.hidden = !!q && title.indexOf(q) === -1;
     });
-    document.querySelectorAll('#media-library .fd-media-section__body').forEach(function (body) {
-      var cards = body.querySelectorAll('.media-card');
-      var visible = Array.from(cards).some(function (c) { return !c.hidden; });
-      var empty = body.querySelector('.fd-media-filter-empty');
-      if (!visible && cards.length && q) {
-        if (!empty) {
-          empty = document.createElement('p');
-          empty.className = 'fd-media-empty fd-media-filter-empty';
-          body.appendChild(empty);
-        }
-        empty.textContent = 'Nessun asset per "' + q + '".';
-      } else if (empty) {
-        empty.remove();
+    var cards = body.querySelectorAll('.media-card');
+    var visible = Array.from(cards).some(function (c) { return !c.hidden; });
+    var empty = body.querySelector('.fd-media-filter-empty');
+    if (!visible && cards.length && q) {
+      if (!empty) {
+        empty = document.createElement('p');
+        empty.className = 'fd-media-empty fd-media-filter-empty';
+        body.appendChild(empty);
       }
+      empty.textContent = 'Nessun asset per "' + q + '".';
+    } else if (empty) {
+      empty.remove();
+    }
+  }
+
+  function ensureContextSearch() {
+    var section = document.getElementById('media-library');
+    if (!section || document.getElementById(CONTEXT_SEARCH_ID)) return;
+    var tabs = section.querySelector('#fdMediaTabs');
+    if (!tabs) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'fd-media-context-search-wrap';
+    wrap.innerHTML =
+      '<label class="sr-only" for="' + CONTEXT_SEARCH_ID + '">Cerca asset nella categoria attiva</label>' +
+      '<input type="search" id="' + CONTEXT_SEARCH_ID + '" class="fd-media-context-search" autocomplete="off">';
+    tabs.appendChild(wrap);
+    var search = document.getElementById(CONTEXT_SEARCH_ID);
+    if (search) {
+      search.addEventListener('input', function () {
+        applyContextSearchFilter();
+      });
+    }
+    updateContextSearchUi(activeCategory || readSavedCategory());
+  }
+
+  function removeLegacyMediaSearches() {
+    var global = document.getElementById('fdMediaGlobalSearch');
+    if (global) global.remove();
+    document.querySelectorAll('#mediaStripSearch').forEach(function (el) {
+      el.remove();
+    });
+    document.querySelectorAll('[id^="fdMediaSearch_"]').forEach(function (el) {
+      el.remove();
     });
   }
 
@@ -628,21 +674,11 @@
   }
 
   function ensureSpecsPanel(page) {
-    if (!page || page.querySelector('.fd-media-specs')) return;
-    var details = document.createElement('details');
-    details.className = 'fd-media-specs fd-card';
-    details.innerHTML =
-      '<summary>Specifiche tecniche consigliate</summary>' +
-      '<div class="fd-media-specs__body">' +
-      '<div><strong>Logo</strong> — PNG trasparente, max 320×100 px.</div>' +
-      '<div><strong>Icona notifiche</strong> — quadrata 512×512 px.</div>' +
-      '<div><strong>Strip</strong> — 750×246 px, più varianti possibili.</div>' +
-      '<div><strong>Thumbnail</strong> — 90×90 px (Event Ticket).</div>' +
-      '<div><strong>Background</strong> — 360×440 px (Event Ticket).</div>' +
-      '</div>';
-    var grid = page.querySelector('.fd-media-grid');
-    if (grid) page.insertBefore(details, grid);
-    else page.appendChild(details);
+    /* Specs live in each dropzone — no collapsed panel. */
+    if (!page) return;
+    page.querySelectorAll('.fd-media-specs').forEach(function (node) {
+      node.remove();
+    });
   }
 
   function enhanceSectionDesign(card) {
@@ -691,7 +727,7 @@
     if (uploadBtn) {
       uploadBtn.setAttribute('data-upload-type', type);
       uploadBtn.textContent = meta.uploadLabel;
-    } else if (type !== 'strip' || !actions.querySelector('#mediaStripSearch')) {
+    } else if (type !== 'strip' || !actions.querySelector('.fd-media-upload-type')) {
       actions.insertAdjacentHTML(
         'beforeend',
         '<button type="button" class="fd-btn fd-btn--secondary fd-media-upload-type" data-upload-type="' + esc(type) + '">' + esc(meta.uploadLabel) + '</button>'
@@ -717,21 +753,12 @@
       '<p class="fd-media-section__hint">' + esc(meta.hint) + '</p>' +
       '</div>' +
       '<div class="fd-media-section__actions">' +
-      (type === 'strip'
-        ? '<input id="mediaStripSearch" type="search" class="fd-media-section__search" placeholder="Cerca per nome…">'
-        : '') +
         '<button type="button" class="fd-btn fd-btn--secondary fd-media-upload-type" data-upload-type="' + esc(type) + '">' + esc(meta.uploadLabel) + '</button>' +
       '</div></div>' +
       '<div class="fd-media-section__body">' +
       '<div id="' + hostId + '" class="strip-gallery">' + renderLoadingSkeleton() + '</div>' +
       '</div>';
     bindUploadButtons(card);
-    if (type === 'strip') {
-      var search = card.querySelector('#mediaStripSearch');
-      if (search) search.addEventListener('input', function () {
-        if (typeof window.loadMediaLibrary === 'function') window.loadMediaLibrary();
-      });
-    }
     return card;
   }
 
@@ -745,7 +772,6 @@
     var meta = SECTION_META[type] || { title: type, hint: '', uploadLabel: 'Carica' };
     var oldTitle = card.querySelector('.sec-title');
     var oldHint = card.querySelector('p');
-    var stripSearch = card.querySelector('#mediaStripSearch');
 
     card.dataset.fdMediaSection = '1';
     card.dataset.mediaType = type;
@@ -762,21 +788,11 @@
       '<p class="fd-media-section__hint">' + esc(meta.hint) + '</p>' +
       '</div>' +
       '<div class="fd-media-section__actions">' +
-      (stripSearch ? '' : '<button type="button" class="fd-btn fd-btn--secondary fd-media-upload-type" data-upload-type="' + esc(type) + '">' + esc(meta.uploadLabel) + '</button>') +
+      '<button type="button" class="fd-btn fd-btn--secondary fd-media-upload-type" data-upload-type="' + esc(type) + '">' + esc(meta.uploadLabel) + '</button>' +
       '</div>';
 
-    if (stripSearch) {
-      var actions = head.querySelector('.fd-media-section__actions');
-      stripSearch.classList.add('fd-media-section__search');
-      actions.appendChild(stripSearch);
-      actions.insertAdjacentHTML(
-        'beforeend',
-        '<button type="button" class="fd-btn fd-btn--secondary fd-media-upload-type" data-upload-type="strip">Carica strip</button>'
-      );
-    }
-
     if (oldTitle) oldTitle.remove();
-    if (oldHint && oldHint !== stripSearch) oldHint.remove();
+    if (oldHint) oldHint.remove();
 
     var bodyHost = document.createElement('div');
     bodyHost.className = 'fd-media-section__body';
@@ -840,10 +856,15 @@
 
     if (section.dataset.fdMediaLayout === '1') {
       if (grid) rebuildMediaSections(grid);
+      if (typeof window.fdInjectBrandPassFlowBar === 'function') {
+        window.fdInjectBrandPassFlowBar('media-library');
+      }
       if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
         window.fdRelocateBrandPassFlowBar(section);
       }
       ensureMediaCategoryTabs();
+      ensureContextSearch();
+      removeLegacyMediaSearches();
       ensureBucketDropzones();
       ensureCropModalsOutsideSection();
       applyDsButtonClasses(section);
@@ -875,16 +896,6 @@
           uploadBtn.classList.remove('sec');
         }
         enhanceMediaHeaderDesign(header);
-        if (!actions.querySelector('#fdMediaGlobalSearch')) {
-          var search = document.createElement('input');
-          search.type = 'search';
-          search.id = 'fdMediaGlobalSearch';
-          search.className = 'fd-media-global-search';
-          search.placeholder = 'Cerca asset…';
-          search.setAttribute('aria-label', 'Cerca asset');
-          search.addEventListener('input', applyGlobalSearchFilter);
-          actions.insertBefore(search, actions.firstChild);
-        }
       }
     }
 
@@ -904,10 +915,15 @@
     grid.style.gridTemplateColumns = '';
 
     rebuildMediaSections(grid);
+    if (typeof window.fdInjectBrandPassFlowBar === 'function') {
+      window.fdInjectBrandPassFlowBar('media-library');
+    }
     if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
       window.fdRelocateBrandPassFlowBar(section);
     }
     ensureMediaCategoryTabs();
+    ensureContextSearch();
+    removeLegacyMediaSearches();
     ensureBucketDropzones();
     ensureCropModalsOutsideSection();
 
@@ -1007,10 +1023,12 @@
 
   function buildDropzoneMarkup(type) {
     var meta = SECTION_META[type] || { title: type, tabLabel: type };
+    var dims = estimateDims(type);
     return (
       '<div class="fd-media-dropzone media-dropzone" data-component="dropzone" data-upload-type="' + esc(type) + '" tabindex="0" role="button">' +
       '<span class="fd-media-dropzone__title media-dropzone__title">Trascina o clicca per caricare</span>' +
       '<span class="fd-media-dropzone__hint media-dropzone__hint">' + esc(meta.tabLabel || meta.title) + '</span>' +
+      '<span class="fd-media-dropzone__specs media-dropzone__specs">' + esc(dims) + ' px</span>' +
       '</div>'
     );
   }
@@ -1213,24 +1231,7 @@
     var host = document.getElementById(hostId);
     if (!host) return;
 
-    var actions = host.closest('.fd-media-section')?.querySelector('.fd-media-section__actions');
-    var searchId = 'fdMediaSearch_' + type;
-    var searchEl = document.getElementById(searchId);
-    if (!searchEl && actions) {
-      searchEl = document.createElement('input');
-      searchEl.type = 'search';
-      searchEl.id = searchId;
-      searchEl.className = 'fd-media-section__search';
-      searchEl.placeholder = 'Cerca…';
-      searchEl.hidden = true;
-      searchEl.addEventListener('input', function () {
-        renderSectionAssets(type, items);
-        applyGlobalSearchFilter();
-      });
-      actions.insertBefore(searchEl, actions.firstChild);
-    }
-
-    var localQ = (searchEl && !searchEl.hidden && searchEl.value ? searchEl.value : '').trim().toLowerCase();
+    var localQ = type === activeCategory ? getContextSearchValue() : '';
     var list = items;
     if (localQ) {
       list = items.filter(function (it) {
@@ -1238,7 +1239,6 @@
         return t.indexOf(localQ) !== -1;
       });
     }
-    if (searchEl) searchEl.hidden = items.length <= 6;
 
     if (!list.length) {
       host.innerHTML = renderEmptyDropzone(type);
@@ -1289,7 +1289,7 @@
         renderSectionAssets('strip', rows.filter(function (x) { return x.type === 'strip'; }));
         renderSectionAssets('thumbnail', rows.filter(function (x) { return x.type === 'thumbnail'; }));
         renderSectionAssets('background', rows.filter(function (x) { return x.type === 'background'; }));
-        applyGlobalSearchFilter();
+        applyContextSearchFilter();
         syncBulkUi();
         if (document.getElementById('fdMediaTabs')) {
           switchMediaCategory(activeCategory || readSavedCategory(), { skipPersist: true, skipAnimation: true });

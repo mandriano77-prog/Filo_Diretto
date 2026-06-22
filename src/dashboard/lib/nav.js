@@ -97,9 +97,11 @@
     function applyPageHeadings() {
         NAV.forEach(function (section) {
             section.items.forEach(function (item) {
+                // Analytics H1 is tab-aware (Metriche vs Log Attività) — fd-analytics.js owns it.
+                if (item.id === 'analytics' || item.id === 'activity-log') return;
                 var root = document.getElementById(item.id);
                 if (!root) return;
-                var h1 = root.querySelector('h1.page-title, h1.sec-title');
+                var h1 = root.querySelector('h1.page-title, h1.sec-title, h1.fd-page-header__title');
                 if (h1 && !h1.hasAttribute('data-menu-key')) {
                     h1.textContent = item.label;
                 }

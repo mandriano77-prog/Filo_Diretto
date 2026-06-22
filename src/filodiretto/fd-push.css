@@ -264,11 +264,16 @@ html[data-app='filodiretto'] .fd-push-preview__pass-name {
 }
 
 html[data-app='filodiretto'] .fd-push-channel-native {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 html[data-app='filodiretto'] .fd-push-channel-seg {
@@ -302,6 +307,7 @@ html[data-app='filodiretto'] .fd-push-channel-seg__btn.is-active {
   background: var(--fd-color-primary-50);
   color: var(--fd-color-primary-700);
   font-weight: var(--fd-font-weight-semibold);
+  box-shadow: inset 0 0 0 1px rgba(109, 40, 217, 0.15);
 }
 
 html[data-app='filodiretto'] .fd-push-channel-seg__btn:focus-visible {

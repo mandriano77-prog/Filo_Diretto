@@ -96,8 +96,14 @@
   }
 
   function syncPreview() {
-    var title = (document.getElementById('pushTitle') || {}).value || 'Titolo notifica';
-    var message = (document.getElementById('pushMessage') || {}).value || 'Testo del messaggio…';
+    var titleEl = document.getElementById('pushTitle');
+    var messageEl = document.getElementById('pushMessage');
+    var titlePlaceholder = (titleEl && titleEl.getAttribute('placeholder')) || 'Titolo notifica';
+    var messagePlaceholder = (messageEl && messageEl.getAttribute('placeholder')) || 'Testo del messaggio…';
+    var titleRaw = titleEl ? titleEl.value : '';
+    var messageRaw = messageEl ? messageEl.value : '';
+    var title = titleRaw.trim() ? titleRaw : titlePlaceholder;
+    var message = messageRaw.trim() ? messageRaw : messagePlaceholder;
     var brand = getBrandLabel();
     document.querySelectorAll('[data-fd-push-preview-title]').forEach(function (el) {
       el.textContent = title;
@@ -110,20 +116,106 @@
     });
   }
 
-  function setChannelValue(value) {
+  var channelSelection = {
+    apple: true,
+    google: false,
+    samsung: false
+  };
+
+  function channelKeys() {
+    return ['apple', 'google', 'samsung'];
+  }
+
+  function isAllChannelsSelected() {
+    return channelKeys().every(function (k) {
+      return channelSelection[k];
+    });
+  }
+
+  function channelsToApiValue() {
+    var active = channelKeys().filter(function (k) {
+      return channelSelection[k];
+    });
+    if (!active.length) return 'apple';
+    if (active.length >= 3) return 'all';
+    if (active.length === 1) return active[0];
+    return 'all';
+  }
+
+  function setChannelSelectionFromValue(value) {
+    if (value === 'all') {
+      channelKeys().forEach(function (k) {
+        channelSelection[k] = true;
+      });
+      return;
+    }
+    channelKeys().forEach(function (k) {
+      channelSelection[k] = k === value;
+    });
+    if (!channelKeys().some(function (k) {
+      return channelSelection[k];
+    })) {
+      channelSelection.apple = true;
+    }
+  }
+
+  function syncChannelUi() {
     var sel = document.getElementById('pushChannel');
-    if (!sel) return;
-    sel.value = value;
+    var apiValue = channelsToApiValue();
+    if (sel) sel.value = apiValue;
+
+    var allOn = isAllChannelsSelected();
     document.querySelectorAll('.fd-push-channel-seg__btn').forEach(function (btn) {
-      var on = btn.getAttribute('data-channel') === value;
+      var ch = btn.getAttribute('data-channel');
+      var on = ch === 'all' ? allOn : !!channelSelection[ch];
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+
     var help = document.getElementById('fdPushChannelHelp');
-    var ch = CHANNELS.find(function (c) {
-      return c.value === value;
-    });
-    if (help && ch) help.textContent = ch.tip;
+    if (help) {
+      if (allOn) {
+        help.textContent = CHANNELS.find(function (c) {
+          return c.value === 'all';
+        }).tip;
+      } else {
+        var labels = channelKeys()
+          .filter(function (k) {
+            return channelSelection[k];
+          })
+          .map(function (k) {
+            var ch = CHANNELS.find(function (c) {
+              return c.value === k;
+            });
+            return ch ? ch.label : k;
+          });
+        help.textContent = labels.length
+          ? 'Invio su: ' + labels.join(', ')
+          : 'Seleziona almeno un canale';
+      }
+    }
+  }
+
+  function toggleChannel(ch) {
+    if (ch === 'all') {
+      var turnAllOn = !isAllChannelsSelected();
+      channelKeys().forEach(function (k) {
+        channelSelection[k] = turnAllOn;
+      });
+    } else {
+      channelSelection[ch] = !channelSelection[ch];
+      if (!channelKeys().some(function (k) {
+        return channelSelection[k];
+      })) {
+        channelSelection[ch] = true;
+      }
+    }
+    syncChannelUi();
+  }
+
+  function setChannelValue(value) {
+    setChannelSelectionFromValue(value || 'apple');
+    syncChannelUi();
   }
 
   function buildPushBody(extra) {
@@ -333,9 +425,14 @@
     var sel = document.getElementById('pushChannel');
     if (!sel || document.getElementById('fdPushChannelSeg')) return;
     sel.classList.add('fd-push-channel-native');
+    sel.setAttribute('hidden', 'hidden');
+    sel.tabIndex = -1;
 
     var group = sel.closest('.form-group');
     if (!group) return;
+
+    var label = group.querySelector('.form-label[for="pushChannel"]');
+    if (label) label.setAttribute('for', 'fdPushChannelSeg');
 
     var seg = document.createElement('div');
     seg.id = 'fdPushChannelSeg';
@@ -347,13 +444,14 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'fd-push-channel-seg__btn';
+      btn.id = ch.value === 'apple' ? 'fdPushChannelSeg' : '';
       btn.setAttribute('data-channel', ch.value);
-      btn.setAttribute('aria-pressed', sel.value === ch.value ? 'true' : 'false');
+      btn.setAttribute('aria-pressed', 'false');
       btn.title = ch.tip;
       btn.innerHTML =
         (ch.icon ? '<span aria-hidden="true">' + ch.icon + '</span> ' : '') + esc(ch.label);
       btn.addEventListener('click', function () {
-        setChannelValue(ch.value);
+        toggleChannel(ch.value);
       });
       seg.appendChild(btn);
     });
@@ -909,6 +1007,19 @@
     syncPreview();
     loadTestPasses();
     wirePushSendConfirm();
+
+    var brandSel = document.getElementById('brandSelector');
+    if (brandSel && brandSel.dataset.fdPushPreviewBound !== '1') {
+      brandSel.dataset.fdPushPreviewBound = '1';
+      brandSel.addEventListener('change', syncPreview);
+    }
+    ['pushTitle', 'pushMessage'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.dataset.fdPreviewBound !== '1') {
+        el.dataset.fdPreviewBound = '1';
+        el.addEventListener('input', syncPreview);
+      }
+    });
   }
 
   function enhancePushSectionDesign() {

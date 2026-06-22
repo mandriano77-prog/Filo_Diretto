@@ -17,16 +17,46 @@
     });
   }
 
-  function trapFocus(panel, trigger) {
+  function positionFloatingPanel(trigger, panel) {
+    panel.style.position = 'fixed';
+    panel.style.zIndex = 'var(--fd-z-dropdown, 300)';
+    panel.style.maxWidth = 'min(360px, calc(100vw - 24px))';
+    panel.style.width = 'max-content';
+    panel.hidden = false;
+
+    var margin = 8;
+    var rect = trigger.getBoundingClientRect();
+    var panelRect = panel.getBoundingClientRect();
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+
+    var top = rect.bottom + margin;
+    if (top + panelRect.height > vh - margin) {
+      top = rect.top - panelRect.height - margin;
+    }
+    if (top < margin) top = margin;
+
+    var left = rect.left;
+    if (left + panelRect.width > vw - margin) {
+      left = vw - panelRect.width - margin;
+    }
+    if (left < margin) left = margin;
+
+    panel.style.top = Math.round(top) + 'px';
+    panel.style.left = Math.round(left) + 'px';
+  }
+
+  function trapFocus(panel, trigger, onClose) {
     const focusable = getFocusable(panel);
     if (!focusable.length) return function () {};
+
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
 
     function onKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        close();
+        onClose();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -41,23 +71,27 @@
       }
     }
 
-    function close() {
-      panel.hidden = true;
-      trigger.setAttribute('aria-expanded', 'false');
-      document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('mousedown', onOutside);
-      trigger.focus();
-    }
-
     function onOutside(e) {
       if (panel.contains(e.target) || trigger.contains(e.target)) return;
-      close();
+      onClose();
+    }
+
+    function onReflow() {
+      if (!panel.hidden) positionFloatingPanel(trigger, panel);
     }
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('mousedown', onOutside);
+    window.addEventListener('resize', onReflow);
+    window.addEventListener('scroll', onReflow, true);
     first.focus();
-    return close;
+
+    return function release() {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onOutside);
+      window.removeEventListener('resize', onReflow);
+      window.removeEventListener('scroll', onReflow, true);
+    };
   }
 
   function renderHelpPopover(options) {
@@ -104,26 +138,38 @@
     const panel = host.querySelector('.contacts-help__panel');
     let releaseFocus = null;
 
-    trigger.addEventListener('click', function () {
+    function closePanel() {
+      panel.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      if (releaseFocus) {
+        releaseFocus();
+        releaseFocus = null;
+      }
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
       const willOpen = panel.hidden;
       if (releaseFocus) {
         releaseFocus();
         releaseFocus = null;
       }
       if (willOpen) {
-        panel.hidden = false;
+        positionFloatingPanel(trigger, panel);
         trigger.setAttribute('aria-expanded', 'true');
-        releaseFocus = trapFocus(panel, trigger);
+        releaseFocus = trapFocus(panel, trigger, closePanel);
       } else {
-        panel.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
+        closePanel();
       }
     });
 
-    return { trigger, panel };
+    return { trigger, panel, reposition: function () {
+      if (!panel.hidden) positionFloatingPanel(trigger, panel);
+    } };
   }
 
   window.HelpPopover = {
-    render: renderHelpPopover
+    render: renderHelpPopover,
+    positionPanel: positionFloatingPanel
   };
 })();

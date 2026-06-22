@@ -20,8 +20,34 @@
     audience_id: 'Audience',
     serial_number: 'Serial',
     user_agent: 'User-Agent',
-    ip: 'IP'
+    ip: 'IP',
+    refId: 'Rif.',
+    ref_id: 'Rif.'
   };
+
+  var EVENT_TYPE_LABELS = {
+    pass_fetched: 'Pass recuperato',
+    pass_downloaded: 'Pass scaricato',
+    samsung_wallet_link_generated: 'Link Samsung Wallet generato',
+    pass_installed: 'Pass installato',
+    pass_created: 'Pass creato',
+    pass_updated: 'Pass aggiornato',
+    pass_deleted: 'Pass eliminato',
+    push_sent: 'Push inviata',
+    push_delivered: 'Push consegnata',
+    push_failed: 'Push non consegnata',
+    member_created: 'Membro creato',
+    member_updated: 'Membro aggiornato',
+    google_wallet_saved: 'Google Wallet salvato',
+    apple_wallet_registered: 'Apple Wallet registrato'
+  };
+
+  function eventTypeLabel(type) {
+    var key = String(type || '');
+    if (!key) return '—';
+    if (EVENT_TYPE_LABELS[key]) return EVENT_TYPE_LABELS[key];
+    return key.replace(/_/g, ' ');
+  }
 
   function isFilo() {
     return document.documentElement.getAttribute('data-app') === 'filodiretto';
@@ -123,7 +149,28 @@
       '<button type="button" class="pass-id-copy fd-activity-id-copy" data-copy-value="' +
       esc(value) + '" data-copy-label="' + esc(copyLabel) + '" title="' +
       esc(value) + ' — clic per copiare" aria-label="Copia ' + esc(copyLabel) + ' completo">' +
-      esc(shortLabel) + '</button>'
+      '<span class="fd-activity-id-copy__icon" aria-hidden="true">⧉</span>' +
+      '<span class="fd-activity-id-copy__text">' + esc(shortLabel) + '</span>' +
+      '</button>'
+    );
+  }
+
+  function renderDetailsCell(ev) {
+    var details = formatActivityDetails(ev, false);
+    if (!details || details === '—') return '—';
+    return (
+      '<span class="fd-activity-log-details__text" title="' + esc(details) + '" data-event-raw="' +
+      esc(ev.event_type || '') + '">' + esc(details) + '</span>'
+    );
+  }
+
+  function renderEventBadge(ev) {
+    var raw = ev.event_type || '';
+    var label = eventTypeLabel(raw);
+    return (
+      '<span class="badge inactive fd-activity-event" data-event-type="' + esc(raw) + '" ' +
+      'title="' + esc(raw) + '" style="text-transform:none;font-size:11px;">' +
+      esc(label) + '</span>'
     );
   }
 
@@ -175,7 +222,7 @@
     types.sort();
     sel.innerHTML = '<option value="">Tutti</option>' +
       types.map(function (t) {
-        return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+        return '<option value="' + esc(t) + '" title="' + esc(t) + '">' + esc(eventTypeLabel(t)) + '</option>';
       }).join('');
     sel.value = types.indexOf(current) !== -1 || current === '' ? current : '';
     filters.type = sel.value;
@@ -224,14 +271,13 @@
 
     body.innerHTML = events.map(function (ev) {
       var when = ev.created_at ? new Date(ev.created_at).toLocaleString('it-IT') : '—';
-      var details = formatActivityDetails(ev, false);
       return (
         '<tr data-event-type="' + esc(ev.event_type || '') + '">' +
         '<td style="font-size:12px;white-space:nowrap;">' + esc(when) + '</td>' +
-        '<td><span class="badge inactive" style="text-transform:none;font-size:11px;">' + esc(ev.event_type || '—') + '</span></td>' +
+        '<td>' + renderEventBadge(ev) + '</td>' +
         '<td>' + renderIdButton(ev.pass_id, formatPassIdShort(ev.pass_id), 'Pass ID') + '</td>' +
-        '<td style="max-width:160px;">' + renderIdButton(ev.device_id, formatDeviceShort(ev.device_id), 'Device ID') + '</td>' +
-        '<td class="fd-activity-log-details" style="max-width:360px;">' + esc(details) + '</td>' +
+        '<td class="fd-activity-log-device">' + renderIdButton(ev.device_id, formatDeviceShort(ev.device_id), 'Device ID') + '</td>' +
+        '<td class="fd-activity-log-details">' + renderDetailsCell(ev) + '</td>' +
         '</tr>'
       );
     }).join('');
@@ -390,6 +436,7 @@
       cache = Array.isArray(events) ? events : [];
       populateTypeFilter();
       renderTableBody();
+      syncActivityLogChrome();
       if (typeof window.fdRbacHook === 'function') window.fdRbacHook('activity-log');
     } catch (e) {
       body.innerHTML = typeof window.renderTableErrorRow === 'function'
@@ -402,6 +449,12 @@
     if (window.__fdActivityLogPatched) return;
     window.__fdActivityLogPatched = true;
     window.loadActivityLog = loadActivityLogEnhanced;
+  }
+
+  function syncActivityLogChrome() {
+    if (typeof window.fdSyncAnalyticsHrChrome === 'function') {
+      window.fdSyncAnalyticsHrChrome('activity-log');
+    }
   }
 
   function patchNav() {
@@ -418,6 +471,7 @@
         || (resolved.section === 'analytics' && resolved.tab === 'activity-log');
       if (isActivityLog) {
         setTimeout(function () {
+          syncActivityLogChrome();
           buildToolbar();
           wireCopyDelegation();
           if (typeof window.fdRbacHook === 'function') window.fdRbacHook('activity-log');
@@ -439,6 +493,7 @@
 
   window.fdInitActivityLog = init;
   window.fdLoadActivityLog = loadActivityLogEnhanced;
+  window.fdEventTypeLabel = eventTypeLabel;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

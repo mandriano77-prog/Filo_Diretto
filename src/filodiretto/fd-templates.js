@@ -159,14 +159,65 @@
       checksHtml +
       '</div>' +
       '<div class="fd-tpl-card__actions">' +
-      '<button type="button" class="fd-btn fd-btn--secondary fd-btn--sm" onclick="editTemplate(\'' +
+      '<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" onclick="editTemplate(\'' +
       esc(t.id) +
       '\')">Modifica</button>' +
-      '<button type="button" class="fd-btn fd-btn--danger fd-btn--sm" onclick="deleteTemplate(\'' +
+      '<div class="fd-tpl-card-menu" data-tpl-id="' +
       esc(t.id) +
-      '\')">Elimina</button>' +
-      '</div></div></div></article>'
+      '">' +
+      '<button type="button" class="fd-tpl-card-menu__trigger fd-btn fd-btn--ghost fd-btn--sm" aria-haspopup="menu" aria-expanded="false" aria-label="Altre azioni template">⋯</button>' +
+      '<div class="fd-tpl-card-menu__panel" role="menu" hidden>' +
+      '<button type="button" class="fd-tpl-card-menu__item fd-tpl-card-menu__item--danger" role="menuitem" data-action="delete">Elimina</button>' +
+      '</div></div></div></div></div></article>'
     );
+  }
+
+  function bindTemplateCardMenus(scope) {
+    (scope || document).querySelectorAll('.fd-tpl-card-menu').forEach(function (menu) {
+      if (menu.dataset.bound === '1') return;
+      menu.dataset.bound = '1';
+      var tplId = menu.getAttribute('data-tpl-id');
+      var trigger = menu.querySelector('.fd-tpl-card-menu__trigger');
+      var panel = menu.querySelector('.fd-tpl-card-menu__panel');
+      if (!trigger || !panel) return;
+
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = panel.hidden;
+        document.querySelectorAll('.fd-tpl-card-menu__panel').forEach(function (p) {
+          p.hidden = true;
+        });
+        document.querySelectorAll('.fd-tpl-card-menu__trigger').forEach(function (t) {
+          t.setAttribute('aria-expanded', 'false');
+        });
+        if (open) {
+          panel.hidden = false;
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      var delBtn = panel.querySelector('[data-action="delete"]');
+      if (delBtn) {
+        delBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          panel.hidden = true;
+          trigger.setAttribute('aria-expanded', 'false');
+          if (typeof window.deleteTemplate === 'function') window.deleteTemplate(tplId);
+        });
+      }
+    });
+
+    if (!document.body.dataset.fdTplMenuDismiss) {
+      document.body.dataset.fdTplMenuDismiss = '1';
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.fd-tpl-card-menu__panel').forEach(function (p) {
+          p.hidden = true;
+        });
+        document.querySelectorAll('.fd-tpl-card-menu__trigger').forEach(function (t) {
+          t.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
   }
 
   function renderLoadingSkeleton() {
@@ -239,6 +290,9 @@
     var list = document.getElementById('templatesList');
     if (list) list.classList.add('fd-tpl-list-host');
 
+    if (typeof window.fdInjectBrandPassFlowBar === 'function') {
+      window.fdInjectBrandPassFlowBar('templates');
+    }
     if (typeof window.fdRelocateBrandPassFlowBar === 'function') {
       window.fdRelocateBrandPassFlowBar(section);
     }
@@ -331,6 +385,7 @@
             })
             .join('') +
           '</div>';
+        bindTemplateCardMenus(el);
         if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
       } catch (e) {
         console.error('fd-templates loadTemplates', e);

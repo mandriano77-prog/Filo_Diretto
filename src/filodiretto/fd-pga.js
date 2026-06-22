@@ -27,7 +27,11 @@
     coinActions: [],
     tab: 'catalog',
     bookingFilter: '',
-    editingExperienceId: null
+    editingExperienceId: null,
+    expFilterSearch: '',
+    expFilterCategory: '',
+    expFilterType: '',
+    expFilterStatus: ''
   };
 
   function isFiloPgaApp() {
@@ -208,15 +212,82 @@
     if (!host) return;
     var enabled = !!(state.settings && state.settings.enabled);
     host.innerHTML =
-      '<label class="fd-pga-toggle fd-rbac-write">' +
-      '<input type="checkbox" id="pgaEnabledCheckbox"' + (enabled ? ' checked' : '') + '> ' +
+      '<div class="fd-pga-toggle fd-rbac-write">' +
+      '<label class="fd-switch" for="pgaEnabledCheckbox">' +
+      '<input type="checkbox" class="fd-switch__input" id="pgaEnabledCheckbox"' +
+      (enabled ? ' checked' : '') +
+      ' aria-label="Attiva PGA — catalogo esperienze nel pass wallet">' +
+      '<span class="fd-switch__track" aria-hidden="true"><span class="fd-switch__thumb"></span></span>' +
+      '<span class="fd-pga-toggle__copy">' +
       '<strong>Attiva PGA</strong>' +
-      '<span style="color:var(--text2);margin-left:4px">— catalogo esperienze nel pass wallet</span>' +
-      '</label>';
+      '<span class="fd-pga-toggle__hint">— catalogo esperienze nel pass wallet</span>' +
+      '</span></label></div>';
     var cb = document.getElementById('pgaEnabledCheckbox');
     if (cb) {
       cb.addEventListener('change', togglePgaEnabled);
     }
+  }
+
+  function ensurePgaCatalogFilters() {
+    var toolbar = document.querySelector('#pgaTabPanel_catalog .fd-pga-toolbar');
+    if (!toolbar || document.getElementById('pgaExpSearch')) return;
+
+    var filters = document.createElement('div');
+    filters.className = 'fd-pga-filters';
+    filters.innerHTML =
+      '<input type="search" id="pgaExpSearch" class="fd-pga-control" placeholder="Cerca esperienza…" aria-label="Cerca esperienza">' +
+      '<select id="pgaExpCategoryFilter" class="fd-pga-control" aria-label="Filtra per categoria">' +
+      '<option value="">Tutte le categorie</option>' +
+      Object.keys(PGA_CATEGORIES).map(function (id) {
+        return '<option value="' + escapeHtml(id) + '">' + escapeHtml(categoryLabel(id)) + '</option>';
+      }).join('') +
+      '</select>' +
+      '<select id="pgaExpTypeFilter" class="fd-pga-control" aria-label="Filtra per tipo">' +
+      '<option value="">Tutti i tipi</option>' +
+      '<option value="internal">Interna</option>' +
+      '<option value="external">Esterna</option>' +
+      '</select>' +
+      '<select id="pgaExpStatusFilter" class="fd-pga-control" aria-label="Filtra per stato">' +
+      '<option value="">Tutti gli stati</option>' +
+      '<option value="active">Attiva</option>' +
+      '<option value="inactive">Disattiva</option>' +
+      '</select>';
+
+    toolbar.appendChild(filters);
+
+    var searchEl = document.getElementById('pgaExpSearch');
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        state.expFilterSearch = searchEl.value.trim();
+        renderExperiencesTable();
+      });
+    }
+    ['pgaExpCategoryFilter', 'pgaExpTypeFilter', 'pgaExpStatusFilter'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', function () {
+        if (id === 'pgaExpCategoryFilter') state.expFilterCategory = el.value;
+        else if (id === 'pgaExpTypeFilter') state.expFilterType = el.value;
+        else state.expFilterStatus = el.value;
+        renderExperiencesTable();
+      });
+    });
+  }
+
+  function filteredExperiences() {
+    return (state.experiences || []).filter(function (exp) {
+      if (state.expFilterCategory && exp.category !== state.expFilterCategory) return false;
+      if (state.expFilterType === 'internal' && !exp.internal) return false;
+      if (state.expFilterType === 'external' && exp.internal) return false;
+      if (state.expFilterStatus === 'active' && !exp.active) return false;
+      if (state.expFilterStatus === 'inactive' && exp.active) return false;
+      if (state.expFilterSearch) {
+        var q = state.expFilterSearch.toLowerCase();
+        var hay = ((exp.name || '') + ' ' + categoryLabel(exp.category)).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
   }
 
   async function togglePgaEnabled() {
@@ -245,11 +316,19 @@
   }
 
   function renderExperiencesTable() {
-    var tbody = document.querySelector('#pgaExperiencesTable tbody');
+    var table = document.getElementById('pgaExperiencesTable');
+    var tbody = table ? table.querySelector('tbody') : null;
+    var thead = table ? table.querySelector('thead') : null;
     if (!tbody) return;
-    var rows = state.experiences || [];
-    if (!rows.length) {
+    var allRows = state.experiences || [];
+    var rows = filteredExperiences();
+    if (thead) thead.hidden = !rows.length;
+    if (!allRows.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text2)">Nessuna esperienza. Attiva PGA per generare il catalogo predefinito.</td></tr>';
+      return;
+    }
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text2);text-align:center;padding:24px">Nessuna esperienza corrisponde ai filtri.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (exp) {
@@ -485,13 +564,36 @@
     host.innerHTML =
       '<strong>Avvio rapido PGA</strong> — ' +
       '1) Importa merchant in <a href="#" data-pga-nav-conventions>Convenzioni</a> · ' +
-      '2) Attiva PGA in Catalogo · ' +
-      '3) Rivedi le esperienze nel catalogo.';
-    var link = host.querySelector('[data-pga-nav-conventions]');
-    if (link) {
-      link.addEventListener('click', function (e) {
+      '2) <a href="#" data-pga-nav-enable>Attiva PGA</a> in Catalogo · ' +
+      '3) <a href="#" data-pga-nav-experiences>Rivedi le esperienze</a> nel catalogo.';
+    var linkConv = host.querySelector('[data-pga-nav-conventions]');
+    if (linkConv) {
+      linkConv.addEventListener('click', function (e) {
         e.preventDefault();
         if (typeof global.nav === 'function') global.nav('conventions');
+      });
+    }
+    var linkEnable = host.querySelector('[data-pga-nav-enable]');
+    if (linkEnable) {
+      linkEnable.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (typeof global.nav === 'function') global.nav('pga-catalog');
+        switchPgaTab('catalog');
+        var cb = document.getElementById('pgaEnabledCheckbox');
+        if (cb) {
+          cb.focus();
+          cb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      });
+    }
+    var linkExp = host.querySelector('[data-pga-nav-experiences]');
+    if (linkExp) {
+      linkExp.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (typeof global.nav === 'function') global.nav('pga-catalog');
+        switchPgaTab('catalog');
+        var table = document.getElementById('pgaExperiencesTable');
+        if (table) table.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       });
     }
   }
@@ -611,6 +713,7 @@
   async function loadPgaCatalog() {
     if (!isFiloPgaApp()) return;
     enhancePgaSectionDesign();
+    ensurePgaCatalogFilters();
     bindPgaEvents();
     switchPgaTab(getPgaTab(), { skipLoad: true });
     await reloadPgaData();
@@ -620,6 +723,7 @@
   function initPgaModule() {
     if (!isFiloPgaApp()) return;
     enhancePgaSectionDesign();
+    ensurePgaCatalogFilters();
   }
 
   global.switchPgaTab = switchPgaTab;

@@ -71,6 +71,7 @@
     section.classList.add('conventions--fd-ds');
 
     var title = section.querySelector('h1.page-title, h1.sec-title');
+    var blurb = section.querySelector('#conventionsPageBlurb, .fd-conventions-lead');
     if (title && !title.closest('.fd-page-header')) {
       var header = document.createElement('header');
       header.className = 'fd-page-header fd-conventions-header';
@@ -78,11 +79,19 @@
       copy.className = 'fd-page-header__copy';
       copy.appendChild(title);
       title.classList.add('fd-page-header__title');
-      var lead = document.createElement('p');
-      lead.className = 'fd-page-header__lead fd-conventions-lead';
-      lead.textContent =
-        'Gestisci le convenzioni aziendali, monitora gli utilizzi aggregati e personalizza l\'Hub per i dipendenti.';
-      copy.appendChild(lead);
+      if (blurb) {
+        blurb.classList.add('fd-page-header__lead', 'fd-conventions-lead');
+        blurb.style.color = '';
+        blurb.style.fontSize = '';
+        blurb.style.marginBottom = '';
+        copy.appendChild(blurb);
+      } else {
+        var lead = document.createElement('p');
+        lead.className = 'fd-page-header__lead fd-conventions-lead';
+        lead.textContent =
+          'Gestisci le convenzioni aziendali, monitora gli utilizzi aggregati e personalizza l\'Hub per i dipendenti.';
+        copy.appendChild(lead);
+      }
       header.appendChild(copy);
       section.insertBefore(header, section.firstChild);
     }
@@ -130,31 +139,54 @@
     if (typeof global.fdRbacHook === 'function') global.fdRbacHook('conventions');
   }
 
+  function renderAnalyticsKpiSkeleton() {
+    var host = document.getElementById('hubConventionsKpis');
+    if (!host) return;
+    host.classList.add('fd-conventions-kpi-grid--loading');
+    state.analytics = null;
+    renderAnalyticsKpis();
+  }
+
   function renderAnalyticsKpis() {
     var host = document.getElementById('hubConventionsKpis');
     if (!host) return;
     var a = state.analytics;
-    if (!a || !a.total_events) {
-      host.innerHTML = '';
-      return;
-    }
-    var te = a.total_events;
-    var items = [
-      { label: 'Eventi totali', value: te.total || 0 },
+    var te = (a && a.total_events) || {};
+    var engagementItems = [
+      { label: 'Eventi totali', value: te.total || 0, primary: true },
       { label: 'Visualizzazioni', value: te.view || 0 },
       { label: 'Click sito', value: te.click_site || 0 },
-      { label: 'Copy codice', value: te.copy_code || 0 },
+      { label: 'Copy codice', value: te.copy_code || 0 }
+    ];
+    var qrItems = [
       { label: 'QR mostrati', value: te.show_qr || 0 },
       { label: 'QR scansionati', value: te.scan_qr || 0 }
     ];
-    host.innerHTML = items.map(function (item) {
+
+    function renderGroup(title, items) {
       return (
-        '<div class="fd-conventions-kpi">' +
-        '<div class="fd-conventions-kpi__label">' + escapeHtml(item.label) + '</div>' +
-        '<div class="fd-conventions-kpi__value">' + escapeHtml(String(item.value)) + '</div>' +
-        '</div>'
+        '<section class="fd-conventions-kpi-group" aria-label="' + escapeHtml(title) + '">' +
+        '<h3 class="fd-conventions-kpi-group__title">' + escapeHtml(title) + '</h3>' +
+        '<div class="fd-conventions-kpi-group__grid">' +
+        items.map(function (item) {
+          var cls = 'fd-conventions-kpi' + (item.primary ? ' fd-conventions-kpi--primary' : '');
+          return (
+            '<div class="' + cls + '">' +
+            '<div class="fd-conventions-kpi__label">' + escapeHtml(item.label) + '</div>' +
+            '<div class="fd-conventions-kpi__value">' + escapeHtml(String(item.value)) + '</div>' +
+            '</div>'
+          );
+        }).join('') +
+        '</div></section>'
       );
-    }).join('');
+    }
+
+    host.classList.remove('fd-conventions-kpi-grid--loading');
+    host.innerHTML =
+      '<div class="fd-conventions-kpi-groups">' +
+      renderGroup('Engagement', engagementItems) +
+      renderGroup('QR in negozio', qrItems) +
+      '</div>';
   }
 
   function merchantStatsSummary(merchantId) {
@@ -481,6 +513,7 @@
   }
 
   async function reloadConventionsData() {
+    renderAnalyticsKpiSkeleton();
     try {
       var results = await Promise.all([
         fetchMerchants(),

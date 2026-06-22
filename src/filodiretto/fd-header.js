@@ -121,8 +121,8 @@
   const origSyncBreadcrumb = window.syncBreadcrumb;
   if (typeof origSyncBreadcrumb === 'function' && !window.__fdBreadcrumbPatched) {
     window.__fdBreadcrumbPatched = true;
-    window.syncBreadcrumb = function (sectionId) {
-      origSyncBreadcrumb(sectionId);
+    window.syncBreadcrumb = function (sectionId, tab) {
+      origSyncBreadcrumb(sectionId, tab);
       fdEnhanceBreadcrumbProduct();
     };
   }

@@ -55,10 +55,40 @@ html[data-app='filodiretto'] #conventions .fd-conventions-control {
 }
 
 html[data-app='filodiretto'] #conventions .fd-conventions-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--fd-space-3, 12px);
   margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--fd-space-4, 16px);
+  margin-bottom: var(--fd-space-4, 16px);
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi-group {
+  padding: var(--fd-space-3, 12px);
+  border: 1px solid var(--fd-border-subtle, var(--border));
+  border-radius: var(--fd-radius-md, 12px);
+  background: var(--fd-color-bg-elevated, var(--surface));
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi-group__title {
+  margin: 0 0 var(--fd-space-2, 8px);
+  font-size: var(--fd-font-size-xs, 11px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fd-color-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--fd-space-2, 8px);
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi--primary .fd-conventions-kpi__value {
+  font-size: var(--fd-font-size-2xl, 28px);
 }
 
 html[data-app='filodiretto'] #conventions .fd-conventions-kpi {
@@ -79,6 +109,10 @@ html[data-app='filodiretto'] #conventions .fd-conventions-kpi__value {
   font-size: var(--fd-font-size-xl, 22px);
   font-weight: 700;
   margin-top: 4px;
+}
+
+html[data-app='filodiretto'] #conventions .fd-conventions-kpi-grid--loading .fd-conventions-kpi__value {
+  color: var(--fd-color-text-muted, var(--text2));
 }
 
 html[data-app='filodiretto'] #conventions .fd-conventions-card {

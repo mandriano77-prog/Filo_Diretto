@@ -282,15 +282,29 @@
     };
   }
 
+  function patchApplyNavNaming() {
+    if (window.__fdAnalyticsNavNamingPatched || !window.FD_NAV) return;
+    window.__fdAnalyticsNavNamingPatched = true;
+    var orig = window.FD_NAV.applyNavNaming;
+    if (typeof orig !== 'function') return;
+    window.FD_NAV.applyNavNaming = function () {
+      var out = orig.apply(this, arguments);
+      if (isFiloAnalyticsApp()) syncAnalyticsHrChrome();
+      return out;
+    };
+  }
+
   function init() {
     if (!isFiloAnalyticsApp()) return;
     patchLoader();
     patchAnalyticsSubnav();
     patchNav();
+    patchApplyNavNaming();
     enhanceAnalyticsDom();
   }
 
   window.fdInitAnalytics = init;
+  window.fdSyncAnalyticsHrChrome = syncAnalyticsHrChrome;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

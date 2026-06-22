@@ -125,6 +125,7 @@
   }
 
   window.fdInitBrandPassFlow = initFdBrandPassFlow;
+  window.fdInjectBrandPassFlowBar = injectFlowBar;
   window.fdRelocateBrandPassFlowBar = relocateFlowBarOutOfHeader;
 
   if (document.readyState === 'loading') {

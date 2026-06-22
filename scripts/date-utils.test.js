@@ -23,8 +23,8 @@ test('formatRelativeSavedLabel uses weeks for multi-day saves', () => {
   assert.match(rel.title, /Salvato il/);
 });
 
-test('formatRelativeSavedLabel keeps minutes for recent saves', () => {
+test('formatRelativeSavedLabel shows clock time for same-day saves', () => {
   const g = loadDateUtils();
   const rel = g.formatRelativeSavedLabel(Date.now() - (12 * 60 * 1000));
-  assert.equal(rel.label, 'Salvato 12 min fa');
+  assert.match(rel.label, /Salvato ✓ alle \d{1,2}:\d{2}/);
 });

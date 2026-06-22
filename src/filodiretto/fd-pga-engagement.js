@@ -8,6 +8,7 @@
 
   var state = {
     analytics: null,
+    analyticsError: false,
     days: 30
   };
 
@@ -81,25 +82,53 @@
     return data;
   }
 
+  function formatKpiNumber(value) {
+    if (value == null || value === '' || Number.isNaN(Number(value))) return '0';
+    return String(Number(value));
+  }
+
+  function renderKpiSkeleton() {
+    var host = document.getElementById('pgaEngagementKpis');
+    if (!host) return;
+    var items = [
+      'Coin assegnati',
+      'Coin riscattati',
+      'Eventi assegnazione',
+      'Eventi riscatto'
+    ];
+    host.classList.add('fd-pga-kpi-grid--loading');
+    host.innerHTML = items.map(function (label) {
+      return (
+        '<div class="fd-pga-kpi" aria-busy="true">' +
+        '<div class="fd-pga-kpi__label">' + escapeHtml(label) + '</div>' +
+        '<div class="fd-pga-kpi__value">0</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function renderKpis() {
     var host = document.getElementById('pgaEngagementKpis');
     if (!host) return;
+    host.classList.remove('fd-pga-kpi-grid--loading');
     var a = state.analytics;
-    if (!a) {
-      host.innerHTML = '';
-      return;
-    }
     var items = [
-      { label: 'Coin assegnati', value: a.coins_granted || 0 },
-      { label: 'Coin riscattati', value: a.coins_redeemed || 0 },
-      { label: 'Eventi assegnazione', value: a.grant_events || 0 },
-      { label: 'Eventi riscatto', value: a.redemption_events || 0 }
+      { label: 'Coin assegnati', value: a ? formatKpiNumber(a.coins_granted) : '0', hint: 'Totale coin erogati nel periodo' },
+      { label: 'Coin riscattati', value: a ? formatKpiNumber(a.coins_redeemed) : '0', hint: 'Coin spesi in prenotazioni' },
+      { label: 'Eventi assegnazione', value: a ? formatKpiNumber(a.grant_events) : '0', hint: 'Azioni che hanno generato coin' },
+      { label: 'Eventi riscatto', value: a ? formatKpiNumber(a.redemption_events) : '0', hint: 'Prenotazioni o riscatti confermati' }
     ];
+    if (state.analyticsError) {
+      items.forEach(function (item) {
+        if (item.value === '0' && !a) item.value = '—';
+      });
+    }
     host.innerHTML = items.map(function (item) {
       return (
         '<div class="fd-pga-kpi">' +
         '<div class="fd-pga-kpi__label">' + escapeHtml(item.label) + '</div>' +
         '<div class="fd-pga-kpi__value">' + escapeHtml(item.value) + '</div>' +
+        (item.hint ? '<div class="fd-pga-kpi__hint">' + escapeHtml(item.hint) + '</div>' : '') +
         '</div>'
       );
     }).join('');
@@ -221,6 +250,8 @@
   }
 
   async function reloadEngagement() {
+    state.analyticsError = false;
+    renderKpiSkeleton();
     try {
       state.analytics = await fetchEngagementAnalytics(state.days);
       renderKpis();
@@ -228,6 +259,9 @@
       renderTopActions();
       renderByWeekday();
     } catch (err) {
+      state.analytics = null;
+      state.analyticsError = true;
+      renderKpis();
       toast(err.message || 'Errore caricamento engagement');
     }
   }

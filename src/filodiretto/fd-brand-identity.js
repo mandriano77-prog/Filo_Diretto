@@ -82,6 +82,13 @@
     return n ? n.charAt(0).toUpperCase() : '?';
   }
 
+  function fieldVal(data, camelKey, snakeKey) {
+    if (!data) return '';
+    if (data[camelKey] != null && String(data[camelKey]).trim()) return data[camelKey];
+    if (snakeKey && data[snakeKey] != null && String(data[snakeKey]).trim()) return data[snakeKey];
+    return '';
+  }
+
   function summaryRow(label, value) {
     var v = String(value || '').trim();
     return (
@@ -99,19 +106,22 @@
     var name = String(data.name || '').trim() || 'Nome brand';
     var tagline = String(data.tagline || '').trim();
     var slugUrl = slugPreviewUrl(data.slug);
+    var supportEmail = fieldVal(data, 'supportEmail', 'support_email');
+    var supportPhone = fieldVal(data, 'supportPhone', 'support_phone');
+    var dpoEmail = fieldVal(data, 'dpoEmail', 'dpo_email');
 
     root.innerHTML =
       '<div class="a2w-bi-identity-summary__brand">' +
       '<span class="a2w-bi-identity-summary__initial" aria-hidden="true">' + esc(brandInitial(name)) + '</span>' +
       '<div>' +
       '<p class="a2w-bi-identity-summary__name">' + esc(name) + '</p>' +
-      '<p class="a2w-bi-identity-summary__tagline">' + esc(tagline || 'Tagline non impostata') + '</p>' +
+      '<p class="a2w-bi-identity-summary__tagline">' + esc(tagline || '—') + '</p>' +
       '</div></div>' +
       '<dl class="a2w-bi-identity-summary__details">' +
-      summaryRow('Landing', slugUrl) +
-      summaryRow('Email supporto', data.support_email) +
-      summaryRow('Telefono', data.support_phone) +
-      summaryRow('DPO / Privacy', data.dpo_email) +
+      summaryRow('Landing', slugUrl === '—' ? '' : slugUrl) +
+      summaryRow('Email supporto', supportEmail) +
+      summaryRow('Telefono', supportPhone) +
+      summaryRow('DPO / Privacy', dpoEmail) +
       summaryRow('Settore', data.settore) +
       '</dl>';
 
@@ -344,11 +354,16 @@
 
   function formatBadgeLabel(stateLabel) {
     if (!stateLabel) return stateLabel;
-    if (stateLabel === 'Modifiche non salvate' || stateLabel === 'Salvataggio…') return stateLabel;
-    if (/^Salvato|^circa/i.test(stateLabel)) {
-      return 'Ultima modifica: ' + stateLabel.replace(/^Salvato\s*/i, '');
+    if (
+      stateLabel === 'Modifiche non salvate' ||
+      stateLabel === 'Salvataggio…' ||
+      stateLabel === 'Non ancora salvato' ||
+      /^Salvato\s*✓/i.test(stateLabel) ||
+      /^Salvato(\s|$)/i.test(stateLabel) ||
+      /^circa/i.test(stateLabel)
+    ) {
+      return stateLabel;
     }
-    if (stateLabel === 'Salvato') return 'Ultima modifica: ora';
     return stateLabel;
   }
 
@@ -416,6 +431,9 @@
     patchDeleteTypingHandler();
     enhanceDeleteDialog();
     if (typeof window.fdInitDangerZone === 'function') window.fdInitDangerZone();
+    if (typeof window.fdInjectBrandPassFlowBar === 'function') {
+      window.fdInjectBrandPassFlowBar('brand-identity');
+    }
   }
 
   function initFdBrandIdentity() {

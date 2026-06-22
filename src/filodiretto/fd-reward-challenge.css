@@ -151,6 +151,30 @@ html[data-app='filodiretto'] #gamTable th .fd-th-help {
   vertical-align: middle;
 }
 
+html[data-app='filodiretto'] #iwTable th .fd-th-help:focus-visible,
+html[data-app='filodiretto'] #gamTable th .fd-th-help:focus-visible {
+  outline: 3px solid rgba(109, 40, 217, 0.35);
+  outline-offset: 2px;
+}
+
+html[data-app='filodiretto'] .fd-th-help-tip {
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: var(--fd-radius-md, 10px);
+  border: 1px solid var(--fd-border-strong, var(--border));
+  background: var(--fd-color-bg-elevated, #1f2937);
+  color: var(--fd-color-text-primary, #f9fafb);
+  font-size: var(--fd-font-size-sm, 12px);
+  line-height: 1.45;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+html[data-app='filodiretto'] #iwTable.fd-table--empty thead,
+html[data-app='filodiretto'] #gamTable.fd-table--empty thead {
+  display: none;
+}
+
 @media (max-width: 720px) {
   html[data-app='filodiretto'] #instant-win .fd-reward-stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

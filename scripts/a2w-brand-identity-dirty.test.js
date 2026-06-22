@@ -87,6 +87,12 @@ test('media library layout: tab singolo bucket e crop editor intatto', () => {
   });
 });
 
+test('Filo brand identity preview maps camelCase contact fields', () => {
+  const biJs = fs.readFileSync(path.join(root, 'src/filodiretto/fd-brand-identity.js'), 'utf8');
+  assert.match(biJs, /fieldVal\(data, 'supportEmail'/);
+  assert.match(biJs, /scheduleAsideSummary/);
+});
+
 test('brand identity non mostra sezione asset inline (solo Media Library)', () => {
   assert.doesNotMatch(indexHtml, /a2w-bi-section--assets/);
   assert.doesNotMatch(indexHtml, /Logo e immagini chiave/);

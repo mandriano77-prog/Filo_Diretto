@@ -23,6 +23,118 @@
     return !!(tbody && tbody.querySelector('tr td:not([colspan])'));
   }
 
+  function syncEngagementTableHead(tableId) {
+    if (!isFilo()) return;
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var thead = table.querySelector('thead');
+    if (!thead) return;
+    var hasData = tableHasDataRows(tableId);
+    thead.hidden = !hasData;
+    table.classList.toggle('fd-table--empty', !hasData);
+  }
+
+  function formatRedemptionRate(stats) {
+    if (!stats) return '—';
+    var plays = Number(stats.total_plays) || 0;
+    if (plays <= 0) return '—';
+    if (stats.win_rate == null || stats.win_rate === '') return '—';
+    var rate = Number(stats.win_rate);
+    if (!Number.isFinite(rate)) return '—';
+    return rate.toFixed(1) + '%';
+  }
+
+  function applyRewardStats(stats) {
+    var el = document.getElementById('iwStatRate');
+    if (!el) return;
+    el.textContent = formatRedemptionRate(stats);
+  }
+
+  var thHelpTipNode = null;
+  var thHelpTipAnchor = null;
+
+  function hideThHelpTip() {
+    if (!thHelpTipNode) return;
+    thHelpTipNode.hidden = true;
+    thHelpTipNode.setAttribute('aria-hidden', 'true');
+    thHelpTipAnchor = null;
+  }
+
+  function ensureThHelpTip() {
+    if (thHelpTipNode) return thHelpTipNode;
+    thHelpTipNode = document.createElement('div');
+    thHelpTipNode.id = 'fdThHelpTip';
+    thHelpTipNode.className = 'fd-th-help-tip';
+    thHelpTipNode.setAttribute('role', 'tooltip');
+    thHelpTipNode.hidden = true;
+    thHelpTipNode.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(thHelpTipNode);
+    document.addEventListener('scroll', hideThHelpTip, true);
+    window.addEventListener('resize', hideThHelpTip);
+    return thHelpTipNode;
+  }
+
+  function positionThHelpTip(anchor, text) {
+    var tip = ensureThHelpTip();
+    tip.textContent = text;
+    tip.hidden = false;
+    tip.setAttribute('aria-hidden', 'false');
+    thHelpTipAnchor = anchor;
+
+    var collision = 12;
+    var gap = 8;
+    var rect = anchor.getBoundingClientRect();
+    tip.style.transform = 'none';
+    var width = tip.offsetWidth || 240;
+    var height = tip.offsetHeight || 80;
+
+    var top = rect.bottom + gap;
+    var left = rect.left + rect.width / 2 - width / 2;
+    left = Math.max(collision, Math.min(left, window.innerWidth - width - collision));
+
+    if (top + height > window.innerHeight - collision) {
+      top = Math.max(collision, rect.top - height - gap);
+      tip.classList.add('fd-th-help-tip--above');
+    } else {
+      tip.classList.remove('fd-th-help-tip--above');
+    }
+
+    tip.style.position = 'fixed';
+    tip.style.top = top + 'px';
+    tip.style.left = left + 'px';
+    tip.style.zIndex = '9300';
+  }
+
+  function bindThHelpTooltips() {
+    document.querySelectorAll('#iwTable th .fd-th-help, #gamTable th .fd-th-help').forEach(function (hint) {
+      if (hint.dataset.fdTipBound === '1') return;
+      hint.dataset.fdTipBound = '1';
+      var th = hint.closest('th');
+      if (!th) return;
+      var tipText = th.getAttribute('aria-label') || th.getAttribute('title') || '';
+      th.removeAttribute('title');
+      hint.setAttribute('tabindex', '0');
+      hint.setAttribute('role', 'button');
+      hint.setAttribute('aria-label', tipText);
+
+      function show() {
+        if (!tipText) return;
+        positionThHelpTip(hint, tipText);
+      }
+
+      hint.addEventListener('mouseenter', show);
+      hint.addEventListener('focus', show);
+      hint.addEventListener('mouseleave', hideThHelpTip);
+      hint.addEventListener('blur', hideThHelpTip);
+      hint.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (thHelpTipAnchor === hint && thHelpTipNode && !thHelpTipNode.hidden) hideThHelpTip();
+        else show();
+      });
+    });
+  }
+
   function updateIwStatsCompact() {
     setStatsCompact('iwStats', tableHasDataRows('iwTable') ? 1 : 0);
   }
@@ -33,7 +145,6 @@
 
   function addThHelp(th, tip) {
     if (!th || th.querySelector('.fd-th-help')) return;
-    th.setAttribute('title', tip);
     th.setAttribute('aria-label', (th.textContent || '').trim() + '. ' + tip);
     var hint = document.createElement('span');
     hint.className = 'fd-th-help';
@@ -205,7 +316,9 @@
     if (table) table.classList.add('fd-table');
     enhanceRewardRowActions();
     enhanceTableHeaders();
+    bindThHelpTooltips();
     updateIwStatsCompact();
+    syncEngagementTableHead('iwTable');
     if (typeof window.fdEnhanceResponsiveTables === 'function') {
       window.fdEnhanceResponsiveTables();
     }
@@ -338,7 +451,9 @@
     if (table) table.classList.add('fd-table');
     enhanceChallengeRowActions();
     enhanceTableHeaders();
+    bindThHelpTooltips();
     updateGamStatsCompact();
+    syncEngagementTableHead('gamTable');
     if (typeof window.fdEnhanceResponsiveTables === 'function') {
       window.fdEnhanceResponsiveTables();
     }
@@ -357,8 +472,16 @@
         } finally {
           clearRewardLoadingState();
         }
-        if (isFilo()) enhanceRewardDom();
-        else updateIwStatsCompact();
+        if (isFilo()) {
+          var plays = parseInt((document.getElementById('iwStatPlays') || {}).textContent, 10);
+          if (!Number.isFinite(plays) || plays <= 0) {
+            applyRewardStats(null);
+          }
+          enhanceRewardDom();
+        } else {
+          updateIwStatsCompact();
+        }
+        syncEngagementTableHead('iwTable');
       };
     }
     if (typeof window.loadGamification === 'function') {
@@ -372,6 +495,7 @@
         }
         if (isFilo()) enhanceChallengeDom();
         else updateGamStatsCompact();
+        syncEngagementTableHead('gamTable');
       };
     }
   }
@@ -392,8 +516,14 @@
             enhanceChallengeDom();
           } else {
             enhanceTableHeaders();
-            if (sectionId === 'instant-win') updateIwStatsCompact();
-            else updateGamStatsCompact();
+            bindThHelpTooltips();
+            if (sectionId === 'instant-win') {
+              updateIwStatsCompact();
+              syncEngagementTableHead('iwTable');
+            } else {
+              updateGamStatsCompact();
+              syncEngagementTableHead('gamTable');
+            }
           }
         }, 120);
       }
