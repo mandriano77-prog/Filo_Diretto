@@ -33,26 +33,22 @@
   function applyLeadsChrome() {
     if (!isFiloHr()) return;
 
+    stripLeadsHeaderDuplicates();
+
+    var pageMenu = document.getElementById('contactsPageMenu');
+    if (pageMenu) {
+      pageMenu.hidden = true;
+      pageMenu.style.display = 'none';
+    }
+  }
+
+  function stripLeadsHeaderDuplicates() {
     var headerActions = document.getElementById('a2wContactsHeaderActions');
-    if (headerActions) headerActions.hidden = true;
-
-    var add = document.getElementById('a2wContactsAddBtn');
-    if (add) {
-      add.textContent = '＋ Aggiungi dipendente';
-      add.setAttribute('aria-label', 'Aggiungi dipendente');
+    if (headerActions) {
+      headerActions.hidden = true;
+      headerActions.setAttribute('aria-hidden', 'true');
+      headerActions.style.display = 'none';
     }
-
-    var imp = document.getElementById('a2wContactsImportBtn');
-    if (imp) {
-      imp.textContent = 'Importa dipendenti';
-      imp.setAttribute('aria-label', 'Importa dipendenti da CSV o Excel');
-    }
-
-    var pageMenu = document.getElementById('contactsPageMenuBtn');
-    if (pageMenu) pageMenu.setAttribute('aria-label', 'Menu pagina Dipendenti');
-
-    var cardTitle = document.getElementById('contactsCardATitle');
-    if (cardTitle) cardTitle.textContent = 'Anagrafica dipendenti';
   }
 
   function patchMenuCopy() {

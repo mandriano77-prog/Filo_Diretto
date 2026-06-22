@@ -1403,22 +1403,20 @@
   }
   function applyLeadsChrome() {
     if (!isFiloHr()) return;
+    stripLeadsHeaderDuplicates();
+    var pageMenu = document.getElementById('contactsPageMenu');
+    if (pageMenu) {
+      pageMenu.hidden = true;
+      pageMenu.style.display = 'none';
+    }
+  }
+  function stripLeadsHeaderDuplicates() {
     var headerActions = document.getElementById('a2wContactsHeaderActions');
-    if (headerActions) headerActions.hidden = true;
-    var add = document.getElementById('a2wContactsAddBtn');
-    if (add) {
-      add.textContent = '＋ Aggiungi dipendente';
-      add.setAttribute('aria-label', 'Aggiungi dipendente');
+    if (headerActions) {
+      headerActions.hidden = true;
+      headerActions.setAttribute('aria-hidden', 'true');
+      headerActions.style.display = 'none';
     }
-    var imp = document.getElementById('a2wContactsImportBtn');
-    if (imp) {
-      imp.textContent = 'Importa dipendenti';
-      imp.setAttribute('aria-label', 'Importa dipendenti da CSV o Excel');
-    }
-    var pageMenu = document.getElementById('contactsPageMenuBtn');
-    if (pageMenu) pageMenu.setAttribute('aria-label', 'Menu pagina Dipendenti');
-    var cardTitle = document.getElementById('contactsCardATitle');
-    if (cardTitle) cardTitle.textContent = 'Anagrafica dipendenti';
   }
   function patchMenuCopy() {
     if (!isFiloHr() || window.__fdHrCopyPatched) return;
@@ -1747,6 +1745,154 @@
       '</div>'
     );
   }
+  function scrollToBrandField(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_) {
+      el.focus();
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function scrollToContactsSection() {
+    var email = document.getElementById('biSupportEmail');
+    var section = email && email.closest('section');
+    if (email) scrollToBrandField('biSupportEmail');
+    else if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function hasBrandLogo() {
+    var state = window.brandIdentityState;
+    if (state && state.selectedAssets && state.selectedAssets.logo) return true;
+    if (state && state.mediaByType && Array.isArray(state.mediaByType.logo) && state.mediaByType.logo.length > 0) {
+      return true;
+    }
+    var logoBox = document.getElementById('mediaLogoBox');
+    if (logoBox && logoBox.querySelector('img[src]:not([src=""])')) return true;
+    return false;
+  }
+  function isNameSlugComplete(data) {
+    var name = String(data.name || '').trim();
+    var slug = String(data.slug || '').trim();
+    if (!name || !slug || !/^[a-z0-9-]+$/.test(slug)) return false;
+    var state = window.brandIdentityState || {};
+    if (state.slugChecking) return false;
+    if (state.slugAvailable === false) return false;
+    if (state.slugAvailable === true) return true;
+    return false;
+  }
+  function isSupportContactsComplete(data) {
+    var email = String(fieldVal(data, 'supportEmail', 'support_email') || '').trim();
+    var phone = String(fieldVal(data, 'supportPhone', 'support_phone') || '').trim();
+    return !!(email && phone);
+  }
+  function isTemplateReady() {
+    return !!window.__fdBiTemplateReady;
+  }
+  var CHECKLIST_DEF = [
+    {
+      id: 'name-slug',
+      label: 'Nome e slug univoco',
+      isComplete: function (data) { return isNameSlugComplete(data); },
+      go: function () {
+        var data = collectFormSnapshot();
+        if (!String(data.name || '').trim()) scrollToBrandField('biName');
+        else scrollToBrandField('biSlug');
+      }
+    },
+    {
+      id: 'support-hr',
+      label: 'Email e telefono di supporto HR',
+      isComplete: function (data) { return isSupportContactsComplete(data); },
+      go: scrollToContactsSection
+    },
+    {
+      id: 'logo',
+      label: 'Logo in Media Library',
+      isComplete: function () { return hasBrandLogo(); },
+      go: function () {
+        if (typeof window.nav === 'function') window.nav('media-library');
+      }
+    },
+    {
+      id: 'template',
+      label: 'Template pass dipendente',
+      isComplete: function () { return isTemplateReady(); },
+      go: function () {
+        if (typeof window.nav === 'function') window.nav('templates');
+      }
+    }
+  ];
+  function renderChecklistItem(item, data) {
+    var done = item.isComplete(data);
+    var mark = done
+      ? '<span class="fd-bi-checklist__mark fd-bi-checklist__mark--done" aria-hidden="true">✓</span>'
+      : '<span class="fd-bi-checklist__mark" aria-hidden="true"></span>';
+    if (done) {
+      return (
+        '<li class="fd-bi-checklist__item is-done">' + mark +
+        '<span class="fd-bi-checklist__label">' + esc(item.label) + '</span></li>'
+      );
+    }
+    return (
+      '<li class="fd-bi-checklist__item is-pending">' +
+      '<button type="button" class="fd-bi-checklist__link" data-fd-checklist="' + esc(item.id) + '">' +
+      mark + '<span class="fd-bi-checklist__label">' + esc(item.label) + '</span></button></li>'
+    );
+  }
+  function syncChecklist() {
+    var list = document.getElementById('fdBiChecklist');
+    if (!list) return;
+    var data = collectFormSnapshot();
+    list.innerHTML = CHECKLIST_DEF.map(function (item) {
+      return renderChecklistItem(item, data);
+    }).join('');
+  }
+  var checklistTemplateTimer = null;
+  function refreshChecklistTemplates() {
+    if (checklistTemplateTimer) clearTimeout(checklistTemplateTimer);
+    checklistTemplateTimer = setTimeout(async function () {
+      checklistTemplateTimer = null;
+      window.__fdBiTemplateReady = false;
+      try {
+        var brandId = window.brandId;
+        var api = window.API;
+        if (!brandId || !api) {
+          syncChecklist();
+          return;
+        }
+        var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+        var res = await fetch(api + '/templates?brand_id=' + encodeURIComponent(brandId), { headers: headers });
+        if (!res.ok) {
+          syncChecklist();
+          return;
+        }
+        var templates = await res.json();
+        var list = Array.isArray(templates) ? templates : [];
+        window.__fdBiTemplateReady = list.length > 0;
+      } catch (_) {
+        window.__fdBiTemplateReady = false;
+      }
+      syncChecklist();
+    }, 120);
+  }
+  function bindChecklistActions(container) {
+    var root = container || document.getElementById('fdBiAside');
+    if (!root || root.dataset.fdChecklistBound === '1') return;
+    root.dataset.fdChecklistBound = '1';
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-fd-checklist]');
+      if (!btn) return;
+      e.preventDefault();
+      var id = btn.getAttribute('data-fd-checklist');
+      var item = CHECKLIST_DEF.find(function (x) { return x.id === id; });
+      if (item && typeof item.go === 'function') item.go();
+    });
+  }
+  function scheduleChecklistRefresh() {
+    syncChecklist();
+    refreshChecklistTemplates();
+  }
   function syncAsideSummary() {
     var root = document.getElementById('fdBiIdentitySummary');
     if (!root) return;
@@ -1777,6 +1923,7 @@
     if (legacySlug && !document.getElementById('fdBiIdentitySummary')) {
       legacySlug.textContent = data.slug || '—';
     }
+    scheduleChecklistRefresh();
   }
   function scheduleAsideSummary() {
     if (summaryTimer) clearTimeout(summaryTimer);
@@ -1802,6 +1949,7 @@
     aside.className = 'fd-bi-aside';
     aside.setAttribute('aria-label', 'Anteprima e guida identità brand');
     aside.innerHTML =
+      '<div class="fd-bi-aside-grid">' +
       '<div class="fd-card fd-bi-aside-card a2w-bi-preview-card">' +
       '<h2 class="fd-bi-aside__title">Anteprima identità</h2>' +
       '<p class="fd-bi-aside__lead">Anteprima live di nome, contatti e URL landing mentre modifichi i campi.</p>' +
@@ -1811,19 +1959,18 @@
       '<button type="button" class="fd-btn fd-btn--ghost" data-fd-nav="media-library">Media Library</button>' +
       '<button type="button" class="fd-btn fd-btn--ghost" data-fd-nav="templates">Template Pass</button>' +
       '</div></div>' +
-      '<div class="fd-card fd-bi-aside-card fd-bi-aside-card--help">' +
-      '<h2 class="fd-bi-aside__title">Checklist rapida</h2>' +
-      '<ul class="fd-bi-aside-checklist">' +
-      '<li>Completa nome e slug univoco</li>' +
-      '<li>Inserisci email e telefono di supporto HR</li>' +
-      '<li>Carica logo in Media Library</li>' +
-      '<li>Crea il template pass dipendente</li>' +
-      '</ul></div>';
+      '<div class="fd-card fd-bi-aside-card fd-bi-aside-card--checklist">' +
+      '<h2 class="fd-bi-aside__title">Checklist setup</h2>' +
+      '<p class="fd-bi-aside__lead">Passi per completare l\'identità del brand.</p>' +
+      '<ul class="fd-bi-checklist" id="fdBiChecklist" aria-live="polite"></ul>' +
+      '</div></div>';
     layout.appendChild(aside);
     bindNavButtons(aside);
     bindLandingPreviewActions(aside);
+    bindChecklistActions(aside);
     bindSummaryFields();
     syncAsideSummary();
+    scheduleChecklistRefresh();
   }
   function bindNavButtons(container) {
     (container || document).querySelectorAll('[data-fd-nav]').forEach(function (btn) {
@@ -1866,18 +2013,14 @@
       if (badge && !document.getElementById('fdBiSaveStateWrap')) {
         var wrap = document.createElement('div');
         wrap.id = 'fdBiSaveStateWrap';
-        wrap.className = 'fd-bi-save-meta';
+        wrap.className = 'fd-bi-save-meta fd-bi-save-meta--sr';
         wrap.innerHTML =
           '<span class="fd-bi-save-meta__label" id="fdBiSaveStateLabel">Stato salvataggio</span>';
         badge.classList.add('fd-badge', 'fd-bi-state-badge');
         wrap.appendChild(badge);
-        if (saveBtn) {
-          actions.insertBefore(wrap, saveBtn);
-        } else {
-          actions.appendChild(wrap);
-        }
+        actions.appendChild(wrap);
       }
-      if (saveBtn) {
+      if (saveBtn && saveBtn.dataset.fdRelocated !== '1') {
         saveBtn.classList.add('fd-btn', 'fd-btn--primary');
       }
     }
@@ -2006,6 +2149,22 @@
       orig.apply(this, arguments);
       syncAsideSummary();
     };
+    if (typeof window.a2wBiSyncDirtyState === 'function' && !window.__fdBiDirtyChecklistPatched) {
+      window.__fdBiDirtyChecklistPatched = true;
+      var origDirty = window.a2wBiSyncDirtyState;
+      window.a2wBiSyncDirtyState = function () {
+        origDirty.apply(this, arguments);
+        syncChecklist();
+      };
+    }
+    if (typeof window.a2wBiCheckSlugAvailabilityNow === 'function' && !window.__fdBiSlugChecklistPatched) {
+      window.__fdBiSlugChecklistPatched = true;
+      var origSlug = window.a2wBiCheckSlugAvailabilityNow;
+      window.a2wBiCheckSlugAvailabilityNow = async function () {
+        await origSlug.apply(this, arguments);
+        syncChecklist();
+      };
+    }
   }
   function patchDeleteTypingHandler() {
     var confirmInput = document.getElementById('a2wDeleteBrandConfirmInput');
@@ -2034,6 +2193,8 @@
     window.loadBrandIdentity = async function () {
       await orig.apply(this, arguments);
       enhanceBrandIdentityChrome();
+      if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
+      if (typeof window.fdSyncBrandIdentityBottomBar === 'function') window.fdSyncBrandIdentityBottomBar();
     };
   }
   function enhanceBrandIdentityChrome() {
@@ -2062,6 +2223,7 @@
   }
   window.fdEnhanceBrandIdentity = enhanceBrandIdentityChrome;
   window.fdSyncBrandIdentityAside = syncAsideSummary;
+  window.fdRefreshBrandChecklist = scheduleChecklistRefresh;
   window.fdInitBrandIdentity = initFdBrandIdentity;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdBrandIdentity);
@@ -3236,29 +3398,22 @@
     if (panel) panel.hidden = true;
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
-  function consolidateLeadsPageMenu() {
+  function stripLeadsHeaderDuplicates() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var cardMenu = document.getElementById('fdContactsCardMenu');
-    if (cardMenu) cardMenu.remove();
-    var pageMenu = document.getElementById('contactsPageMenu');
-    var panel = document.getElementById('contactsPageMenuPanel');
-    if (!panel) return;
-    if (!document.getElementById('fdContactsPageExportBtn')) {
-      var exportItem = document.createElement('button');
-      exportItem.type = 'button';
-      exportItem.role = 'menuitem';
-      exportItem.className = 'contacts-page-menu__item';
-      exportItem.id = 'fdContactsPageExportBtn';
-      exportItem.textContent = 'Esporta CSV dipendenti';
-      panel.insertBefore(exportItem, panel.firstChild);
-      exportItem.addEventListener('click', function (e) {
-        e.stopPropagation();
-        closePageMenu();
-        if (exportItem.disabled) return;
-        if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
-      });
+    var headerActions = document.getElementById('a2wContactsHeaderActions');
+    if (headerActions) {
+      headerActions.hidden = true;
+      headerActions.setAttribute('aria-hidden', 'true');
+      headerActions.style.display = 'none';
     }
-    if (pageMenu) pageMenu.hidden = false;
+    var pageMenu = document.getElementById('contactsPageMenu');
+    if (pageMenu) {
+      pageMenu.hidden = true;
+      pageMenu.setAttribute('aria-hidden', 'true');
+      pageMenu.style.display = 'none';
+    }
+    var legacyExport = document.getElementById('fdContactsPageExportBtn');
+    if (legacyExport) legacyExport.remove();
   }
   function closeToolbarOverflowMenu() {
     var panel = document.getElementById('fdContactsToolbarOverflowPanel');
@@ -3281,7 +3436,7 @@
     overflowBtn.setAttribute('aria-haspopup', 'menu');
     overflowBtn.setAttribute('aria-expanded', 'false');
     overflowBtn.setAttribute('aria-label', 'Altre azioni anagrafica');
-    overflowBtn.hidden = true;
+    overflowBtn.classList.add('fd-contacts-toolbar-overflow--always');
     var panel = document.createElement('div');
     panel.id = 'fdContactsToolbarOverflowPanel';
     panel.className = 'fd-contacts-toolbar-overflow-panel';
@@ -3289,6 +3444,7 @@
     panel.setAttribute('role', 'menu');
     actions.appendChild(overflowBtn);
     actions.appendChild(panel);
+    ensureToolbarOverflowStaticItems(panel);
     overflowBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       var open = panel.hidden;
@@ -3309,18 +3465,21 @@
       if (btn.id === 'leadsExportBtn') return;
       movable.push(btn);
     });
+    function clearDynamicOverflowItems() {
+      panel.querySelectorAll('[data-fd-toolbar-dynamic="1"]').forEach(function (node) {
+        node.remove();
+      });
+    }
     function rebalanceToolbar() {
       movable.forEach(function (btn) {
         btn.hidden = false;
         btn.removeAttribute('data-fd-toolbar-overflowed');
       });
-      panel.innerHTML = '';
-      overflowBtn.hidden = true;
+      clearDynamicOverflowItems();
       closeToolbarOverflowMenu();
       var available = host.clientWidth - 12;
       if (!available) return;
       if (host.scrollWidth <= available) return;
-      overflowBtn.hidden = false;
       for (var i = movable.length - 1; i >= 0; i--) {
         var btn = movable[i];
         btn.hidden = true;
@@ -3333,6 +3492,7 @@
         item.type = 'button';
         item.className = 'fd-contacts-toolbar-overflow-panel__item';
         item.setAttribute('role', 'menuitem');
+        item.setAttribute('data-fd-toolbar-dynamic', '1');
         item.textContent = (btn.textContent || '').replace(/^\s*[✨✉⬇+]+\s*/, '').trim() || btn.getAttribute('aria-label') || 'Azione';
         item.disabled = !!btn.disabled;
         item.addEventListener('click', function (e) {
@@ -3348,6 +3508,40 @@
     }
     window.addEventListener('resize', rebalanceToolbar);
     setTimeout(rebalanceToolbar, 0);
+  }
+  function ensureToolbarOverflowStaticItems(panel) {
+    if (!panel) return;
+    if (!document.getElementById('fdContactsOverflowExportBtn')) {
+      var exportItem = document.createElement('button');
+      exportItem.type = 'button';
+      exportItem.role = 'menuitem';
+      exportItem.className = 'fd-contacts-toolbar-overflow-panel__item';
+      exportItem.id = 'fdContactsOverflowExportBtn';
+      exportItem.textContent = 'Esporta CSV dipendenti';
+      exportItem.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeToolbarOverflowMenu();
+        if (exportItem.disabled) return;
+        if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
+      });
+      panel.appendChild(exportItem);
+    }
+    if (!document.getElementById('fdContactsOverflowTourBtn')) {
+      var tourItem = document.createElement('button');
+      tourItem.type = 'button';
+      tourItem.role = 'menuitem';
+      tourItem.className = 'fd-contacts-toolbar-overflow-panel__item';
+      tourItem.id = 'fdContactsOverflowTourBtn';
+      tourItem.textContent = 'Mostra tour';
+      tourItem.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeToolbarOverflowMenu();
+        if (window.ContactsPage && typeof window.ContactsPage.showTour === 'function') {
+          window.ContactsPage.showTour();
+        }
+      });
+      panel.appendChild(tourItem);
+    }
   }
   function wireContactsHelpPopover() {
     var host = document.getElementById('contactsCardAHelp');
@@ -3375,7 +3569,7 @@
   }
   function syncFiloExportMenuState() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var exportItem = document.getElementById('fdContactsPageExportBtn');
+    var exportItem = document.getElementById('fdContactsOverflowExportBtn');
     if (!exportItem) return;
     var total = 0;
     var filteredLen = 0;
@@ -3410,7 +3604,7 @@
   }
   function enhanceFiloContactsToolbar() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    consolidateLeadsPageMenu();
+    stripLeadsHeaderDuplicates();
     wireContactsHelpPopover();
     ensureToolbarOverflowMenu();
     syncFiloExportMenuState();
@@ -3454,13 +3648,13 @@
   }
   function applyContactsDsButtons() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var addBtn = document.getElementById('a2wContactsAddBtn');
+    var addBtn = document.getElementById('leadsAddBtn');
     if (addBtn) {
-      addBtn.classList.add('fd-btn', 'fd-btn--primary');
+      addBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-btn--sm');
       addBtn.classList.remove('a2w-btn-primary');
     }
-    var importBtn = document.getElementById('a2wContactsImportBtn');
-    if (importBtn) importBtn.classList.add('fd-btn', 'fd-btn--secondary');
+    var importBtn = document.getElementById('leadsImportBtn');
+    if (importBtn) importBtn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
     var toolbar = document.getElementById('contactsToolbarHost');
     if (toolbar) {
       toolbar.querySelectorAll('button.btn').forEach(function (btn) {
@@ -3476,7 +3670,7 @@
         }
       });
     }
-    var menuBtn = document.getElementById('contactsPageMenuBtn');
+    var menuBtn = document.getElementById('fdContactsToolbarOverflowBtn');
     if (menuBtn) menuBtn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
   }
   function enhanceContactsKpiAsStatGrid() {
@@ -3536,7 +3730,9 @@
     var origToolbar = window.renderLeadsToolbar;
     if (typeof origToolbar === 'function') {
       window.renderLeadsToolbar = function () {
+        var host = document.getElementById('contactsToolbarHost');
         origToolbar.apply(this, arguments);
+        if (host) delete host.dataset.fdOverflowBound;
         if (isFiloContactsApp()) {
           enhanceFiloContactsToolbar();
           applyContactsDsButtons();
@@ -3558,7 +3754,7 @@
     patchNavForContacts();
     ensureLeadsSection();
     if (isHrLeadsActive()) {
-      consolidateLeadsPageMenu();
+      stripLeadsHeaderDuplicates();
       enhanceContactsDom();
     }
   }
@@ -6061,6 +6257,7 @@
         await origSave.apply(this, arguments);
         if (!isFiloFormDirtyApp()) return;
         resetTemplateBaseline();
+        if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
       };
     }
   }
@@ -6093,38 +6290,38 @@
       setBottomBarVisible(false);
     }, 2800);
   }
-  function ensureBrandIdentityStickyBar() {
-    if (document.getElementById('fdBiStickyBar')) return document.getElementById('fdBiStickyBar');
-    var bar = document.createElement('div');
-    bar.id = 'fdBiStickyBar';
-    bar.className = 'fd-bi-sticky-bar fd-bi-bottom-bar';
-    bar.hidden = true;
-    bar.setAttribute('role', 'region');
-    bar.setAttribute('aria-label', 'Salvataggio modifiche brand');
-    bar.innerHTML =
-      '<div class="fd-bi-bottom-bar__inner">' +
-      '<span class="fd-bi-sticky-bar__hint" id="fdBiStickyHint">Modifiche non salvate</span>' +
-      '<div class="fd-bi-sticky-bar__actions">' +
-      '<button type="button" class="btn sec fd-btn fd-btn--secondary" id="fdBiStickyCancelBtn">Annulla</button>' +
-      '<button type="button" class="btn fd-btn fd-btn--primary" id="fdBiStickySaveBtn">Salva modifiche</button>' +
-      '</div></div>';
-    document.body.appendChild(bar);
-    document.getElementById('fdBiStickySaveBtn').addEventListener('click', function () {
-      if (typeof window.saveBrandIdentity === 'function') window.saveBrandIdentity();
-    });
-    document.getElementById('fdBiStickyCancelBtn').addEventListener('click', function () {
-      if (typeof window.loadBrandIdentity === 'function') window.loadBrandIdentity();
-    });
-    return bar;
+  function relocateBrandSaveButton(bar) {
+    var saveBtn = document.getElementById('a2wBiSaveBtn');
+    var actions = bar.querySelector('.fd-bi-sticky-bar__actions');
+    if (!saveBtn || !actions || saveBtn.dataset.fdRelocated === '1') return;
+    saveBtn.dataset.fdRelocated = '1';
+    saveBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-bi-bottom-save-btn');
+    actions.appendChild(saveBtn);
+    var duplicate = document.getElementById('fdBiStickySaveBtn');
+    if (duplicate) duplicate.remove();
   }
-  function mirrorBottomSaveButton() {
-    var src = document.getElementById('a2wBiSaveBtn');
-    var dst = document.getElementById('fdBiStickySaveBtn');
-    if (!src || !dst) return;
-    dst.disabled = src.disabled;
-    dst.textContent = src.textContent || 'Salva modifiche';
-    dst.classList.toggle('is-dirty', src.classList.contains('is-dirty'));
-    dst.classList.toggle('is-saving', src.classList.contains('is-saving'));
+  function ensureBrandIdentityStickyBar() {
+    var bar = document.getElementById('fdBiStickyBar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'fdBiStickyBar';
+      bar.className = 'fd-bi-sticky-bar fd-bi-bottom-bar';
+      bar.hidden = true;
+      bar.setAttribute('role', 'region');
+      bar.setAttribute('aria-label', 'Salvataggio modifiche brand');
+      bar.innerHTML =
+        '<div class="fd-bi-bottom-bar__inner">' +
+        '<span class="fd-bi-sticky-bar__hint" id="fdBiStickyHint">Modifiche non salvate</span>' +
+        '<div class="fd-bi-sticky-bar__actions">' +
+        '<button type="button" class="btn sec fd-btn fd-btn--secondary" id="fdBiStickyCancelBtn">Annulla</button>' +
+        '</div></div>';
+      document.body.appendChild(bar);
+      document.getElementById('fdBiStickyCancelBtn').addEventListener('click', function () {
+        if (typeof window.loadBrandIdentity === 'function') window.loadBrandIdentity();
+      });
+    }
+    relocateBrandSaveButton(bar);
+    return bar;
   }
   function isSectionReadOnly() {
     if (window.FdRbac && typeof window.FdRbac.isActiveSectionReadOnly === 'function') {
@@ -6161,19 +6358,27 @@
     bar.classList.remove('is-saved-flash');
     var hint = document.getElementById('fdBiStickyHint');
     if (hint) {
-      hint.textContent = saving ? 'Salvataggio in corso…' : 'Modifiche non salvate';
+      if (saving) {
+        hint.textContent = 'Salvataggio in corso…';
+      } else {
+        hint.textContent = 'Modifiche non salvate';
+      }
     }
     var actions = bar.querySelector('.fd-bi-sticky-bar__actions');
     if (actions) actions.hidden = false;
-    var saveBtn = document.getElementById('fdBiStickySaveBtn');
+    var saveBtn = document.getElementById('a2wBiSaveBtn');
     var cancelBtn = document.getElementById('fdBiStickyCancelBtn');
-    if (saveBtn) saveBtn.disabled = saving || !dirty;
+    if (saveBtn) {
+      saveBtn.hidden = false;
+      saveBtn.style.display = '';
+    }
     if (cancelBtn) cancelBtn.disabled = saving;
-    mirrorBottomSaveButton();
   }
   function hideHeaderSaveChrome() {
     var section = document.getElementById('brand-identity');
     if (section) section.classList.add('brand-identity--fd-bottom-save');
+    var headerActions = document.querySelector('#brand-identity .a2w-bi-header__actions');
+    if (headerActions) headerActions.setAttribute('aria-hidden', 'true');
   }
   function patchBrandIdentitySaveUi() {
     if (window.__fdBiStickyPatched || typeof window.a2wBiUpdateSaveButton !== 'function') return;

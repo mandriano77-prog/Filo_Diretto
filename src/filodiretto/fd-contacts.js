@@ -44,33 +44,25 @@
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   }
 
-  function consolidateLeadsPageMenu() {
+  function stripLeadsHeaderDuplicates() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
 
-    var cardMenu = document.getElementById('fdContactsCardMenu');
-    if (cardMenu) cardMenu.remove();
-
-    var pageMenu = document.getElementById('contactsPageMenu');
-    var panel = document.getElementById('contactsPageMenuPanel');
-    if (!panel) return;
-
-    if (!document.getElementById('fdContactsPageExportBtn')) {
-      var exportItem = document.createElement('button');
-      exportItem.type = 'button';
-      exportItem.role = 'menuitem';
-      exportItem.className = 'contacts-page-menu__item';
-      exportItem.id = 'fdContactsPageExportBtn';
-      exportItem.textContent = 'Esporta CSV dipendenti';
-      panel.insertBefore(exportItem, panel.firstChild);
-      exportItem.addEventListener('click', function (e) {
-        e.stopPropagation();
-        closePageMenu();
-        if (exportItem.disabled) return;
-        if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
-      });
+    var headerActions = document.getElementById('a2wContactsHeaderActions');
+    if (headerActions) {
+      headerActions.hidden = true;
+      headerActions.setAttribute('aria-hidden', 'true');
+      headerActions.style.display = 'none';
     }
 
-    if (pageMenu) pageMenu.hidden = false;
+    var pageMenu = document.getElementById('contactsPageMenu');
+    if (pageMenu) {
+      pageMenu.hidden = true;
+      pageMenu.setAttribute('aria-hidden', 'true');
+      pageMenu.style.display = 'none';
+    }
+
+    var legacyExport = document.getElementById('fdContactsPageExportBtn');
+    if (legacyExport) legacyExport.remove();
   }
 
   function closeToolbarOverflowMenu() {
@@ -96,7 +88,7 @@
     overflowBtn.setAttribute('aria-haspopup', 'menu');
     overflowBtn.setAttribute('aria-expanded', 'false');
     overflowBtn.setAttribute('aria-label', 'Altre azioni anagrafica');
-    overflowBtn.hidden = true;
+    overflowBtn.classList.add('fd-contacts-toolbar-overflow--always');
 
     var panel = document.createElement('div');
     panel.id = 'fdContactsToolbarOverflowPanel';
@@ -106,6 +98,8 @@
 
     actions.appendChild(overflowBtn);
     actions.appendChild(panel);
+
+    ensureToolbarOverflowStaticItems(panel);
 
     overflowBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -130,20 +124,24 @@
       movable.push(btn);
     });
 
+    function clearDynamicOverflowItems() {
+      panel.querySelectorAll('[data-fd-toolbar-dynamic="1"]').forEach(function (node) {
+        node.remove();
+      });
+    }
+
     function rebalanceToolbar() {
       movable.forEach(function (btn) {
         btn.hidden = false;
         btn.removeAttribute('data-fd-toolbar-overflowed');
       });
-      panel.innerHTML = '';
-      overflowBtn.hidden = true;
+      clearDynamicOverflowItems();
       closeToolbarOverflowMenu();
 
       var available = host.clientWidth - 12;
       if (!available) return;
       if (host.scrollWidth <= available) return;
 
-      overflowBtn.hidden = false;
       for (var i = movable.length - 1; i >= 0; i--) {
         var btn = movable[i];
         btn.hidden = true;
@@ -157,6 +155,7 @@
         item.type = 'button';
         item.className = 'fd-contacts-toolbar-overflow-panel__item';
         item.setAttribute('role', 'menuitem');
+        item.setAttribute('data-fd-toolbar-dynamic', '1');
         item.textContent = (btn.textContent || '').replace(/^\s*[✨✉⬇+]+\s*/, '').trim() || btn.getAttribute('aria-label') || 'Azione';
         item.disabled = !!btn.disabled;
         item.addEventListener('click', function (e) {
@@ -173,6 +172,43 @@
     }
     window.addEventListener('resize', rebalanceToolbar);
     setTimeout(rebalanceToolbar, 0);
+  }
+
+  function ensureToolbarOverflowStaticItems(panel) {
+    if (!panel) return;
+
+    if (!document.getElementById('fdContactsOverflowExportBtn')) {
+      var exportItem = document.createElement('button');
+      exportItem.type = 'button';
+      exportItem.role = 'menuitem';
+      exportItem.className = 'fd-contacts-toolbar-overflow-panel__item';
+      exportItem.id = 'fdContactsOverflowExportBtn';
+      exportItem.textContent = 'Esporta CSV dipendenti';
+      exportItem.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeToolbarOverflowMenu();
+        if (exportItem.disabled) return;
+        if (typeof window.exportLeadsCSV === 'function') window.exportLeadsCSV();
+      });
+      panel.appendChild(exportItem);
+    }
+
+    if (!document.getElementById('fdContactsOverflowTourBtn')) {
+      var tourItem = document.createElement('button');
+      tourItem.type = 'button';
+      tourItem.role = 'menuitem';
+      tourItem.className = 'fd-contacts-toolbar-overflow-panel__item';
+      tourItem.id = 'fdContactsOverflowTourBtn';
+      tourItem.textContent = 'Mostra tour';
+      tourItem.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeToolbarOverflowMenu();
+        if (window.ContactsPage && typeof window.ContactsPage.showTour === 'function') {
+          window.ContactsPage.showTour();
+        }
+      });
+      panel.appendChild(tourItem);
+    }
   }
 
   function wireContactsHelpPopover() {
@@ -201,12 +237,12 @@
   }
 
   function ensureCardMenu() {
-    /* Card-level kebab removed — actions live in page menu (consolidateLeadsPageMenu). */
+    /* Card-level kebab removed — export/tour live in toolbar overflow menu. */
   }
 
   function syncFiloExportMenuState() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var exportItem = document.getElementById('fdContactsPageExportBtn');
+    var exportItem = document.getElementById('fdContactsOverflowExportBtn');
     if (!exportItem) return;
 
     var total = 0;
@@ -246,7 +282,7 @@
 
   function enhanceFiloContactsToolbar() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    consolidateLeadsPageMenu();
+    stripLeadsHeaderDuplicates();
     wireContactsHelpPopover();
     ensureToolbarOverflowMenu();
     syncFiloExportMenuState();
@@ -297,13 +333,13 @@
 
   function applyContactsDsButtons() {
     if (!isFiloContactsApp() || !isHrLeadsActive()) return;
-    var addBtn = document.getElementById('a2wContactsAddBtn');
+    var addBtn = document.getElementById('leadsAddBtn');
     if (addBtn) {
-      addBtn.classList.add('fd-btn', 'fd-btn--primary');
+      addBtn.classList.add('fd-btn', 'fd-btn--primary', 'fd-btn--sm');
       addBtn.classList.remove('a2w-btn-primary');
     }
-    var importBtn = document.getElementById('a2wContactsImportBtn');
-    if (importBtn) importBtn.classList.add('fd-btn', 'fd-btn--secondary');
+    var importBtn = document.getElementById('leadsImportBtn');
+    if (importBtn) importBtn.classList.add('fd-btn', 'fd-btn--secondary', 'fd-btn--sm');
 
     var toolbar = document.getElementById('contactsToolbarHost');
     if (toolbar) {
@@ -321,7 +357,7 @@
       });
     }
 
-    var menuBtn = document.getElementById('contactsPageMenuBtn');
+    var menuBtn = document.getElementById('fdContactsToolbarOverflowBtn');
     if (menuBtn) menuBtn.classList.add('fd-btn', 'fd-btn--ghost', 'fd-btn--sm');
   }
 
@@ -388,7 +424,9 @@
     var origToolbar = window.renderLeadsToolbar;
     if (typeof origToolbar === 'function') {
       window.renderLeadsToolbar = function () {
+        var host = document.getElementById('contactsToolbarHost');
         origToolbar.apply(this, arguments);
+        if (host) delete host.dataset.fdOverflowBound;
         if (isFiloContactsApp()) {
           enhanceFiloContactsToolbar();
           applyContactsDsButtons();
@@ -412,7 +450,7 @@
     patchNavForContacts();
     ensureLeadsSection();
     if (isHrLeadsActive()) {
-      consolidateLeadsPageMenu();
+      stripLeadsHeaderDuplicates();
       enhanceContactsDom();
     }
   }

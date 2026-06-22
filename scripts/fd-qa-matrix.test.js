@@ -132,10 +132,10 @@ test('fd.bundle.js is valid JavaScript after build', () => {
   );
 });
 
-test('index.html bundle cache references filodiretto-rebrand tag', () => {
+test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-filodiretto-rebrand/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-filodiretto-rebrand/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-contacts-header/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-contacts-header/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -207,11 +207,18 @@ test('Filo brand identity uses bottom save bar and public landing URL', () => {
   const html = read('src/dashboard/index.html');
   assert.match(dirty, /brand-identity--fd-bottom-save/);
   assert.match(dirty, /fd-bi-bottom-bar/);
+  assert.match(dirty, /relocateBrandSaveButton/);
+  assert.match(dirty, /a2wBiSaveBtn/);
+  assert.doesNotMatch(dirty, /id="fdBiStickySaveBtn"/);
   assert.match(dirty, /showSavedFlash/);
   assert.match(bi, /fd-bi-landing-preview/);
-  assert.match(bi, /URL pubblica della landing/);
+  assert.match(bi, /fd-bi-checklist/);
+  assert.match(bi, /fdBiChecklist/);
+  assert.match(bi, /isNameSlugComplete/);
   assert.match(biCss, /\.fd-bi-landing-preview/);
-  assert.match(html, /window\.location\?\.origin/);
+  assert.match(biCss, /\.fd-bi-aside-grid/);
+  assert.match(biCss, /grid-template-columns: minmax\(0, 38%\)/);
+  assert.match(html, /getPublicLandingUrl/);
 });
 
 test('Filo brand identity aside reads camelCase form snapshot', () => {
@@ -248,6 +255,16 @@ test('contacts help popover uses floating panel positioning', () => {
   const help = read('src/dashboard/js/components/contacts/help-popover.js');
   assert.match(help, /positionFloatingPanel/);
   assert.match(help, /maxWidth/);
+});
+
+test('Filo contacts hides duplicate header actions and moves export/tour to toolbar menu', () => {
+  const js = readFd('fd-contacts.js');
+  const css = readFd('fd-contacts.css');
+  assert.match(js, /stripLeadsHeaderDuplicates/);
+  assert.match(js, /fdContactsOverflowExportBtn/);
+  assert.match(js, /fdContactsOverflowTourBtn/);
+  assert.match(css, /#contactsPageMenu/);
+  assert.match(css, /fd-contacts-toolbar-overflow--always/);
 });
 
 test('Filo media library hides legacy Ads2Wallet tabs markup', () => {

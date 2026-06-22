@@ -235,6 +235,18 @@ html[data-app='filodiretto'] #leads.leads--fd #leadsExportBtn {
   display: none !important;
 }
 
+html[data-app='filodiretto'] #leads.leads--fd .a2w-contacts-header-actions,
+html[data-app='filodiretto'] #leads.leads--fd #a2wContactsHeaderActions,
+html[data-app='filodiretto'] #leads.leads--fd #contactsPageMenu {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-toolbar-overflow--always {
+  display: inline-flex !important;
+}
+
 /* KPI clusters: flex-wrap so all 7 items stay inside the viewport at any width */
 html[data-app='filodiretto'] #leads.leads--fd .fd-contacts-kpi .contacts-kpi-strip__divider {
   width: 100%;

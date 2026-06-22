@@ -144,9 +144,26 @@ html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar.is-saving .fd-bi-
   color: var(--fd-color-info-text, #1d4ed8);
 }
 
-html[data-app='filodiretto'] .fd-bi-bottom-bar .fd-bi-sticky-bar__actions,
-html[data-app='filodiretto'] #brand-identity .fd-bi-sticky-bar__actions {
+html[data-app='filodiretto'] .fd-bi-bottom-bar .fd-bi-sticky-bar__actions {
   display: inline-flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+html[data-app='filodiretto'] .fd-bi-bottom-bar #a2wBiSaveBtn.fd-bi-bottom-save-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 148px;
+  padding: 0 16px;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+html[data-app='filodiretto'] .fd-bi-bottom-bar #a2wBiSaveBtn.fd-bi-bottom-save-btn:disabled:not(.is-saving) {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

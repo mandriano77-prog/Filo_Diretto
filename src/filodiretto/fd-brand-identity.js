@@ -184,6 +184,167 @@
     );
   }
 
+  function scrollToBrandField(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch (_) {
+      el.focus();
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function scrollToContactsSection() {
+    var email = document.getElementById('biSupportEmail');
+    var section = email && email.closest('section');
+    if (email) scrollToBrandField('biSupportEmail');
+    else if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hasBrandLogo() {
+    var state = window.brandIdentityState;
+    if (state && state.selectedAssets && state.selectedAssets.logo) return true;
+    if (state && state.mediaByType && Array.isArray(state.mediaByType.logo) && state.mediaByType.logo.length > 0) {
+      return true;
+    }
+    var logoBox = document.getElementById('mediaLogoBox');
+    if (logoBox && logoBox.querySelector('img[src]:not([src=""])')) return true;
+    return false;
+  }
+
+  function isNameSlugComplete(data) {
+    var name = String(data.name || '').trim();
+    var slug = String(data.slug || '').trim();
+    if (!name || !slug || !/^[a-z0-9-]+$/.test(slug)) return false;
+    var state = window.brandIdentityState || {};
+    if (state.slugChecking) return false;
+    if (state.slugAvailable === false) return false;
+    if (state.slugAvailable === true) return true;
+    return false;
+  }
+
+  function isSupportContactsComplete(data) {
+    var email = String(fieldVal(data, 'supportEmail', 'support_email') || '').trim();
+    var phone = String(fieldVal(data, 'supportPhone', 'support_phone') || '').trim();
+    return !!(email && phone);
+  }
+
+  function isTemplateReady() {
+    return !!window.__fdBiTemplateReady;
+  }
+
+  var CHECKLIST_DEF = [
+    {
+      id: 'name-slug',
+      label: 'Nome e slug univoco',
+      isComplete: function (data) { return isNameSlugComplete(data); },
+      go: function () {
+        var data = collectFormSnapshot();
+        if (!String(data.name || '').trim()) scrollToBrandField('biName');
+        else scrollToBrandField('biSlug');
+      }
+    },
+    {
+      id: 'support-hr',
+      label: 'Email e telefono di supporto HR',
+      isComplete: function (data) { return isSupportContactsComplete(data); },
+      go: scrollToContactsSection
+    },
+    {
+      id: 'logo',
+      label: 'Logo in Media Library',
+      isComplete: function () { return hasBrandLogo(); },
+      go: function () {
+        if (typeof window.nav === 'function') window.nav('media-library');
+      }
+    },
+    {
+      id: 'template',
+      label: 'Template pass dipendente',
+      isComplete: function () { return isTemplateReady(); },
+      go: function () {
+        if (typeof window.nav === 'function') window.nav('templates');
+      }
+    }
+  ];
+
+  function renderChecklistItem(item, data) {
+    var done = item.isComplete(data);
+    var mark = done
+      ? '<span class="fd-bi-checklist__mark fd-bi-checklist__mark--done" aria-hidden="true">✓</span>'
+      : '<span class="fd-bi-checklist__mark" aria-hidden="true"></span>';
+    if (done) {
+      return (
+        '<li class="fd-bi-checklist__item is-done">' + mark +
+        '<span class="fd-bi-checklist__label">' + esc(item.label) + '</span></li>'
+      );
+    }
+    return (
+      '<li class="fd-bi-checklist__item is-pending">' +
+      '<button type="button" class="fd-bi-checklist__link" data-fd-checklist="' + esc(item.id) + '">' +
+      mark + '<span class="fd-bi-checklist__label">' + esc(item.label) + '</span></button></li>'
+    );
+  }
+
+  function syncChecklist() {
+    var list = document.getElementById('fdBiChecklist');
+    if (!list) return;
+    var data = collectFormSnapshot();
+    list.innerHTML = CHECKLIST_DEF.map(function (item) {
+      return renderChecklistItem(item, data);
+    }).join('');
+  }
+
+  var checklistTemplateTimer = null;
+
+  function refreshChecklistTemplates() {
+    if (checklistTemplateTimer) clearTimeout(checklistTemplateTimer);
+    checklistTemplateTimer = setTimeout(async function () {
+      checklistTemplateTimer = null;
+      window.__fdBiTemplateReady = false;
+      try {
+        var brandId = window.brandId;
+        var api = window.API;
+        if (!brandId || !api) {
+          syncChecklist();
+          return;
+        }
+        var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+        var res = await fetch(api + '/templates?brand_id=' + encodeURIComponent(brandId), { headers: headers });
+        if (!res.ok) {
+          syncChecklist();
+          return;
+        }
+        var templates = await res.json();
+        var list = Array.isArray(templates) ? templates : [];
+        window.__fdBiTemplateReady = list.length > 0;
+      } catch (_) {
+        window.__fdBiTemplateReady = false;
+      }
+      syncChecklist();
+    }, 120);
+  }
+
+  function bindChecklistActions(container) {
+    var root = container || document.getElementById('fdBiAside');
+    if (!root || root.dataset.fdChecklistBound === '1') return;
+    root.dataset.fdChecklistBound = '1';
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-fd-checklist]');
+      if (!btn) return;
+      e.preventDefault();
+      var id = btn.getAttribute('data-fd-checklist');
+      var item = CHECKLIST_DEF.find(function (x) { return x.id === id; });
+      if (item && typeof item.go === 'function') item.go();
+    });
+  }
+
+  function scheduleChecklistRefresh() {
+    syncChecklist();
+    refreshChecklistTemplates();
+  }
+
   function syncAsideSummary() {
     var root = document.getElementById('fdBiIdentitySummary');
     if (!root) return;
@@ -216,6 +377,7 @@
     if (legacySlug && !document.getElementById('fdBiIdentitySummary')) {
       legacySlug.textContent = data.slug || '—';
     }
+    scheduleChecklistRefresh();
   }
 
   function scheduleAsideSummary() {
@@ -245,6 +407,7 @@
     aside.className = 'fd-bi-aside';
     aside.setAttribute('aria-label', 'Anteprima e guida identità brand');
     aside.innerHTML =
+      '<div class="fd-bi-aside-grid">' +
       '<div class="fd-card fd-bi-aside-card a2w-bi-preview-card">' +
       '<h2 class="fd-bi-aside__title">Anteprima identità</h2>' +
       '<p class="fd-bi-aside__lead">Anteprima live di nome, contatti e URL landing mentre modifichi i campi.</p>' +
@@ -254,20 +417,19 @@
       '<button type="button" class="fd-btn fd-btn--ghost" data-fd-nav="media-library">Media Library</button>' +
       '<button type="button" class="fd-btn fd-btn--ghost" data-fd-nav="templates">Template Pass</button>' +
       '</div></div>' +
-      '<div class="fd-card fd-bi-aside-card fd-bi-aside-card--help">' +
-      '<h2 class="fd-bi-aside__title">Checklist rapida</h2>' +
-      '<ul class="fd-bi-aside-checklist">' +
-      '<li>Completa nome e slug univoco</li>' +
-      '<li>Inserisci email e telefono di supporto HR</li>' +
-      '<li>Carica logo in Media Library</li>' +
-      '<li>Crea il template pass dipendente</li>' +
-      '</ul></div>';
+      '<div class="fd-card fd-bi-aside-card fd-bi-aside-card--checklist">' +
+      '<h2 class="fd-bi-aside__title">Checklist setup</h2>' +
+      '<p class="fd-bi-aside__lead">Passi per completare l\'identità del brand.</p>' +
+      '<ul class="fd-bi-checklist" id="fdBiChecklist" aria-live="polite"></ul>' +
+      '</div></div>';
 
     layout.appendChild(aside);
     bindNavButtons(aside);
     bindLandingPreviewActions(aside);
+    bindChecklistActions(aside);
     bindSummaryFields();
     syncAsideSummary();
+    scheduleChecklistRefresh();
   }
 
   function bindNavButtons(container) {
@@ -317,19 +479,15 @@
       if (badge && !document.getElementById('fdBiSaveStateWrap')) {
         var wrap = document.createElement('div');
         wrap.id = 'fdBiSaveStateWrap';
-        wrap.className = 'fd-bi-save-meta';
+        wrap.className = 'fd-bi-save-meta fd-bi-save-meta--sr';
         wrap.innerHTML =
           '<span class="fd-bi-save-meta__label" id="fdBiSaveStateLabel">Stato salvataggio</span>';
         badge.classList.add('fd-badge', 'fd-bi-state-badge');
         wrap.appendChild(badge);
-        if (saveBtn) {
-          actions.insertBefore(wrap, saveBtn);
-        } else {
-          actions.appendChild(wrap);
-        }
+        actions.appendChild(wrap);
       }
 
-      if (saveBtn) {
+      if (saveBtn && saveBtn.dataset.fdRelocated !== '1') {
         saveBtn.classList.add('fd-btn', 'fd-btn--primary');
       }
     }
@@ -473,6 +631,22 @@
       orig.apply(this, arguments);
       syncAsideSummary();
     };
+    if (typeof window.a2wBiSyncDirtyState === 'function' && !window.__fdBiDirtyChecklistPatched) {
+      window.__fdBiDirtyChecklistPatched = true;
+      var origDirty = window.a2wBiSyncDirtyState;
+      window.a2wBiSyncDirtyState = function () {
+        origDirty.apply(this, arguments);
+        syncChecklist();
+      };
+    }
+    if (typeof window.a2wBiCheckSlugAvailabilityNow === 'function' && !window.__fdBiSlugChecklistPatched) {
+      window.__fdBiSlugChecklistPatched = true;
+      var origSlug = window.a2wBiCheckSlugAvailabilityNow;
+      window.a2wBiCheckSlugAvailabilityNow = async function () {
+        await origSlug.apply(this, arguments);
+        syncChecklist();
+      };
+    }
   }
 
   function patchDeleteTypingHandler() {
@@ -505,6 +679,8 @@
     window.loadBrandIdentity = async function () {
       await orig.apply(this, arguments);
       enhanceBrandIdentityChrome();
+      if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
+      if (typeof window.fdSyncBrandIdentityBottomBar === 'function') window.fdSyncBrandIdentityBottomBar();
     };
   }
 
@@ -536,6 +712,7 @@
 
   window.fdEnhanceBrandIdentity = enhanceBrandIdentityChrome;
   window.fdSyncBrandIdentityAside = syncAsideSummary;
+  window.fdRefreshBrandChecklist = scheduleChecklistRefresh;
   window.fdInitBrandIdentity = initFdBrandIdentity;
 
   if (document.readyState === 'loading') {
