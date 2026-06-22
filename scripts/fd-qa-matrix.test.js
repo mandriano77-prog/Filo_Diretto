@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references contacts-header tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-section-save/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-section-save/);
+  assert.match(html, /fd\.bundle\.css\?v=20260622-passes-kpi/);
+  assert.match(html, /fd\.bundle\.js\?v=20260622-passes-kpi/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -256,7 +256,9 @@ test('Filo passes localize status badges and copy icon', () => {
   assert.match(js, /passStatusMeta/);
   assert.match(js, /enhancePassIdCells/);
   assert.match(css, /fd-pass-status--active/);
-  assert.match(css, /fd-stat-card--primary/);
+  assert.match(css, /fd-passes-stat-grid/);
+  assert.match(css, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
+  assert.doesNotMatch(js, /fd-passes-stat-secondary/);
 });
 
 test('Filo passes row menu includes regenerate action', () => {

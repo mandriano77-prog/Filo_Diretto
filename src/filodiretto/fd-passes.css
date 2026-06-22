@@ -43,26 +43,26 @@ html[data-app='filodiretto'] #passes .fd-passes-content {
 
 html[data-app='filodiretto'] #passes .fd-passes-stat-grid {
   display: grid;
-  grid-template-columns: minmax(200px, 1.2fr) minmax(0, 2fr);
-  gap: var(--fd-space-3, 12px);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
   align-items: stretch;
 }
 
-html[data-app='filodiretto'] #passes .fd-stat-card--primary {
-  padding: var(--fd-space-5, 24px);
+html[data-app='filodiretto'] #passes .fd-passes-stat-grid .fd-stat-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-html[data-app='filodiretto'] #passes .fd-stat-card--primary .fd-stat-card__value,
-html[data-app='filodiretto'] #passes .fd-stat-card--primary .stat-value {
-  font-size: clamp(28px, 4vw, 36px);
-  font-weight: 700;
-  line-height: 1.1;
+html[data-app='filodiretto'] #passes .fd-passes-stat-grid .fd-stat-card__label,
+html[data-app='filodiretto'] #passes .fd-passes-stat-grid .stat-label {
+  align-self: start;
 }
 
-html[data-app='filodiretto'] #passes .fd-passes-stat-secondary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--fd-space-3, 12px);
+html[data-app='filodiretto'] #passes .fd-passes-toolbar__range {
+  margin: calc(-1 * var(--fd-space-2, 8px)) 0 var(--fd-space-3, 12px);
+  font-size: var(--fd-font-size-sm, 12px);
+  color: var(--fd-color-text-secondary, var(--text2));
 }
 
 html[data-app='filodiretto'] #passes .fd-pass-id-copy {
@@ -314,8 +314,3 @@ html[data-app='filodiretto'] #passes .pass-table-legend[hidden] {
   display: none !important;
 }
 
-@media (max-width: 720px) {
-  html[data-app='filodiretto'] #passes .fd-passes-stat-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-}

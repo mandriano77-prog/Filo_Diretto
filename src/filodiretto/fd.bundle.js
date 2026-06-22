@@ -5494,6 +5494,8 @@
       statSkel() +
       statSkel() +
       statSkel() +
+      statSkel() +
+      statSkel() +
       '</div>' +
       '<div class="fd-table-wrap fd-passes-table-skeleton">' +
       '<span class="fd-skeleton" style="display:block;width:100%;height:240px;border-radius:var(--fd-radius-md,12px)"></span>' +
@@ -5574,6 +5576,15 @@
     };
     return map[key] || { label: status || '—', cls: 'fd-pass-status--neutral' };
   }
+  function relocatePassesRangeHint(root, text) {
+    if (!text || root.querySelector('.fd-passes-toolbar__range')) return;
+    var toolbar = root.querySelector('#passSearchInput')?.closest('div');
+    if (!toolbar) return;
+    var sub = document.createElement('div');
+    sub.className = 'fd-passes-toolbar__range';
+    sub.textContent = text;
+    toolbar.insertAdjacentElement('afterend', sub);
+  }
   function enhanceStatsGrid(scope) {
     var root = scope || document.getElementById('passesContent');
     if (!root) return;
@@ -5582,30 +5593,20 @@
     grid.dataset.fdDsStats = '1';
     grid.classList.add('fd-stat-grid', 'fd-passes-stat-grid');
     grid.style.marginBottom = '';
-    var cards = grid.querySelectorAll('.stat-card');
-    cards.forEach(function (card, idx) {
+    var rangeHintText = '';
+    grid.querySelectorAll('.stat-card').forEach(function (card) {
       card.classList.add('fd-stat-card');
-      if (idx === 0) card.classList.add('fd-stat-card--primary');
-      else card.classList.add('fd-stat-card--secondary');
       var label = card.querySelector('.stat-label');
       if (label) label.classList.add('fd-stat-card__label');
       var value = card.querySelector('.stat-value');
       if (value) value.classList.add('fd-stat-card__value');
-      card.querySelectorAll('div[style*="font-size:11px"], div[style*="font-size: 11px"]').forEach(function (hint) {
-        hint.classList.add('fd-stat-card__hint');
-        hint.style.fontSize = '';
-        hint.style.color = '';
-        hint.style.marginTop = '';
+      card.querySelectorAll('div[style*="font-size:11px"], div[style*="font-size: 11px"], .fd-stat-card__hint').forEach(function (hint) {
+        var hintText = (hint.textContent || '').trim();
+        if (hintText && !rangeHintText) rangeHintText = hintText;
+        hint.remove();
       });
     });
-    if (cards.length > 1) {
-      var secondaryWrap = document.createElement('div');
-      secondaryWrap.className = 'fd-passes-stat-secondary';
-      for (var i = 1; i < cards.length; i++) {
-        secondaryWrap.appendChild(cards[i]);
-      }
-      grid.appendChild(secondaryWrap);
-    }
+    if (rangeHintText) relocatePassesRangeHint(root, rangeHintText);
   }
   function enhancePassesToolbar(scope) {
     var root = scope || document.getElementById('passesContent');
