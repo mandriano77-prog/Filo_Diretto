@@ -1273,9 +1273,21 @@ router.post('/join/:slug', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+function extractActivationTokenFromRequest(req) {
+  const raw = req.params.token || req.query.token || req.query.t || '';
+  return String(raw).trim();
+}
+
+function activationApiCacheHeaders(res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+}
+
 router.get('/activate/:token', async (req, res) => {
   try {
-    const member = await getMemberForActivationToken(hrActivationDb(), req.params.token);
+    activationApiCacheHeaders(res);
+    const token = extractActivationTokenFromRequest(req);
+    const member = await getMemberForActivationToken(hrActivationDb(), token);
     if (!member) return res.status(404).json({ error: 'Link non valido o scaduto' });
     const templates = await listTemplates(member.brand_id);
     const hrTemplates = templates.filter((t) => t.pass_type === 'employee_pass');
@@ -1300,11 +1312,13 @@ router.get('/activate/:token', async (req, res) => {
 
 router.post('/activate/:token', async (req, res) => {
   try {
+    activationApiCacheHeaders(res);
     const { consents, template_id, privacy_accepted } = req.body || {};
     if (!privacy_accepted) {
       return res.status(400).json({ error: 'Privacy policy acceptance required' });
     }
-    const result = await confirmMemberActivation(hrActivationDb(), req.params.token, {
+    const token = extractActivationTokenFromRequest(req);
+    const result = await confirmMemberActivation(hrActivationDb(), token, {
       consents: consents || {},
       template_id,
       privacy_accepted: !!privacy_accepted,
@@ -1316,7 +1330,8 @@ router.post('/activate/:token', async (req, res) => {
       pass_id: result.pass.id,
       download_url: result.download_url,
       brand_name: result.brand_name,
-      thank_you_url: activationThankYouUrl(result.pass.id)
+      thank_you_url: activationThankYouUrl(result.pass.id),
+      already_activated: !!result.already_activated
     });
   } catch (err) {
     const status = /non valido|scaduto/i.test(err.message) ? 404 : 400;

@@ -105,7 +105,16 @@
       climate_survey: 'Sondaggi clima aziendale',
       partner_offers: 'Offerte partner'
     };
-    const token = location.pathname.split('/').filter(Boolean).pop() || '';
+
+    function extractActivationToken() {
+      const qs = new URLSearchParams(location.search);
+      const fromQuery = qs.get('token') || qs.get('t');
+      if (fromQuery) return fromQuery.trim();
+      const m = location.pathname.match(/\/activate\/([^/?#]+)/i);
+      return m ? decodeURIComponent(m[1]).trim() : '';
+    }
+
+    const token = extractActivationToken();
     const API = '/api/v1';
 
     let state = null;
@@ -118,7 +127,13 @@
     });
 
     async function load() {
-      const res = await fetch(`${API}/activate/${encodeURIComponent(token)}`);
+      if (!token) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('error').classList.remove('hidden');
+        document.getElementById('errorText').textContent = 'Link non valido o scaduto.';
+        return;
+      }
+      const res = await fetch(`${API}/activate/${encodeURIComponent(token)}`, { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
       document.getElementById('loading').classList.add('hidden');
       if (!res.ok) {
@@ -172,6 +187,7 @@
       try {
         const res = await fetch(`${API}/activate/${encodeURIComponent(token)}`, {
           method: 'POST',
+          cache: 'no-store',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             consents,
@@ -179,7 +195,7 @@
             privacy_accepted: privacyBox.checked
           })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Errore attivazione');
         if (data.thank_you_url) {
           window.location.assign(data.thank_you_url);
@@ -197,6 +213,9 @@
     });
 
     load();
+    window.addEventListener('pageshow', (ev) => {
+      if (ev.persisted) load();
+    });
   </script>
 </body>
 </html>

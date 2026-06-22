@@ -66,12 +66,25 @@ async function getMemberForActivationToken(db, token) {
      FROM members m
      JOIN brands b ON b.id = m.brand_id
      WHERE m.id = $1
-       AND m.activation_token = $2
-       AND m.activation_token_expires_at > NOW()
      LIMIT 1`,
-    [memberId, token]
+    [memberId]
   );
-  return r.rows[0] || null;
+  const member = r.rows[0];
+  if (!member) return null;
+
+  // Already activated — JWT still valid (30d): allow re-download / second device
+  if (member.activation_status === 'activated') {
+    return member;
+  }
+
+  // Pending invite — token in URL must match DB (invalidates old links after resend)
+  if (!member.activation_token || member.activation_token !== token) {
+    return null;
+  }
+  if (member.activation_token_expires_at && new Date(member.activation_token_expires_at) <= new Date()) {
+    return null;
+  }
+  return member;
 }
 
 async function findBrandForPublicJoin(db, slugOrQr) {
@@ -143,6 +156,16 @@ async function confirmMemberActivation(db, token, { consents = {}, template_id, 
 
   const template = await resolveHrTemplate(db, member.brand_id, template_id);
   const pass = await ensurePassForMember(db, member, template);
+
+  if (member.activation_status === 'activated') {
+    return {
+      pass,
+      member,
+      brand_name: member.brand_name,
+      download_url: `/api/v1/passes/${pass.id}/download`,
+      already_activated: true
+    };
+  }
 
   await saveActivationConsents(pass.id, consents, {
     ip_address: ip,
