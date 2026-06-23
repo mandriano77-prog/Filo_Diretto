@@ -7,6 +7,8 @@ const APNS_SANDBOX = 'https://api.sandbox.push.apple.com';
 const APNS_INVALID_TOKEN_REASONS = new Set(['BadDeviceToken', 'DeviceTokenNotForTopic', 'Unregistered']);
 const APNS_HOST = process.env.APNS_ENV === 'sandbox' ? APNS_SANDBOX : APNS_PRODUCTION;
 const DEFAULT_CONCURRENCY = Math.max(1, Math.min(parseInt(process.env.APNS_PUSH_CONCURRENCY || '32', 10) || 32, 64));
+const APNS_REQUEST_TIMEOUT_MS = Math.max(1000, parseInt(process.env.APNS_REQUEST_TIMEOUT_MS || '10000', 10) || 10000);
+const APNS_LOG_EACH_PUSH = String(process.env.APNS_LOG_EACH_PUSH || '').trim() === '1';
 
 let cachedMaterial = null;
 let activeSession = null;
@@ -75,6 +77,13 @@ function closeApnsSession() {
 
 function sendPushOnSession(client, pushToken, passTypeIdentifier) {
   return new Promise((resolve) => {
+    let settled = false;
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    }
+
     const headers = {
       ':method': 'POST',
       ':path': `/3/device/${pushToken}`,
@@ -85,6 +94,10 @@ function sendPushOnSession(client, pushToken, passTypeIdentifier) {
     const req = client.request(headers);
     let responseData = '';
     let statusCode;
+    req.setTimeout(APNS_REQUEST_TIMEOUT_MS, () => {
+      try { req.close(http2.constants.NGHTTP2_CANCEL); } catch (_) {}
+      finish({ success: false, reason: 'timeout' });
+    });
 
     req.on('response', (h) => {
       statusCode = h[':status'];
@@ -96,7 +109,7 @@ function sendPushOnSession(client, pushToken, passTypeIdentifier) {
 
     req.on('end', () => {
       if (statusCode === 200) {
-        resolve({ success: true, statusCode });
+        finish({ success: true, statusCode });
       } else {
         let reason = 'unknown';
         try {
@@ -105,12 +118,12 @@ function sendPushOnSession(client, pushToken, passTypeIdentifier) {
         } catch (_) {
           reason = responseData || reason;
         }
-        resolve({ success: false, statusCode, reason });
+        finish({ success: false, statusCode, reason });
       }
     });
 
     req.on('error', (err) => {
-      resolve({ success: false, reason: 'request_error', error: err.message });
+      finish({ success: false, reason: 'request_error', error: err.message });
     });
 
     req.write('{}');
@@ -168,9 +181,9 @@ async function sendPushBatch(pushTokens, options = {}) {
       try {
         const outcome = await sendPushOnSession(client, pushToken, material.passTypeIdentifier);
         results[index] = { pushToken, ...outcome };
-        if (outcome.success) {
+        if (APNS_LOG_EACH_PUSH && outcome.success) {
           console.log(`✓ APNs push sent to ${pushToken.substring(0, 8)}...`);
-        } else {
+        } else if (!outcome.success) {
           console.warn(`⚠️ APNs push failed: ${outcome.reason || 'unknown'}`);
         }
       } catch (err) {

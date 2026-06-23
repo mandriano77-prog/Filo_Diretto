@@ -24,6 +24,7 @@ const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
 
 const activeJobIds = new Set();
+const APNS_RESULT_SAMPLE_LIMIT = Math.max(0, Math.min(parseInt(process.env.APNS_RESULT_SAMPLE_LIMIT || '50', 10) || 50, 200));
 
 const PUSH_CHANNEL_KEYS = ['apple', 'google', 'samsung'];
 
@@ -79,23 +80,31 @@ async function notifySamsungSavedPasses(passes) {
 }
 
 async function applyApplePushResults(devices, batchResults, { onProgress } = {}) {
-  const pushResults = [];
+  const pushFailures = [];
   const deliveredSerials = [];
   let sentAppleCount = 0;
 
   for (let i = 0; i < devices.length; i++) {
     const device = devices[i];
     const result = batchResults[i] || { success: false, reason: 'missing_result' };
-    pushResults.push({
-      token: device.push_token ? `${device.push_token.substring(0, 12)}...` : 'unknown',
-      serial: device.serial_number,
-      ...result,
-    });
 
     if (result.success) {
       sentAppleCount++;
       if (device.serial_number) deliveredSerials.push(device.serial_number);
-    } else if (shouldPruneApnsRegistration(result) && device.device_library_id && device.serial_number) {
+    } else {
+      if (pushFailures.length < APNS_RESULT_SAMPLE_LIMIT) {
+        pushFailures.push({
+          success: false,
+          token: device.push_token ? `${device.push_token.substring(0, 12)}...` : 'unknown',
+          serial: device.serial_number,
+          statusCode: result.statusCode || null,
+          reason: result.reason || 'failed',
+          error: result.error || null,
+        });
+      }
+    }
+
+    if (!result.success && shouldPruneApnsRegistration(result) && device.device_library_id && device.serial_number) {
       try {
         await unregisterDevice(device.device_library_id, device.serial_number);
         console.warn(`[PUSH] removed invalid APNs registration device=${device.device_library_id.substring(0, 8)}... serial=${device.serial_number}`);
@@ -118,7 +127,7 @@ async function applyApplePushResults(devices, batchResults, { onProgress } = {})
     await markPassesPushDelivered(deliveredSerials);
   }
 
-  return { sentAppleCount, pushResults };
+  return { sentAppleCount, pushResults: pushFailures };
 }
 
 async function executeWalletPush(body, ctx = {}) {

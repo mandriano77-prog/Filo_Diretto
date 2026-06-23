@@ -642,6 +642,14 @@ async function getDb() {
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand ON pass_instances(brand_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_campaign ON pass_instances(campaign_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand_serial ON pass_instances(brand_id, serial_number)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand_created ON pass_instances(brand_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_device_reg_serial ON device_registrations(serial_number)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_device_reg_push_token ON device_registrations(push_token) WHERE push_token IS NOT NULL AND push_token <> ''`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_jobs_brand_created ON push_jobs(brand_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_jobs_status_created ON push_jobs(status, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_log_brand_created ON push_log(brand_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_scheduled_push_due ON scheduled_push(next_run_at) WHERE active = true`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_brand ON events(brand_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_campaigns_brand ON campaigns(brand_id)`);
