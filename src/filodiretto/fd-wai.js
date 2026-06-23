@@ -231,6 +231,18 @@
     }, true);
   }
 
+  function bindWaiControls() {
+    var fab = document.getElementById('waiBtn');
+    if (fab && fab.dataset.fdWaiBound !== '1') {
+      fab.dataset.fdWaiBound = '1';
+      fab.addEventListener('click', function (e) {
+        if (typeof window.toggleWaiOverlay !== 'function') return;
+        e.preventDefault();
+        window.toggleWaiOverlay();
+      });
+    }
+  }
+
   function initFdWai() {
     if (!isFiloWai()) return;
     document.documentElement.classList.add('fd-wai-shell');
@@ -238,6 +250,7 @@
     schedulePatchRetry();
     observeActiveSection();
     bindNavClickClose();
+    bindWaiControls();
     rationalizeAudienceCopy();
     syncWaiLayoutState();
   }
@@ -257,6 +270,7 @@
   window.addEventListener('load', function () {
     if (!isFiloWai()) return;
     schedulePatchRetry();
+    bindWaiControls();
     syncWaiLayoutState();
   });
 })();

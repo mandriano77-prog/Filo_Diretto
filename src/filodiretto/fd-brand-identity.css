@@ -402,6 +402,43 @@ html[data-app='filodiretto'] #brand-identity .fd-bi-social-lead {
   line-height: var(--fd-line-height-relaxed);
 }
 
+html[data-app='filodiretto'] #brand-identity .fd-bi-social-details {
+  margin: 0;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-social-details > summary {
+  list-style: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fd-space-3);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-sm);
+  background: var(--fd-color-bg-subtle, var(--surface, #f9fafb));
+  color: var(--fd-color-text-primary);
+  text-align: left;
+  font-size: 16px;
+  font-weight: var(--fd-font-weight-semibold);
+  cursor: pointer;
+  margin: 0 0 var(--fd-space-2);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-social-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-social-details > summary:hover {
+  border-color: var(--fd-border-strong);
+  background: var(--fd-color-bg-canvas);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-social-details[open] > summary .fd-bi-social-trigger__chevron {
+  transform: rotate(90deg);
+}
+
 html[data-app='filodiretto'] #brand-identity .fd-bi-social-trigger {
   width: 100%;
   display: flex;

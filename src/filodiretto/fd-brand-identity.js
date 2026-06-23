@@ -519,53 +519,74 @@
   }
 
   function syncSocialToggleUi() {
-    var toggle = document.getElementById('a2wBiSocialToggle');
-    var body = document.getElementById('a2wBiSocialBody');
+    var details = document.getElementById('fdBiSocialDetails');
+    var summary = document.getElementById('a2wBiSocialToggle');
     var countEl = document.getElementById('fdBiSocialCount');
-    if (!toggle) return;
+    if (!details || !summary) return;
     var count = countSocialProfiles();
     if (countEl) {
       countEl.textContent = count > 0 ? count + (count === 1 ? ' profilo' : ' profili') : 'Nessun profilo';
       countEl.classList.toggle('has-profiles', count > 0);
     }
-    if (body && count > 0 && body.hidden && !socialAccordionCollapsedByUser) {
-      body.hidden = false;
-      toggle.setAttribute('aria-expanded', 'true');
+    if (count > 0 && !socialAccordionCollapsedByUser && !details.open) {
+      details.open = true;
     }
+    summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
   }
 
   function enhanceSocialSection() {
-    var toggle = document.getElementById('a2wBiSocialToggle');
+    var legacyToggle = document.getElementById('a2wBiSocialToggle');
     var body = document.getElementById('a2wBiSocialBody');
-    if (!toggle || toggle.dataset.fdSocialEnhanced === '1') return;
-    var section = toggle.closest('section');
-    toggle.dataset.fdSocialEnhanced = '1';
+    if (!legacyToggle || !body || legacyToggle.dataset.fdSocialEnhanced === '1') return;
+    var section = legacyToggle.closest('section');
+    legacyToggle.dataset.fdSocialEnhanced = '1';
 
     if (section && !section.querySelector('.fd-bi-social-head')) {
       var head = document.createElement('div');
       head.className = 'fd-bi-social-head';
       head.innerHTML =
         '<p class="fd-bi-social-lead">Collegamenti ai profili social del brand (opzionale). Appaiono nel pass e nelle comunicazioni.</p>';
-      section.insertBefore(head, toggle);
+      section.insertBefore(head, legacyToggle);
     }
 
-    toggle.classList.add('fd-bi-social-trigger');
-    if (!toggle.querySelector('.fd-bi-social-trigger__chevron')) {
-      var labelWrap = document.createElement('span');
-      labelWrap.className = 'fd-bi-social-trigger__label';
-      labelWrap.innerHTML =
-        '<span class="fd-bi-social-trigger__title">Social</span>' +
-        '<span class="fd-bi-social-trigger__meta" id="fdBiSocialCount">Nessun profilo</span>';
-      var chevron = document.createElement('span');
-      chevron.className = 'fd-bi-social-trigger__chevron';
-      chevron.setAttribute('aria-hidden', 'true');
-      chevron.textContent = '›';
-      toggle.textContent = '';
-      toggle.appendChild(labelWrap);
-      toggle.appendChild(chevron);
-    }
+    var details = document.createElement('details');
+    details.className = 'fd-bi-social-details';
+    details.id = 'fdBiSocialDetails';
 
-    if (body) body.classList.add('fd-bi-social-body');
+    var summary = document.createElement('summary');
+    summary.className = 'fd-bi-social-trigger a2w-bi-accordion-trigger';
+    summary.id = 'a2wBiSocialToggle';
+    summary.setAttribute('aria-controls', 'a2wBiSocialBody');
+
+    var labelWrap = document.createElement('span');
+    labelWrap.className = 'fd-bi-social-trigger__label';
+    labelWrap.innerHTML =
+      '<span class="fd-bi-social-trigger__title">Social</span>' +
+      '<span class="fd-bi-social-trigger__meta" id="fdBiSocialCount">Nessun profilo</span>';
+    var chevron = document.createElement('span');
+    chevron.className = 'fd-bi-social-trigger__chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    summary.appendChild(labelWrap);
+    summary.appendChild(chevron);
+
+    legacyToggle.parentNode.insertBefore(details, legacyToggle);
+    details.appendChild(summary);
+    legacyToggle.remove();
+
+    body.hidden = false;
+    body.removeAttribute('hidden');
+    body.classList.add('fd-bi-social-body');
+    details.appendChild(body);
+
+    details.addEventListener('toggle', function () {
+      summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+      if (!details.open && countSocialProfiles() > 0) {
+        socialAccordionCollapsedByUser = true;
+      } else if (details.open) {
+        socialAccordionCollapsedByUser = false;
+      }
+    });
 
     SOCIAL_IDS.forEach(function (id) {
       var input = document.getElementById(id);
@@ -573,22 +594,6 @@
       input.dataset.fdSocialBound = '1';
       input.addEventListener('input', syncSocialToggleUi);
     });
-
-    if (!toggle.dataset.fdSocialToggleBound) {
-      toggle.dataset.fdSocialToggleBound = '1';
-      toggle.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (body) {
-          var open = body.hidden;
-          body.hidden = !open;
-          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-          socialAccordionCollapsedByUser = !open;
-          if (open && countSocialProfiles() === 0) socialAccordionCollapsedByUser = false;
-        }
-        requestAnimationFrame(syncSocialToggleUi);
-      }, true);
-    }
 
     syncSocialToggleUi();
   }

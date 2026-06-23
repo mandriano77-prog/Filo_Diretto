@@ -27,8 +27,8 @@
                 var fdLegacyMediaHide = document.createElement('style');
                 fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
                 document.head.appendChild(fdLegacyMediaHide);
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-interaction-fix';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-interaction-fix';
+                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260623-interaction-fix2';
+                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260623-interaction-fix2';
                 var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
                 var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
                 var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -3983,6 +3983,13 @@ function initUserMenu() {
     }
 }
 
+function waiFetchHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        ...(typeof getDashboardFetchHeaders === 'function' ? getDashboardFetchHeaders() : getAuthHeaders())
+    };
+}
+
 function syncFiloHeaderChrome() {
     const wrap = document.getElementById('dashboardProductLineWrap');
     if (!wrap) return;
@@ -6813,7 +6820,7 @@ async function saveTemplate() {
             }
             await fetch(`${API}/brands/${brandId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                headers: waiFetchHeaders(),
                 body: JSON.stringify({ config: cfg })
             });
         } catch (e) {
@@ -7082,7 +7089,7 @@ async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
     if (tplImageCache.wallet_icon) {
         const res = await fetch(`${API}/brands/${brandId}/wallet-icon`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ icon_base64: tplImageCache.wallet_icon })
         });
         if (!res.ok) {
@@ -7100,7 +7107,7 @@ async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
     try {
         const res = await fetch(`${API}/brands/${brandId}/wallet-icon/sync`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(mediaId ? { media_id: mediaId } : {})
         });
         if (res.ok) {
@@ -7218,7 +7225,7 @@ async function uploadTemplateImages(templateId) {
         if (tplImageCache[imgType]) {
             await fetch(`${API}/templates/${templateId}/images`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                headers: waiFetchHeaders(),
                 body: JSON.stringify({ image_type: imgType, image_base64: tplImageCache[imgType] })
             });
         }
@@ -9779,7 +9786,7 @@ async function distributeActivationAll() {
     try {
         const res = await fetch(`${API}/brands/${brandId}/employees/distribute`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ all_pending: true })
         });
         const data = await res.json();
@@ -10112,7 +10119,7 @@ async function saveMemberMatricola(memberId, btnEl) {
     try {
         const res = await fetch(`${API}/brands/${brandId}/members/${memberId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ employee_id: matricola })
         });
         const data = await res.json();
@@ -10396,7 +10403,7 @@ async function runImportPreview() {
     try {
         const res = await fetch(`${API}/brands/${brandId}/employees/import/preview`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(body)
         });
         const data = await res.json();
@@ -10593,7 +10600,7 @@ async function runEmployeeImportCommit() {
     try {
         const res = await fetch(`${API}/brands/${brandId}/employees/import`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(body)
         });
         const data = await res.json();
@@ -11502,7 +11509,7 @@ async function wzApplyWizardImages(tplId) {
     for (const u of types) {
         const res = await fetch(`${API}/templates/${tplId}/images`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(u)
         });
         if (!res.ok) {
@@ -11513,14 +11520,14 @@ async function wzApplyWizardImages(tplId) {
     if (wzLogoBase64) {
         await fetch(`${API}/brands/${brandId}/logo`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ logo_base64: wzLogoBase64 })
         });
     }
     if (wzStripBase64) {
         await fetch(`${API}/brands/${brandId}/strip`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ strip_base64: wzStripBase64 })
         });
     }
@@ -12643,7 +12650,7 @@ async function saveBrandIdentity() {
                         if (logoB64) {
                             await fetch(`${API}/brands/${brandId}/logo`, {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                                headers: waiFetchHeaders(),
                                 body: JSON.stringify({ logo_base64: logoB64 })
                             });
                         }
@@ -12657,7 +12664,7 @@ async function saveBrandIdentity() {
                 try {
                     const syncRes = await fetch(`${API}/brands/${brandId}/wallet-icon/sync`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                        headers: waiFetchHeaders(),
                         body: JSON.stringify({ media_id: iconAsset.id })
                     });
                     if (!syncRes.ok) {
@@ -13186,7 +13193,7 @@ async function pickMediaForPassDesign(kind) {
         const body = kind === 'logo' ? { logo_base64: base64 } : { strip_base64: base64 };
         const res = await fetch(`${API}/brands/${brandId}/${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(body)
         });
         if (!res.ok) {
@@ -13368,7 +13375,7 @@ async function saveUser() {
     if (editId) {
         const res = await fetch(`${API}/users/${editId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify(body)
         });
         if (!res.ok) {
@@ -13504,9 +13511,10 @@ function waiResetStripPreview() {
 function toggleWaiOverlay(forceOpen) {
     const el = document.getElementById('waiOverlay');
     if (!el) return;
-    const isOpen = el.style.display === 'flex' || getComputedStyle(el).display === 'flex';
+    const isOpen = el.classList.contains('wai-panel--open') || el.style.display === 'flex' || getComputedStyle(el).display === 'flex';
     const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !isOpen;
     el.style.display = shouldOpen ? 'flex' : 'none';
+    el.classList.toggle('wai-panel--open', shouldOpen);
     el.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
     if (shouldOpen) {
         const btn = document.getElementById('waiBtn');
@@ -13674,13 +13682,15 @@ async function askWai() {
         const routedPrompt = waiWrapAudiencePrompt(prompt);
         const res = await fetch(`${API}/wai/ask`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ prompt: routedPrompt, brand_id: brandId })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return alert(data.error || 'Errore W.AI');
         waiOriginalPrompt = routedPrompt;
         await applyWaiAskResponse(data);
+    } catch (err) {
+        alert(err?.message || 'Errore W.AI');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -13710,7 +13720,7 @@ async function refineWai() {
     try {
         const res = await fetch(`${API}/wai/ask`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({
                 brand_id: brandId,
                 prompt: waiWrapAudiencePrompt(originalPrompt),
@@ -13902,7 +13912,7 @@ async function confirmWai() {
     try {
         const res = await fetch(`${API}/wai/execute`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({ intent: draft.intent, payload, prompt: waiGetPromptTrace() })
         });
         const data = await res.json().catch(() => ({}));
@@ -13952,7 +13962,7 @@ async function waiHandleStripGenerate(payload, { mode = 'library' } = {}) {
     try {
         const res = await fetch(`${API}/wai/execute`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({
                 intent: 'strip.generate',
                 payload,
@@ -14010,7 +14020,7 @@ async function waiSaveStrip() {
     try {
         const res = await fetch(`${API}/wai/strip-save`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            headers: waiFetchHeaders(),
             body: JSON.stringify({
                 brand_id: brandId,
                 image_base64: waiCurrentStripBase64,

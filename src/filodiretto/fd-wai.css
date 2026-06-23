@@ -53,6 +53,11 @@ html[data-app='filodiretto'] #waiOverlay.wai-panel {
   border-radius: var(--radius-lg, 12px);
 }
 
+html[data-app='filodiretto'] #waiOverlay.wai-panel.wai-panel--open {
+  display: flex !important;
+  flex-direction: column;
+}
+
 @media (max-width: 600px) {
   html[data-app='filodiretto'] #waiOverlay.wai-panel {
     width: calc(100vw - 24px);
