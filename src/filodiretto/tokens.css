@@ -71,13 +71,13 @@
   --fd-radius-pill: 9999px;
   --fd-radius-header: 0;
 
-  /* Typography scale */
-  --fd-font-size-h1: 30px;
-  --fd-font-size-h2: 20px;
-  --fd-font-size-h3: 16px;
-  --fd-font-size-h4: 14px;
-  --fd-font-size-body: 14px;
-  --fd-font-size-sm: 12px;
+  /* Typography scale — body scales 14→16px on large viewports */
+  --fd-font-size-h1: clamp(26px, 1.25rem + 1.2vw, 32px);
+  --fd-font-size-h2: clamp(18px, 1rem + 0.5vw, 22px);
+  --fd-font-size-h3: clamp(15px, 0.9rem + 0.25vw, 17px);
+  --fd-font-size-h4: clamp(14px, 0.875rem + 0.15vw, 15px);
+  --fd-font-size-body: clamp(14px, 0.875rem + 0.2vw, 16px);
+  --fd-font-size-sm: clamp(11px, 0.7rem + 0.15vw, 13px);
   --fd-font-size-caption: 11px;
   --fd-font-weight-regular: 400;
   --fd-font-weight-medium: 500;
@@ -101,10 +101,10 @@
   --fd-z-modal: 500;
   --fd-z-toast: 600;
 
-  /* Layout — applied in fd-layout.css (FASE 2) */
+  /* Layout — applied in fd-layout.css + fd-wide-layout.css */
   --fd-layout-max-width: 1280px;
-  --fd-layout-gutter: 24px;
-  --fd-layout-gutter-sm: 16px;
+  --fd-layout-gutter: clamp(24px, 4vw, 64px);
+  --fd-layout-gutter-sm: clamp(16px, 3vw, 24px);
 
   /* Breakpoints — for reference in @media and JS matchMedia */
   --fd-bp-mobile-max: 767px;

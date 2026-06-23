@@ -43,7 +43,7 @@ html[data-app='filodiretto'] #passes .fd-passes-content {
 
 html[data-app='filodiretto'] #passes .fd-passes-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   align-items: stretch;
 }

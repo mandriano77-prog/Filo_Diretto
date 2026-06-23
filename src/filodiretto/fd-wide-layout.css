@@ -1,0 +1,62 @@
+/**
+ * FD wide-screen layout — centered content rail, responsive gutter, KPI grids.
+ * Scoped to html[data-app='filodiretto'].
+ */
+
+/* ── Centered content scrollport inside .main flex column ── */
+html[data-app='filodiretto'] .main > .content {
+  align-self: center;
+  max-width: var(--fd-layout-max-width);
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: var(--fd-layout-gutter);
+  padding-block: var(--fd-layout-gutter);
+  box-sizing: border-box;
+}
+
+/* ── Sections share the same centered rail ── */
+html[data-app='filodiretto'] .content > .section {
+  max-width: var(--fd-layout-max-width);
+  margin-inline: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Page modules that set max-width on the section element */
+html[data-app='filodiretto'] #passes.passes--fd-ds,
+html[data-app='filodiretto'] #templates.templates--fd-layout,
+html[data-app='filodiretto'] #media-library.media-library--fd-layout,
+html[data-app='filodiretto'] #users.users--fd,
+html[data-app='filodiretto'] #push.push--fd,
+html[data-app='filodiretto'] #push.push--fd-ds,
+html[data-app='filodiretto'] #analytics.analytics--fd-ds,
+html[data-app='filodiretto'] #conventions.conventions--fd-ds,
+html[data-app='filodiretto'] #pga-catalog.pga--fd-ds,
+html[data-app='filodiretto'] #pga-engagement.pga--fd-ds {
+  margin-inline: auto;
+}
+
+/* Optional wider rail on very large monitors */
+@media (min-width: 1600px) {
+  html[data-app='filodiretto'] {
+    --fd-layout-max-width: 1440px;
+  }
+}
+
+/* ── KPI grids — prevent cards stretching too wide on desktop ── */
+@media (min-width: 1280px) {
+  html[data-app='filodiretto'] .stats-grid,
+  html[data-app='filodiretto'] .fd-stat-grid,
+  html[data-app='filodiretto'] .fd-grid--stats,
+  html[data-app='filodiretto'] .fd-grid--auto-md,
+  html[data-app='filodiretto'] #passes .fd-passes-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  html[data-app='filodiretto'] .main > .content {
+    padding-inline: var(--fd-layout-gutter-sm);
+    padding-block: var(--fd-layout-gutter-sm);
+  }
+}

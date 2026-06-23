@@ -119,23 +119,20 @@ html[data-app='filodiretto'] .fd-sidebar-collapse-btn:hover {
 
 /* ── Shell: prevent horizontal bleed ── */
 html[data-app='filodiretto'] .layout,
-html[data-app='filodiretto'] .main,
-html[data-app='filodiretto'] .content,
-html[data-app='filodiretto'] .content > .section {
+html[data-app='filodiretto'] .main {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-html[data-app='filodiretto'] .content {
-  padding: var(--fd-layout-gutter);
-  overflow-x: clip;
+html[data-app='filodiretto'] .content,
+html[data-app='filodiretto'] .content > .section {
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-html[data-app='filodiretto'] .content > .section {
-  width: 100%;
-  max-width: var(--fd-layout-max-width);
-  margin-inline: auto;
+html[data-app='filodiretto'] .content {
+  overflow-x: clip;
 }
 
 html[data-app='filodiretto'] .card,
@@ -204,12 +201,7 @@ html[data-app='filodiretto'] .content > .section.active {
 }
 
 /* Page-specific narrower rails keep their own max-width (e.g. media-library) */
-
-@media (max-width: 1023px) {
-  html[data-app='filodiretto'] .content {
-    padding: var(--fd-layout-gutter-sm);
-  }
-}
+/* Content centering, gutter, and wide KPI grids: fd-wide-layout.css */
 
 /* ── KPI / stat bands — always wrap, never overflow ── */
 html[data-app='filodiretto'] .stats-grid,

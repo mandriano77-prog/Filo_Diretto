@@ -132,15 +132,28 @@ test('fd.bundle.js is valid JavaScript after build', () => {
   );
 });
 
-test('index.html bundle cache references contacts-header tag', () => {
+test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-passes-kpi/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-passes-kpi/);
+  assert.match(html, /fd\.bundle\.css\?v=20260623-wide-layout/);
+  assert.match(html, /fd\.bundle\.js\?v=20260623-wide-layout/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
   assert.match(html, /fd-page-states\.js/);
   assert.match(html, /fd-mobile-gate\.js/);
+  assert.match(html, /fd-wide-layout\.css/);
+});
+
+test('wide-screen layout centers content and scales typography', () => {
+  const wide = readFd('fd-wide-layout.css');
+  const tokens = readFd('tokens.css');
+  const build = read('scripts/build-fd-bundles.js');
+  assert.match(wide, /html\[data-app='filodiretto'\] \.main > \.content/);
+  assert.match(wide, /margin-inline:\s*auto/);
+  assert.match(wide, /minmax\(220px/);
+  assert.match(tokens, /clamp\(14px,\s*0\.875rem \+ 0\.2vw,\s*16px\)/);
+  assert.match(tokens, /clamp\(24px,\s*4vw,\s*64px\)/);
+  assert.match(build, /fd-wide-layout\.css/);
 });
 
 test('FASE 5 page state helpers and tokens exist', () => {
@@ -257,7 +270,7 @@ test('Filo passes localize status badges and copy icon', () => {
   assert.match(js, /enhancePassIdCells/);
   assert.match(css, /fd-pass-status--active/);
   assert.match(css, /fd-passes-stat-grid/);
-  assert.match(css, /repeat\(auto-fit, minmax\(180px, 1fr\)\)/);
+  assert.match(css, /repeat\(auto-fit, minmax\(220px, 1fr\)\)/);
   assert.doesNotMatch(js, /fd-passes-stat-secondary/);
 });
 
