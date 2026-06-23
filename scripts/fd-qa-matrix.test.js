@@ -145,8 +145,8 @@ test('fd.bundle.css preserves calc() operator spacing (W.AI inset)', () => {
 
 test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260623-bi-preview-full/);
-  assert.match(html, /fd\.bundle\.js\?v=20260623-bi-preview-full/);
+  assert.match(html, /fd\.bundle\.css\?v=20260623-bi-accordion-align/);
+  assert.match(html, /fd\.bundle\.js\?v=20260623-bi-accordion-align/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -246,7 +246,7 @@ test('Filo brand identity uses per-section save and public landing URL', () => {
   assert.doesNotMatch(bi, /fdRefreshBrandChecklist/);
   assert.match(biCss, /\.a2w-bi-identity-summary__slug-link/);
   assert.match(biCss, /\.fd-bi-aside-grid/);
-  assert.match(biCss, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(biCss, /grid-template-rows: subgrid/);
   assert.match(dirtyCss, /\.fd-bi-section-save/);
   assert.match(html, /getPublicLandingUrl/);
 });

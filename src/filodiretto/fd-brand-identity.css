@@ -114,8 +114,32 @@ html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-
   width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
   gap: var(--fd-space-4);
   align-items: start;
+}
+
+/* Pair Informazioni base + Contatti: shared lead row so accordion triggers align */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--base,
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--contacts {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  align-self: stretch;
+}
+
+@supports not (grid-template-rows: subgrid) {
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--base,
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--contacts {
+    display: flex;
+    flex-direction: column;
+    grid-row: auto;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--base > .fd-bi-section-lead,
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--contacts > .fd-bi-section-lead {
+    min-height: calc(2 * var(--fd-font-size-body-sm, 13px) * var(--fd-line-height-relaxed, 1.625));
+  }
 }
 
 html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--social {
@@ -722,6 +746,19 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:not(:disabled) {
 
   html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--base,
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--contacts {
+    display: flex;
+    flex-direction: column;
+    grid-row: auto;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--base > .fd-bi-section-lead,
+  html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--contacts > .fd-bi-section-lead {
+    min-height: 0;
   }
 
   html[data-app='filodiretto'] #brand-identity .fd-bi-aside {
