@@ -134,8 +134,8 @@ test('fd.bundle.js is valid JavaScript after build', () => {
 
 test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260623-interaction-fix2/);
-  assert.match(html, /fd\.bundle\.js\?v=20260623-interaction-fix2/);
+  assert.match(html, /fd\.bundle\.css\?v=20260623-bi-accordions/);
+  assert.match(html, /fd\.bundle\.js\?v=20260623-bi-accordions/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -241,10 +241,12 @@ test('Filo brand identity uses per-section save and public landing URL', () => {
   assert.match(html, /getPublicLandingUrl/);
 });
 
-test('Filo brand identity social accordion toggles on Filo HR shell', () => {
+test('Filo brand identity section accordions on HR shell', () => {
   const bi = readFd('fd-brand-identity.js');
+  assert.match(bi, /fdBiBaseDetails/);
+  assert.match(bi, /fdBiContactsDetails/);
   assert.match(bi, /fdBiSocialDetails/);
-  assert.match(bi, /socialAccordionCollapsedByUser/);
+  assert.match(bi, /enhanceBiAccordionSections/);
   assert.match(bi, /details\.addEventListener\('toggle'/);
 });
 

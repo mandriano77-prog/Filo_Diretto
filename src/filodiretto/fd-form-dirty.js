@@ -147,7 +147,7 @@
   var BI_SECTION_DEFS = {
     base: {
       key: 'base',
-      selector: '#brand-identity .a2w-bi-main > section.a2w-bi-section:not(.a2w-bi-section--contacts):not(.a2w-bi-section--social)',
+      selector: '#brand-identity .a2w-bi-section--base',
       fields: ['biName', 'biSlug', 'biTagline', 'biSettore', 'biLang']
     },
     contacts: {
@@ -344,7 +344,8 @@
       '<span class="fd-bi-section-save__status is-clean" id="fdBiSectionSaveStatus-' + sectionKey + '" aria-live="polite"></span>' +
       '<button type="button" class="fd-btn fd-btn--secondary fd-btn--sm fd-bi-section-save__btn" ' +
       'id="fdBiSectionSaveBtn-' + sectionKey + '" data-fd-section-save="' + sectionKey + '" disabled>Salva</button>';
-    sectionEl.appendChild(bar);
+    var saveHost = sectionEl.querySelector('.fd-bi-section-body') || sectionEl;
+    saveHost.appendChild(bar);
 
     document.getElementById('fdBiSectionSaveBtn-' + sectionKey).addEventListener('click', function () {
       saveBrandIdentitySection(sectionKey);

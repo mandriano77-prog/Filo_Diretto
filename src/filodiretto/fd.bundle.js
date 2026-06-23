@@ -1621,7 +1621,62 @@
 (function () {
   'use strict';
   var SOCIAL_IDS = ['biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'];
-  var socialAccordionCollapsedByUser = false;
+  var biAccordionCollapsed = { base: false, contacts: false, social: false };
+  var BI_ACCORDION_CONFIGS = [
+    {
+      collapsedKey: 'base',
+      sectionSelector: '#brand-identity .a2w-bi-section--base',
+      detailsId: 'fdBiBaseDetails',
+      summaryId: 'fdBiBaseSummary',
+      title: 'Informazioni base',
+      metaId: 'fdBiBaseMeta',
+      fieldIds: ['biName', 'biSlug', 'biTagline', 'biSettore', 'biLang'],
+      defaultOpen: true,
+      metaFn: function () {
+        var nameEl = document.getElementById('biName');
+        var name = nameEl && String(nameEl.value || '').trim();
+        return name || 'Da completare';
+      }
+    },
+    {
+      collapsedKey: 'contacts',
+      sectionSelector: '#brand-identity .a2w-bi-section--contacts',
+      detailsId: 'fdBiContactsDetails',
+      summaryId: 'fdBiContactsSummary',
+      title: 'Contatti pubblici',
+      metaId: 'fdBiContactsMeta',
+      fieldIds: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone'],
+      defaultOpen: true,
+      metaFn: function () {
+        var ids = ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone'];
+        var n = 0;
+        ids.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && String(el.value || '').trim()) n += 1;
+        });
+        if (!n) return 'Nessun contatto';
+        return n + (n === 1 ? ' campo' : ' campi');
+      }
+    },
+    {
+      collapsedKey: 'social',
+      sectionSelector: '#brand-identity .a2w-bi-section--social',
+      detailsId: 'fdBiSocialDetails',
+      summaryId: 'a2wBiSocialToggle',
+      title: 'Social',
+      metaId: 'fdBiSocialCount',
+      legacyToggleId: 'a2wBiSocialToggle',
+      bodyId: 'a2wBiSocialBody',
+      leadHtml: 'Collegamenti ai profili social del brand (opzionale). Appaiono nel pass e nelle comunicazioni.',
+      fieldIds: SOCIAL_IDS,
+      defaultOpen: false,
+      metaFn: function () {
+        var count = countSocialProfiles();
+        if (!count) return 'Nessun profilo';
+        return count + (count === 1 ? ' profilo' : ' profili');
+      }
+    }
+  ];
   var SUMMARY_FIELD_IDS = [
     'biName',
     'biTagline',
@@ -2088,74 +2143,110 @@
     });
     return n;
   }
-  function syncSocialToggleUi() {
-    var details = document.getElementById('fdBiSocialDetails');
-    var summary = document.getElementById('a2wBiSocialToggle');
-    var countEl = document.getElementById('fdBiSocialCount');
-    if (!details || !summary) return;
-    var count = countSocialProfiles();
-    if (countEl) {
-      countEl.textContent = count > 0 ? count + (count === 1 ? ' profilo' : ' profili') : 'Nessun profilo';
-      countEl.classList.toggle('has-profiles', count > 0);
+  function syncBiAccordionMeta(cfg) {
+    var metaEl = document.getElementById(cfg.metaId);
+    var details = document.getElementById(cfg.detailsId);
+    var summary = document.getElementById(cfg.summaryId);
+    if (!metaEl || typeof cfg.metaFn !== 'function') return;
+    var label = cfg.metaFn();
+    metaEl.textContent = label;
+    metaEl.classList.toggle(
+      'has-profiles',
+      label !== 'Da completare' && label !== 'Nessun contatto' && label !== 'Nessun profilo'
+    );
+    if (cfg.collapsedKey === 'social' && details) {
+      if (countSocialProfiles() > 0 && !biAccordionCollapsed.social && !details.open) {
+        details.open = true;
+      }
     }
-    if (count > 0 && !socialAccordionCollapsedByUser && !details.open) {
-      details.open = true;
+    if (details && summary) {
+      summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
     }
-    summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
   }
-  function enhanceSocialSection() {
-    var legacyToggle = document.getElementById('a2wBiSocialToggle');
-    var body = document.getElementById('a2wBiSocialBody');
-    if (!legacyToggle || !body || legacyToggle.dataset.fdSocialEnhanced === '1') return;
-    var section = legacyToggle.closest('section');
-    legacyToggle.dataset.fdSocialEnhanced = '1';
-    if (section && !section.querySelector('.fd-bi-social-head')) {
-      var head = document.createElement('div');
-      head.className = 'fd-bi-social-head';
-      head.innerHTML =
-        '<p class="fd-bi-social-lead">Collegamenti ai profili social del brand (opzionale). Appaiono nel pass e nelle comunicazioni.</p>';
-      section.insertBefore(head, legacyToggle);
+  function enhanceBiAccordionSection(cfg) {
+    var section = document.querySelector(cfg.sectionSelector);
+    if (!section || section.dataset.fdDetailsEnhanced === '1') return;
+    section.dataset.fdDetailsEnhanced = '1';
+    var head = section.querySelector('.a2w-bi-section__head');
+    var leadText = cfg.leadHtml || (head && head.querySelector('p') ? head.querySelector('p').textContent.trim() : '');
+    if (head) head.remove();
+    if (cfg.legacyToggleId) {
+      var legacyToggle = document.getElementById(cfg.legacyToggleId);
+      if (legacyToggle && legacyToggle.tagName === 'BUTTON') legacyToggle.remove();
+    }
+    if (leadText && !section.querySelector('.fd-bi-section-lead')) {
+      var lead = document.createElement('p');
+      lead.className = 'fd-bi-section-lead fd-bi-social-lead';
+      lead.textContent = leadText;
+      section.insertBefore(lead, section.firstChild);
     }
     var details = document.createElement('details');
-    details.className = 'fd-bi-social-details';
-    details.id = 'fdBiSocialDetails';
+    details.className = 'fd-bi-section-details fd-bi-social-details';
+    details.id = cfg.detailsId;
+    details.open = cfg.defaultOpen !== false && !biAccordionCollapsed[cfg.collapsedKey];
     var summary = document.createElement('summary');
-    summary.className = 'fd-bi-social-trigger a2w-bi-accordion-trigger';
-    summary.id = 'a2wBiSocialToggle';
-    summary.setAttribute('aria-controls', 'a2wBiSocialBody');
+    summary.className = 'fd-bi-section-trigger fd-bi-social-trigger a2w-bi-accordion-trigger';
+    summary.id = cfg.summaryId;
+    if (cfg.bodyId) summary.setAttribute('aria-controls', cfg.bodyId);
     var labelWrap = document.createElement('span');
     labelWrap.className = 'fd-bi-social-trigger__label';
     labelWrap.innerHTML =
-      '<span class="fd-bi-social-trigger__title">Social</span>' +
-      '<span class="fd-bi-social-trigger__meta" id="fdBiSocialCount">Nessun profilo</span>';
+      '<span class="fd-bi-social-trigger__title">' + cfg.title + '</span>' +
+      '<span class="fd-bi-social-trigger__meta" id="' + cfg.metaId + '"></span>';
     var chevron = document.createElement('span');
     chevron.className = 'fd-bi-social-trigger__chevron';
     chevron.setAttribute('aria-hidden', 'true');
     chevron.textContent = '›';
     summary.appendChild(labelWrap);
     summary.appendChild(chevron);
-    legacyToggle.parentNode.insertBefore(details, legacyToggle);
+    var body = null;
+    if (cfg.bodyId) {
+      body = document.getElementById(cfg.bodyId);
+      if (body) {
+        body.hidden = false;
+        body.removeAttribute('hidden');
+      }
+    }
+    if (!body) {
+      body = document.createElement('div');
+      body.className = 'fd-bi-section-body fd-bi-social-body';
+    } else {
+      body.classList.add('fd-bi-section-body', 'fd-bi-social-body');
+    }
+    var movable = [];
+    Array.prototype.forEach.call(section.children, function (child) {
+      if (child.classList.contains('fd-bi-section-lead')) return;
+      movable.push(child);
+    });
+    section.appendChild(details);
     details.appendChild(summary);
-    legacyToggle.remove();
-    body.hidden = false;
-    body.removeAttribute('hidden');
-    body.classList.add('fd-bi-social-body');
+    movable.forEach(function (child) {
+      if (child === body) return;
+      body.appendChild(child);
+    });
     details.appendChild(body);
     details.addEventListener('toggle', function () {
       summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
-      if (!details.open && countSocialProfiles() > 0) {
-        socialAccordionCollapsedByUser = true;
-      } else if (details.open) {
-        socialAccordionCollapsedByUser = false;
-      }
+      biAccordionCollapsed[cfg.collapsedKey] = !details.open;
+      syncBiAccordionMeta(cfg);
     });
-    SOCIAL_IDS.forEach(function (id) {
+    (cfg.fieldIds || []).forEach(function (id) {
       var input = document.getElementById(id);
-      if (!input || input.dataset.fdSocialBound === '1') return;
-      input.dataset.fdSocialBound = '1';
-      input.addEventListener('input', syncSocialToggleUi);
+      if (!input || input.dataset.fdAccordionMetaBound === '1') return;
+      input.dataset.fdAccordionMetaBound = '1';
+      input.addEventListener('input', function () {
+        syncBiAccordionMeta(cfg);
+        if (cfg.collapsedKey === 'base' && typeof syncAsideSummary === 'function') syncAsideSummary();
+      });
     });
-    syncSocialToggleUi();
+    syncBiAccordionMeta(cfg);
+  }
+  function enhanceBiAccordionSections() {
+    if (!isFiloBiApp()) return;
+    BI_ACCORDION_CONFIGS.forEach(enhanceBiAccordionSection);
+  }
+  function syncAllBiAccordionMeta() {
+    BI_ACCORDION_CONFIGS.forEach(syncBiAccordionMeta);
   }
   function formatBadgeLabel(stateLabel) {
     if (!stateLabel) return stateLabel;
@@ -2248,8 +2339,8 @@
     hideLegacyLandingPreview();
     repositionDangerZone();
     enhanceFormSections();
-    enhanceSocialSection();
-    syncSocialToggleUi();
+    enhanceBiAccordionSections();
+    syncAllBiAccordionMeta();
     syncAsideSummary();
     patchDeleteTypingHandler();
     enhanceDeleteDialog();
@@ -6415,7 +6506,7 @@
   var BI_SECTION_DEFS = {
     base: {
       key: 'base',
-      selector: '#brand-identity .a2w-bi-main > section.a2w-bi-section:not(.a2w-bi-section--contacts):not(.a2w-bi-section--social)',
+      selector: '#brand-identity .a2w-bi-section--base',
       fields: ['biName', 'biSlug', 'biTagline', 'biSettore', 'biLang']
     },
     contacts: {
@@ -6594,7 +6685,8 @@
       '<span class="fd-bi-section-save__status is-clean" id="fdBiSectionSaveStatus-' + sectionKey + '" aria-live="polite"></span>' +
       '<button type="button" class="fd-btn fd-btn--secondary fd-btn--sm fd-bi-section-save__btn" ' +
       'id="fdBiSectionSaveBtn-' + sectionKey + '" data-fd-section-save="' + sectionKey + '" disabled>Salva</button>';
-    sectionEl.appendChild(bar);
+    var saveHost = sectionEl.querySelector('.fd-bi-section-body') || sectionEl;
+    saveHost.appendChild(bar);
     document.getElementById('fdBiSectionSaveBtn-' + sectionKey).addEventListener('click', function () {
       saveBrandIdentitySection(sectionKey);
     });
