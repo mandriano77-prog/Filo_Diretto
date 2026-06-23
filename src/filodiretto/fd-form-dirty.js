@@ -139,7 +139,7 @@
         await origSave.apply(this, arguments);
         if (!isFiloFormDirtyApp()) return;
         resetTemplateBaseline();
-        if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
+        if (typeof window.fdSyncBrandIdentityAside === 'function') window.fdSyncBrandIdentityAside();
       };
     }
   }
@@ -499,7 +499,7 @@
       if (window.brandIdentityState) window.brandIdentityState.lastSavedAt = state.lastSavedAt;
       if (typeof window.applyBrandTheme === 'function') window.applyBrandTheme();
       if (typeof window.loadBrandIdentity === 'function') await window.loadBrandIdentity();
-      if (typeof window.fdRefreshBrandChecklist === 'function') window.fdRefreshBrandChecklist();
+      if (typeof window.fdSyncBrandIdentityAside === 'function') window.fdSyncBrandIdentityAside();
     } catch (e) {
       if (typeof window.toast === 'function') window.toast(e.message || 'Errore salvataggio identità');
     } finally {
