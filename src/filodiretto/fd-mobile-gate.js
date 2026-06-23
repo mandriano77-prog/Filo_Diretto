@@ -27,7 +27,7 @@
       '<div class="fd-mobile-gate__panel">' +
       '<div class="fd-mobile-gate__icon" aria-hidden="true">📱</div>' +
       '<h2 class="fd-mobile-gate__title" id="fdMobileGateTitle">Schermo troppo piccolo</h2>' +
-      '<p class="fd-mobile-gate__desc">Il backoffice Filo Diretto è ottimizzato per tablet e desktop. ' +
+      '<p class="fd-mobile-gate__desc">Il backoffice FiloDiretto è ottimizzato per tablet e desktop. ' +
       'Ruota il dispositivo o apri la dashboard da un browser con larghezza almeno 768px.</p>' +
       '<p class="fd-mobile-gate__hint">Da 768px in su restano disponibili layout tablet e tabelle responsive.</p>' +
       '</div>';

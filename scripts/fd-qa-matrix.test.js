@@ -241,6 +241,13 @@ test('Filo brand identity uses per-section save and public landing URL', () => {
   assert.match(html, /getPublicLandingUrl/);
 });
 
+test('Filo brand identity social accordion toggles on Filo HR shell', () => {
+  const bi = readFd('fd-brand-identity.js');
+  assert.match(bi, /a2wBiSocialToggle/);
+  assert.match(bi, /body\.hidden = !open/);
+  assert.match(bi, /aria-expanded', open \? 'true' : 'false'/);
+});
+
 test('Filo brand identity aside reads camelCase form snapshot', () => {
   const js = readFd('fd-brand-identity.js');
   assert.match(js, /fieldVal\(data, 'supportEmail'/);

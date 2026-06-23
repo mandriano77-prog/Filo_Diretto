@@ -576,6 +576,11 @@
     if (!toggle.dataset.fdSocialToggleBound) {
       toggle.dataset.fdSocialToggleBound = '1';
       toggle.addEventListener('click', function () {
+        if (body) {
+          var open = body.hidden;
+          body.hidden = !open;
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
         requestAnimationFrame(syncSocialToggleUi);
       });
     }

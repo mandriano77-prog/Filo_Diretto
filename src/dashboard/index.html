@@ -17,7 +17,7 @@
             var byline = (typeof window.__2WALLET_CHROME_BYLINE__ === 'string')
                 ? window.__2WALLET_CHROME_BYLINE__.trim() : 'by Underdogs Group';
             if (!byline && lock === 'hr') byline = '';
-            var base = productTitle || (lock === 'hr' ? 'Filo Diretto' : 'Ads2Wallet');
+            var base = productTitle || (lock === 'hr' ? 'FiloDiretto' : 'Ads2Wallet');
             document.title = byline ? (base + ' — ' + byline) : base;
             var desc = document.querySelector('meta[name="description"]');
             if (desc) desc.content = base + (lock === 'hr' ? ' — piattaforma HR Wallet' : ' — dashboard');
@@ -1354,7 +1354,7 @@
 <div id="loginGate" class="login-gate" role="dialog" aria-labelledby="loginTitle">
     <div class="login-gate__inner">
     <header id="loginBrandBlock" class="login-brand" hidden>
-        <p class="login-brand__eyebrow" id="loginBrandEyebrow">Filo Diretto</p>
+        <p class="login-brand__eyebrow" id="loginBrandEyebrow">FiloDiretto</p>
         <h1 class="login-brand__title" id="loginBrandTitle">Il filo diretto con la tua azienda.</h1>
         <p class="login-brand__pitch" id="loginBrandPitch">Raggiungi il 100% della tua forza lavoro. Anche chi non ha una scrivania, senza far scaricare l'ennesima app. Tutto tramite il Wallet dello smartphone.</p>
         <p class="login-brand__tagline" id="loginBrandTagline">Il pass si aggiunge con un tap su Apple Wallet o Google Wallet.</p>
