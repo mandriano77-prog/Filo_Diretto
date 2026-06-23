@@ -118,6 +118,7 @@ test('build-fd-bundles lists FASE 5–6 modules', () => {
   assert.match(build, /fd-page-states\.js/);
   assert.match(build, /fd-mobile-gate\.css/);
   assert.match(build, /fd-mobile-gate\.js/);
+  assert.match(build, /function protectCalc/);
 });
 
 test('fd.bundle.js is valid JavaScript after build', () => {
@@ -132,10 +133,20 @@ test('fd.bundle.js is valid JavaScript after build', () => {
   );
 });
 
+test('fd.bundle.css preserves calc() operator spacing (W.AI inset)', () => {
+  const bundle = read('src/filodiretto/fd.bundle.css');
+  assert.match(
+    bundle,
+    /#waiOverlay\.wai-panel\{[^}]*calc\(var\(--space-5,\s*20px\)\s*\+\s*52px\)/
+  );
+  const broken = [...bundle.matchAll(/calc\([^)]*\+[^)]*\)/g)].filter((m) => !/ \+ /.test(m[0]));
+  assert.equal(broken.length, 0, 'minifier must not strip spaces around + inside calc()');
+});
+
 test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260623-bi-accordions/);
-  assert.match(html, /fd\.bundle\.js\?v=20260623-bi-accordions/);
+  assert.match(html, /fd\.bundle\.css\?v=20260623-wai-inset-fix/);
+  assert.match(html, /fd\.bundle\.js\?v=20260623-wai-inset-fix/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);

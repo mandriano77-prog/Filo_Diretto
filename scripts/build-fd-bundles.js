@@ -29,12 +29,43 @@ const JS_FILES = [
   'fd-rbac.js', 'fd-push.js', 'fd-reward-challenge.js', 'fd-analytics.js', 'fd-audiences.js', 'fd-conventions.js', 'fd-pga.js', 'fd-pga-engagement.js', 'fd-activity-log.js', 'fd-responsive-tables.js', 'fd-profile.js',
 ];
 
+function protectCalc(css) {
+  const calcs = [];
+  let result = '';
+  let i = 0;
+  while (i < css.length) {
+    const idx = css.indexOf('calc(', i);
+    if (idx === -1) {
+      result += css.slice(i);
+      break;
+    }
+    result += css.slice(i, idx);
+    let j = idx + 5;
+    let depth = 1;
+    while (j < css.length && depth > 0) {
+      if (css[j] === '(') depth++;
+      else if (css[j] === ')') depth--;
+      j++;
+    }
+    calcs.push(css.slice(idx, j));
+    result += `__CALC_${calcs.length - 1}__`;
+    i = j;
+  }
+  return { css: result, calcs };
+}
+
+function restoreCalc(css, calcs) {
+  return css.replace(/__CALC_(\d+)__/g, (_, n) => calcs[Number(n)]);
+}
+
 function minifyCss(css) {
-  return css
+  const { css: protectedCss, calcs } = protectCalc(css);
+  const minified = protectedCss
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\s+/g, ' ')
     .replace(/\s*([{}:;,>+~])\s*/g, '$1')
     .trim();
+  return restoreCalc(minified, calcs);
 }
 
 function minifyJs(js) {
