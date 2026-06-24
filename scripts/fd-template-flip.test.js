@@ -30,11 +30,11 @@ test('index.html HR pass preview includes consolidated back sections', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /function previewHubUrl\(\)/);
   assert.match(html, /TOKEN_AUTOMATICO/);
-  assert.match(html, /addBackLink\('HUB DIPENDENTE', previewHubUrl\(\)\)/);
+  assert.match(html, /addBackLink\('HUB DIPENDENTE', previewHubUrl\(\), 'Convenzioni · PGA · Profilo'\)/);
   assert.match(html, /biSupportEmail/);
   assert.match(html, /pp-back-field-label">SUPPORT</);
   assert.match(html, /addBackLink\('AREA RISERVATA'/);
-  const hubIdx = html.indexOf("addBackLink('HUB DIPENDENTE', previewHubUrl())");
+  const hubIdx = html.indexOf("addBackLink('HUB DIPENDENTE', previewHubUrl(), 'Convenzioni · PGA · Profilo')");
   const supportIdx = html.indexOf('pp-back-field-label">SUPPORT</div>');
   const portalIdx = html.indexOf("addBackLink('AREA RISERVATA'");
   assert.ok(hubIdx > -1 && supportIdx > hubIdx && portalIdx > supportIdx);

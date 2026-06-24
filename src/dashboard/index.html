@@ -6898,14 +6898,17 @@ function updatePassPreview() {
         const addBackText = (lbl, val) => {
             if (val) backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl)}</div><div class="pp-back-field-value">${esc(val)}</div></div>`;
         };
-        const addBackLink = (lbl, url) => {
-            if (lbl || url) backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl || 'LINK')}</div><div class="pp-back-field-value"><a href="#">${esc(url || lbl)}</a></div></div>`;
+        const addBackLink = (lbl, url, linkText) => {
+            if (lbl || url) {
+                const shown = linkText || url || lbl;
+                backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">${esc(lbl || 'LINK')}</div><div class="pp-back-field-value"><a href="#">${esc(shown)}</a></div></div>`;
+            }
         };
         addBackLink(
             document.getElementById('hrFixedLinkLabel')?.value.trim(),
             document.getElementById('hrFixedLinkUrl')?.value.trim()
         );
-        addBackLink('HUB DIPENDENTE', previewHubUrl());
+        addBackLink('HUB DIPENDENTE', previewHubUrl(), 'Convenzioni · PGA · Profilo');
         const supportEmails = [
             document.getElementById('biSupportEmail')?.value.trim(),
             document.getElementById('biDpoEmail')?.value.trim()

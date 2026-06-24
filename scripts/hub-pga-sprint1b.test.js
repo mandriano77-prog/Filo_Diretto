@@ -39,6 +39,8 @@ test('AC-007/010: passkit adds PGA links and coin balance when PGA enabled', () 
   assert.match(passkit, /buildHubAppUrl\(token, brand\.slug, 'me'\)/);
   assert.match(passkit, /getCurrentBalance/);
   assert.match(employee, /HUB DIPENDENTE/);
+  assert.match(employee, /HUB_EMPLOYEE_LINK_TEXT/);
+  assert.match(employee, /Convenzioni · PGA · Profilo/);
   assert.match(employee, /label: 'SUPPORT'/);
   assert.match(employee, /AREA RISERVATA/);
   assert.match(employee, /key: 'coin_balance'/);

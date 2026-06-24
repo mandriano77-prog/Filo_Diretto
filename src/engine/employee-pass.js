@@ -7,6 +7,8 @@
 const EMPLOYEE_PASS_TYPE = 'employee_pass';
 /** Apple Wallet pass.json top-level key (implementation detail only). */
 const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
+/** Pass back link text — aligned with HUB PWA tabs (Convenzioni / PGA / Profilo). */
+const HUB_EMPLOYEE_LINK_TEXT = 'Convenzioni · PGA · Profilo';
 
 const HR_BG_DEFAULT = '#8B5CF6';
 const HR_LABEL_DEFAULT = '#A78BFA';
@@ -268,7 +270,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       key: 'hub_employee',
       label: 'HUB DIPENDENTE',
       url: hubUrl,
-      linkText: 'Convenzioni, growth e coin'
+      linkText: HUB_EMPLOYEE_LINK_TEXT
     });
   }
 
@@ -627,6 +629,7 @@ function isHrEmployeePass(brand) {
 module.exports = {
   EMPLOYEE_PASS_TYPE,
   APPLE_EMPLOYEE_PASS_STRUCTURE,
+  HUB_EMPLOYEE_LINK_TEXT,
   buildEmployeePass,
   toApplePass,
   toGooglePass,
