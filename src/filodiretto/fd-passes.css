@@ -146,6 +146,14 @@ html[data-app='filodiretto'] #passes .fd-passes-toolbar {
   margin-bottom: var(--fd-space-3, 12px);
 }
 
+html[data-app='filodiretto'] #passes .fd-passes-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fd-space-2, 8px);
+  flex-shrink: 0;
+}
+
 html[data-app='filodiretto'] #passes .fd-passes-search {
   flex: 1 1 220px;
   max-width: 360px;
@@ -162,6 +170,9 @@ html[data-app='filodiretto'] #passes:not(.passes--advanced-cols) .pass-col-advan
 
 html[data-app='filodiretto'] #passes .pass-table-wrap.fd-table-wrap {
   margin-bottom: 0;
+  max-height: min(66vh, 560px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 html[data-app='filodiretto'] #passes .fd-passes-pagination {
@@ -218,6 +229,13 @@ html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel {
   box-shadow: var(--fd-shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
   z-index: 40;
   padding: 4px;
+}
+
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel--floating {
+  position: fixed;
+  right: auto;
+  top: auto;
+  z-index: var(--fd-z-dropdown, 1200);
 }
 
 html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel[hidden] {

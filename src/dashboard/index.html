@@ -6057,16 +6057,21 @@ async function loadPasses(resetPage = false) {
                 <button type="button" class="btn small danger" onclick="deleteSelectedPasses()">Elimina selezionati</button>
             </div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <div class="fd-toolbar fd-passes-toolbar" style="margin-bottom:10px;">
+            <div class="fd-toolbar__start">
             <input
                 type="search"
                 id="passSearchInput"
                 placeholder="Cerca pass ID, serial, device..."
                 value="${esc(passSearchQuery)}"
                 oninput="handlePassSearchInput(this.value)"
+                class="fd-passes-search"
                 style="max-width:320px;"
             >
+            </div>
+            <div class="fd-toolbar__end fd-passes-toolbar__actions">
             <button type="button" class="btn small" onclick="downloadPassesTableCsv()">Scarica tabella (CSV)</button>
+            </div>
         </div>
         <div class="pass-table-wrap">
         <table class="table pass-table">

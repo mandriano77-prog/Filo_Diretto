@@ -173,6 +173,25 @@
     row.style.marginBottom = '';
     input.classList.add('fd-passes-search');
     input.style.maxWidth = '';
+
+    var csvBtn = row.querySelector('[onclick*="downloadPassesTableCsv"]');
+    var start = row.querySelector('.fd-toolbar__start');
+    if (!start) {
+      start = document.createElement('div');
+      start.className = 'fd-toolbar__start';
+      row.insertBefore(start, row.firstChild);
+      start.appendChild(input);
+    }
+
+    var actions = row.querySelector('.fd-passes-toolbar__actions');
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.className = 'fd-toolbar__end fd-passes-toolbar__actions';
+      row.appendChild(actions);
+      if (csvBtn && csvBtn.parentNode !== actions) actions.appendChild(csvBtn);
+    } else if (csvBtn && csvBtn.parentNode !== actions) {
+      actions.appendChild(csvBtn);
+    }
   }
 
   function enhancePassesPagination(scope) {
@@ -244,8 +263,10 @@
   function ensureAdvancedColumnsToggle() {
     var content = document.getElementById('passesContent');
     if (!content || document.getElementById('fdPassesColsToggle')) return;
-    var searchRow = content.querySelector('#passSearchInput')?.closest('div');
-    if (!searchRow) return;
+    var actions =
+      content.querySelector('.fd-passes-toolbar__actions') ||
+      content.querySelector('#passSearchInput')?.closest('div');
+    if (!actions) return;
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'fdPassesColsToggle';
@@ -260,7 +281,9 @@
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.textContent = on ? 'Nascondi colonne avanzate' : 'Colonne avanzate';
     });
-    searchRow.insertBefore(btn, searchRow.lastElementChild);
+    var csvBtn = actions.querySelector('[onclick*="downloadPassesTableCsv"]');
+    if (csvBtn) actions.insertBefore(btn, csvBtn);
+    else actions.appendChild(btn);
   }
 
   function markAdvancedColumns() {
@@ -450,6 +473,68 @@
     else bar.appendChild(btn);
   }
 
+  function resetPassRowMenuPanel(panel) {
+    if (!panel) return;
+    panel.classList.remove('fd-pass-row-menu__panel--floating');
+    panel.style.top = '';
+    panel.style.left = '';
+    panel.style.right = '';
+    panel.style.minWidth = '';
+    panel.style.zIndex = '';
+  }
+
+  function positionPassRowMenuPanel(trigger, panel) {
+    if (!trigger || !panel) return;
+    panel.classList.add('fd-pass-row-menu__panel--floating');
+    var rect = trigger.getBoundingClientRect();
+    panel.style.minWidth = Math.max(168, Math.round(rect.width)) + 'px';
+    panel.style.left = 'auto';
+    panel.style.right = Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px';
+    panel.style.top = Math.round(rect.bottom + 4) + 'px';
+    panel.style.zIndex = '1200';
+
+    var panelRect = panel.getBoundingClientRect();
+    if (panelRect.bottom > window.innerHeight - 8) {
+      panel.style.top = Math.max(8, Math.round(rect.top - panelRect.height - 4)) + 'px';
+    }
+    if (panelRect.left < 8) {
+      panel.style.left = '8px';
+      panel.style.right = 'auto';
+    }
+  }
+
+  function closeAllPassRowMenus() {
+    document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
+      p.hidden = true;
+      resetPassRowMenuPanel(p);
+    });
+    document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
+      t.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function openPassRowMenu(trigger, panel) {
+    closeAllPassRowMenus();
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionPassRowMenuPanel(trigger, panel);
+  }
+
+  function wirePassTableScrollDismiss() {
+    if (document.body.dataset.fdPassTableScrollDismiss) return;
+    document.body.dataset.fdPassTableScrollDismiss = '1';
+    document.addEventListener(
+      'scroll',
+      function (e) {
+        if (e.target && e.target.closest && e.target.closest('.pass-table-wrap')) {
+          closeAllPassRowMenus();
+        }
+      },
+      true
+    );
+    window.addEventListener('resize', closeAllPassRowMenus);
+  }
+
   function enhancePassRowActions() {
     document.querySelectorAll('#passesContent .pass-row-actions').forEach(function (wrap) {
       if (wrap.dataset.fdActionsEnhanced === '1') return;
@@ -479,45 +564,26 @@
       var panel = wrap.querySelector('.fd-pass-row-menu__panel');
       trigger.addEventListener('click', function (e) {
         e.stopPropagation();
-        var open = panel.hidden;
-        document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
-          p.hidden = true;
-        });
-        document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
-          t.setAttribute('aria-expanded', 'false');
-        });
-        if (open) {
-          panel.hidden = false;
-          trigger.setAttribute('aria-expanded', 'true');
-        }
+        if (panel.hidden) openPassRowMenu(trigger, panel);
+        else closeAllPassRowMenus();
       });
       wrap.querySelector('[data-action="view"]').addEventListener('click', function () {
-        panel.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
+        closeAllPassRowMenus();
         if (typeof window.viewPassDetail === 'function') window.viewPassDetail(passId);
       });
       wrap.querySelector('[data-action="regenerate"]').addEventListener('click', function (e) {
         var regenBtn = e.currentTarget;
-        panel.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
+        closeAllPassRowMenus();
         regeneratePassInstance(passId, regenBtn);
       });
       wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
-        panel.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
+        closeAllPassRowMenus();
         if (typeof window.deletePassInstance === 'function') window.deletePassInstance(passId);
       });
     });
     if (!document.body.dataset.fdPassMenuDismiss) {
       document.body.dataset.fdPassMenuDismiss = '1';
-      document.addEventListener('click', function () {
-        document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
-          p.hidden = true;
-        });
-        document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
-          t.setAttribute('aria-expanded', 'false');
-        });
-      });
+      document.addEventListener('click', closeAllPassRowMenus);
     }
   }
 
@@ -608,6 +674,7 @@
     enhancePassesPagination(content);
     applyDsButtonClasses(content);
     enhancePassRowActions();
+    wirePassTableScrollDismiss();
     ensurePassBulkRegenerateButton();
     enhancePassIdCells(content);
     enhancePassStatusBadges(content);
