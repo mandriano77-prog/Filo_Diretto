@@ -173,6 +173,12 @@ html[data-app='filodiretto'] #passes .pass-table-wrap.fd-table-wrap {
   max-height: min(66vh, 560px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--fd-space-3, 12px);
+}
+
+html[data-app='filodiretto'] #passes .pass-table tbody tr,
+html[data-app='filodiretto'] #passes .pass-table tbody td:last-child {
+  overflow: visible;
 }
 
 html[data-app='filodiretto'] #passes .fd-passes-pagination {
@@ -218,7 +224,8 @@ html[data-app='filodiretto'] #passes .fd-pass-row-menu {
   display: inline-flex;
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel,
+html[data-app='filodiretto'] .fd-pass-row-menu__panel {
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
@@ -231,18 +238,21 @@ html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel {
   padding: 4px;
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel--floating {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel--floating,
+html[data-app='filodiretto'] .fd-pass-row-menu__panel--floating {
   position: fixed;
   right: auto;
   top: auto;
   z-index: var(--fd-z-dropdown, 1200);
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel[hidden] {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__panel[hidden],
+html[data-app='filodiretto'] .fd-pass-row-menu__panel[hidden] {
   display: none !important;
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__item {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item,
+html[data-app='filodiretto'] .fd-pass-row-menu__item {
   display: block;
   width: 100%;
   border: none;
@@ -255,25 +265,30 @@ html[data-app='filodiretto'] #passes .fd-pass-row-menu__item {
   color: var(--fd-color-text, var(--text));
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__item:hover {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item:hover,
+html[data-app='filodiretto'] .fd-pass-row-menu__item:hover {
   background: var(--fd-color-surface-muted, #f3f4f6);
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger,
+html[data-app='filodiretto'] .fd-pass-row-menu__item--danger {
   color: var(--fd-color-danger, #dc2626);
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger:hover {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item--danger:hover,
+html[data-app='filodiretto'] .fd-pass-row-menu__item--danger:hover {
   background: #fef2f2;
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__sep {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__sep,
+html[data-app='filodiretto'] .fd-pass-row-menu__sep {
   border: 0;
   border-top: 1px solid var(--fd-border, var(--border));
   margin: 4px 6px;
 }
 
-html[data-app='filodiretto'] #passes .fd-pass-row-menu__item[aria-busy='true'] {
+html[data-app='filodiretto'] #passes .fd-pass-row-menu__item[aria-busy='true'],
+html[data-app='filodiretto'] .fd-pass-row-menu__item[aria-busy='true'] {
   opacity: 0.7;
   cursor: wait;
 }

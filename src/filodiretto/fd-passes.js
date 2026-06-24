@@ -473,6 +473,14 @@
     else bar.appendChild(btn);
   }
 
+  function restorePassRowMenuPanel(panel) {
+    if (!panel || !panel._fdMenuHome) return;
+    if (panel.parentNode !== panel._fdMenuHome) {
+      panel._fdMenuHome.appendChild(panel);
+    }
+    panel._fdMenuTrigger = null;
+  }
+
   function resetPassRowMenuPanel(panel) {
     if (!panel) return;
     panel.classList.remove('fd-pass-row-menu__panel--floating');
@@ -486,10 +494,11 @@
   function positionPassRowMenuPanel(trigger, panel) {
     if (!trigger || !panel) return;
     panel.classList.add('fd-pass-row-menu__panel--floating');
+    var minW = Math.max(168, Math.round(trigger.getBoundingClientRect().width));
     var rect = trigger.getBoundingClientRect();
-    panel.style.minWidth = Math.max(168, Math.round(rect.width)) + 'px';
-    panel.style.left = 'auto';
-    panel.style.right = Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px';
+    panel.style.minWidth = minW + 'px';
+    panel.style.right = 'auto';
+    panel.style.left = Math.max(8, Math.round(rect.right - minW)) + 'px';
     panel.style.top = Math.round(rect.bottom + 4) + 'px';
     panel.style.zIndex = '1200';
 
@@ -499,7 +508,9 @@
     }
     if (panelRect.left < 8) {
       panel.style.left = '8px';
-      panel.style.right = 'auto';
+    }
+    if (panelRect.right > window.innerWidth - 8) {
+      panel.style.left = Math.max(8, Math.round(window.innerWidth - panelRect.width - 8)) + 'px';
     }
   }
 
@@ -507,6 +518,7 @@
     document.querySelectorAll('.fd-pass-row-menu__panel').forEach(function (p) {
       p.hidden = true;
       resetPassRowMenuPanel(p);
+      restorePassRowMenuPanel(p);
     });
     document.querySelectorAll('.fd-pass-row-menu__trigger').forEach(function (t) {
       t.setAttribute('aria-expanded', 'false');
@@ -515,6 +527,11 @@
 
   function openPassRowMenu(trigger, panel) {
     closeAllPassRowMenus();
+    var menu = trigger.closest('.fd-pass-row-menu');
+    if (!menu) return;
+    panel._fdMenuHome = menu;
+    panel._fdMenuTrigger = trigger;
+    document.body.appendChild(panel);
     panel.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
     positionPassRowMenuPanel(trigger, panel);
@@ -733,6 +750,7 @@
   }
 
   window.fdInitPasses = initFdPasses;
+  window.fdEnhancePassesDom = enhancePassesDom;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFdPasses);
