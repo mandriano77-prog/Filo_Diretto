@@ -228,7 +228,33 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null, pgaUrl = null, meUrl = null }) {
+function buildSupportBackSection(hrBack) {
+  const contacts = [];
+  if (hrBack.hr_email) {
+    contacts.push({ label: 'People Operations', email: String(hrBack.hr_email).trim() });
+  }
+  if (hrBack.dpo_email) {
+    contacts.push({ label: 'Privacy / DPO', email: String(hrBack.dpo_email).trim() });
+  }
+  if (!contacts.length) return null;
+
+  const body = contacts.map((c) => `${c.label}: ${c.email}`).join('\n');
+  const attributedBody = contacts.map((c) => {
+    const safeEmail = escapeHtml(c.email);
+    return `${escapeHtml(c.label)}<br/><a href="mailto:${safeEmail}">${safeEmail}</a>`;
+  }).join('<br/><br/>');
+
+  return {
+    kind: 'support',
+    key: 'support',
+    label: 'SUPPORT',
+    body,
+    attributedBody,
+    contacts
+  };
+}
+
+function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null }) {
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
@@ -238,59 +264,23 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   if (hubUrl) {
     sections.push({
       kind: 'link',
-      key: 'hub_convenzioni',
-      label: 'HUB CONVENZIONI',
+      key: 'hub_employee',
+      label: 'HUB DIPENDENTE',
       url: hubUrl,
-      linkText: 'Apri convenzioni'
+      linkText: 'Convenzioni, growth e coin'
     });
   }
 
-  if (pgaUrl) {
-    sections.push({
-      kind: 'link',
-      key: 'pga_marketplace',
-      label: 'PGA · GROWTH MARKETPLACE',
-      url: pgaUrl,
-      linkText: 'Apri marketplace'
-    });
-  }
-
-  if (meUrl) {
-    sections.push({
-      kind: 'link',
-      key: 'coin_activity',
-      label: 'ACTIVITY & COINS',
-      url: meUrl,
-      linkText: 'Vedi coin e attività'
-    });
-  }
-
-  if (hrBack.hr_email) {
-    sections.push({
-      kind: 'link',
-      key: 'hr_email',
-      label: 'PEOPLE OPERATIONS',
-      url: `mailto:${hrBack.hr_email}`,
-      linkText: hrBack.hr_email
-    });
-  }
-  if (hrBack.dpo_email) {
-    sections.push({
-      kind: 'link',
-      key: 'dpo',
-      label: 'PRIVACY / DPO',
-      url: `mailto:${hrBack.dpo_email}`,
-      linkText: hrBack.dpo_email
-    });
-  }
+  const support = buildSupportBackSection(hrBack);
+  if (support) sections.push(support);
 
   if (portalUrl) {
     sections.push({
       kind: 'link',
       key: 'portal_profile',
-      label: 'PROFILO PERSONALE',
+      label: 'AREA RISERVATA',
       url: portalUrl,
-      linkText: 'Apri profilo'
+      linkText: 'Apri profilo personale'
     });
   }
 
@@ -352,9 +342,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     member,
     brandConfig: cfg,
     portalUrl,
-    hubUrl,
-    pgaUrl,
-    meUrl
+    hubUrl
   });
 
   const primary = [];
@@ -411,6 +399,15 @@ function sectionsToAppleBackFields(sections) {
         };
       }
       return makeHrLinkField(s.key, s.label, s.url, s.linkText);
+    }
+    if (s.kind === 'support') {
+      const field = {
+        key: s.key,
+        label: String(s.label).toUpperCase().slice(0, 64),
+        value: String(s.body || '').slice(0, 500)
+      };
+      if (s.attributedBody) field.attributedValue = s.attributedBody;
+      return field;
     }
     return { key: s.key, label: s.label, value: s.body };
   });
@@ -509,6 +506,19 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
         uri: s.url,
         description: String(s.linkText || s.label || '').slice(0, 100)
       });
+    } else if (s.kind === 'support' && Array.isArray(s.contacts)) {
+      s.contacts.forEach((contact, contactIdx) => {
+        linksModuleData.uris.push({
+          id: `${s.key || 'support'}_${contactIdx}`,
+          uri: `mailto:${contact.email}`,
+          description: String(contact.label || 'Support').slice(0, 100)
+        });
+      });
+      textModulesData.push({
+        id: s.key || `text_${idx}`,
+        header: s.label,
+        body: String(s.body).slice(0, 500)
+      });
     } else if (s.body && !(s.key === 'announcement_full' && hasFrontAnnouncement)) {
       textModulesData.push({
         id: s.key || `text_${idx}`,
@@ -572,14 +582,20 @@ function toSamsungPass(employeePass) {
   employeePass.backSections.forEach((s) => {
     if (s.kind === 'link') {
       contents.push({ title: s.label, content: s.url });
+    } else if (s.kind === 'support') {
+      contents.push({ title: s.label, content: s.body });
     } else if (s.body) {
       contents.push({ title: s.label, content: s.body });
     }
   });
 
-  const links = employeePass.backSections
-    .filter((s) => s.kind === 'link')
-    .map((s) => ({ name: s.label, url: s.url }));
+  const links = employeePass.backSections.flatMap((s) => {
+    if (s.kind === 'link') return [{ name: s.label, url: s.url }];
+    if (s.kind === 'support' && Array.isArray(s.contacts)) {
+      return s.contacts.map((c) => ({ name: c.label, url: `mailto:${c.email}` }));
+    }
+    return [];
+  });
 
   const frontContents = [];
   (employeePass.front.secondary || []).forEach((f) => {

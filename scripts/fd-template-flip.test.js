@@ -26,17 +26,15 @@ test('fd-templates.css applies flip transform for Filo template modal', () => {
   assert.match(css, /rotateY\(180deg\)/);
 });
 
-test('index.html HR pass preview includes HUB CONVENZIONI back link', () => {
+test('index.html HR pass preview includes consolidated back sections', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /function previewHubUrl\(\)/);
-  assert.match(html, /function previewHubAppUrl/);
-  assert.match(html, /previewHubAppUrl\('conv'\)/);
   assert.match(html, /TOKEN_AUTOMATICO/);
-  assert.match(html, /addBackLink\('HUB CONVENZIONI', previewHubUrl\(\)\)/);
-  assert.match(html, /addBackLink\('PGA · GROWTH MARKETPLACE'/);
-  assert.match(html, /addBackLink\('PROFILO PERSONALE'/);
-  const hubIdx = html.indexOf("addBackLink('HUB CONVENZIONI', previewHubUrl())");
-  const pgaIdx = html.indexOf("addBackLink('PGA · GROWTH MARKETPLACE'");
-  const portalIdx = html.indexOf("addBackLink('PROFILO PERSONALE'");
-  assert.ok(hubIdx > -1 && pgaIdx > hubIdx && portalIdx > pgaIdx);
+  assert.match(html, /addBackLink\('HUB DIPENDENTE', previewHubUrl\(\)\)/);
+  assert.match(html, /addBackText\('SUPPORT'/);
+  assert.match(html, /addBackLink\('AREA RISERVATA'/);
+  const hubIdx = html.indexOf("addBackLink('HUB DIPENDENTE', previewHubUrl())");
+  const supportIdx = html.indexOf("addBackText('SUPPORT'");
+  const portalIdx = html.indexOf("addBackLink('AREA RISERVATA'");
+  assert.ok(hubIdx > -1 && supportIdx > hubIdx && portalIdx > supportIdx);
 });
