@@ -87,9 +87,9 @@
       <div class="privacy-required">
         <label for="privacy-accepted">
           <input type="checkbox" id="privacy-accepted" name="privacy-accepted">
-          <span>Ho letto e accetto l'<a href="/privacy-policy" target="_blank" rel="noopener noreferrer">informativa privacy</a></span>
+          <span>Ho letto e accetto l'<a id="privacy-policy-link" href="/privacy-policy" target="_blank" rel="noopener noreferrer">informativa privacy</a> del programma HR</span>
         </label>
-        <p class="hint">* Obbligatorio per attivare il pass</p>
+        <p class="hint">* Obbligatorio per attivare il pass. Documento del tuo datore di lavoro, erogato tramite FiloDiretto.</p>
       </div>
       <hr class="privacy-divider">
       <h2>Preferenze privacy (opzionali)</h2>
@@ -153,6 +153,8 @@
       }
       document.getElementById('formCard').classList.remove('hidden');
       document.getElementById('brandTitle').textContent = data.member.brand_name || 'Attivazione pass';
+      const privacyLink = document.getElementById('privacy-policy-link');
+      if (privacyLink && data.privacy_url) privacyLink.href = data.privacy_url;
       const name = [data.member.first_name, data.member.last_name].filter(Boolean).join(' ');
       document.getElementById('memberLine').textContent =
         (name ? name + ' · ' : '') + (data.member.email || '') +

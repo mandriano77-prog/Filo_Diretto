@@ -1250,8 +1250,10 @@ const {
   confirmMemberActivation,
   distributeActivationEmails,
   resendMemberActivationEmail,
-  joinUrl
+  joinUrl,
+  PRIVACY_POLICY_VERSION
 } = require('../engine/hr-activation');
+const { resolveBrandPrivacyUrl } = require('../engine/brand-privacy-url');
 
 function hrActivationDb() {
   return {
@@ -1335,7 +1337,11 @@ router.get('/activate/:token', async (req, res) => {
       },
       templates: hrTemplates.map((t) => ({ id: t.id, name: t.name })),
       consent_types: ['birthday', 'welfare_geo', 'gamification', 'climate_survey', 'partner_offers'],
-      privacy_policy_version: '1.0',
+      privacy_policy_version: PRIVACY_POLICY_VERSION,
+      privacy_url: resolveBrandPrivacyUrl(
+        { config: member.brand_config, slug: member.brand_slug },
+        { localhostPort: process.env.PORT }
+      ),
       already_activated: member.activation_status === 'activated',
       pass_id: member.pass_id || null,
       thank_you_url: activationThankYouUrl(member.pass_id)

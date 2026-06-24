@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const PRIVACY_VERSION = '1.0';
+  const PRIVACY_VERSION = '2.0';
 
   const CONSENT_META = {
     birthday: {

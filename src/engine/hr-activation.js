@@ -1,4 +1,5 @@
-const PRIVACY_POLICY_VERSION = '1.0';
+const { HR_PRIVACY_POLICY_VERSION } = require('./hr-privacy-policy');
+const PRIVACY_POLICY_VERSION = HR_PRIVACY_POLICY_VERSION;
 const { signActivationToken, verifyActivationToken } = require('./activation-auth');
 const { resolveBaseUrlFromEnv } = require('./base-url');
 const {
@@ -65,7 +66,8 @@ async function getMemberForActivationToken(db, token) {
     return null;
   }
   const r = await db.pool.query(
-    `SELECT m.*, b.name AS brand_name, b.slug AS brand_slug, b.dpo_email, b.hr_email
+    `SELECT m.*, b.name AS brand_name, b.slug AS brand_slug, b.config AS brand_config,
+            b.dpo_email, b.hr_email
      FROM members m
      JOIN brands b ON b.id = m.brand_id
      WHERE m.id = $1
@@ -406,6 +408,7 @@ async function resendMemberActivationEmail(db, member, brand) {
 }
 
 module.exports = {
+  PRIVACY_POLICY_VERSION,
   publicBaseUrl,
   activationUrl,
   joinUrl,

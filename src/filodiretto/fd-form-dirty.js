@@ -203,7 +203,7 @@
     contacts: {
       key: 'contacts',
       selector: '#brand-identity .a2w-bi-section--contacts',
-      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone']
+      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biPrivacyUrl', 'biEmergencyPhone']
     },
     social: {
       key: 'social',
@@ -261,6 +261,7 @@
       biSupportEmail: data.supportEmail,
       biSupportPhone: data.supportPhone,
       biDpoEmail: data.dpoEmail,
+      biPrivacyUrl: data.privacyUrl,
       biEmergencyPhone: data.emergencyPhone,
       biSocialInstagram: data.socialInstagram,
       biSocialFacebook: data.socialFacebook,

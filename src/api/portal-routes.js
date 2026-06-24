@@ -21,6 +21,7 @@ const { verifyPortalToken, buildPortalUrl } = require('../engine/portal-auth');
 const { readPassPortalToken, savePassPortalToken } = require('../engine/portal-pass-link');
 const { createPkpass } = require('../engine/passkit');
 const { resolveBaseUrl } = require('../engine/base-url');
+const { resolveBrandPrivacyUrl } = require('../engine/brand-privacy-url');
 
 const router = express.Router();
 
@@ -127,7 +128,10 @@ function formatProfileRow(row) {
     device_source: row.device_source,
     field_values: fv,
     display_name: displayName,
-    privacy_url: cfg.privacy_url || cfg.privacyUrl || null,
+    privacy_url: resolveBrandPrivacyUrl(
+      { config: cfg, slug: row.brand_slug },
+      { localhostPort: process.env.PORT }
+    ),
     dpo_email: row.brand_dpo_email || cfg.dpo_email || cfg.dpoEmail || null,
     hr_email: row.brand_hr_email || cfg.hr_email || cfg.support_email || null
   };

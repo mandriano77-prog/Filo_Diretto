@@ -1757,7 +1757,8 @@
       support_email: document.getElementById('biSupportEmail')?.value || '',
       support_phone: document.getElementById('biSupportPhone')?.value || '',
       dpo_email: document.getElementById('biDpoEmail')?.value || '',
-      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',
+      privacy_url: document.getElementById('biPrivacyUrl')?.value || '',
+      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',,
       settore: document.getElementById('biSettore')?.value || '',
       lang: document.getElementById('biLang')?.value || ''
     };
@@ -1849,6 +1850,7 @@
     var supportEmail = fieldVal(data, 'supportEmail', 'support_email');
     var supportPhone = fieldVal(data, 'supportPhone', 'support_phone');
     var dpoEmail = fieldVal(data, 'dpoEmail', 'dpo_email');
+    var privacyUrl = fieldVal(data, 'privacyUrl', 'privacy_url');
     root.innerHTML =
       '<div class="a2w-bi-identity-summary__brand">' +
       '<span class="a2w-bi-identity-summary__initial" aria-hidden="true">' + esc(brandInitial(name)) + '</span>' +
@@ -1861,6 +1863,7 @@
       summaryRow('Email supporto', supportEmail) +
       summaryRow('Telefono', supportPhone) +
       summaryRow('DPO / Privacy', dpoEmail) +
+      summaryRow('Privacy custom', privacyUrl || '— (FiloDiretto default)') +
       summaryRow('Settore', data.settore) +
       '</dl>';
     var legacyPreview = document.getElementById('a2wBiPreviewUrl');
@@ -6633,7 +6636,7 @@
     contacts: {
       key: 'contacts',
       selector: '#brand-identity .a2w-bi-section--contacts',
-      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone']
+      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biPrivacyUrl', 'biEmergencyPhone']
     },
     social: {
       key: 'social',
@@ -6686,6 +6689,7 @@
       biSupportEmail: data.supportEmail,
       biSupportPhone: data.supportPhone,
       biDpoEmail: data.dpoEmail,
+      biPrivacyUrl: data.privacyUrl,
       biEmergencyPhone: data.emergencyPhone,
       biSocialInstagram: data.socialInstagram,
       biSocialFacebook: data.socialFacebook,

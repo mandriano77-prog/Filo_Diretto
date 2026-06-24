@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy</title>
+    <title>Informativa privacy</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <script src="/public/boot.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -12,33 +13,20 @@
             background: #0a0a0a;
             color: #e0e0e0;
             line-height: 1.7;
-            padding: 40px 20px;
+            padding: 40px 20px 56px;
         }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-        }
-        h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-            color: #fff;
-        }
-        .brand-name {
-            font-size: 16px;
-            color: #CCFF00;
-            margin-bottom: 32px;
-        }
-        h2 {
-            font-size: 18px;
-            color: #fff;
-            margin-top: 28px;
-            margin-bottom: 10px;
-        }
-        p {
-            margin-bottom: 14px;
+        .container { max-width: 720px; margin: 0 auto; }
+        h1 { font-size: 28px; margin-bottom: 8px; color: #fff; }
+        .brand-name { font-size: 16px; color: #CCFF00; margin-bottom: 8px; }
+        .intro {
             font-size: 14px;
-            color: #bbb;
+            color: #888;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #222;
         }
+        h2 { font-size: 18px; color: #fff; margin-top: 28px; margin-bottom: 10px; }
+        p { margin-bottom: 14px; font-size: 14px; color: #bbb; }
         .date {
             font-size: 12px;
             color: #666;
@@ -46,99 +34,209 @@
             padding-top: 20px;
             border-top: 1px solid #222;
         }
+        .platform {
+            font-size: 12px;
+            color: #555;
+            margin-top: 16px;
+        }
         a { color: #CCFF00; }
         ul { margin: 0 0 14px 20px; font-size: 14px; color: #bbb; }
         li { margin-bottom: 6px; }
+        .consent-list li { margin-bottom: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Privacy Policy</h1>
-        <div class="brand-name" id="brandName">Caricamento...</div>
+        <h1>Informativa privacy</h1>
+        <div class="brand-name" id="brandName">Caricamento…</div>
+        <p class="intro" id="intro">
+            Programma HR digitale — pass dipendente su Apple Wallet / Google Wallet e Area Privata.
+        </p>
 
-        <h2>1. Titolare del Trattamento</h2>
-        <p id="titolare">Il Titolare del trattamento dei dati personali e il soggetto indicato nella pagina di registrazione (di seguito "Titolare"). Per informazioni o richieste relative al trattamento dei dati personali, e possibile contattare il Titolare tramite i recapiti indicati sul sito.</p>
+        <h2>1. Titolare del trattamento</h2>
+        <p id="titolare">
+            Il Titolare del trattamento è il datore di lavoro indicato sopra (di seguito «Titolare»).
+            Per richieste relative ai dati personali puoi contattare il Titolare o il Responsabile della protezione dei dati (DPO), se nominato.
+        </p>
+        <p id="dpoContact" hidden></p>
 
-        <h2>2. Dati Raccolti</h2>
-        <p>Attraverso il modulo di registrazione al programma fedelta, raccogliamo i seguenti dati personali:</p>
+        <h2>2. Responsabile del trattamento (fornitore tecnologico)</h2>
+        <p id="processor">
+            La piattaforma tecnologica che eroga il servizio di pass HR, notifiche, portale dipendente e gestione consensi
+            è fornita da FiloDiretto, in qualità di Responsabile del trattamento ex art. 28 GDPR,
+            per conto del Titolare e secondo le istruzioni da questi impartite.
+        </p>
+
+        <h2>3. Dati personali trattati</h2>
+        <p>In relazione al programma HR digitale possono essere trattati, in base al rapporto di lavoro e alle funzioni attivate:</p>
         <ul>
-            <li>Nome e cognome</li>
-            <li>Indirizzo email</li>
-            <li>Numero di telefono</li>
-        </ul>
-        <p>Inoltre, il sistema raccoglie automaticamente dati tecnici necessari al funzionamento del servizio (tipo di dispositivo, sistema operativo) ai fini dell'emissione della card digitale Apple Wallet.</p>
-
-        <h2>3. Finalita del Trattamento</h2>
-        <p>I dati personali sono trattati per le seguenti finalita:</p>
-        <ul>
-            <li>Creazione e gestione della card digitale del programma fedelta</li>
-            <li>Invio di notifiche push relative a promozioni, eventi e aggiornamenti del programma</li>
-            <li>Gestione dei punti fedelta e dei livelli di membership</li>
-            <li>Comunicazioni relative al servizio (aggiornamenti della card, modifiche al programma)</li>
-        </ul>
-
-        <h2>4. Base Giuridica</h2>
-        <p>Il trattamento dei dati si basa sul consenso esplicito dell'interessato, espresso tramite la spunta dell'apposita casella nel modulo di registrazione (art. 6, par. 1, lett. a del GDPR). Il consenso puo essere revocato in qualsiasi momento.</p>
-
-        <h2>5. Conservazione dei Dati</h2>
-        <p>I dati personali saranno conservati per tutta la durata dell'iscrizione al programma fedelta e per un massimo di 24 mesi dalla cancellazione dell'iscrizione, salvo obblighi di legge che richiedano una conservazione piu lunga.</p>
-
-        <h2>6. Condivisione dei Dati</h2>
-        <p>I dati personali non vengono venduti a terzi. Possono essere condivisi con:</p>
-        <ul>
-            <li>Fornitori di servizi tecnologici necessari al funzionamento della piattaforma (hosting, servizi di notifica push)</li>
-            <li>Autorita competenti, se richiesto dalla legge</li>
+            <li>Dati anagrafici e identificativi (nome, cognome, email aziendale, matricola)</li>
+            <li>Dati organizzativi (reparto, sede di lavoro, data di assunzione, ruolo)</li>
+            <li>Dati tecnici del dispositivo e del pass Wallet (identificativo pass, token push, data installazione)</li>
+            <li>Preferenze di consenso e log delle scelte privacy</li>
+            <li>Dati relativi a iniziative HR facoltative (es. COIN, challenge, sondaggi), se attivate e consensualmente abilitate</li>
         </ul>
 
-        <h2>7. Diritti dell'Interessato</h2>
-        <p>Ai sensi degli articoli 15-22 del GDPR, l'interessato ha diritto di:</p>
+        <h2>4. Finalità del trattamento</h2>
+        <p>I dati sono trattati per:</p>
         <ul>
-            <li>Accedere ai propri dati personali</li>
-            <li>Richiederne la rettifica o l'aggiornamento</li>
-            <li>Richiederne la cancellazione ("diritto all'oblio")</li>
-            <li>Limitare il trattamento</li>
-            <li>Opporsi al trattamento</li>
-            <li>Richiedere la portabilita dei dati</li>
-            <li>Revocare il consenso in qualsiasi momento</li>
+            <li>Emissione e gestione del pass dipendente digitale (Apple Wallet / Google Wallet)</li>
+            <li>Accesso all’Area Privata e ai servizi HR collegati (hub, comunicazioni, aggiornamenti pass)</li>
+            <li>Invio di notifiche push relative al programma HR e alle comunicazioni aziendali autorizzate</li>
+            <li>Gestione dei consensi privacy e tracciamento delle preferenze espresse</li>
+            <li>Adempimento di obblighi legali, fiscali e di sicurezza sul lavoro connessi al rapporto di lavoro</li>
         </ul>
-        <p>Per esercitare tali diritti, e possibile contattare il Titolare ai recapiti indicati sul sito o inviando una richiesta all'indirizzo email del Titolare.</p>
+        <p>Le finalità facoltative di seguito sono attivate <strong>solo</strong> se selezioni i relativi consensi in fase di attivazione o successivamente dall’Area Privata:</p>
+        <ul class="consent-list">
+            <li><strong>Compleanno e auguri</strong> — comunicazioni personalizzate in occasione del compleanno</li>
+            <li><strong>Welfare e servizi in base alla sede</strong> — contenuti e servizi correlati alla sede di lavoro</li>
+            <li><strong>Challenge, COIN e engagement</strong> — gamification, riconoscimenti e iniziative partecipative</li>
+            <li><strong>Sondaggi clima aziendale</strong> — raccolta opinioni e feedback interni</li>
+            <li><strong>Offerte partner</strong> — promozioni e convenzioni di terze parti selezionate dal Titolare</li>
+        </ul>
 
-        <h2>8. Sicurezza</h2>
-        <p>Il Titolare adotta misure tecniche e organizzative adeguate per proteggere i dati personali da accesso non autorizzato, perdita, distruzione o alterazione. I dati sono trasmessi tramite protocollo HTTPS e conservati su server sicuri.</p>
+        <h2>5. Base giuridica</h2>
+        <ul>
+            <li>Esecuzione del rapporto di lavoro e misure precontrattuali (art. 6, par. 1, lett. b GDPR) per pass HR, Area Privata e comunicazioni operative essenziali</li>
+            <li>Obbligo di legge (art. 6, par. 1, lett. c GDPR), ove applicabile</li>
+            <li>Consenso esplicito (art. 6, par. 1, lett. a GDPR) per le finalità facoltative elencate al punto 4 — revocabile in qualsiasi momento</li>
+            <li>Accettazione della presente informativa in fase di attivazione del pass, ove richiesta per l’avvio del servizio</li>
+        </ul>
 
-        <h2>9. Reclami</h2>
-        <p>L'interessato ha il diritto di proporre reclamo all'autorita di controllo competente (Garante per la Protezione dei Dati Personali — <a href="https://www.garanteprivacy.it" target="_blank">www.garanteprivacy.it</a>).</p>
+        <h2>6. Conservazione</h2>
+        <p>
+            I dati sono conservati per la durata del rapporto di lavoro e per il tempo necessario
+            all’erogazione del servizio HR digitale. Dopo la cessazione del rapporto, i dati possono essere
+            conservati per ulteriori periodi solo se imposti da obblighi di legge o per tutela dei diritti del Titolare,
+            nei limiti previsti dalla normativa applicabile.
+        </p>
 
-        <h2>10. Modifiche alla Privacy Policy</h2>
-        <p>Il Titolare si riserva il diritto di modificare la presente informativa in qualsiasi momento. Le modifiche saranno comunicate tramite la pagina di registrazione o notifica push.</p>
+        <h2>7. Comunicazione e destinatari</h2>
+        <p>I dati non sono venduti a terzi. Possono essere comunicati a:</p>
+        <ul>
+            <li>FiloDiretto e altri fornitori tecnologici (hosting, email, notifiche push, infrastruttura cloud) nominati Responsabili del trattamento</li>
+            <li>Soggetti autorizzati dal Titolare (personale HR, IT, consulenti) per finalità strettamente connesse al servizio</li>
+            <li>Autorità competenti, se richiesto dalla legge</li>
+        </ul>
 
-        <p class="date">Ultimo aggiornamento: 29 aprile 2026</p>
+        <h2>8. Diritti dell’interessato</h2>
+        <p>Ai sensi degli artt. 15–22 GDPR, hai diritto di accesso, rettifica, cancellazione, limitazione, opposizione (nei casi previsti), portabilità e revoca del consenso per le finalità basate su consenso.</p>
+        <p>
+            Puoi esercitare i diritti contattando il Titolare o il DPO (se indicato sopra),
+            oppure gestire i consensi facoltativi dall’<strong>Area Privata</strong> accessibile dal pass Wallet.
+        </p>
+
+        <h2>9. Sicurezza</h2>
+        <p>
+            Il Titolare e i Responsabili del trattamento adottano misure tecniche e organizzative adeguate
+            (inclusa la trasmissione via HTTPS e controlli di accesso) per proteggere i dati da accessi non autorizzati,
+            perdita o alterazione.
+        </p>
+
+        <h2>10. Reclami</h2>
+        <p>
+            Hai diritto di proporre reclamo al Garante per la protezione dei dati personali
+            (<a href="https://www.garanteprivacy.it" target="_blank" rel="noopener noreferrer">www.garanteprivacy.it</a>).
+        </p>
+
+        <h2>11. Modifiche</h2>
+        <p>
+            Il Titolare può aggiornare la presente informativa. Le versioni rilevanti sono indicate al momento
+            dell’attivazione del pass o dell’aggiornamento dei consensi. In caso di modifiche sostanziali,
+            potranno essere comunicate tramite Area Privata, email o notifica sul pass.
+        </p>
+
+        <p class="date">Versione <span id="policyVersion">2.0</span> — ultimo aggiornamento: <span id="policyDate">24 giugno 2026</span></p>
+        <p class="platform" id="platformNote">Documento fornito da FiloDiretto — piattaforma HR digital workplace.</p>
     </div>
 
     <script>
-        (async function() {
-            const slugOrId = window.location.pathname.split('/').pop();
-            try {
-                // Try by slug first
-                let res = await fetch('/api/v1/brands/by-slug/' + slugOrId);
-                let brand;
-                if (res.ok) {
-                    const data = await res.json();
-                    brand = data;
-                } else {
-                    // Try by ID
-                    res = await fetch('/api/v1/brands/' + slugOrId);
-                    if (res.ok) brand = await res.json();
-                }
-                if (brand) {
-                    document.getElementById('brandName').textContent = brand.name;
-                    document.title = 'Privacy Policy — ' + brand.name;
-                    document.getElementById('titolare').innerHTML =
-                        `Il Titolare del trattamento dei dati personali e <strong>${brand.name}</strong>. Per informazioni o richieste relative al trattamento dei dati personali, e possibile contattare il Titolare tramite i recapiti indicati sul sito o sulla card digitale.`;
-                }
-            } catch(e) {
-                document.getElementById('brandName').textContent = '';
+        (function () {
+            const POLICY_VERSION = '2.0';
+            const POLICY_DATE = '24 giugno 2026';
+
+            function esc(text) {
+                return String(text || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
             }
+
+            function contactLine(label, value, hrefPrefix) {
+                const v = String(value || '').trim();
+                if (!v) return '';
+                const safe = esc(v);
+                if (hrefPrefix === 'mailto:') {
+                    return `<strong>${esc(label)}:</strong> <a href="mailto:${safe}">${safe}</a>`;
+                }
+                return `<strong>${esc(label)}:</strong> ${safe}`;
+            }
+
+            async function loadBrand() {
+                const slugOrId = window.location.pathname.split('/').filter(Boolean).pop();
+                if (!slugOrId) return null;
+
+                let res = await fetch('/api/v1/brands/by-slug/' + encodeURIComponent(slugOrId));
+                if (res.ok) return res.json();
+
+                res = await fetch('/api/v1/brands/' + encodeURIComponent(slugOrId));
+                if (res.ok) return res.json();
+                return null;
+            }
+
+            (async function init() {
+                const platform = window.__PRODUCT_BRAND_NAME__ || 'FiloDiretto';
+                document.getElementById('processor').innerHTML =
+                    'La piattaforma tecnologica che eroga il servizio di pass HR, notifiche, portale dipendente e gestione consensi ' +
+                    `è fornita da <strong>${esc(platform)}</strong>, in qualità di Responsabile del trattamento ex art. 28 GDPR, ` +
+                    'per conto del Titolare e secondo le istruzioni da questi impartite.';
+                document.getElementById('platformNote').textContent =
+                    `Documento fornito da ${platform} — piattaforma HR digital workplace.`;
+                document.getElementById('policyVersion').textContent = POLICY_VERSION;
+                document.getElementById('policyDate').textContent = POLICY_DATE;
+
+                try {
+                    const brand = await loadBrand();
+                    if (!brand) {
+                        document.getElementById('brandName').textContent = 'Programma HR';
+                        return;
+                    }
+
+                    const name = String(brand.name || '').trim() || 'Programma HR';
+                    document.getElementById('brandName').textContent = name;
+                    document.title = 'Informativa privacy — ' + name;
+                    document.getElementById('intro').textContent =
+                        `Programma HR digitale di ${name} — pass dipendente su Apple Wallet / Google Wallet e Area Privata.`;
+
+                    const cfg = brand.config && typeof brand.config === 'object' ? brand.config : {};
+                    const dpo = String(brand.dpo_email || cfg.dpo_email || cfg.dpoEmail || '').trim();
+                    const hrEmail = String(brand.hr_email || cfg.hr_email || cfg.support?.email || '').trim();
+
+                    let titolareHtml =
+                        `Il Titolare del trattamento dei dati personali è <strong>${esc(name)}</strong> ` +
+                        '(di seguito «Titolare»), in qualità di datore di lavoro. ';
+                    if (dpo) {
+                        titolareHtml += 'Per le richieste relative alla privacy puoi contattare il Responsabile della protezione dei dati (DPO).';
+                    } else if (hrEmail) {
+                        titolareHtml += 'Per le richieste relative alla privacy puoi contattare il Titolare ai recapiti HR indicati di seguito.';
+                    } else {
+                        titolareHtml += 'Per le richieste relative alla privacy puoi contattare il Titolare ai recapiti aziendali.';
+                    }
+                    document.getElementById('titolare').innerHTML = titolareHtml;
+
+                    const contacts = [];
+                    if (dpo) contacts.push(contactLine('DPO', dpo, 'mailto:'));
+                    if (hrEmail && hrEmail !== dpo) contacts.push(contactLine('Email HR / supporto', hrEmail, 'mailto:'));
+                    const dpoEl = document.getElementById('dpoContact');
+                    if (contacts.length) {
+                        dpoEl.innerHTML = contacts.join('<br>');
+                        dpoEl.hidden = false;
+                    }
+                } catch (_) {
+                    document.getElementById('brandName').textContent = 'Programma HR';
+                }
+            })();
         })();
     </script>
 </body>

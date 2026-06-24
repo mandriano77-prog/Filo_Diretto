@@ -114,7 +114,8 @@
       support_email: document.getElementById('biSupportEmail')?.value || '',
       support_phone: document.getElementById('biSupportPhone')?.value || '',
       dpo_email: document.getElementById('biDpoEmail')?.value || '',
-      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',
+      privacy_url: document.getElementById('biPrivacyUrl')?.value || '',
+      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',,
       settore: document.getElementById('biSettore')?.value || '',
       lang: document.getElementById('biLang')?.value || ''
     };
@@ -215,6 +216,7 @@
     var supportEmail = fieldVal(data, 'supportEmail', 'support_email');
     var supportPhone = fieldVal(data, 'supportPhone', 'support_phone');
     var dpoEmail = fieldVal(data, 'dpoEmail', 'dpo_email');
+    var privacyUrl = fieldVal(data, 'privacyUrl', 'privacy_url');
 
     root.innerHTML =
       '<div class="a2w-bi-identity-summary__brand">' +
@@ -228,6 +230,7 @@
       summaryRow('Email supporto', supportEmail) +
       summaryRow('Telefono', supportPhone) +
       summaryRow('DPO / Privacy', dpoEmail) +
+      summaryRow('Privacy custom', privacyUrl || '— (FiloDiretto default)') +
       summaryRow('Settore', data.settore) +
       '</dl>';
 

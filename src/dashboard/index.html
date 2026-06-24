@@ -1915,6 +1915,12 @@
                                         <p class="a2w-bi-field-error" id="biDpoEmailError" role="alert"></p>
                                     </div>
                                     <div class="form-group fd-bi-hr-contact-extra">
+                                        <label class="form-label" for="biPrivacyUrl">Informativa privacy personalizzata (opzionale)</label>
+                                        <input type="url" id="biPrivacyUrl" placeholder="Solo se sostituisci quella FiloDiretto">
+                                        <p class="form-hint">Di default usiamo l’informativa FiloDiretto per questo brand (<code>/privacy/slug</code>), con nome azienda e DPO. Compila solo se il legale ti ha fornito un documento diverso.</p>
+                                        <p class="a2w-bi-field-error" id="biPrivacyUrlError" role="alert"></p>
+                                    </div>
+                                    <div class="form-group fd-bi-hr-contact-extra">
                                         <label class="form-label" for="biEmergencyPhone">Emergenze (telefono)</label>
                                         <input type="text" id="biEmergencyPhone" placeholder="+39 ...">
                                         <p class="a2w-bi-field-error" id="biEmergencyPhoneError" role="alert"></p>
@@ -12274,7 +12280,8 @@ function a2wBiSerializeState(data, selectedAssets) {
         socialTiktok: data.socialTiktok || '',
         socialX: data.socialX || '',
         dpoEmail: data.dpoEmail || '',
-        emergencyPhone: data.emergencyPhone || ''
+        emergencyPhone: data.emergencyPhone || '',
+        privacyUrl: data.privacyUrl || ''
     };
     if (!isBrandIdentityAssetUiExcluded()) {
         payload.assets = {
@@ -12299,7 +12306,7 @@ function a2wBiClearErrors() {
         'biName', 'biSlug', 'biTagline', 'biSettore', 'biLang', 'biHomepage',
         'biSupportEmail', 'biSupportPhone',
         'biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX',
-        'biDpoEmail', 'biEmergencyPhone'
+        'biDpoEmail', 'biEmergencyPhone', 'biPrivacyUrl'
     ].forEach((id) => a2wBiSetFieldError(id, ''));
 }
 
@@ -12319,7 +12326,8 @@ function a2wBiCollectFormData() {
         socialTiktok: (a2wBiField('biSocialTiktok')?.value || '').trim(),
         socialX: (a2wBiField('biSocialX')?.value || '').trim(),
         dpoEmail: (a2wBiField('biDpoEmail')?.value || '').trim(),
-        emergencyPhone: (a2wBiField('biEmergencyPhone')?.value || '').trim()
+        emergencyPhone: (a2wBiField('biEmergencyPhone')?.value || '').trim(),
+        privacyUrl: (a2wBiField('biPrivacyUrl')?.value || '').trim()
     };
 }
 
@@ -12339,6 +12347,9 @@ function a2wBiValidate(data) {
     if (data.supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.supportEmail)) errors.biSupportEmail = 'Email non valida';
     if (data.supportPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(data.supportPhone)) errors.biSupportPhone = 'Telefono non valido';
     if (data.dpoEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.dpoEmail)) errors.biDpoEmail = 'Email non valida';
+    if (data.privacyUrl && !/^https:\/\//i.test(data.privacyUrl) && !/^\//.test(data.privacyUrl)) {
+        errors.biPrivacyUrl = 'Inserisci un URL https:// o un percorso relativo (es. /privacy/mio-brand)';
+    }
     if (data.emergencyPhone && !/^\+?[0-9\s\-()]{7,20}$/.test(data.emergencyPhone)) errors.biEmergencyPhone = 'Telefono non valido';
 
     const socialRules = [
@@ -12719,7 +12730,7 @@ function a2wBiEnsureUiBound() {
 
     const formIds = [
         'biName', 'biSlug', 'biTagline', 'biSettore', 'biLang', 'biHomepage', 'biSupportEmail', 'biSupportPhone',
-        'biDpoEmail', 'biEmergencyPhone',
+        'biDpoEmail', 'biEmergencyPhone', 'biPrivacyUrl',
         'biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'
     ];
     formIds.forEach((id) => {
@@ -12823,7 +12834,7 @@ async function loadBrandIdentity() {
         if (stateBadge) stateBadge.textContent = '';
     }
     if (!brandId) {
-        ['biName','biSlug','biTagline','biSettore','biLang','biHomepage','biSupportEmail','biSupportPhone','biDpoEmail','biEmergencyPhone','biSocialInstagram','biSocialFacebook','biSocialLinkedin','biSocialTiktok','biSocialX']
+        ['biName','biSlug','biTagline','biSettore','biLang','biHomepage','biSupportEmail','biSupportPhone','biDpoEmail','biPrivacyUrl','biEmergencyPhone','biSocialInstagram','biSocialFacebook','biSocialLinkedin','biSocialTiktok','biSocialX']
             .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         brandIdentityState.selectedAssets = { logo: null, wallet_icon: null, strip: null, thumbnail: null, background: null };
         if (!isBrandIdentityAssetUiExcluded()) a2wBiRenderAssetsGrid();
@@ -12849,6 +12860,7 @@ async function loadBrandIdentity() {
     if (document.getElementById('biSupportEmail')) document.getElementById('biSupportEmail').value = support.email || brand.hr_email || '';
     if (document.getElementById('biSupportPhone')) document.getElementById('biSupportPhone').value = support.phone || brand.hr_phone || '';
     if (document.getElementById('biDpoEmail')) document.getElementById('biDpoEmail').value = brand.dpo_email || c.dpo_email || '';
+    if (document.getElementById('biPrivacyUrl')) document.getElementById('biPrivacyUrl').value = c.privacy_url || c.privacyUrl || '';
     if (document.getElementById('biEmergencyPhone')) document.getElementById('biEmergencyPhone').value = brand.emergency_phone || c.emergency_phone || '';
     const social = c.social || {};
     if (document.getElementById('biSocialInstagram')) document.getElementById('biSocialInstagram').value = social.instagram || '';
@@ -12907,6 +12919,7 @@ async function saveBrandIdentity() {
         const config = {
             settore: data.settore,
             homepage: data.homepage,
+            privacy_url: data.privacyUrl,
             language: data.lang,
             support: {
                 email: data.supportEmail,
