@@ -537,6 +537,7 @@ router.get('/brands/by-slug/:slug', async (req, res) => {
     const safeConfig = { ...(brand.config || {}) };
     delete safeConfig.logos;
     delete safeConfig.landingBg;
+    delete safeConfig.privacy_document;
     res.json({
       ...brand,
       config: safeConfig,
@@ -1687,7 +1688,8 @@ router.get('/brands/:id', async (req, res) => {
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
     if (!brandAllowedOnDeploy(brand)) return res.status(404).json({ error: 'Brand non trovato' });
-    res.json(brand);
+    const { sanitizeBrandForApi } = require('../engine/brand-privacy-document');
+    res.json(sanitizeBrandForApi(brand));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1719,6 +1721,76 @@ router.delete('/brands/:id', async (req, res) => {
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Brand logo upload ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
+router.get('/brands/:id/privacy/export', async (req, res) => {
+  try {
+    if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const { buildDefaultPrivacyExportHtml } = require('../engine/privacy-default-export');
+    const html = buildDefaultPrivacyExportHtml(brand, {
+      platformName: process.env.DASHBOARD_PRODUCT_TITLE || 'FiloDiretto'
+    });
+    const slug = String(brand.slug || 'brand').trim() || 'brand';
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="informativa-privacy-${slug}.html"`);
+    res.send(html);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/brands/:id/privacy-document', async (req, res) => {
+  try {
+    if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const {
+      buildPrivacyDocumentConfigUpdate,
+      privacyDocumentMeta,
+      sanitizeBrandForApi
+    } = require('../engine/brand-privacy-document');
+    const config = buildPrivacyDocumentConfigUpdate(brand, req.body || {});
+    const updated = await updateBrand(req.params.id, { config });
+    const meta = privacyDocumentMeta(config);
+    res.json({
+      success: true,
+      privacy_url: config.privacy_url,
+      privacy_document: meta,
+      brand: sanitizeBrandForApi(updated)
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/brands/:id/privacy-document', async (req, res) => {
+  try {
+    if (!requireOwnedBrandPk(req, res, req.params.id)) return;
+    const brand = await getBrand(req.params.id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const {
+      buildPrivacyDocumentRemovalConfig,
+      sanitizeBrandForApi
+    } = require('../engine/brand-privacy-document');
+    const config = buildPrivacyDocumentRemovalConfig(brand);
+    const updated = await updateBrand(req.params.id, { config });
+    res.json({ success: true, brand: sanitizeBrandForApi(updated) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/brands/by-slug/:slug/privacy-document', async (req, res) => {
+  try {
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand) return res.status(404).send('Documento non trovato');
+    const { servePrivacyDocumentResponse } = require('../engine/brand-privacy-document');
+    return servePrivacyDocumentResponse(res, brand);
+  } catch (err) {
+    res.status(500).send('Errore caricamento documento');
+  }
+});
+
 router.post('/brands/:id/logo', async (req, res) => {
   try {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;

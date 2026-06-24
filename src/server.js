@@ -352,6 +352,17 @@ app.get('/privacy/:slugOrId', (req, res) => {
   res.sendFile(path.join(__dirname, 'privacy', 'index.html'));
 });
 
+app.get('/privacy-doc/:slug', async (req, res) => {
+  try {
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand) return res.status(404).send('Documento non trovato');
+    const { servePrivacyDocumentResponse } = require('./engine/brand-privacy-document');
+    return servePrivacyDocumentResponse(res, brand);
+  } catch (err) {
+    res.status(500).send('Errore caricamento documento');
+  }
+});
+
 // ─── Instant Win game page ──────────────────────────────────
 app.get('/play/:serial_number', (req, res) => {
   res.sendFile(path.join(__dirname, 'play', 'index.html'));

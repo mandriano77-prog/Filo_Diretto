@@ -799,3 +799,99 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:not(:disabled) {
     backdrop-filter: none;
   }
 }
+
+/* Privacy block — full width in contatti (colonna destra HR) */
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-block {
+  margin-top: var(--fd-space-1);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-3);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card {
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius-md);
+  padding: var(--fd-space-4);
+  background: var(--fd-color-surface-muted);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card.is-active {
+  border-color: var(--accent, #8b5cf6);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #8b5cf6) 18%, transparent);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-2);
+  margin-bottom: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fd-font-size-caption);
+  font-weight: var(--fd-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 12%, transparent);
+  color: var(--accent, #8b5cf6);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__badge--custom {
+  background: color-mix(in srgb, var(--fd-color-text-secondary) 12%, transparent);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__lead {
+  margin: 0 0 var(--fd-space-2);
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-secondary);
+  line-height: 1.45;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__url {
+  margin: 0 0 var(--fd-space-3);
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-muted);
+  word-break: break-all;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__url code {
+  font-size: var(--fd-font-size-caption);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fd-space-2);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__status {
+  margin: var(--fd-space-3) 0 0;
+  font-size: var(--fd-font-size-sm);
+  color: var(--fd-color-text-secondary);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--fd-space-3);
+  color: var(--fd-color-text-muted);
+  font-size: var(--fd-font-size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider::before,
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--fd-border);
+}

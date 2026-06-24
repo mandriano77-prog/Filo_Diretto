@@ -1915,15 +1915,42 @@
                                         <p class="a2w-bi-field-error" id="biDpoEmailError" role="alert"></p>
                                     </div>
                                     <div class="form-group fd-bi-hr-contact-extra">
-                                        <label class="form-label" for="biPrivacyUrl">Informativa privacy personalizzata (opzionale)</label>
-                                        <input type="url" id="biPrivacyUrl" placeholder="Solo se sostituisci quella FiloDiretto">
-                                        <p class="form-hint">Di default usiamo l’informativa FiloDiretto per questo brand (<code>/privacy/slug</code>), con nome azienda e DPO. Compila solo se il legale ti ha fornito un documento diverso.</p>
-                                        <p class="a2w-bi-field-error" id="biPrivacyUrlError" role="alert"></p>
-                                    </div>
-                                    <div class="form-group fd-bi-hr-contact-extra">
                                         <label class="form-label" for="biEmergencyPhone">Emergenze (telefono)</label>
                                         <input type="text" id="biEmergencyPhone" placeholder="+39 ...">
                                         <p class="a2w-bi-field-error" id="biEmergencyPhoneError" role="alert"></p>
+                                    </div>
+                                    <div class="form-group fd-bi-hr-contact-extra fd-bi-privacy-block">
+                                        <label class="form-label">Informativa privacy</label>
+                                        <div class="fd-bi-privacy-stack">
+                                            <div class="fd-bi-privacy-card fd-bi-privacy-card--default">
+                                                <div class="fd-bi-privacy-card__head">
+                                                    <span class="fd-bi-privacy-card__badge">Predefinita</span>
+                                                    <strong>FiloDiretto</strong>
+                                                </div>
+                                                <p class="fd-bi-privacy-card__lead">Precompilata con nome azienda e DPO del brand. Usata su pass, portale e attivazione.</p>
+                                                <p class="fd-bi-privacy-card__url"><code id="biDefaultPrivacyPath">/privacy/…</code></p>
+                                                <div class="fd-bi-privacy-card__actions">
+                                                    <a class="btn small sec" id="biPrivacyPreviewBtn" href="#" target="_blank" rel="noopener noreferrer">Anteprima</a>
+                                                    <button type="button" class="btn small sec" id="biPrivacyDownloadBtn">Scarica per il legal</button>
+                                                </div>
+                                            </div>
+                                            <div class="fd-bi-privacy-divider" aria-hidden="true"><span>oppure</span></div>
+                                            <div class="fd-bi-privacy-card fd-bi-privacy-card--custom" id="biCustomPrivacyCard">
+                                                <div class="fd-bi-privacy-card__head">
+                                                    <span class="fd-bi-privacy-card__badge fd-bi-privacy-card__badge--custom">Personalizzata</span>
+                                                    <strong>Informativa ad hoc</strong>
+                                                </div>
+                                                <p class="fd-bi-privacy-card__lead">Carica il documento approvato dal legale del brand (PDF o HTML).</p>
+                                                <input type="file" id="biPrivacyFileInput" accept=".pdf,.html,.htm,application/pdf,text/html" hidden>
+                                                <div class="fd-bi-privacy-card__actions">
+                                                    <button type="button" class="btn small" id="biPrivacyUploadBtn">Carica documento</button>
+                                                    <button type="button" class="btn small sec" id="biPrivacyRemoveCustomBtn" hidden>Rimuovi custom</button>
+                                                </div>
+                                                <p class="fd-bi-privacy-card__status" id="biPrivacyCustomStatus" hidden></p>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" id="biPrivacyUrl">
+                                        <p class="a2w-bi-field-error" id="biPrivacyUrlError" role="alert"></p>
                                     </div>
                                 </div>
                             </section>
@@ -12312,6 +12339,166 @@ function a2wBiGetSlugPreviewUrl(slug) {
     return base ? `${base}/${safe}` : `/${safe}`;
 }
 
+function fdBiDefaultPrivacyPath(slug) {
+    const safe = String(slug || '').trim();
+    return safe ? `/privacy/${safe}` : '/privacy-policy';
+}
+
+function fdBiDefaultPrivacyUrl(slug) {
+    const path = fdBiDefaultPrivacyPath(slug);
+    const base = a2wPublicUrlBase();
+    return base ? `${String(base).replace(/\/$/, '')}${path}` : path;
+}
+
+function fdBiHasCustomPrivacy(privacyUrl, privacyDocument) {
+    if (privacyDocument && (privacyDocument.filename || privacyDocument.mime_type)) return true;
+    const url = String(privacyUrl || '').trim();
+    if (!url) return false;
+    if (/\/privacy-doc\//i.test(url)) return true;
+    const slug = String(a2wBiField('biSlug')?.value || '').trim();
+    if (slug && fdBiDefaultPrivacyPath(slug) === url.replace(/^https?:\/\/[^/]+/, '')) return false;
+    if (slug && url.endsWith(fdBiDefaultPrivacyPath(slug))) return false;
+    return !!url;
+}
+
+function fdBiSyncPrivacyPanel(options = {}) {
+    const slug = String(a2wBiField('biSlug')?.value || options.slug || '').trim();
+    const privacyUrl = String(options.privacyUrl ?? a2wBiField('biPrivacyUrl')?.value ?? '').trim();
+    const privacyDocument = options.privacyDocument || null;
+    const hasCustom = fdBiHasCustomPrivacy(privacyUrl, privacyDocument);
+
+    const pathEl = document.getElementById('biDefaultPrivacyPath');
+    if (pathEl) pathEl.textContent = fdBiDefaultPrivacyPath(slug);
+
+    const previewBtn = document.getElementById('biPrivacyPreviewBtn');
+    if (previewBtn) previewBtn.href = fdBiDefaultPrivacyUrl(slug);
+
+    const defaultCard = document.querySelector('#brand-identity .fd-bi-privacy-card--default');
+    const customCard = document.getElementById('biCustomPrivacyCard');
+    if (defaultCard) defaultCard.classList.toggle('is-active', !hasCustom);
+    if (customCard) customCard.classList.toggle('is-active', hasCustom);
+
+    const removeBtn = document.getElementById('biPrivacyRemoveCustomBtn');
+    if (removeBtn) removeBtn.hidden = !hasCustom;
+
+    const statusEl = document.getElementById('biPrivacyCustomStatus');
+    if (statusEl) {
+        if (hasCustom && privacyDocument?.filename) {
+            statusEl.textContent = `Documento attivo: ${privacyDocument.filename}`;
+            statusEl.hidden = false;
+        } else if (hasCustom && privacyUrl) {
+            statusEl.textContent = `URL attivo: ${privacyUrl}`;
+            statusEl.hidden = false;
+        } else {
+            statusEl.textContent = '';
+            statusEl.hidden = true;
+        }
+    }
+}
+
+function fdBiBindPrivacyPanel() {
+    const root = document.getElementById('brand-identity');
+    if (!root || root.dataset.fdPrivacyBound === '1') return;
+    root.dataset.fdPrivacyBound = '1';
+
+    const slugInput = document.getElementById('biSlug');
+    if (slugInput) slugInput.addEventListener('input', () => fdBiSyncPrivacyPanel());
+
+    const downloadBtn = document.getElementById('biPrivacyDownloadBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', async () => {
+            if (!brandId) { toast('Salva prima il brand'); return; }
+            try {
+                downloadBtn.disabled = true;
+                const res = await fetch(`${API}/brands/${brandId}/privacy/export`, { headers: { ...getAuthHeaders() } });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.error || `HTTP ${res.status}`);
+                }
+                const blob = await res.blob();
+                const slug = String(a2wBiField('biSlug')?.value || 'brand').trim() || 'brand';
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `informativa-privacy-${slug}.html`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (err) {
+                toast(err.message || 'Errore download informativa');
+            } finally {
+                downloadBtn.disabled = false;
+            }
+        });
+    }
+
+    const uploadBtn = document.getElementById('biPrivacyUploadBtn');
+    const fileInput = document.getElementById('biPrivacyFileInput');
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async () => {
+            const file = fileInput.files && fileInput.files[0];
+            fileInput.value = '';
+            if (!file || !brandId) {
+                if (!brandId) toast('Salva prima il brand');
+                return;
+            }
+            try {
+                uploadBtn.disabled = true;
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result || ''));
+                    reader.onerror = () => reject(new Error('Lettura file fallita'));
+                    reader.readAsDataURL(file);
+                });
+                const res = await fetch(`${API}/brands/${brandId}/privacy-document`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify({
+                        content_base64: dataUrl,
+                        filename: file.name,
+                        mime_type: file.type
+                    })
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+                if (a2wBiField('biPrivacyUrl')) a2wBiField('biPrivacyUrl').value = body.privacy_url || '';
+                fdBiSyncPrivacyPanel({
+                    privacyUrl: body.privacy_url,
+                    privacyDocument: body.privacy_document
+                });
+                toast('Informativa personalizzata caricata');
+            } catch (err) {
+                toast(err.message || 'Errore caricamento documento');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+    }
+
+    const removeBtn = document.getElementById('biPrivacyRemoveCustomBtn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+            if (!brandId) return;
+            if (!confirm('Rimuovere l\'informativa personalizzata e tornare a quella FiloDiretto predefinita?')) return;
+            try {
+                removeBtn.disabled = true;
+                const res = await fetch(`${API}/brands/${brandId}/privacy-document`, {
+                    method: 'DELETE',
+                    headers: { ...getAuthHeaders() }
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+                if (a2wBiField('biPrivacyUrl')) a2wBiField('biPrivacyUrl').value = '';
+                fdBiSyncPrivacyPanel({ privacyUrl: '', privacyDocument: null });
+                toast('Ripristinata informativa predefinita');
+            } catch (err) {
+                toast(err.message || 'Errore rimozione documento');
+            } finally {
+                removeBtn.disabled = false;
+            }
+        });
+    }
+}
+
 function a2wBiFormatLangLabel(code) {
     const sel = a2wBiField('biLang');
     if (sel) {
@@ -12936,6 +13123,12 @@ async function loadBrandIdentity() {
     if (document.getElementById('biSupportPhone')) document.getElementById('biSupportPhone').value = support.phone || brand.hr_phone || '';
     if (document.getElementById('biDpoEmail')) document.getElementById('biDpoEmail').value = brand.dpo_email || c.dpo_email || '';
     if (document.getElementById('biPrivacyUrl')) document.getElementById('biPrivacyUrl').value = c.privacy_url || c.privacyUrl || '';
+    fdBiBindPrivacyPanel();
+    fdBiSyncPrivacyPanel({
+        slug: brand.slug,
+        privacyUrl: c.privacy_url || c.privacyUrl || '',
+        privacyDocument: c.privacy_document || null
+    });
     if (document.getElementById('biEmergencyPhone')) document.getElementById('biEmergencyPhone').value = brand.emergency_phone || c.emergency_phone || '';
     const social = c.social || {};
     if (document.getElementById('biSocialInstagram')) document.getElementById('biSocialInstagram').value = social.instagram || '';
