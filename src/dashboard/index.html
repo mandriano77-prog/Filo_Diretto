@@ -72,6 +72,7 @@
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-import-modal.css">
+    <link rel="stylesheet" href="/dashboard/styles/filo-template-upload.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
     <link rel="stylesheet" href="/dashboard/css/components/empty-state.css">
@@ -3409,10 +3410,14 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Logo (PNG, max 320x100)</label>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
-                                <button type="button" class="btn small" onclick="tplPickFromMedia('logo')">Da Media Library</button>
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('logo')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_logo" style="display:none;" onclick="clearTplImage('logo')">Rimuovi</button>
                             </div>
-                            <input type="file" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')" style="font-size:12px;">
+                            <label class="fd-tpl-file">
+                                <input type="file" class="fd-tpl-file__input" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')">
+                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                <span class="fd-tpl-file__name" data-tpl-file-for="logo">Nessun file selezionato</span>
+                            </label>
                             <img id="tplImgLogoPreview" alt="Anteprima logo template" style="display:none;height:32px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -3421,10 +3426,14 @@
                             <label class="form-label">Icona notifiche Wallet (quadrata)</label>
                             <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Per le push su iPhone: usa un simbolo quadrato (es. 512×512). Il logo orizzontale del pass resta troppo piccolo nelle notifiche.</p>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
-                                <button type="button" class="btn small" onclick="tplPickFromMedia('wallet_icon')">Da Media Library</button>
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('wallet_icon')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_wallet_icon" style="display:none;" onclick="clearTplImage('wallet_icon')">Rimuovi</button>
                             </div>
-                            <input type="file" id="tplImgWalletIcon" accept="image/*,.pdf" onchange="previewTplImage(this,'wallet_icon')" style="font-size:12px;">
+                            <label class="fd-tpl-file">
+                                <input type="file" class="fd-tpl-file__input" id="tplImgWalletIcon" accept="image/*,.pdf" onchange="previewTplImage(this,'wallet_icon')">
+                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                <span class="fd-tpl-file__name" data-tpl-file-for="wallet_icon">Nessun file selezionato</span>
+                            </label>
                             <img id="tplImgWalletIconPreview" alt="Anteprima icona wallet" style="display:none;width:48px;height:48px;margin-top:4px;border-radius:8px;object-fit:cover;">
                         </div>
                     </div>
@@ -3432,13 +3441,14 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Strip Image (PNG, 750x246)</label>
                             <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
-                                <button type="button" class="btn small" onclick="tplPickFromMedia('strip')">Da Media Library</button>
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('strip')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_strip" style="display:none;" onclick="clearTplImage('strip')">Rimuovi</button>
-                                <select id="tplStripPromoSelect" onchange="loadStripFromPromo()" style="flex:1;min-width:140px;font-size:12px;">
-                                    <option value="">-- Strip Promo --</option>
-                                </select>
                             </div>
-                            <input type="file" id="tplImgStrip" accept="image/*,.pdf" onchange="previewTplImage(this,'strip')" style="font-size:12px;">
+                            <label class="fd-tpl-file">
+                                <input type="file" class="fd-tpl-file__input" id="tplImgStrip" accept="image/*,.pdf" onchange="previewTplImage(this,'strip')">
+                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                <span class="fd-tpl-file__name" data-tpl-file-for="strip">Nessun file selezionato</span>
+                            </label>
                             <img id="tplImgStripPreview" alt="Anteprima strip template" style="display:none;width:100%;max-width:300px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -3446,10 +3456,14 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Thumbnail (PNG, 90x90 — mostrato sul fronte)</label>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
-                                <button type="button" class="btn small" onclick="tplPickFromMedia('thumbnail')">Da Media Library</button>
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('thumbnail')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_thumbnail" style="display:none;" onclick="clearTplImage('thumbnail')">Rimuovi</button>
                             </div>
-                            <input type="file" id="tplImgThumb" accept="image/*,.pdf" onchange="previewTplImage(this,'thumbnail')" style="font-size:12px;">
+                            <label class="fd-tpl-file">
+                                <input type="file" class="fd-tpl-file__input" id="tplImgThumb" accept="image/*,.pdf" onchange="previewTplImage(this,'thumbnail')">
+                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                <span class="fd-tpl-file__name" data-tpl-file-for="thumbnail">Nessun file selezionato</span>
+                            </label>
                             <img id="tplImgThumbPreview" alt="Anteprima thumbnail template" style="display:none;width:60px;height:60px;object-fit:cover;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -3457,10 +3471,14 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Background (PNG, 360x440 — sfondo intero pass)</label>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
-                                <button type="button" class="btn small" onclick="tplPickFromMedia('background')">Da Media Library</button>
+                                <button type="button" class="btn small" onclick="tplPickFromMedia('background')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_background" style="display:none;" onclick="clearTplImage('background')">Rimuovi</button>
                             </div>
-                            <input type="file" id="tplImgBg" accept="image/*,.pdf" onchange="previewTplImage(this,'background')" style="font-size:12px;">
+                            <label class="fd-tpl-file">
+                                <input type="file" class="fd-tpl-file__input" id="tplImgBg" accept="image/*,.pdf" onchange="previewTplImage(this,'background')">
+                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                <span class="fd-tpl-file__name" data-tpl-file-for="background">Nessun file selezionato</span>
+                            </label>
                             <img id="tplImgBgPreview" alt="Anteprima sfondo template" style="display:none;width:100px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -3547,8 +3565,8 @@
         </div>
         </div>
         <div class="a2w-tpl-modal__footer">
-            <p id="tplSaveStatus" class="a2w-tpl-save-status" aria-live="polite"></p>
-            <button type="button" class="btn a2w-btn-primary" id="tplSaveBtn" onclick="saveTemplate()">Salva Template</button>
+            <p id="tplSaveStatus" class="fd-tpl-save-status" aria-live="polite"></p>
+            <button type="button" class="btn a2w-btn-primary" id="tplSaveBtn" onclick="saveTemplateFromBtn()">Salva Template</button>
         </div>
     </div>
 </div>
@@ -6665,7 +6683,8 @@ async function openTemplateModal() {
     if (!isHrDashboard()) document.getElementById('tplType').value = 'storeCard';
     document.getElementById('templateModal').classList.add('active');
     document.body.classList.add('modal-open');
-    populateStripPromoSelect();
+    resetTplFileLabels();
+    resetTplSaveStatus();
     onPassTypeChange();
     if (isHrDashboard()) {
         await loadHrTemplateBackFields(null);
@@ -6678,7 +6697,7 @@ async function editTemplate(id) {
     if (typeof prepareModalOpen === 'function') prepareModalOpen('templateModal');
     nav('templates');
     togglePassBackEditorMode();
-    const res = await fetch(`${API}/templates/${id}`);
+    const res = await fetch(`${API}/templates/${id}`, { headers: getAuthHeaders() });
     const t = await res.json();
     document.getElementById('templateEditId').value = t.id;
     document.getElementById('templateModalTitle').textContent = 'Modifica Template';
@@ -6736,7 +6755,8 @@ async function editTemplate(id) {
     }
     document.getElementById('templateModal').classList.add('active');
     document.body.classList.add('modal-open');
-    populateStripPromoSelect();
+    resetTplFileLabels();
+    resetTplSaveStatus();
     onPassTypeChange();
     if (typeof a2wResetTplColorPickers === 'function') a2wResetTplColorPickers(t.style || {});
     updateTplImageRemoveButtons();
@@ -6788,7 +6808,7 @@ async function saveTemplate() {
     if (!body.name) { throw new Error('Nome template obbligatorio'); }
     const url = editId ? `${API}/templates/${editId}` : `${API}/templates`;
     const method = editId ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: waiFetchHeaders(), body: JSON.stringify(body) });
     if (!res.ok) {
         let msg = 'Errore salvataggio template';
         try { const err = await res.json(); if (err.error || err.message) msg = err.error || err.message; } catch (_) {}
@@ -6835,6 +6855,58 @@ async function saveTemplate() {
     }
     invalidateBrandCache();
     loadTemplates();
+}
+
+function resetTplSaveStatus() {
+    const statusEl = document.getElementById('tplSaveStatus');
+    const btn = document.getElementById('tplSaveBtn');
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.className = 'fd-tpl-save-status';
+    }
+    if (btn) btn.disabled = false;
+}
+
+function setTplSaveStatus(state, message) {
+    const statusEl = document.getElementById('tplSaveStatus');
+    const btn = document.getElementById('tplSaveBtn');
+    if (statusEl) {
+        statusEl.textContent = message || '';
+        statusEl.className = 'fd-tpl-save-status' + (state ? ' is-' + state : '');
+    }
+    if (btn) btn.disabled = state === 'saving';
+}
+
+async function saveTemplateFromBtn() {
+    setTplSaveStatus('saving', 'Salvataggio…');
+    try {
+        await saveTemplate();
+        setTplSaveStatus('ok', 'Salvato');
+    } catch (e) {
+        const msg = e?.message || 'Errore salvataggio';
+        setTplSaveStatus('error', msg);
+        if (typeof toast === 'function') toast(msg);
+        else alert(msg);
+    }
+}
+
+function tplFileNameEl(imageType) {
+    return document.querySelector('[data-tpl-file-for="' + imageType + '"]');
+}
+
+function resetTplFileLabels() {
+    document.querySelectorAll('[data-tpl-file-for]').forEach((el) => {
+        el.textContent = 'Nessun file selezionato';
+    });
+    const wi = document.getElementById('tplImgWalletIcon');
+    if (wi) wi.value = '';
+}
+
+function syncTplFileLabel(input, imageType) {
+    const label = tplFileNameEl(imageType);
+    if (!label) return;
+    const file = input?.files?.[0];
+    label.textContent = file ? file.name : 'Nessun file selezionato';
 }
 
 function previewHubAppUrl(subPath) {
@@ -7143,6 +7215,7 @@ function clearTplImage(imageType, opts = {}) {
     const inputId = TPL_IMAGE_INPUT_IDS[imageType];
     const input = inputId ? document.getElementById(inputId) : null;
     if (input) input.value = '';
+    syncTplFileLabel(input, imageType);
     const preview = document.getElementById(tplMediaPreviewId(imageType));
     if (preview) {
         preview.style.display = 'none';
@@ -7284,7 +7357,11 @@ function renderMediaGalleryCards(items, emptyMsg) {
 
 function previewTplImage(input, imageType) {
     const file = input.files[0];
-    if (!file) return;
+    if (!file) {
+        syncTplFileLabel(input, imageType);
+        return;
+    }
+    syncTplFileLabel(input, imageType);
     const reader = new FileReader();
     reader.onload = (e) => {
         const base64 = e.target.result.split(',')[1];
@@ -7296,41 +7373,6 @@ function previewTplImage(input, imageType) {
         updateTplImageRemoveButtons();
     };
     reader.readAsDataURL(file);
-}
-
-async function populateStripPromoSelect() {
-    const sel = document.getElementById('tplStripPromoSelect');
-    sel.innerHTML = '<option value="">-- Scegli da Strip Promo --</option>';
-    if (!brandId) return;
-    try {
-        const res = await fetch(`${API}/brands/${brandId}/strip-promos`);
-        const promos = await res.json();
-        promos.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.textContent = p.title + (p.active ? '' : ' (inattiva)');
-            sel.appendChild(opt);
-        });
-    } catch(e) { console.warn('Strip promo load error:', e); }
-}
-
-async function loadStripFromPromo() {
-    const promoId = document.getElementById('tplStripPromoSelect').value;
-    if (!promoId) return;
-    try {
-        const res = await fetch(`${API}/strip-promos/${promoId}/image`);
-        const data = await res.json();
-        if (data.strip_base64) {
-            tplImageCache.strip = data.strip_base64;
-            clearTplImageRemovalFlag('strip');
-            const preview = document.getElementById('tplImgStripPreview');
-            preview.src = 'data:image/png;base64,' + data.strip_base64;
-            preview.style.display = 'block';
-            updatePassPreview();
-            updateTplImageRemoveButtons();
-            toast('Strip caricata dalla promo!');
-        }
-    } catch(e) { alert('Errore caricamento strip: ' + e.message); }
 }
 
 // Upload template images after save
