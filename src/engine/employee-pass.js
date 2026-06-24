@@ -236,32 +236,28 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-/** SUPPORT title row, then one back field per email (Wallet ignores \\n in a single field). */
-function buildSupportBackSections(hrBack) {
+/** Single SUPPORT block (label + emails) — same pattern as HUB DIPENDENTE. */
+function buildSupportBackSection(hrBack) {
   const emails = [];
   if (hrBack.hr_email) emails.push(String(hrBack.hr_email).trim());
   if (hrBack.dpo_email) emails.push(String(hrBack.dpo_email).trim());
-  if (!emails.length) return [];
+  if (!emails.length) return null;
 
-  const sections = [{
-    kind: 'text',
+  const body = emails.join('\n');
+  const attributedBody = emails
+    .map((email) => {
+      const safeEmail = escapeHtml(email);
+      return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
+    })
+    .join('<br>');
+
+  return {
+    kind: 'support',
     key: 'support',
     label: 'SUPPORT',
-    body: ''
-  }];
-
-  emails.forEach((email, idx) => {
-    const safeEmail = escapeHtml(email);
-    sections.push({
-      kind: 'support',
-      key: `support_email_${idx + 1}`,
-      label: '',
-      body: email,
-      attributedBody: `<a href="mailto:${safeEmail}">${safeEmail}</a>`
-    });
-  });
-
-  return sections;
+    body,
+    attributedBody
+  };
 }
 
 function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null }) {
@@ -281,7 +277,8 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     });
   }
 
-  buildSupportBackSections(hrBack).forEach((section) => sections.push(section));
+  const support = buildSupportBackSection(hrBack);
+  if (support) sections.push(support);
 
   if (portalUrl) {
     sections.push({
@@ -341,14 +338,16 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   }
 
   const auxiliary = [];
-  if (coinBalance != null && Number.isFinite(Number(coinBalance))) {
-    auxiliary.push({
-      key: 'coin_balance',
-      label: 'COIN',
-      value: String(Math.max(0, Math.floor(Number(coinBalance)))),
-      changeMessage: 'Hai %@ coin'
-    });
-  }
+  const coinValue =
+    coinBalance != null && Number.isFinite(Number(coinBalance))
+      ? Math.max(0, Math.floor(Number(coinBalance)))
+      : 0;
+  auxiliary.push({
+    key: 'coin_balance',
+    label: 'COIN',
+    value: String(coinValue),
+    changeMessage: 'Hai %@ coin'
+  });
   const annField = buildAnnouncementAuxField(cfg);
   if (annField) auxiliary.push(annField);
 

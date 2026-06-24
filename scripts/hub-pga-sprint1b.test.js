@@ -37,7 +37,8 @@ test('AC-007/010: passkit adds PGA link when enabled and always loads coin balan
   const employee = read('src/engine/employee-pass.js');
   assert.match(passkit, /buildHubAppUrl\(token, brand\.slug, 'pga'\)/);
   assert.match(passkit, /buildHubAppUrl\(token, brand\.slug, 'me'\)/);
-  assert.match(passkit, /getCurrentBalance/);
+  assert.match(passkit, /coin balance load failed/);
+  assert.match(passkit, /getCurrentBalance\(brand\.id, instance\.serial_number\)/);
   assert.match(employee, /HUB DIPENDENTE/);
   assert.match(employee, /HUB_EMPLOYEE_LINK_TEXT/);
   assert.match(employee, /DEAL · PGA · COIN/);
@@ -71,9 +72,28 @@ test('AC-010: coin balance renders on auxiliary row only (not header)', () => {
   assert.equal(headerKeys.includes('coin_balance'), false);
   assert.equal(auxKeys.includes('coin_balance'), true);
   assert.deepEqual(secKeys, ['name', 'matricola', 'reparto', 'sede']);
+  const coinField = apple.passStructure.auxiliaryFields.find((f) => f.key === 'coin_balance');
+  assert.equal(coinField.value, '247');
 });
 
-test('SUPPORT back: title row then one row per email', () => {
+test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'Acme', config: {} },
+    template: { name: 'HR' },
+    instance: { serial_number: 'SN1', field_values: {} },
+    member: { first_name: 'Mario', last_name: 'Rossi', employee_id: '1' },
+    brandConfig: {},
+    apiBase: 'https://studio.example.com/api/v1'
+  });
+  const apple = toApplePass(employeePass);
+  const coinField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'coin_balance');
+  assert.ok(coinField);
+  assert.equal(coinField.label, 'COIN');
+  assert.equal(coinField.value, '0');
+});
+
+test('SUPPORT back: single block with label and stacked emails', () => {
   const { buildBackSections } = require('../src/engine/employee-pass');
   const sections = buildBackSections({
     brand: { hr_email: 'people@acme.it', dpo_email: 'privacy@acme.it' },
@@ -81,20 +101,15 @@ test('SUPPORT back: title row then one row per email', () => {
     instance: {},
     member: {}
   });
-  const title = sections.find((s) => s.key === 'support');
-  const emailRows = sections.filter((s) => s.kind === 'support');
-  assert.ok(title);
-  assert.equal(title.kind, 'text');
-  assert.equal(title.label, 'SUPPORT');
-  assert.equal(title.body, '');
-  assert.equal(emailRows.length, 2);
-  assert.equal(emailRows[0].label, '');
-  assert.equal(emailRows[0].body, 'people@acme.it');
-  assert.equal(emailRows[1].label, '');
-  assert.equal(emailRows[1].body, 'privacy@acme.it');
-  assert.match(emailRows[0].attributedBody, /people@acme\.it/);
-  assert.match(emailRows[1].attributedBody, /privacy@acme\.it/);
-  assert.doesNotMatch(emailRows[0].body, /DPO|People Operations/i);
+  const support = sections.find((s) => s.key === 'support');
+  assert.ok(support);
+  assert.equal(support.kind, 'support');
+  assert.equal(support.label, 'SUPPORT');
+  assert.equal(support.body, 'people@acme.it\nprivacy@acme.it');
+  assert.match(support.attributedBody, /people@acme\.it/);
+  assert.match(support.attributedBody, /privacy@acme\.it/);
+  assert.match(support.attributedBody, /<br>/);
+  assert.equal(sections.filter((s) => s.kind === 'support').length, 1);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {

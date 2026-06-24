@@ -495,13 +495,22 @@ async function resolveHrPassOptions(brand, instance, memberHint) {
   let hubUrl = null;
   let pgaUrl = null;
   let meUrl = null;
-  let coinBalance = null;
+  let coinBalance = 0;
+
+  if (isHrEmployeePass(brand) && instance?.serial_number) {
+    try {
+      const { getCurrentBalance } = require('./coins');
+      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
+    } catch (err) {
+      console.warn('[GoogleWallet] coin balance load failed:', err.message);
+      coinBalance = 0;
+    }
+  }
 
   if (isHrEmployeePass(brand) && instance?.serial_number && (process.env.JWT_HUB_SECRET || process.env.JWT_SECRET)) {
     try {
       const { signHubToken, buildHubUrl, buildHubAppUrl } = require('./hub-jwt');
       const { getPgaSettings } = require('../db');
-      const { getCurrentBalance } = require('./coins');
       const userId = member?.id || instance.member_id || null;
       const token = signHubToken({
         user_id: userId,
@@ -510,7 +519,6 @@ async function resolveHrPassOptions(brand, instance, memberHint) {
       });
       hubUrl = buildHubUrl(token, brand.slug);
       meUrl = buildHubAppUrl(token, brand.slug, 'me');
-      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       const pgaSettings = await getPgaSettings(brand.id);
       if (pgaSettings?.enabled) {
         pgaUrl = buildHubAppUrl(token, brand.slug, 'pga');

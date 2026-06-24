@@ -1013,13 +1013,23 @@ async function createPkpass(template, instance, brand, options = {}) {
   let hubUrl = null;
   let pgaUrl = null;
   let meUrl = null;
-  let coinBalance = null;
+  let coinBalance = 0;
   let hubLocations = [];
+
+  if (hrBrand && instance?.serial_number) {
+    try {
+      const { getCurrentBalance } = require('./coins');
+      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
+    } catch (err) {
+      console.warn('[pass] coin balance load failed:', err.message);
+      coinBalance = 0;
+    }
+  }
+
   if (hrBrand && instance?.serial_number && (process.env.JWT_HUB_SECRET || process.env.JWT_SECRET)) {
     try {
       const { signHubToken, buildHubUrl, buildHubAppUrl } = require('./hub-jwt');
       const { listMerchantGeofenceLocationsForBrand, getPgaSettings } = require('../db');
-      const { getCurrentBalance } = require('./coins');
       const userId = member?.id || instance.member_id || null;
       const token = signHubToken({
         user_id: userId,
@@ -1029,7 +1039,6 @@ async function createPkpass(template, instance, brand, options = {}) {
       hubUrl = buildHubUrl(token, brand.slug);
       meUrl = buildHubAppUrl(token, brand.slug, 'me');
       hubLocations = await listMerchantGeofenceLocationsForBrand(brand.id);
-      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       const pgaSettings = await getPgaSettings(brand.id);
       if (pgaSettings.enabled) {
         pgaUrl = buildHubAppUrl(token, brand.slug, 'pga');
