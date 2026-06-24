@@ -21,6 +21,7 @@
             if (desc) desc.content = base + ' — piattaforma HR Wallet';
             document.documentElement.setAttribute('data-shell', 'light');
             document.documentElement.setAttribute('data-app', 'filodiretto');
+            window.API = '/api/v1';
             var fdLegacyMediaHide = document.createElement('style');
             fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
             document.head.appendChild(fdLegacyMediaHide);
@@ -3728,8 +3729,10 @@
 
 <script>
 const API = '/api/v1';
+window.API = API;
 const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
 let brandId = null;
+window.brandId = brandId;
 let brandsListCache = [];
 function getAuthHeaders() {
     const t = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -4847,6 +4850,7 @@ async function loadBrands() {
     else if (singleBrandAuto) nextId = brands[0].id;
 
     brandId = nextId || null;
+    window.brandId = brandId;
     if (brandId) {
         const b = brands.find((x) => String(x.id) === String(brandId));
         if (b) persistDashboardProductLine(getBrandProductLine(b));
@@ -4883,6 +4887,7 @@ function changeBrand() {
     passFiltersLastBrandHydrated = null;
     const sel = document.getElementById('brandSelector');
     brandId = sel.value || null;
+    window.brandId = brandId;
     currentBrandName = brandId ? (sel.options[sel.selectedIndex]?.textContent || '') : '';
     if (brandId) {
         const b = brandsListCache.find((x) => String(x.id) === String(brandId));

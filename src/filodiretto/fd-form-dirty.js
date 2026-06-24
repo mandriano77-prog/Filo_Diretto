@@ -434,6 +434,10 @@
     return config;
   }
 
+  function apiBase() {
+    return (typeof window.API === 'string' && window.API) ? window.API : '/api/v1';
+  }
+
   async function saveBrandIdentitySection(sectionKey) {
     var state = biSectionState[sectionKey];
     if (!state || state.saving || !state.dirty || isSectionReadOnly()) return;
@@ -504,7 +508,7 @@
           product_line: productLine
         });
         if (assets) createConfig.brand_identity_assets = assets;
-        var createRes = await fetch(window.API + '/brands', {
+        var createRes = await fetch(apiBase() + '/brands', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(Object.assign({ name: name, slug: slug, config: createConfig }, hrScalars))
@@ -523,12 +527,12 @@
         if (typeof window.loadBrands === 'function') await window.loadBrands();
       } else {
         var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
-        var existing = await fetch(window.API + '/brands/' + window.brandId, { headers: headers }).then(function (r) { return r.json(); });
+        var existing = await fetch(apiBase() + '/brands/' + window.brandId, { headers: headers }).then(function (r) { return r.json(); });
         var mergedConfig = Object.assign({}, existing.config || {}, config, {
           brand_identity_last_saved_at: new Date().toISOString()
         });
         if (assets) mergedConfig.brand_identity_assets = assets;
-        var saveRes = await fetch(window.API + '/brands/' + window.brandId, {
+        var saveRes = await fetch(apiBase() + '/brands/' + window.brandId, {
           method: 'PUT',
           headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
           body: JSON.stringify(Object.assign({ name: name, slug: slug, config: mergedConfig }, hrScalars))

@@ -19,6 +19,7 @@ test('server boot.js hardcodes HR product lock', () => {
 test('dashboard index boots Filo HR shell without Ads2Wallet scripts', () => {
   assert.match(indexHtml, /data-app', 'filodiretto'/);
   assert.match(indexHtml, /data-shell', 'light'/);
+  assert.match(indexHtml, /window\.API = '\/api\/v1'/);
   assert.match(indexHtml, /<title>FiloDiretto<\/title>/);
   assert.doesNotMatch(indexHtml, /a2w-shell\.js/);
   assert.doesNotMatch(indexHtml, /a2w-template-editor\.js/);
