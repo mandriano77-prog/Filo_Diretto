@@ -35,6 +35,8 @@ test('index.html template editor supports removing pass images', () => {
   assert.doesNotMatch(html, /tplStripPromoSelect/);
   assert.match(html, /saveTemplateFromBtn/);
   assert.match(html, /fd-tpl-file/);
+  assert.match(html, /fd-tpl-img-toolbar/);
+  assert.match(html, /if \(bgRow\) bgRow\.style\.display = ''/);
 });
 
 test('index.html HR pass preview includes consolidated back sections', () => {

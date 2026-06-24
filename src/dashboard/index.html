@@ -3409,15 +3409,15 @@
                     <div class="form-row" id="tplImgLogoRow">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Logo (PNG, max 320x100)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                            <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('logo')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_logo" style="display:none;" onclick="clearTplImage('logo')">Rimuovi</button>
+                                <label class="fd-tpl-file fd-tpl-file--inline">
+                                    <input type="file" class="fd-tpl-file__input" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')">
+                                    <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                    <span class="fd-tpl-file__name" data-tpl-file-for="logo">Nessun file selezionato</span>
+                                </label>
                             </div>
-                            <label class="fd-tpl-file">
-                                <input type="file" class="fd-tpl-file__input" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')">
-                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
-                                <span class="fd-tpl-file__name" data-tpl-file-for="logo">Nessun file selezionato</span>
-                            </label>
                             <img id="tplImgLogoPreview" alt="Anteprima logo template" style="display:none;height:32px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -3425,60 +3425,60 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Icona notifiche Wallet (quadrata)</label>
                             <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Per le push su iPhone: usa un simbolo quadrato (es. 512×512). Il logo orizzontale del pass resta troppo piccolo nelle notifiche.</p>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                            <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('wallet_icon')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_wallet_icon" style="display:none;" onclick="clearTplImage('wallet_icon')">Rimuovi</button>
+                                <label class="fd-tpl-file fd-tpl-file--inline">
+                                    <input type="file" class="fd-tpl-file__input" id="tplImgWalletIcon" accept="image/*,.pdf" onchange="previewTplImage(this,'wallet_icon')">
+                                    <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                    <span class="fd-tpl-file__name" data-tpl-file-for="wallet_icon">Nessun file selezionato</span>
+                                </label>
                             </div>
-                            <label class="fd-tpl-file">
-                                <input type="file" class="fd-tpl-file__input" id="tplImgWalletIcon" accept="image/*,.pdf" onchange="previewTplImage(this,'wallet_icon')">
-                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
-                                <span class="fd-tpl-file__name" data-tpl-file-for="wallet_icon">Nessun file selezionato</span>
-                            </label>
                             <img id="tplImgWalletIconPreview" alt="Anteprima icona wallet" style="display:none;width:48px;height:48px;margin-top:4px;border-radius:8px;object-fit:cover;">
                         </div>
                     </div>
                     <div class="form-row" id="tplImgStripRow">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Strip Image (PNG, 750x246)</label>
-                            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+                            <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('strip')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_strip" style="display:none;" onclick="clearTplImage('strip')">Rimuovi</button>
+                                <label class="fd-tpl-file fd-tpl-file--inline">
+                                    <input type="file" class="fd-tpl-file__input" id="tplImgStrip" accept="image/*,.pdf" onchange="previewTplImage(this,'strip')">
+                                    <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                    <span class="fd-tpl-file__name" data-tpl-file-for="strip">Nessun file selezionato</span>
+                                </label>
                             </div>
-                            <label class="fd-tpl-file">
-                                <input type="file" class="fd-tpl-file__input" id="tplImgStrip" accept="image/*,.pdf" onchange="previewTplImage(this,'strip')">
-                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
-                                <span class="fd-tpl-file__name" data-tpl-file-for="strip">Nessun file selezionato</span>
-                            </label>
                             <img id="tplImgStripPreview" alt="Anteprima strip template" style="display:none;width:100%;max-width:300px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
                     <div class="form-row" id="tplImgThumbRow" style="display:none;">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Thumbnail (PNG, 90x90 — mostrato sul fronte)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                            <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('thumbnail')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_thumbnail" style="display:none;" onclick="clearTplImage('thumbnail')">Rimuovi</button>
+                                <label class="fd-tpl-file fd-tpl-file--inline">
+                                    <input type="file" class="fd-tpl-file__input" id="tplImgThumb" accept="image/*,.pdf" onchange="previewTplImage(this,'thumbnail')">
+                                    <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                    <span class="fd-tpl-file__name" data-tpl-file-for="thumbnail">Nessun file selezionato</span>
+                                </label>
                             </div>
-                            <label class="fd-tpl-file">
-                                <input type="file" class="fd-tpl-file__input" id="tplImgThumb" accept="image/*,.pdf" onchange="previewTplImage(this,'thumbnail')">
-                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
-                                <span class="fd-tpl-file__name" data-tpl-file-for="thumbnail">Nessun file selezionato</span>
-                            </label>
                             <img id="tplImgThumbPreview" alt="Anteprima thumbnail template" style="display:none;width:60px;height:60px;object-fit:cover;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
                     <div class="form-row" id="tplImgBgRow" style="display:none;">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Background (PNG, 360x440 — sfondo intero pass)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                            <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('background')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_background" style="display:none;" onclick="clearTplImage('background')">Rimuovi</button>
+                                <label class="fd-tpl-file fd-tpl-file--inline">
+                                    <input type="file" class="fd-tpl-file__input" id="tplImgBg" accept="image/*,.pdf" onchange="previewTplImage(this,'background')">
+                                    <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
+                                    <span class="fd-tpl-file__name" data-tpl-file-for="background">Nessun file selezionato</span>
+                                </label>
                             </div>
-                            <label class="fd-tpl-file">
-                                <input type="file" class="fd-tpl-file__input" id="tplImgBg" accept="image/*,.pdf" onchange="previewTplImage(this,'background')">
-                                <span class="fd-tpl-file__trigger btn small sec">Scegli file</span>
-                                <span class="fd-tpl-file__name" data-tpl-file-for="background">Nessun file selezionato</span>
-                            </label>
                             <img id="tplImgBgPreview" alt="Anteprima sfondo template" style="display:none;width:100px;margin-top:4px;border-radius:4px;">
                         </div>
                     </div>
@@ -6549,7 +6549,7 @@ function syncEmployeePassTypeUi() {
         const hrNote = document.getElementById('tplFrontHrNote');
         if (stripRow) stripRow.style.display = '';
         if (thumbRow) thumbRow.style.display = '';
-        if (bgRow) bgRow.style.display = 'none';
+        if (bgRow) bgRow.style.display = '';
         if (hrNote) hrNote.style.display = 'block';
     } else {
         const hrNote = document.getElementById('tplFrontHrNote');
@@ -6878,16 +6878,26 @@ function setTplSaveStatus(state, message) {
 }
 
 async function saveTemplateFromBtn() {
-    setTplSaveStatus('saving', 'Salvataggio…');
     try {
         await saveTemplate();
-        setTplSaveStatus('ok', 'Salvato');
+        if (typeof window.fdSyncTemplateDirtyState === 'function') window.fdSyncTemplateDirtyState();
+        else setTplSaveStatus('ok', 'Salvato');
     } catch (e) {
         const msg = e?.message || 'Errore salvataggio';
-        setTplSaveStatus('error', msg);
-        if (typeof toast === 'function') toast(msg);
-        else alert(msg);
+        if (typeof window.fdSyncTemplateDirtyState === 'function') {
+            window.fdSyncTemplateDirtyState();
+            if (typeof toast === 'function') toast(msg);
+            else alert(msg);
+        } else {
+            setTplSaveStatus('error', msg);
+            if (typeof toast === 'function') toast(msg);
+            else alert(msg);
+        }
     }
+}
+
+function notifyTplDirtyState() {
+    if (typeof window.fdSyncTemplateDirtyState === 'function') window.fdSyncTemplateDirtyState();
 }
 
 function tplFileNameEl(imageType) {
@@ -7371,6 +7381,7 @@ function previewTplImage(input, imageType) {
         if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
         updatePassPreview();
         updateTplImageRemoveButtons();
+        notifyTplDirtyState();
     };
     reader.readAsDataURL(file);
 }
@@ -11743,6 +11754,7 @@ async function tplPickFromMedia(imageType) {
         }
         updatePassPreview();
         updateTplImageRemoveButtons();
+        notifyTplDirtyState();
         if (imageType === 'wallet_icon') {
             await persistHrWalletIcon();
             return;

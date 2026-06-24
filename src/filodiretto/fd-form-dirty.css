@@ -47,19 +47,17 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:disabled {
 }
 
 html[data-app='filodiretto'] #templateModal .fd-form-dirty-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--fd-border, var(--border));
 }
 
 html[data-app='filodiretto'] #templateModal .fd-form-dirty-badge {
   display: inline-flex;
   align-items: center;
+  min-height: 36px;
   border-radius: 999px;
   border: 1px solid var(--fd-border, var(--border));
   padding: 5px 10px;
@@ -73,7 +71,8 @@ html[data-app='filodiretto'] #templateModal .fd-form-dirty-badge.is-dirty {
   color: var(--fd-color-warning-text);
 }
 
-html[data-app='filodiretto'] #templateModal #fdTplSaveBtn:disabled {
+html[data-app='filodiretto'] #templateModal #fdTplSaveBtn:disabled,
+html[data-app='filodiretto'] #templateModal #tplSaveBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
