@@ -393,28 +393,43 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
 }
 
 function sectionsToAppleBackFields(sections) {
-  return sections.map((s) => {
+  const fields = [];
+  for (const s of sections) {
     if (s.kind === 'link') {
       if (s.doc) {
         const safeUrl = escapeHtml(s.url);
-        return {
+        fields.push({
           key: s.key,
           label: String(s.label).toUpperCase().slice(0, 64),
           value: s.url,
           attributedValue: `<a href="${safeUrl}">Apri documento</a>`
-        };
+        });
+      } else {
+        fields.push(makeHrLinkField(s.key, s.label, s.url, s.linkText));
       }
-      return makeHrLinkField(s.key, s.label, s.url, s.linkText);
+      continue;
     }
     if (s.kind === 'support') {
-      return makeHrSupportField(s.key, s.label, s.emails || String(s.body || '').split('\n'));
+      const list = (s.emails || String(s.body || '').split('\n'))
+        .map((e) => String(e).trim())
+        .filter(Boolean);
+      list.forEach((email, i) => {
+        const field = makeHrSupportField(
+          i === 0 ? s.key : `${s.key}_${i}`,
+          i === 0 ? s.label : '',
+          [email]
+        );
+        if (field) fields.push(field);
+      });
+      continue;
     }
-    return {
+    fields.push({
       key: s.key,
       label: String(s.label || '').toUpperCase().slice(0, 64),
       value: String(s.body || '').slice(0, 500)
-    };
-  });
+    });
+  }
+  return fields;
 }
 
 function resolvePassHeaderHint(template, brandConfig) {

@@ -95,7 +95,7 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
-test('SUPPORT back: single HUB-style block with stacked emails', () => {
+test('SUPPORT back: one logical block, two Apple back rows (Wallet ignores br)', () => {
   const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
   const sections = buildBackSections({
     brand: { hr_email: 'people@acme.it', dpo_email: 'privacy@acme.it' },
@@ -110,11 +110,14 @@ test('SUPPORT back: single HUB-style block with stacked emails', () => {
   const support = sections.find((s) => s.key === 'support');
   assert.ok(support);
   assert.equal(support.body, 'people@acme.it\nprivacy@acme.it');
-  const appleField = sectionsToAppleBackFields([support])[0];
-  assert.equal(appleField.label, 'SUPPORT');
-  assert.match(appleField.attributedValue, /people@acme\.it/);
-  assert.match(appleField.attributedValue, /privacy@acme\.it/);
-  assert.match(appleField.attributedValue, /<br\/?>/);
+  const appleFields = sectionsToAppleBackFields([support]);
+  assert.equal(appleFields.length, 2);
+  assert.equal(appleFields[0].label, 'SUPPORT');
+  assert.equal(appleFields[0].value, 'people@acme.it');
+  assert.equal(appleFields[1].label, '');
+  assert.equal(appleFields[1].value, 'privacy@acme.it');
+  assert.match(appleFields[0].attributedValue, /mailto:people@acme\.it/);
+  assert.match(appleFields[1].attributedValue, /mailto:privacy@acme\.it/);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {
