@@ -5,7 +5,7 @@
   'use strict';
 
   var SOCIAL_IDS = ['biSocialInstagram', 'biSocialFacebook', 'biSocialLinkedin', 'biSocialTiktok', 'biSocialX'];
-  var biAccordionCollapsed = { base: false, contacts: false, social: false };
+  var biAccordionCollapsed = { base: false, contacts: false, privacy: false, social: false };
 
   var BI_ACCORDION_CONFIGS = [
     {
@@ -30,10 +30,10 @@
       summaryId: 'fdBiContactsSummary',
       title: 'Contatti pubblici',
       metaId: 'fdBiContactsMeta',
-      fieldIds: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone'],
+      fieldIds: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biEmergencyPhone'],
       defaultOpen: true,
       metaFn: function () {
-        var ids = ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biEmergencyPhone'];
+        var ids = ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biEmergencyPhone'];
         var n = 0;
         ids.forEach(function (id) {
           var el = document.getElementById(id);
@@ -41,6 +41,26 @@
         });
         if (!n) return 'Nessun contatto';
         return n + (n === 1 ? ' campo' : ' campi');
+      }
+    },
+    {
+      collapsedKey: 'privacy',
+      sectionSelector: '#brand-identity .a2w-bi-section--privacy',
+      detailsId: 'fdBiPrivacyDetails',
+      summaryId: 'fdBiPrivacySummary',
+      title: 'Privacy',
+      metaId: 'fdBiPrivacyMeta',
+      fieldIds: ['biDpoEmail', 'biPrivacyUrl'],
+      defaultOpen: true,
+      metaFn: function () {
+        var dpoEl = document.getElementById('biDpoEmail');
+        var dpo = dpoEl && String(dpoEl.value || '').trim();
+        var urlEl = document.getElementById('biPrivacyUrl');
+        var url = urlEl && String(urlEl.value || '').trim();
+        if (url && /privacy-doc/i.test(url)) return 'Informativa personalizzata';
+        if (url) return 'URL personalizzato';
+        if (dpo) return 'DPO configurato · default FiloDiretto';
+        return 'Da completare';
       }
     },
     {
@@ -631,6 +651,7 @@
 
   window.fdEnhanceBrandIdentity = enhanceBrandIdentityChrome;
   window.fdSyncBrandIdentityAside = syncAsideSummary;
+  window.fdSyncBiAccordionMeta = syncAllBiAccordionMeta;
   window.fdInitBrandIdentity = initFdBrandIdentity;
 
   if (document.readyState === 'loading') {

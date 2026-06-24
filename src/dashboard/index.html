@@ -12400,6 +12400,7 @@ function fdBiSyncPrivacyPanel(options = {}) {
             statusEl.hidden = true;
         }
     }
+    if (typeof window.fdSyncBiAccordionMeta === 'function') window.fdSyncBiAccordionMeta();
 }
 
 function fdBiBindPrivacyPanel() {

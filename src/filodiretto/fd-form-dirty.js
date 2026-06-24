@@ -203,7 +203,12 @@
     contacts: {
       key: 'contacts',
       selector: '#brand-identity .a2w-bi-section--contacts',
-      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biDpoEmail', 'biPrivacyUrl', 'biEmergencyPhone']
+      fields: ['biHomepage', 'biSupportEmail', 'biSupportPhone', 'biEmergencyPhone']
+    },
+    privacy: {
+      key: 'privacy',
+      selector: '#brand-identity .a2w-bi-section--privacy',
+      fields: ['biDpoEmail', 'biPrivacyUrl']
     },
     social: {
       key: 'social',
@@ -215,6 +220,7 @@
   var biSectionState = {
     base: { baseline: '', dirty: false, saving: false, lastSavedAt: null },
     contacts: { baseline: '', dirty: false, saving: false, lastSavedAt: null },
+    privacy: { baseline: '', dirty: false, saving: false, lastSavedAt: null },
     social: { baseline: '', dirty: false, saving: false, lastSavedAt: null }
   };
 
