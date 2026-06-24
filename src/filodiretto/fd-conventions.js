@@ -298,12 +298,20 @@
     });
   }
 
+  function merchantsForCategory(categoryId) {
+    if (!categoryId) return state.merchants.slice();
+    return state.merchants.filter(function (m) {
+      return m.category === categoryId;
+    });
+  }
+
   function populateMerchantFilter() {
     var sel = document.getElementById('hubMerchantFilter');
     if (!sel) return;
     var current = sel.value || state.filterMerchantId || '';
+    var pool = merchantsForCategory(state.filterCategory);
     sel.innerHTML = '<option value="">Tutti i merchant</option>';
-    state.merchants.slice().sort(function (a, b) {
+    pool.slice().sort(function (a, b) {
       return String(a.name || '').localeCompare(String(b.name || ''), 'it', { sensitivity: 'base' });
     }).forEach(function (m) {
       var opt = document.createElement('option');
@@ -311,7 +319,7 @@
       opt.textContent = m.name || m.id;
       sel.appendChild(opt);
     });
-    if (current && state.merchants.some(function (m) { return m.id === current; })) {
+    if (current && pool.some(function (m) { return m.id === current; })) {
       sel.value = current;
       state.filterMerchantId = current;
     } else {
@@ -583,6 +591,7 @@
     if (catFilter) {
       catFilter.addEventListener('change', function () {
         state.filterCategory = catFilter.value;
+        populateMerchantFilter();
         renderMerchantsTable();
       });
     }

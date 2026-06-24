@@ -350,6 +350,68 @@ html[data-app='filodiretto'] #media-library .fd-media-empty-state__inline {
   color: var(--fd-text-secondary, var(--text2));
 }
 
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion {
+  margin-top: var(--fd-space-3, 12px);
+  border: 1px solid var(--fd-border, var(--border));
+  border-radius: var(--fd-radius-md, 12px);
+  background: var(--fd-color-surface-muted, #fafafa);
+  overflow: hidden;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion[hidden] {
+  display: none !important;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fd-text-primary, var(--text1));
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__trigger::-webkit-details-marker {
+  display: none;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--fd-text-secondary, var(--text2));
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  margin-top: -3px;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion[open] .fd-media-gallery-accordion__chevron {
+  transform: rotate(-135deg);
+  margin-top: 3px;
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__body {
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--fd-border, var(--border));
+}
+
+html[data-app='filodiretto'] #media-library .fd-media-gallery-accordion__body .strip-gallery {
+  padding-top: 10px;
+}
+
 html[data-app='filodiretto'] #media-library.media-library--fd-layout .strip-gallery {
   display: flex;
   flex-wrap: wrap;
