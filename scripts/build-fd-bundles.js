@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 const FD = path.join(ROOT, 'src', 'filodiretto');
@@ -88,8 +89,19 @@ function concat(files, dir, minify) {
 const cssRaw = concat(CSS_FILES, FD, false);
 const jsRaw = concat(JS_FILES, FD, false);
 
-fs.writeFileSync(path.join(FD, 'fd.bundle.css'), minifyCss(cssRaw));
-fs.writeFileSync(path.join(FD, 'fd.bundle.js'), minifyJs(jsRaw));
+const bundleCssPath = path.join(FD, 'fd.bundle.css');
+const bundleJsPath = path.join(FD, 'fd.bundle.js');
+const bundleJs = minifyJs(jsRaw);
+
+fs.writeFileSync(bundleCssPath, minifyCss(cssRaw));
+fs.writeFileSync(bundleJsPath, bundleJs);
+
+// Fail the build if minified JS does not parse (e.g. stray commas in source).
+try {
+  new vm.Script(bundleJs, { filename: 'fd.bundle.js' });
+} catch (err) {
+  throw new Error('fd.bundle.js syntax error after minify: ' + err.message);
+}
 
 const manifest = {
   builtAt: new Date().toISOString(),
