@@ -7,7 +7,10 @@
 const EMPLOYEE_PASS_TYPE = 'employee_pass';
 /** Apple Wallet pass.json top-level key (implementation detail only). */
 const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
-/** Pass back link text — compact labels for Wallet (Deal / PGA / COIN). */
+/** Apple Wallet back link titles (title = embedded CTA, no duplicate subtitle). */
+const HR_HUB_BACK_TITLE = 'HUB PERSONALE';
+const HR_PORTAL_BACK_TITLE = 'AREA PRIVATA';
+/** @deprecated Back no longer shows DEAL/PGA/COIN subtitle; kept for importers. */
 const HUB_EMPLOYEE_LINK_TEXT = 'DEAL · PGA · COIN';
 
 const HR_BG_DEFAULT = '#8B5CF6';
@@ -194,15 +197,15 @@ function resolveEmployeePassColors(template, brandConfig) {
 }
 
 function makeHrLinkField(key, label, url, linkText) {
-  const safeLabel = escapeHtml(label);
+  const title = String(linkText || label || '').trim();
+  if (!title || !url) return null;
   const safeUrl = escapeHtml(url);
-  const displayHost = url.replace(/^https?:\/\//i, '');
-  const renderedText = String(linkText || '').trim() || safeLabel || escapeHtml(displayHost);
+  const safeTitle = escapeHtml(title);
   return {
     key,
-    label: String(label || '').toUpperCase().slice(0, 64),
-    value: url,
-    attributedValue: `<a href="${safeUrl}">${renderedText}</a>`
+    label: '',
+    value: title.slice(0, 64),
+    attributedValue: `<a href="${safeUrl}">${safeTitle}</a>`
   };
 }
 
@@ -280,9 +283,8 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     sections.push({
       kind: 'link',
       key: 'hub_employee',
-      label: 'HUB DIPENDENTE',
-      url: hubUrl,
-      linkText: HUB_EMPLOYEE_LINK_TEXT
+      label: HR_HUB_BACK_TITLE,
+      url: hubUrl
     });
   }
 
@@ -293,9 +295,8 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     sections.push({
       kind: 'link',
       key: 'portal_profile',
-      label: 'AREA RISERVATA',
-      url: portalUrl,
-      linkText: 'Apri profilo personale'
+      label: HR_PORTAL_BACK_TITLE,
+      url: portalUrl
     });
   }
 
@@ -649,6 +650,8 @@ module.exports = {
   EMPLOYEE_PASS_TYPE,
   APPLE_EMPLOYEE_PASS_STRUCTURE,
   HUB_EMPLOYEE_LINK_TEXT,
+  HR_HUB_BACK_TITLE,
+  HR_PORTAL_BACK_TITLE,
   buildEmployeePass,
   toApplePass,
   toGooglePass,

@@ -39,11 +39,11 @@ test('AC-007/010: passkit adds PGA link when enabled and always loads coin balan
   assert.match(passkit, /buildHubAppUrl\(token, brand\.slug, 'me'\)/);
   assert.match(passkit, /coin balance load failed/);
   assert.match(passkit, /getCurrentBalance\(brand\.id, instance\.serial_number\)/);
-  assert.match(employee, /HUB DIPENDENTE/);
-  assert.match(employee, /HUB_EMPLOYEE_LINK_TEXT/);
-  assert.match(employee, /DEAL · PGA · COIN/);
+  assert.match(employee, /HR_HUB_BACK_TITLE/);
+  assert.match(employee, /HUB PERSONALE/);
   assert.match(employee, /label: 'SUPPORT'/);
-  assert.match(employee, /AREA RISERVATA/);
+  assert.match(employee, /HR_PORTAL_BACK_TITLE/);
+  assert.match(employee, /AREA PRIVATA/);
   assert.match(employee, /key: 'coin_balance'/);
   assert.match(employee, /isCoinPassField/);
 });
@@ -118,6 +118,26 @@ test('SUPPORT back: one logical block, two Apple back rows (Wallet ignores br)',
   assert.equal(appleFields[1].value, 'privacy@acme.it');
   assert.match(appleFields[0].attributedValue, /mailto:people@acme\.it/);
   assert.match(appleFields[1].attributedValue, /mailto:privacy@acme\.it/);
+});
+
+test('HR back links: title-only embedded CTA (no duplicate label row)', () => {
+  const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
+  const sections = buildBackSections({
+    brand: {},
+    template: {},
+    instance: {},
+    member: {},
+    hubUrl: 'https://studio.example.com/hub/conv?token=t',
+    portalUrl: 'https://studio.example.com/portal/?t=t'
+  });
+  const fields = sectionsToAppleBackFields(sections.filter((s) => s.kind === 'link'));
+  assert.equal(fields.length, 2);
+  assert.equal(fields[0].label, '');
+  assert.equal(fields[0].value, 'HUB PERSONALE');
+  assert.match(fields[0].attributedValue, /<a href="[^"]+">HUB PERSONALE<\/a>/);
+  assert.equal(fields[1].label, '');
+  assert.equal(fields[1].value, 'AREA PRIVATA');
+  assert.match(fields[1].attributedValue, /<a href="[^"]+">AREA PRIVATA<\/a>/);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {
