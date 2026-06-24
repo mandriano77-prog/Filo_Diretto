@@ -44,11 +44,11 @@ test('index.html HR pass preview includes consolidated back sections', () => {
   assert.match(html, /function previewHubUrl\(\)/);
   assert.match(html, /TOKEN_AUTOMATICO/);
   assert.match(html, /addBackLink\('HUB PERSONALE', previewHubUrl\(\)\)/);
+  assert.match(html, /pp-back-field-value"><a href="#">SUPPORT<\/a>/);
   assert.match(html, /biSupportEmail/);
-  assert.match(html, /pp-back-field-label">SUPPORT</);
   assert.match(html, /addBackLink\('AREA PRIVATA'/);
   const hubIdx = html.indexOf("addBackLink('HUB PERSONALE', previewHubUrl())");
-  const supportIdx = html.indexOf('pp-back-field-label">SUPPORT</div>');
+  const supportIdx = html.indexOf('>SUPPORT</a>');
   const portalIdx = html.indexOf("addBackLink('AREA PRIVATA'");
   assert.ok(hubIdx > -1 && supportIdx > hubIdx && portalIdx > supportIdx);
 });

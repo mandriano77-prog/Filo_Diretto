@@ -38,11 +38,13 @@ function defaultConsentRows() {
 async function getPassForPortal(passId) {
   const pool = getPool();
   const result = await pool.query(
-    `SELECT p.*,
+    `     SELECT p.*,
       b.id AS brand_id,
       b.name AS brand_name,
       b.slug AS brand_slug,
       b.config AS brand_config,
+      b.dpo_email AS brand_dpo_email,
+      b.hr_email AS brand_hr_email,
       t.id AS template_id,
       t.name AS template_name,
       t.pass_type,

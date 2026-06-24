@@ -128,7 +128,8 @@ function formatProfileRow(row) {
     field_values: fv,
     display_name: displayName,
     privacy_url: cfg.privacy_url || cfg.privacyUrl || null,
-    dpo_email: cfg.dpo_email || cfg.dpoEmail || null
+    dpo_email: row.brand_dpo_email || cfg.dpo_email || cfg.dpoEmail || null,
+    hr_email: row.brand_hr_email || cfg.hr_email || cfg.support_email || null
   };
 }
 

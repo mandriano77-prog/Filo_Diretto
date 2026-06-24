@@ -239,37 +239,15 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-function makeHrSupportField(key, label, emails) {
-  const list = (emails || []).map((e) => String(e).trim()).filter(Boolean);
-  if (!list.length) return null;
-  const plainLines = list.join('\n');
-  const attributedValue = list
-    .map((email) => {
-      const safeEmail = escapeHtml(email);
-      return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
-    })
-    .join('<br/>');
+/** Single SUPPORT mailto link — title-only CTA (privacy/DPO lives in Area Privata consents). */
+function buildSupportBackLink(hrBack) {
+  const email = String(hrBack.hr_email || '').trim();
+  if (!email) return null;
   return {
-    key,
-    label: String(label || '').toUpperCase().slice(0, 64),
-    value: plainLines.slice(0, 500),
-    attributedValue
-  };
-}
-
-/** Single SUPPORT block — label + stacked mailto links (same card area as HUB). */
-function buildSupportBackSection(hrBack) {
-  const emails = [];
-  if (hrBack.hr_email) emails.push(String(hrBack.hr_email).trim());
-  if (hrBack.dpo_email) emails.push(String(hrBack.dpo_email).trim());
-  if (!emails.length) return null;
-
-  return {
-    kind: 'support',
+    kind: 'link',
     key: 'support',
     label: 'SUPPORT',
-    body: emails.join('\n'),
-    emails
+    url: `mailto:${email}`
   };
 }
 
@@ -288,7 +266,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     });
   }
 
-  const support = buildSupportBackSection(hrBack);
+  const support = buildSupportBackLink(hrBack);
   if (support) sections.push(support);
 
   if (portalUrl) {
@@ -408,20 +386,6 @@ function sectionsToAppleBackFields(sections) {
       } else {
         fields.push(makeHrLinkField(s.key, s.label, s.url, s.linkText));
       }
-      continue;
-    }
-    if (s.kind === 'support') {
-      const list = (s.emails || String(s.body || '').split('\n'))
-        .map((e) => String(e).trim())
-        .filter(Boolean);
-      list.forEach((email, i) => {
-        const field = makeHrSupportField(
-          i === 0 ? s.key : `${s.key}_${i}`,
-          i === 0 ? s.label : '',
-          [email]
-        );
-        if (field) fields.push(field);
-      });
       continue;
     }
     fields.push({

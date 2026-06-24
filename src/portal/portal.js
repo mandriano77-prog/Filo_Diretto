@@ -299,6 +299,34 @@
     $('#consent-status').textContent = latest
       ? 'Modifiche salvate automaticamente · ultima modifica ' + formatRelative(latest)
       : 'Modifiche salvate automaticamente';
+    renderPrivacyContact();
+  }
+
+  function renderPrivacyContact() {
+    const card = $('#privacy-dpo-card');
+    if (!card) return;
+    const email = profile && profile.dpo_email ? String(profile.dpo_email).trim() : '';
+    const policyUrl = profile && profile.privacy_url ? String(profile.privacy_url).trim() : '';
+    if (!email && !policyUrl) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const mailEl = $('#privacy-dpo-mail');
+    if (email && mailEl) {
+      mailEl.href = 'mailto:' + encodeURIComponent(email);
+      mailEl.textContent = email;
+      mailEl.hidden = false;
+    } else if (mailEl) {
+      mailEl.hidden = true;
+    }
+    const polEl = $('#privacy-policy-link');
+    if (policyUrl && polEl) {
+      polEl.href = policyUrl;
+      polEl.hidden = false;
+    } else if (polEl) {
+      polEl.hidden = true;
+    }
   }
 
   async function onConsentToggle(ev) {
