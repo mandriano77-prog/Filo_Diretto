@@ -358,12 +358,15 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   });
 
   const primary = [];
+
+  let headerCoin = null;
   if (coinBalance != null && Number.isFinite(Number(coinBalance))) {
-    primary.push({
+    headerCoin = {
       key: 'coin_balance',
       label: 'COIN',
-      value: String(Math.max(0, Math.floor(Number(coinBalance))))
-    });
+      value: String(Math.max(0, Math.floor(Number(coinBalance)))),
+      textAlignment: 'PKTextAlignmentLeft'
+    };
   }
 
   const barcodeValue = instance?.serial_number || '';
@@ -389,6 +392,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
       logo: !!tplImages.logo
     },
     front: { primary, secondary, auxiliary },
+    headerCoin,
     backSections,
     barcode: { value: barcodeValue }
   };
@@ -428,8 +432,12 @@ function resolvePassHeaderHint(template, brandConfig) {
 
 /** Apple Wallet — pass.json storeCard slice (employee pass layout). */
 function toApplePass(employeePass) {
+  const headerFields = [];
+  if (employeePass.headerCoin) headerFields.push(employeePass.headerCoin);
+  if (employeePass.headerHint) headerFields.push(employeePass.headerHint);
+
   const passStructure = {
-    headerFields: employeePass.headerHint ? [employeePass.headerHint] : [],
+    headerFields,
     primaryFields: employeePass.front.primary || [],
     secondaryFields: employeePass.front.secondary || [],
     auxiliaryFields: employeePass.front.auxiliary || []
