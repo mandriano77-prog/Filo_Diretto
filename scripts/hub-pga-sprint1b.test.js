@@ -93,23 +93,26 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
-test('SUPPORT back: single block with label and stacked emails', () => {
-  const { buildBackSections } = require('../src/engine/employee-pass');
+test('SUPPORT back: single HUB-style block with stacked emails', () => {
+  const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
   const sections = buildBackSections({
     brand: { hr_email: 'people@acme.it', dpo_email: 'privacy@acme.it' },
     template: {},
     instance: {},
     member: {}
   });
+  assert.deepEqual(
+    sections.filter((s) => ['link', 'support'].includes(s.kind)).map((s) => s.label),
+    ['SUPPORT']
+  );
   const support = sections.find((s) => s.key === 'support');
   assert.ok(support);
-  assert.equal(support.kind, 'support');
-  assert.equal(support.label, 'SUPPORT');
   assert.equal(support.body, 'people@acme.it\nprivacy@acme.it');
-  assert.match(support.attributedBody, /people@acme\.it/);
-  assert.match(support.attributedBody, /privacy@acme\.it/);
-  assert.match(support.attributedBody, /<br>/);
-  assert.equal(sections.filter((s) => s.kind === 'support').length, 1);
+  const appleField = sectionsToAppleBackFields([support])[0];
+  assert.equal(appleField.label, 'SUPPORT');
+  assert.match(appleField.attributedValue, /people@acme\.it/);
+  assert.match(appleField.attributedValue, /privacy@acme\.it/);
+  assert.match(appleField.attributedValue, /<br\/?>/);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {

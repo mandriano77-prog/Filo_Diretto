@@ -236,27 +236,37 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-/** Single SUPPORT block (label + emails) — same pattern as HUB DIPENDENTE. */
+function makeHrSupportField(key, label, emails) {
+  const list = (emails || []).map((e) => String(e).trim()).filter(Boolean);
+  if (!list.length) return null;
+  const plainLines = list.join('\n');
+  const attributedValue = list
+    .map((email) => {
+      const safeEmail = escapeHtml(email);
+      return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
+    })
+    .join('<br/>');
+  return {
+    key,
+    label: String(label || '').toUpperCase().slice(0, 64),
+    value: plainLines.slice(0, 500),
+    attributedValue
+  };
+}
+
+/** Single SUPPORT block — label + stacked mailto links (same card area as HUB). */
 function buildSupportBackSection(hrBack) {
   const emails = [];
   if (hrBack.hr_email) emails.push(String(hrBack.hr_email).trim());
   if (hrBack.dpo_email) emails.push(String(hrBack.dpo_email).trim());
   if (!emails.length) return null;
 
-  const body = emails.join('\n');
-  const attributedBody = emails
-    .map((email) => {
-      const safeEmail = escapeHtml(email);
-      return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
-    })
-    .join('<br>');
-
   return {
     kind: 'support',
     key: 'support',
     label: 'SUPPORT',
-    body,
-    attributedBody
+    body: emails.join('\n'),
+    emails
   };
 }
 
@@ -264,8 +274,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
-  const announcement = buildAnnouncementBackSection(brandConfig);
-  if (announcement) sections.push(announcement);
+  // Promo teaser is on pass front (auxiliary) — back stays HUB / SUPPORT / AREA RISERVATA only.
 
   if (hubUrl) {
     sections.push({
@@ -406,13 +415,7 @@ function sectionsToAppleBackFields(sections) {
       return makeHrLinkField(s.key, s.label, s.url, s.linkText);
     }
     if (s.kind === 'support') {
-      const field = {
-        key: s.key,
-        label: String(s.label).toUpperCase().slice(0, 64),
-        value: String(s.body || '').slice(0, 500)
-      };
-      if (s.attributedBody) field.attributedValue = s.attributedBody;
-      return field;
+      return makeHrSupportField(s.key, s.label, s.emails || String(s.body || '').split('\n'));
     }
     return {
       key: s.key,
