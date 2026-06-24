@@ -12,7 +12,8 @@ const {
 const {
   buildEmployeePass,
   toApplePass,
-  APPLE_EMPLOYEE_PASS_STRUCTURE
+  APPLE_EMPLOYEE_PASS_STRUCTURE,
+  resolvePushAnnouncement
 } = require('./employee-pass');
 const {
   resolveWalletLogoRawBuffer,
@@ -860,6 +861,82 @@ async function generateStrip(brandName, bgColor = '#0D0B1A', fgColor = '#FFFFFF'
   return { strip: strip375, strip2x: strip750 };
 }
 
+function escapeStripSvgText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function wrapStripOverlayLines(text, maxChars, maxLines) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (candidate.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+    if (lines.length >= maxLines) break;
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (lines.length === maxLines) {
+    const consumed = lines.join(' ').split(/\s+/).length;
+    if (words.length > consumed) {
+      const last = lines[lines.length - 1];
+      lines[lines.length - 1] = last.length > maxChars - 1 ? `${last.slice(0, maxChars - 1)}…` : `${last}…`;
+    }
+  }
+  return lines;
+}
+
+/** HR push promo — title + message burned into strip (not auxiliary pillar). */
+async function composePushTextOnStrip(stripBuffer, announcement, width, height) {
+  if (!announcement?.message || !stripBuffer) return stripBuffer;
+  const scale = width / 375;
+  const pad = Math.round(12 * scale);
+  const titleSize = Math.round(11 * scale);
+  const msgSize = Math.round(14 * scale);
+  const lineH = Math.round(17 * scale);
+  const title = String(announcement.title || '').trim().toUpperCase().slice(0, 48);
+  const msgLines = wrapStripOverlayLines(announcement.message, width >= 750 ? 44 : 30, 2);
+  if (!title && !msgLines.length) return stripBuffer;
+
+  const blockH = (title ? Math.round(16 * scale) : 0) + msgLines.length * lineH + pad;
+  const titleY = height - blockH + (title ? Math.round(14 * scale) : Math.round(4 * scale));
+  const msgY = title
+    ? titleY + Math.round(16 * scale)
+    : height - pad - (msgLines.length - 1) * lineH;
+
+  const msgTspans = msgLines.map((line, idx) => {
+    const dy = idx === 0 ? 0 : lineH;
+    return `<tspan x="${pad}" dy="${dy}">${escapeStripSvgText(line)}</tspan>`;
+  }).join('');
+
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pushStripGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+        <stop offset="45%" stop-color="#000000" stop-opacity="0.08"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
+      </linearGradient>
+    </defs>
+    <rect width="${width}" height="${height}" fill="url(#pushStripGrad)"/>
+    ${title ? `<text x="${pad}" y="${titleY}" fill="rgba(255,255,255,0.88)" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="700">${escapeStripSvgText(title)}</text>` : ''}
+    ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="#ffffff" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
+  </svg>`;
+
+  return sharp(stripBuffer)
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+    .png()
+    .toBuffer();
+}
+
 /**
  * Generate manifest.json with SHA1 hashes
  */
@@ -1141,6 +1218,13 @@ async function createPkpass(template, instance, brand, options = {}) {
     stripBuffers = await generateStrip(brand.name, bgColor, fgColor);
   }
 
+  const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg) : null;
+  if (pushStripCopy) {
+    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123);
+    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246);
+    console.log('✓ HR: push message composited on strip');
+  }
+
   // Thumbnail — for generic and eventTicket; su storeCard HR viene composita sulla strip
   let thumbnailBuffers = null;
   if (tplImages.thumbnail) {
@@ -1257,6 +1341,7 @@ module.exports = {
   generateIcon,
   generateLogo,
   generateStrip,
+  composePushTextOnStrip,
   generateManifest,
   signManifest,
   createPkpass,

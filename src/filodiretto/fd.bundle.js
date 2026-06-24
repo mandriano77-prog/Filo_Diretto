@@ -10012,9 +10012,10 @@
   function renderStatsSkeleton() {
     function statSkel() {
       return (
-        '<div class="fd-stat-card fd-stat-card--skeleton" aria-hidden="true">' +
+        '<div class="fd-stat-card fd-analytics-kpi fd-stat-card--skeleton" aria-hidden="true">' +
         '<span class="fd-skeleton fd-skeleton--text" style="width:72%"></span>' +
-        '<span class="fd-skeleton fd-skeleton--title" style="width:38%;margin-top:8px"></span>' +
+        '<span class="fd-skeleton fd-skeleton--title" style="width:38%"></span>' +
+        '<span class="fd-skeleton fd-skeleton--text" style="width:88%;margin-top:auto"></span>' +
         '</div>'
       );
     }
@@ -10098,22 +10099,30 @@
   }
   function enhanceStatsGrid() {
     var grid = document.getElementById('analyticsStats');
-    if (!grid || grid.dataset.fdDsStats === '1') return;
-    if (!grid.querySelector('.stat-card')) return;
-    grid.dataset.fdDsStats = '1';
+    if (!grid || !grid.querySelector('.stat-card, .fd-stat-card')) return;
     grid.classList.add('fd-stat-grid', 'fd-analytics-stat-grid');
     grid.querySelectorAll('.stat-card').forEach(function (card) {
-      card.classList.add('fd-stat-card');
+      if (card.classList.contains('fd-analytics-kpi')) return;
+      card.classList.add('fd-stat-card', 'fd-analytics-kpi');
       var label = card.querySelector('.stat-label');
       if (label) label.classList.add('fd-stat-card__label');
       var value = card.querySelector('.stat-value');
       if (value) value.classList.add('fd-stat-card__value');
-      card.querySelectorAll('div[style*="font-size:11px"], div[style*="font-size: 11px"]').forEach(function (hint) {
-        hint.classList.add('fd-stat-card__hint');
-        hint.style.fontSize = '';
-        hint.style.color = '';
-        hint.style.marginTop = '';
-      });
+      var legacyHints = card.querySelectorAll('div[style*="font-size:11px"], div[style*="font-size: 11px"]');
+      if (legacyHints.length) {
+        legacyHints.forEach(function (hint) {
+          hint.classList.add('fd-stat-card__hint');
+          hint.style.fontSize = '';
+          hint.style.color = '';
+          hint.style.marginTop = '';
+        });
+      } else if (!card.querySelector('.fd-stat-card__hint')) {
+        var emptyHint = document.createElement('p');
+        emptyHint.className = 'fd-stat-card__hint fd-stat-card__hint--empty';
+        emptyHint.setAttribute('aria-hidden', 'true');
+        emptyHint.textContent = '\u00A0';
+        card.appendChild(emptyHint);
+      }
     });
   }
   function enhanceAnalyticsCards() {

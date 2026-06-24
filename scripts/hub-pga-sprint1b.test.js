@@ -95,6 +95,39 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
+test('HR push promo: three secondary pillars only (message on strip, not auxiliary)', () => {
+  const { buildEmployeePass, toApplePass, resolvePushAnnouncement } = require('../src/engine/employee-pass');
+  const ann = resolvePushAnnouncement({
+    pushAnnouncement: {
+      title: 'Fratelli La Pizza',
+      message: 'Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
+      ts: Date.now()
+    }
+  });
+  assert.ok(ann);
+  assert.match(ann.message, /lunedì/);
+
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'NTI', config: { pushAnnouncement: ann } },
+    template: { name: 'HR' },
+    instance: { serial_number: 'SN1', field_values: {} },
+    member: { first_name: 'Adriano', last_name: 'Coccia', department: 'Direzione' },
+    brandConfig: { pushAnnouncement: ann },
+    apiBase: 'https://studio.example.com/api/v1',
+    coinBalance: 25
+  });
+  const apple = toApplePass(employeePass);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.deepEqual(
+    (apple.passStructure.secondaryFields || []).map((f) => f.key),
+    ['name', 'reparto', 'coin_balance']
+  );
+
+  const passkit = read('src/engine/passkit.js');
+  assert.match(passkit, /composePushTextOnStrip/);
+  assert.match(passkit, /resolvePushAnnouncement/);
+});
+
 test('SUPPORT back: single mailto CTA (no DPO on pass)', () => {
   const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
   const sections = buildBackSections({

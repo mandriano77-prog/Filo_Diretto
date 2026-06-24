@@ -127,19 +127,20 @@ function isCoinPassField(label, key) {
 }
 
 function buildAnnouncementAuxField(brandConfig) {
+  // Push promo text is rendered on the strip image (see passkit.composePushTextOnStrip).
+  return null;
+}
+
+/** Push copy for strip overlay (not auxiliary pillar). */
+function resolvePushAnnouncement(brandConfig) {
   const ann = brandConfig?.pushAnnouncement;
   if (!ann || !ann.message) return null;
-  const title = String(ann.title || 'NOVITA').trim().toUpperCase().slice(0, 30) || 'NOVITA';
-  const ts = Number(ann.ts || Date.now());
-  // Make value unique per push while keeping visible text stable.
-  const marker = '\u200B'.repeat((ts % 10) + 1);
-  const value = String(ann.message || '').trim().slice(0, 30);
-  if (!value) return null;
+  const message = String(ann.message || '').trim();
+  if (!message) return null;
   return {
-    key: 'announcement',
-    label: title,
-    value: value + marker,
-    changeMessage: '%@'
+    title: String(ann.title || '').trim(),
+    message,
+    ts: Number(ann.ts || Date.now())
   };
 }
 
@@ -255,7 +256,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
-  // Promo teaser is on pass front (auxiliary) — back stays HUB / SUPPORT / AREA RISERVATA only.
+  // Promo copy lives on strip image — back stays HUB / SUPPORT / AREA PRIVATA only.
 
   if (hubUrl) {
     sections.push({
@@ -328,8 +329,6 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   });
 
   const auxiliary = [];
-  const annField = buildAnnouncementAuxField(cfg);
-  if (annField) auxiliary.push(annField);
 
   const backSections = buildBackSections({
     brand,
@@ -479,7 +478,6 @@ function buildGoogleFrontTextModules(employeePass) {
 function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
   const textModulesData = [];
   const linksModuleData = { uris: [] };
-  const hasFrontAnnouncement = (employeePass.front.auxiliary || []).some((f) => f.key === 'announcement');
 
   employeePass.backSections.forEach((s, idx) => {
     if (s.kind === 'link') {
@@ -501,7 +499,7 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
         header: s.label,
         body: String(s.body).slice(0, 500)
       });
-    } else if (s.body && !(s.key === 'announcement_full' && hasFrontAnnouncement)) {
+    } else if (s.body) {
       textModulesData.push({
         id: s.key || `text_${idx}`,
         header: s.label,
@@ -628,5 +626,6 @@ module.exports = {
   sectionsToAppleBackFields,
   resolveMemberProfile,
   resolveVariableLink,
+  resolvePushAnnouncement,
   escapeHtml
 };
