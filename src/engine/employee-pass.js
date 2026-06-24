@@ -115,6 +115,12 @@ function colorToRgbString(color) {
   return `rgb(${c.r}, ${c.g}, ${c.b})`;
 }
 
+function isCoinPassField(label, key) {
+  const l = String(label || '').trim().toUpperCase();
+  const k = String(key || '').trim().toLowerCase();
+  return k === 'coin_balance' || k === 'coin' || l === 'COIN' || /^COIN\b/.test(l);
+}
+
 function buildAnnouncementAuxField(brandConfig) {
   const ann = brandConfig?.pushAnnouncement;
   if (!ann || !ann.message) return null;
@@ -229,28 +235,23 @@ function buildAnnouncementBackSection(brandConfig) {
 }
 
 function buildSupportBackSection(hrBack) {
-  const contacts = [];
-  if (hrBack.hr_email) {
-    contacts.push({ label: 'People Operations', email: String(hrBack.hr_email).trim() });
-  }
-  if (hrBack.dpo_email) {
-    contacts.push({ label: 'Privacy / DPO', email: String(hrBack.dpo_email).trim() });
-  }
-  if (!contacts.length) return null;
+  const emails = [];
+  if (hrBack.hr_email) emails.push(String(hrBack.hr_email).trim());
+  if (hrBack.dpo_email) emails.push(String(hrBack.dpo_email).trim());
+  if (!emails.length) return null;
 
-  const body = contacts.map((c) => `${c.label}: ${c.email}`).join('\n');
-  const attributedBody = contacts.map((c) => {
-    const safeEmail = escapeHtml(c.email);
-    return `${escapeHtml(c.label)}<br/><a href="mailto:${safeEmail}">${safeEmail}</a>`;
-  }).join('<br/><br/>');
+  const body = emails.join('\n');
+  const attributedBody = emails.map((email) => {
+    const safeEmail = escapeHtml(email);
+    return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
+  }).join('<br/>');
 
   return {
     kind: 'support',
     key: 'support',
     label: 'SUPPORT',
     body,
-    attributedBody,
-    contacts
+    attributedBody
   };
 }
 
@@ -314,7 +315,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip only on top; name/matricola below strip; reparto/sede on auxiliary row.
+  // Front layout: strip only on top; anagrafica on secondary; COIN alone on auxiliary (bottom row, above QR).
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'DIPENDENTE', value: profile.full_name });
@@ -324,19 +325,20 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     label: 'MATRICOLA',
     value: profile.employee_id ? `#${profile.employee_id}` : '—'
   });
-
-  const auxiliary = [];
   if (profile.department) {
-    auxiliary.push({ key: 'reparto', label: 'REPARTO', value: profile.department });
+    secondary.push({ key: 'reparto', label: 'REPARTO', value: profile.department });
   }
   if (profile.office_location) {
-    auxiliary.push({ key: 'sede', label: 'SEDE', value: profile.office_location });
+    secondary.push({ key: 'sede', label: 'SEDE', value: profile.office_location });
   }
+
+  const auxiliary = [];
   if (coinBalance != null && Number.isFinite(Number(coinBalance))) {
     auxiliary.push({
       key: 'coin_balance',
       label: 'COIN',
-      value: String(Math.max(0, Math.floor(Number(coinBalance))))
+      value: String(Math.max(0, Math.floor(Number(coinBalance)))),
+      changeMessage: 'Hai %@ coin'
     });
   }
   const annField = buildAnnouncementAuxField(cfg);
@@ -414,6 +416,8 @@ function resolvePassHeaderHint(template, brandConfig) {
   const brandH = brandConfig?.pass_header_hint;
   const label = String(tplH?.label ?? brandH?.label ?? '').trim();
   const value = String(tplH?.value ?? brandH?.value ?? '').trim();
+  const key = String(tplH?.key ?? brandH?.key ?? '').trim();
+  if (isCoinPassField(label, key)) return null;
   if (!label && !value) return null;
   return {
     key: 'info_hint',

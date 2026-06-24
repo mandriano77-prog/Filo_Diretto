@@ -883,6 +883,7 @@
     fetchFieldOptions();
     var modal = el('employeeManualModal');
     if (modal) {
+      if (modal.parentElement !== document.body) document.body.appendChild(modal);
       modal.style.display = 'flex';
       trapFocus(modal.querySelector('.import-modal-card') || modal);
       setTimeout(function () {

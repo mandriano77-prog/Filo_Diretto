@@ -82,6 +82,7 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-setup-checklist.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
+    <link rel="stylesheet" href="/dashboard/styles/filo-hr-import-modal.css">
     <link rel="stylesheet" href="/dashboard/css/layout.css">
     <link rel="stylesheet" href="/dashboard/css/components/page-header.css">
     <link rel="stylesheet" href="/dashboard/css/components/empty-state.css">
@@ -6887,10 +6888,10 @@ function updatePassPreview() {
         }
         document.getElementById('ppSecondary').innerHTML =
             '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>';
-        document.getElementById('ppAuxiliary').innerHTML =
+            '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">SEDE</div><div class="pp-field-value">Milano</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">SEDE</div><div class="pp-field-value">Milano</div></div>';
+        document.getElementById('ppAuxiliary').innerHTML =
             '<div class="pp-field"><div class="pp-field-label">COIN</div><div class="pp-field-value">247</div></div>';
 
         let backHtml = '';
@@ -6905,7 +6906,13 @@ function updatePassPreview() {
             document.getElementById('hrFixedLinkUrl')?.value.trim()
         );
         addBackLink('HUB DIPENDENTE', previewHubUrl());
-        addBackText('SUPPORT', 'People Operations e Privacy / DPO');
+        const supportEmails = [
+            document.getElementById('biSupportEmail')?.value.trim(),
+            document.getElementById('biDpoEmail')?.value.trim()
+        ].filter(Boolean);
+        if (supportEmails.length) {
+            backHtml += `<div class="pp-back-field"><div class="pp-back-field-label">SUPPORT</div><div class="pp-back-field-value">${supportEmails.map((e) => esc(e)).join('<br>')}</div></div>`;
+        }
         addBackLink('AREA RISERVATA', `${window.location.origin}/portal/?t=TOKEN_AUTOMATICO`);
         document.getElementById('ppBackContent').innerHTML = backHtml || '<div class="pp-back-empty">Configura il retro HR</div>';
         return;
@@ -10400,6 +10407,12 @@ function showImportWizardPhase(phase) {
     refreshImportWizardStepper();
 }
 
+function ensureDashboardOverlayOnBody(id) {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    return el;
+}
+
 function openEmployeeImportModal() {
     if (!ensureBrandIdFromContext()) return toast('Seleziona un brand');
     importPreviewState = null;
@@ -10416,12 +10429,18 @@ function openEmployeeImportModal() {
         commitBtn.disabled = true;
     }
     showImportWizardPhase('upload');
-    document.getElementById('employeeImportModal').style.display = 'flex';
+    const modal = ensureDashboardOverlayOnBody('employeeImportModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('fd-employee-import-open');
+    }
     populateImportTemplates();
 }
 
 function closeEmployeeImportModal() {
-    document.getElementById('employeeImportModal').style.display = 'none';
+    const modal = document.getElementById('employeeImportModal');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('fd-employee-import-open');
 }
 
 async function populateImportTemplates() {

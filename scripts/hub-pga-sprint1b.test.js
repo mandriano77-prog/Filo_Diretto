@@ -42,6 +42,50 @@ test('AC-007/010: passkit adds PGA links and coin balance when PGA enabled', () 
   assert.match(employee, /label: 'SUPPORT'/);
   assert.match(employee, /AREA RISERVATA/);
   assert.match(employee, /key: 'coin_balance'/);
+  assert.match(employee, /isCoinPassField/);
+});
+
+test('AC-010: coin balance renders on auxiliary row only (not header)', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'Acme', config: { pass_header_hint: { label: 'COIN', value: '999' } } },
+    template: { name: 'HR', fields: { headerFields: [{ key: 'coin_balance', label: 'COIN', value: '0' }] } },
+    instance: { serial_number: 'SN1', field_values: {} },
+    member: {
+      first_name: 'Mario',
+      last_name: 'Rossi',
+      employee_id: '4721',
+      department: 'Engineering',
+      office_location: 'Milano'
+    },
+    brandConfig: {},
+    apiBase: 'https://studio.example.com/api/v1',
+    coinBalance: 247
+  });
+  const apple = toApplePass(employeePass);
+  const headerKeys = (apple.passStructure.headerFields || []).map((f) => f.key);
+  const auxKeys = (apple.passStructure.auxiliaryFields || []).map((f) => f.key);
+  const secKeys = (apple.passStructure.secondaryFields || []).map((f) => f.key);
+  assert.equal(headerKeys.includes('coin_balance'), false);
+  assert.equal(auxKeys.includes('coin_balance'), true);
+  assert.deepEqual(secKeys, ['name', 'matricola', 'reparto', 'sede']);
+});
+
+test('SUPPORT back lists hr and privacy emails without role labels', () => {
+  const { buildBackSections } = require('../src/engine/employee-pass');
+  const sections = buildBackSections({
+    brand: { hr_email: 'people@acme.it', dpo_email: 'privacy@acme.it' },
+    template: {},
+    instance: {},
+    member: {}
+  });
+  const support = sections.find((s) => s.key === 'support');
+  assert.ok(support);
+  assert.equal(support.label, 'SUPPORT');
+  assert.equal(support.body, 'people@acme.it\nprivacy@acme.it');
+  assert.match(support.attributedBody, /people@acme\.it/);
+  assert.match(support.attributedBody, /privacy@acme\.it/);
+  assert.doesNotMatch(support.body, /DPO|People Operations/i);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {
