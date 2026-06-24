@@ -25,8 +25,8 @@
             var fdLegacyMediaHide = document.createElement('style');
             fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
             document.head.appendChild(fdLegacyMediaHide);
-            var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260624-nav-icons-fix';
-            var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260624-nav-icons-fix';
+            var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260624-analytics-fix';
+            var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260624-analytics-fix';
             var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
             var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
             var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
@@ -1390,7 +1390,7 @@
 <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 <div class="layout" id="mainLayout" style="display:none;">
     <aside class="sidebar" role="navigation" aria-label="Menu principale">
-        <div class="logo"><span class="chrome-product-title">Ads2Wallet</span></div>
+        <div class="logo"><span class="chrome-product-title">Filo Diretto</span></div>
         <div class="sidebar-nav">
             <div class="nav-item nav-item--standalone nav-item--icon-only active" id="navItemWelcome" data-section-id="welcome" onclick="nav('welcome')" role="button" tabindex="0" aria-label="Inizio" data-fd-tooltip="Inizio">Inizio</div>
 
@@ -1434,7 +1434,7 @@
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-footer-text"><span class="chrome-product-title">Ads2Wallet</span></div>
+            <div class="sidebar-footer-text"><span class="chrome-product-title">Filo Diretto</span></div>
         </div>
     </aside>
 
@@ -1444,13 +1444,13 @@
                 <div class="header-start">
                 <nav class="app-breadcrumb" aria-label="Percorso" id="appBreadcrumb">
                     <ol class="breadcrumb-list">
-                        <li><span id="breadcrumbBrand">Ads2Wallet</span></li>
+                        <li><span id="breadcrumbBrand">Filo Diretto</span></li>
                         <li><span id="breadcrumbSection" aria-current="page">Inizio</span></li>
                     </ol>
                 </nav>
                 <div class="header-title header-title--legacy" id="headerBrandTitle">
                     <img id="headerBrandLogo" class="header-brand-logo" alt="Logo brand">
-                    <span id="headerBrandName">Ads2Wallet</span>
+                    <span id="headerBrandName">Filo Diretto</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -2020,10 +2020,7 @@
                             <div id="mediaWalletIconGrid" class="strip-gallery"><p style="color:var(--text2)">Caricamento...</p></div>
                         </div>
                         <div class="card a2w-media-bucket" id="a2wMediaStripCard" data-a2w-bucket-type="strip" data-a2w-bucket="strip" role="tabpanel" aria-labelledby="a2wMediaTab_strip" hidden>
-                            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-                                <div class="sec-title" style="font-size:15px;margin:0;">Strip</div>
-                                <input id="mediaStripSearch" type="search" placeholder="Cerca per nome..." oninput="loadMediaLibrary()" style="max-width:220px;">
-                            </div>
+                            <div class="sec-title" style="font-size:15px;margin-bottom:8px;">Strip</div>
                             <p style="font-size:12px;color:var(--text2);margin-bottom:10px;">Puoi caricare più varianti (es. promo, evento, default) e sceglierle in push o nel template.</p>
                             <div id="mediaStripGrid" class="strip-gallery"><p style="color:var(--text2)">Caricamento...</p></div>
                         </div>
@@ -3746,7 +3743,26 @@
 <script>
 const API = '/api/v1';
 window.API = API;
-const AUTH_TOKEN_KEY = 'ads2wallet:jwt';
+const AUTH_TOKEN_KEY = 'filodiretto:jwt';
+const AUTH_TOKEN_KEY_LEGACY = 'ads2wallet:jwt';
+const LAST_BRAND_KEY = 'filodiretto:lastBrandId';
+const LAST_BRAND_KEY_LEGACY = 'ads2wallet:lastBrandId';
+const PASSES_FILTER_STORAGE_PREFIX = 'filodiretto:passFilters:v1:';
+const PASSES_FILTER_STORAGE_PREFIX_LEGACY = 'ads2wallet:passFilters:v1:';
+
+(function migrateLegacyStorageKeys() {
+    function move(localKey, legacyKey) {
+        try {
+            if (localStorage.getItem(localKey)) return;
+            const legacy = localStorage.getItem(legacyKey);
+            if (legacy == null || legacy === '') return;
+            localStorage.setItem(localKey, legacy);
+            localStorage.removeItem(legacyKey);
+        } catch (_) {}
+    }
+    move(AUTH_TOKEN_KEY, AUTH_TOKEN_KEY_LEGACY);
+    move(LAST_BRAND_KEY, LAST_BRAND_KEY_LEGACY);
+})();
 let brandId = null;
 window.brandId = brandId;
 let brandsListCache = [];
@@ -3802,10 +3818,7 @@ function syncDashboardLoginUrl(replace) {
 }
 
 function leaveDashboardLoginUrl() {
-    const params = new URLSearchParams(window.location.search);
-    params.delete('redirect');
-    const qs = params.toString();
-    const next = getPostLoginDashboardPath() + (qs ? `?${qs}` : '');
+    const next = getPostLoginDashboardPath();
     if (window.location.pathname + (window.location.search || '') !== next) {
         history.replaceState({}, '', next);
     }
@@ -4301,7 +4314,6 @@ async function submitLogin() {
 let currentBrandName = '';
 let currentBrandSlug = '';
 let campaignsCache = [];
-const LAST_BRAND_KEY = 'ads2wallet:lastBrandId';
 const BRAND_CACHE_TTL_MS = 45000;
 const PASSES_PAGE_SIZE = 50;
 /** Sections reachable without selecting a brand */
@@ -4313,7 +4325,6 @@ let passHasNextPage = false;
 let passTotalCount = null;
 let passSearchQuery = '';
 /** sessionStorage filters per brand (campagna · ricerca · pagina) */
-const PASSES_FILTER_STORAGE_PREFIX = 'ads2wallet:passFilters:v1:';
 let passFiltersLastBrandHydrated = null;
 /** campagna salvata da sessione, da applicare al select quando le opzioni sono pronte */
 let pendingPassCampaignId = '';
@@ -4322,7 +4333,9 @@ function ensurePassFiltersFromStorage() {
     if (!brandId) return;
     if (passFiltersLastBrandHydrated === brandId) return;
     try {
-        const raw = sessionStorage.getItem(PASSES_FILTER_STORAGE_PREFIX + brandId);
+        const raw =
+            sessionStorage.getItem(PASSES_FILTER_STORAGE_PREFIX + brandId) ||
+            sessionStorage.getItem(PASSES_FILTER_STORAGE_PREFIX_LEGACY + brandId);
         if (raw) {
             const o = JSON.parse(raw);
             passSearchQuery = o.search != null ? String(o.search) : '';
@@ -4656,6 +4669,10 @@ function applyLegacyCampaignsUiMask() {
         const panel = campTable.closest('.card') || campTable.parentElement;
         if (panel) panel.style.display = hidden ? 'none' : '';
     }
+    document.querySelectorAll('#analyticsTopCampaigns').forEach((el) => {
+        const card = el.closest('.card');
+        if (card) card.style.display = hidden ? 'none' : '';
+    });
 }
 
 function nav(id, options) {
@@ -4835,6 +4852,14 @@ function closeModal(id) {
 function toast(msg) { const t = document.getElementById('toastEl'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
 // ==================== BRANDS ====================
+function ensureAnalyticsRouteLoaded() {
+    const route = typeof parseLocationRoute === 'function' ? parseLocationRoute() : null;
+    if (!route || route.section !== 'analytics' || !brandId) return;
+    const stats = document.getElementById('analyticsStats');
+    const hasStats = stats && stats.querySelector('.stat-card, .fd-stat-card');
+    if (!hasStats && typeof loadAnalytics === 'function') loadAnalytics();
+}
+
 async function loadBrands() {
     const res = await fetch(`${API}/brands`, { headers: { ...getAuthHeaders() } });
     if (!res.ok) return;
@@ -4884,7 +4909,7 @@ async function loadBrands() {
         await refreshOverview();
         if (typeof refreshA2wSetupState === 'function') await refreshA2wSetupState(brandId);
         if (typeof initDashboardSubnavFromLocation === 'function' && initDashboardSubnavFromLocation()) {
-            /* route path handled */
+            ensureAnalyticsRouteLoaded();
         } else {
             let sid = getActiveSectionId();
             if (sid === 'welcome' && !shouldKeepWelcomeAsHome()) sid = getDefaultBrandSection();
@@ -4990,7 +5015,7 @@ function ensureBrandIdFromContext() {
 // UI shell uses fixed palettes per product line; pass colors in brand.config stay for the pass only.
 const PRODUCT_LINE_STORAGE_KEY = '2wallet_product_line';
 const VALID_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
-const PRODUCT_DISPLAY_TITLES = { ads: 'Ads2Wallet', hr: 'HR2Wallet', engage: 'Engage2Wallet', live: 'Live2Wallet' };
+const PRODUCT_DISPLAY_TITLES = { ads: 'Ads2Wallet', hr: 'Filo Diretto', engage: 'Engage2Wallet', live: 'Live2Wallet' };
 const PRODUCT_THEMES = {
     ads: { light: false, bg: '#0D0B1A', accent: '#00D4AA', purple: '#B794F4', text: '#FFFFFF', onAccent: '#0a0a0f' },
     hr: {
@@ -5116,6 +5141,7 @@ function getLockedProductLine() {
     if (h === 'studio.filodiretto.app') return 'hr';
     if (h.includes('2wallet.app') && VALID_PRODUCT_LINES.includes(sub)) return sub;
     if (h.includes('hr2wallet')) return 'hr';
+    if (h.includes('filodiretto')) return 'hr';
     if (h.includes('engage2wallet')) return 'engage';
     if (h.includes('live2wallet')) return 'live';
     if (h.includes('ads2wallet')) return 'ads';
@@ -9191,10 +9217,9 @@ function isLeadPassInstalled(lead) {
     return !!(lead.device_id || lead.google_wallet_saved || lead.samsung_wallet_saved);
 }
 
-/** Ads2Wallet Contatti redesign only — never FiloDiretto / HR dipendenti. */
+/** Contatti redesign A2W — disattivato su shell Filo HR. */
 function isA2wLeadsRedesignActive() {
     if (leadsHrMode) return false;
-    if ((window.location.hostname || '').toLowerCase().includes('ads2wallet')) return true;
     if (typeof isFiloShell === 'function' && isFiloShell()) return false;
     if (typeof isA2wDeploy === 'function' && !isA2wDeploy()) return false;
     return document.documentElement.classList.contains('a2w-shell');
@@ -9937,9 +9962,6 @@ async function loadLeads() {
     const mc = getMergedProductMenuCopy(getDashboardProductLine());
     leadsHrMode = isHrBrandContext();
     window.leadsHrMode = leadsHrMode;
-    if ((window.location.hostname || '').toLowerCase().includes('ads2wallet')) {
-        document.documentElement.classList.add('a2w-shell');
-    }
     hrDistributionMode = getDistributionModeFromStorage();
     if (!leadsHrMode) leadsActiveKpiFilter = null;
     if (!leadsHrMode) leadsPage = 1;
@@ -11193,65 +11215,105 @@ async function loadActivityLog() {
 }
 
 // ==================== ANALYTICS ====================
+function normalizePassesPayload(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.passes)) return payload.passes;
+    return [];
+}
+
+function renderAnalyticsLoadError(message) {
+    const stats = document.getElementById('analyticsStats');
+    if (stats) {
+        stats.innerHTML = `<div class="stat-card" style="grid-column:1/-1"><div class="stat-label">Analytics</div><div style="color:var(--red);font-size:14px;margin-top:8px">${esc(message || 'Errore caricamento')}</div><button type="button" class="btn small sec" style="margin-top:12px" onclick="loadAnalytics()">Riprova</button></div>`;
+    }
+    ['analyticsTrendChart', 'analyticsWalletSplit', 'analyticsTopCampaigns'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
+    });
+}
+
 async function loadAnalytics() {
-    if (!brandId) return;
+    const activeBrandId = brandId || window.brandId;
+    if (!activeBrandId) return;
     if (typeof a2wLoadAnalytics === 'function' && typeof isA2wDeploy === 'function' && isA2wDeploy()) {
         return a2wLoadAnalytics();
     }
     const campaignsEnabled = isLegacyCampaignsUiEnabled();
-    const [analytics, campaigns, passes] = await Promise.all([
-        fetchCachedJson(`${API}/analytics/${brandId}`, { headers: { ...getAuthHeaders() } }),
-        campaignsEnabled
-            ? fetchCachedJson(`${API}/campaigns?brand_id=${brandId}`, { headers: { ...getAuthHeaders() } })
-            : Promise.resolve([]),
-        fetchCachedJson(`${API}/passes?brand_id=${brandId}&limit=600`, { headers: { ...getAuthHeaders() } })
-    ]);
+    try {
+        const [analyticsRes, campaignsRes, passesRes] = await Promise.all([
+            fetch(`${API}/analytics/${activeBrandId}`, { headers: { ...getAuthHeaders() } }),
+            campaignsEnabled
+                ? fetch(`${API}/campaigns?brand_id=${activeBrandId}`, { headers: { ...getAuthHeaders() } })
+                : Promise.resolve(null),
+            fetch(`${API}/passes?brand_id=${activeBrandId}&limit=600`, { headers: { ...getAuthHeaders() } })
+        ]);
 
-    const totalDL = campaigns.reduce((s,c) => s + (c.total_downloads||0), 0);
-    const totalIN = campaigns.reduce((s,c) => s + (c.total_installs||0), 0);
+        const analyticsBody = await analyticsRes.json().catch(() => ({}));
+        if (!analyticsRes.ok) {
+            throw new Error(analyticsBody.error || `Analytics HTTP ${analyticsRes.status}`);
+        }
+        const analytics = analyticsBody;
 
-    const allPasses = Array.isArray(passes) ? passes : [];
-    const desktopDownloads = allPasses.filter((p) => {
-        const ua = String(p.user_agent || '').toLowerCase();
-        if (!ua) return false;
-        return !/(iphone|ipad|ipod|android)/i.test(ua);
-    }).length;
-    const appleDv = analytics.appleDeviceCount ?? analytics.deviceCount ?? 0;
-    const gwSaved = analytics.googleWalletSavedCount ?? 0;
-    const gwObj = analytics.googleWalletObjectCount ?? 0;
-    const gwCb = analytics.googleCallbackCount ?? 0;
-    const gwCbProcessed = analytics.googleCallbackProcessedCount ?? 0;
-    const swSaved = analytics.samsungWalletSavedCount ?? 0;
-    const gwHint = (gwObj > gwSaved
-        ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Oggetti con link: ${gwObj} · ancora da salvare in app: ${gwObj - gwSaved}</div>`
-        : `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Android: conta i pass con salvataggio confermato (non i device Apple)</div>`) +
-        `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Callback Google ricevuti: ${gwCb} · processati: ${gwCbProcessed}</div>`;
-    const swHint = `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Confermati tramite Send Card State da Samsung Wallet</div>`;
-    document.getElementById('analyticsStats').innerHTML = `
+        let campaigns = [];
+        if (campaignsEnabled && campaignsRes) {
+            const campaignsBody = await campaignsRes.json().catch(() => ({}));
+            if (!campaignsRes.ok) {
+                throw new Error(campaignsBody.error || `Campagne HTTP ${campaignsRes.status}`);
+            }
+            campaigns = Array.isArray(campaignsBody) ? campaignsBody : [];
+        }
+
+        const passesBody = await passesRes.json().catch(() => ({}));
+        if (!passesRes.ok) {
+            throw new Error(passesBody.error || `Pass HTTP ${passesRes.status}`);
+        }
+        const allPasses = normalizePassesPayload(passesBody);
+
+        const totalDL = campaigns.reduce((s,c) => s + (c.total_downloads||0), 0);
+        const totalIN = campaigns.reduce((s,c) => s + (c.total_installs||0), 0);
+        const desktopDownloads = allPasses.filter((p) => {
+            const ua = String(p.user_agent || '').toLowerCase();
+            if (!ua) return false;
+            return !/(iphone|ipad|ipod|android)/i.test(ua);
+        }).length;
+        const appleDv = analytics.appleDeviceCount ?? analytics.deviceCount ?? 0;
+        const gwSaved = analytics.googleWalletSavedCount ?? 0;
+        const gwObj = analytics.googleWalletObjectCount ?? 0;
+        const gwCb = analytics.googleCallbackCount ?? 0;
+        const gwCbProcessed = analytics.googleCallbackProcessedCount ?? 0;
+        const swSaved = analytics.samsungWalletSavedCount ?? 0;
+        const gwHint = (gwObj > gwSaved
+            ? `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Oggetti con link: ${gwObj} · ancora da salvare in app: ${gwObj - gwSaved}</div>`
+            : `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Android: conta i pass con salvataggio confermato (non i device Apple)</div>`) +
+            `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Callback Google ricevuti: ${gwCb} · processati: ${gwCbProcessed}</div>`;
+        const swHint = `<div style="font-size:11px;color:var(--text2);margin-top:4px;">Confermati tramite Send Card State da Samsung Wallet</div>`;
+        const statsEl = document.getElementById('analyticsStats');
+        if (!statsEl) return;
+        statsEl.innerHTML = `
         <div class="stat-card"><div class="stat-label">Pass totali</div><div class="stat-value">${analytics.totalPasses||0}</div></div>
-        <div class="stat-card"><div class="stat-label">Download totali</div><div class="stat-value">${totalDL}</div></div>
-        <div class="stat-card"><div class="stat-label">Installazioni totali</div><div class="stat-value">${totalIN}</div></div>
+        <div class="stat-card"><div class="stat-label">Pass attivi (installati)</div><div class="stat-value">${appleDv + gwSaved + swSaved}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Apple + Google + Samsung Wallet</div></div>
         <div class="stat-card"><div class="stat-label">Download da desktop (info)</div><div class="stat-value">${desktopDownloads}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Separati dai KPI wallet confermati</div></div>
         <div class="stat-card"><div class="stat-label">Apple · dispositivi PassKit</div><div class="stat-value">${appleDv}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">iPhone/iPad distinti con pass in Wallet</div></div>
         <div class="stat-card"><div class="stat-label">Google Wallet · pass salvati</div><div class="stat-value">${gwSaved}</div>${gwHint}</div>
         <div class="stat-card"><div class="stat-label">Samsung Wallet · pass salvati</div><div class="stat-value">${swSaved}</div>${swHint}</div>
-        <div class="stat-card"><div class="stat-label">Campagne</div><div class="stat-value">${campaigns.length}</div></div>
+        ${campaignsEnabled ? `<div class="stat-card"><div class="stat-label">Campagne</div><div class="stat-value">${campaigns.length}</div></div>` : ''}
     `;
-    syncAnalyticsRangeControls();
-    renderAnalyticsTrendChart(allPasses);
-    renderAnalyticsWalletSplit(allPasses);
-    renderAnalyticsTopCampaigns(campaignsEnabled ? campaigns : []);
+        syncAnalyticsRangeControls();
+        renderAnalyticsTrendChart(allPasses);
+        renderAnalyticsWalletSplit(allPasses);
+        renderAnalyticsTopCampaigns(campaignsEnabled ? campaigns : []);
 
-    const tbody = document.querySelector('#campaignAnalyticsTable tbody');
-    if (!campaignsEnabled) {
-        const tableWrap = document.getElementById('campaignAnalyticsTable')?.closest('.card');
-        if (tableWrap) tableWrap.style.display = 'none';
-        return;
-    }
-    if (!campaigns.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2)">Nessuna campagna</td></tr>'; return; }
-    tbody.innerHTML = campaigns.map(c => {
-        const conv = c.total_downloads > 0 ? ((c.total_installs / c.total_downloads) * 100).toFixed(1) : '0';
-        return `<tr>
+        const tbody = document.querySelector('#campaignAnalyticsTable tbody');
+        if (!campaignsEnabled) {
+            const tableWrap = document.getElementById('campaignAnalyticsTable')?.closest('.card');
+            if (tableWrap) tableWrap.style.display = 'none';
+            return;
+        }
+        if (!tbody) return;
+        if (!campaigns.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2)">Nessuna campagna</td></tr>'; return; }
+        tbody.innerHTML = campaigns.map(c => {
+            const conv = c.total_downloads > 0 ? ((c.total_installs / c.total_downloads) * 100).toFixed(1) : '0';
+            return `<tr>
             <td>${esc(c.name)}</td>
             <td>${c.total_downloads||0}</td>
             <td>${c.total_installs||0}</td>
@@ -11259,7 +11321,11 @@ async function loadAnalytics() {
             <td>${esc(c.utm_source||'-')}</td>
             <td><span class="badge ${c.active?'active':'inactive'}">${c.active?'Attiva':'Pausa'}</span></td>
         </tr>`;
-    }).join('');
+        }).join('');
+    } catch (err) {
+        console.error('loadAnalytics:', err);
+        renderAnalyticsLoadError(err.message || 'Errore caricamento analytics');
+    }
 }
 
 function syncAnalyticsRangeControls() {
@@ -13119,7 +13185,6 @@ async function loadMediaLibrary() {
     const stripGrid = document.getElementById('mediaStripGrid');
     const thumbGrid = document.getElementById('mediaThumbnailGrid');
     const bgGrid = document.getElementById('mediaBackgroundGrid');
-    const q = (document.getElementById('mediaStripSearch')?.value || '').trim().toLowerCase();
     if (logoBox) logoBox.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (stripGrid) stripGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
     if (thumbGrid) thumbGrid.innerHTML = '<p style="color:var(--text2)">Caricamento...</p>';
@@ -13161,7 +13226,7 @@ async function loadMediaLibrary() {
         }
 
         if (stripGrid) {
-            const filteredStrips = q ? strips.filter(it => `${it.title || ''}`.toLowerCase().includes(q)) : strips;
+            const filteredStrips = strips;
             if (!filteredStrips.length) {
                 stripGrid.innerHTML = '<p style="color:var(--text2)">Nessuna strip trovata.</p>';
             } else {
@@ -14460,6 +14525,8 @@ function fileToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
+
+if (typeof window.fdInitAnalytics === 'function') window.fdInitAnalytics();
 
 </script>
 

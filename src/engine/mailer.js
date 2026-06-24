@@ -16,7 +16,7 @@ function getResend() {
   return null;
 }
 
-const getFromEmail = () => process.env.FROM_EMAIL || (isHrProductLine() ? 'noreply@filodiretto.app' : 'noreply@ads2wallet.com');
+const getFromEmail = () => process.env.FROM_EMAIL || 'noreply@filodiretto.app';
 const getFromName = () => process.env.FROM_NAME || getProductBrandName();
 // HR display name stays FiloDiretto; sender uses verified filodiretto.app domain on Resend.
 const getHrFromEmail = () => process.env.HR_FROM_EMAIL || process.env.FROM_EMAIL || 'noreply@filodiretto.app';

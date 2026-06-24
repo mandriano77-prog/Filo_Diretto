@@ -145,8 +145,8 @@ test('fd.bundle.css preserves calc() operator spacing (W.AI inset)', () => {
 
 test('index.html bundle cache references wide-layout tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260624-nav-icons-fix/);
-  assert.match(html, /fd\.bundle\.js\?v=20260624-nav-icons-fix/);
+  assert.match(html, /fd\.bundle\.css\?v=20260624-analytics-fix/);
+  assert.match(html, /fd\.bundle\.js\?v=20260624-analytics-fix/);
   assert.match(html, /\/dashboard\/lib\/public-url\.js/);
   assert.match(html, /function a2wPublicUrlBase/);
   assert.match(html, /#a2wMediaTabs\{display:none!important\}/);
@@ -267,10 +267,10 @@ test('Filo brand identity aside reads camelCase form snapshot', () => {
   assert.match(js, /fieldVal\(data, 'dpoEmail'/);
 });
 
-test('Filo media library uses single contextual search', () => {
+test('Filo media library has no contextual search field', () => {
   const js = readFd('fd-media-library.js');
-  assert.match(js, /fdMediaContextSearch/);
-  assert.match(js, /applyContextSearchFilter/);
+  assert.doesNotMatch(js, /function ensureContextSearch/);
+  assert.doesNotMatch(js, /applyContextSearchFilter/);
   assert.match(js, /fd-media-dropzone__specs/);
   assert.match(js, /removeLegacyMediaSearches/);
 });

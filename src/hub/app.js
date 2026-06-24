@@ -204,9 +204,9 @@
     }
     bar.classList.remove('hidden');
     bar.innerHTML = `
-      <a href="#" class="hub-tab${active === 'conv' ? ' active' : ''}" data-tab="conv">Convenzioni</a>
+      <a href="#" class="hub-tab${active === 'conv' ? ' active' : ''}" data-tab="conv">CONVENZIONI</a>
       <a href="#" class="hub-tab${active === 'pga' ? ' active' : ''}" data-tab="pga">PGA</a>
-      <a href="#" class="hub-tab${active === 'me' ? ' active' : ''}" data-tab="me">Profilo</a>
+      <a href="#" class="hub-tab${active === 'me' ? ' active' : ''}" data-tab="me">PROFILO</a>
     `;
     bar.querySelectorAll('[data-tab]').forEach((link) => {
       link.addEventListener('click', (e) => {

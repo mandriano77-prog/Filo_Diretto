@@ -194,7 +194,7 @@ function canDashboardUserLogin(user) {
   const email = String(user?.email || '').trim().toLowerCase();
   if (isDashboardOperatorEmail(email)) return true;
   // Default dev seed must not bypass operator lock on existing HR databases.
-  if (email === 'admin@ads2wallet.com') return false;
+  if (email === 'admin@ads2wallet.com' || email === 'admin@filodiretto.app') return false;
   return Boolean(user?.id);
 }
 

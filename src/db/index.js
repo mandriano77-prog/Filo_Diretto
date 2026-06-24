@@ -500,7 +500,7 @@ async function getDb() {
   }
   try {
     await pool.query(SCHEMA);
-    console.log('[ok] Database schema initialized (PostgreSQL - Ads2Wallet)');
+    console.log('[ok] Database schema initialized (PostgreSQL - Filo Diretto)');
 
     // Migrations
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
@@ -2563,13 +2563,13 @@ async function seedAdminUser() {
     const existing = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
     if (existing.rows.length === 0) {
       await createUser({
-        email: 'admin@ads2wallet.com',
-        password: 'Ads2Wallet2026!',
+        email: 'admin@filodiretto.app',
+        password: 'FiloDiretto2026!',
         name: 'Admin',
         role: 'admin',
         brand_id: null
       });
-      console.log('Ã¢ÂÂ Seeded default admin user: admin@ads2wallet.com / Ads2Wallet2026!');
+      console.log('[ok] Seeded default admin user: admin@filodiretto.app / FiloDiretto2026!');
     }
   } catch(e) { console.log('Admin seed note:', e.message); }
 }

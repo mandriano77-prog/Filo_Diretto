@@ -542,9 +542,11 @@ input {
   border-radius: 12px;
   color: var(--hub-muted);
   text-decoration: none;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .hub-tab.active {

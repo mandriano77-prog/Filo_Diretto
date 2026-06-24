@@ -85,21 +85,24 @@
     if (!isFiloHr()) return;
     var title = (function () {
       try {
-        return (window.__2WALLET_PRODUCT_TITLE__ || 'FiloDiretto').trim();
+        return (window.__2WALLET_PRODUCT_TITLE__ || 'Filo Diretto').trim();
       } catch (_) {
-        return 'FiloDiretto';
+        return 'Filo Diretto';
       }
     })();
     document.querySelectorAll('.chrome-product-title').forEach(function (el) {
-      if ((el.textContent || '').trim() === 'Ads2Wallet') el.textContent = title;
+      var t = (el.textContent || '').trim();
+      if (t === 'Ads2Wallet' || t === 'HR2Wallet') el.textContent = title;
     });
     var headerBrand = document.getElementById('headerBrandName');
-    if (headerBrand && !window.brandId && (headerBrand.textContent || '').trim() === 'Ads2Wallet') {
-      headerBrand.textContent = title;
+    if (headerBrand && !window.brandId) {
+      var ht = (headerBrand.textContent || '').trim();
+      if (ht === 'Ads2Wallet' || ht === 'HR2Wallet') headerBrand.textContent = title;
     }
     var breadcrumbBrand = document.getElementById('breadcrumbBrand');
-    if (breadcrumbBrand && !window.brandId && (breadcrumbBrand.textContent || '').trim() === 'Ads2Wallet') {
-      breadcrumbBrand.textContent = title;
+    if (breadcrumbBrand && !window.brandId) {
+      var bt = (breadcrumbBrand.textContent || '').trim();
+      if (bt === 'Ads2Wallet' || bt === 'HR2Wallet') breadcrumbBrand.textContent = title;
     }
   }
 

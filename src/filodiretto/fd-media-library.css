@@ -209,19 +209,6 @@ html[data-app='filodiretto'] #media-library.media-library--fd-layout .fd-media-h
   flex-shrink: 0;
 }
 
-html[data-app='filodiretto'] #media-library .fd-media-context-search-wrap {
-  flex: 1 1 220px;
-  min-width: 0;
-  margin-left: auto;
-}
-
-html[data-app='filodiretto'] #media-library .fd-media-context-search {
-  width: 100%;
-  min-height: 38px;
-  max-width: 280px;
-  font-size: 13px;
-}
-
 html[data-app='filodiretto'] #media-library .fd-media-tabs,
 html[data-app='filodiretto'] #media-library .media-tabs {
   display: flex;

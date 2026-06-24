@@ -25,9 +25,12 @@ test('dashboard index boots Filo HR shell without Ads2Wallet scripts', () => {
   assert.doesNotMatch(indexHtml, /a2w-template-editor\.js/);
   assert.doesNotMatch(indexHtml, /a2w-setup-checklist\.js/);
   assert.doesNotMatch(indexHtml, /host\.includes\('ads2wallet'\)/);
+  assert.doesNotMatch(indexHtml, /<span class="chrome-product-title">Ads2Wallet<\/span>/);
+  assert.match(indexHtml, /chrome-product-title">Filo Diretto/);
+  assert.match(indexHtml, /filodiretto:jwt/);
 });
 
-test('base-url defaults brand to FiloDiretto (HR-only repo)', () => {
-  assert.match(baseUrlJs, /return 'FiloDiretto'/);
+test('base-url defaults brand to Filo Diretto (HR-only repo)', () => {
+  assert.match(baseUrlJs, /return 'Filo Diretto'/);
   assert.match(baseUrlJs, /function isHrProductLine\(\) \{\s*return true;/);
 });

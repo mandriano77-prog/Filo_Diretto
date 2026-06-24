@@ -271,21 +271,20 @@
   }
 
   function patchLoader() {
-    if (window.__fdAnalyticsPatched) return;
-    window.__fdAnalyticsPatched = true;
+    if (typeof window.loadAnalytics !== 'function') return;
+    if (window.__fdAnalyticsLoadAnalyticsPatched) return;
+    window.__fdAnalyticsLoadAnalyticsPatched = true;
 
-    if (typeof window.loadAnalytics === 'function') {
-      var orig = window.loadAnalytics;
-      window.loadAnalytics = async function () {
-        if (isFiloAnalyticsApp() && window.brandId) showAnalyticsLoadingState();
-        try {
-          await orig.apply(this, arguments);
-        } finally {
-          clearAnalyticsLoadingState();
-        }
-        if (isFiloAnalyticsApp()) enhanceAnalyticsDom();
-      };
-    }
+    var orig = window.loadAnalytics;
+    window.loadAnalytics = async function () {
+      if (isFiloAnalyticsApp() && window.brandId) showAnalyticsLoadingState();
+      try {
+        await orig.apply(this, arguments);
+      } finally {
+        clearAnalyticsLoadingState();
+      }
+      if (isFiloAnalyticsApp()) enhanceAnalyticsDom();
+    };
   }
 
   function patchNav() {

@@ -79,9 +79,13 @@
       .replace(/"/g, '&quot;');
   }
 
-  function fv(key, alt) {
+  function fv(...keys) {
     const f = profile?.field_values || {};
-    return f[key] ?? f[alt] ?? '';
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (k && f[k] != null && String(f[k]).trim() !== '') return f[k];
+    }
+    return '';
   }
 
   function formatDate(iso) {
@@ -208,7 +212,7 @@
   function renderHeader() {
     const name = profile.display_name || 'Dipendente';
     const dept = fv('reparto', 'department');
-    const level = fv('livello', 'level');
+    const level = fv('livello', 'level', 'ruolo', 'role');
     $('#brand-name').textContent = profile.brand?.name || 'Filodiretto';
     $('#user-avatar').textContent = initials(name);
     $('#user-display-name').textContent = name;
@@ -222,7 +226,7 @@
   function renderCard() {
     const name = profile.display_name || '—';
     const dept = fv('reparto', 'department');
-    const level = fv('livello', 'level');
+    const level = fv('livello', 'level', 'ruolo', 'role');
     const sede = fv('sede', 'location');
     const badge = fv('badge_id', 'matricola') || '—';
 
@@ -234,7 +238,7 @@
     const tiles = [
       { label: 'Sede', value: sede || '—' },
       { label: 'Reparto', value: dept || '—' },
-      { label: 'Livello', value: level || '—' },
+      ...(level ? [{ label: 'Livello', value: level }] : []),
       { label: 'Pass attivo da', value: formatDate(profile.install_date) }
     ];
 
@@ -368,6 +372,7 @@
       },
       { label: 'Reparto', value: fv('reparto', 'department') },
       { label: 'Sede', value: fv('sede', 'location') },
+      { label: 'Livello', value: fv('livello', 'level', 'ruolo', 'role') },
       {
         label: 'Data di assunzione',
         value: fv('data_assunzione', 'hire_date') || formatDate(profile.install_date)

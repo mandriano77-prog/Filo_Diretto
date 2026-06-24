@@ -1,4 +1,4 @@
-// Ads2Wallet MVP v1.0
+// FiloDiretto HR platform
 // Cron, push pianificate e `new Date(y,m,d,H,M)` nel processo Node — sempre ora italiana.
 process.env.TZ = 'Europe/Rome';
 
@@ -224,12 +224,12 @@ app.get(['/scan', '/scan/'], (req, res, next) => {
   sendPartnerSpa(req, res);
 });
 
-// Filo_Diretto repo: dashboard is HR-only (Ads2Wallet product uses a separate deploy/repo).
+// Filo_Diretto repo: dashboard is HR-only (Filo Diretto / studio.filodiretto.app).
 const DASHBOARD_PRODUCT_LOCK = 'hr';
 
 app.get('/dashboard/boot.js', (req, res) => {
   const lock = DASHBOARD_PRODUCT_LOCK;
-  const title = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
+  const title = String(process.env.DASHBOARD_PRODUCT_TITLE || 'Filo Diretto').trim();
   const bylineEnv = String(process.env.DASHBOARD_CHROME_BYLINE ?? '').trim();
   const chromeByline = bylineEnv;
   const allowlistRaw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
@@ -471,7 +471,7 @@ getDb().then((db) => {
   const dbHandle = db && db.pool ? db : { pool: db };
   app.locals.db = dbHandle;
   app.listen(PORT, () => {
-    console.log('\n🚀 Ads2Wallet server running on port ' + PORT);
+    console.log('\n🚀 Filo Diretto server running on port ' + PORT);
     console.log('  Health: http://localhost:' + PORT + '/health');
     console.log('  API:    http://localhost:' + PORT + '/api/v1');
     console.log('  TZ:     ' + process.env.TZ);

@@ -15,7 +15,7 @@ function isHrProductLine() {
 function getProductBrandName() {
   const explicit = String(process.env.PRODUCT_BRAND_NAME || process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
   if (explicit) return explicit;
-  return 'FiloDiretto';
+  return 'Filo Diretto';
 }
 
 function resolveBaseUrlFromEnv(options = {}) {
