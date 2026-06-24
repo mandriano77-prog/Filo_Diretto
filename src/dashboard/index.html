@@ -6983,10 +6983,9 @@ function updatePassPreview() {
         document.getElementById('ppSecondary').innerHTML =
             '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">SEDE</div><div class="pp-field-value">Milano</div></div>';
-        document.getElementById('ppAuxiliary').innerHTML =
+            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering · Milano</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">COIN</div><div class="pp-field-value">247</div></div>';
+        document.getElementById('ppAuxiliary').innerHTML = '';
 
         let backHtml = '';
         const addBackText = (lbl, val) => {

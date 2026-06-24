@@ -329,7 +329,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip only on top; anagrafica on secondary; COIN alone on auxiliary (bottom row, above QR).
+  // Front layout: strip on top; anagrafica + COIN on secondary (Apple reliably renders up to 4
+  // secondary fields — auxiliary row is often clipped when secondary is already full + promo).
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'DIPENDENTE', value: profile.full_name });
@@ -339,24 +340,22 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     label: 'MATRICOLA',
     value: profile.employee_id ? `#${profile.employee_id}` : '—'
   });
-  if (profile.department) {
-    secondary.push({ key: 'reparto', label: 'REPARTO', value: profile.department });
+  const repartoParts = [profile.department, profile.office_location].map((v) => String(v || '').trim()).filter(Boolean);
+  if (repartoParts.length) {
+    secondary.push({ key: 'reparto', label: 'REPARTO', value: repartoParts.join(' · ') });
   }
-  if (profile.office_location) {
-    secondary.push({ key: 'sede', label: 'SEDE', value: profile.office_location });
-  }
-
-  const auxiliary = [];
   const coinValue =
     coinBalance != null && Number.isFinite(Number(coinBalance))
       ? Math.max(0, Math.floor(Number(coinBalance)))
       : 0;
-  auxiliary.push({
+  secondary.push({
     key: 'coin_balance',
     label: 'COIN',
     value: String(coinValue),
     changeMessage: 'Hai %@ coin'
   });
+
+  const auxiliary = [];
   const annField = buildAnnouncementAuxField(cfg);
   if (annField) auxiliary.push(annField);
 

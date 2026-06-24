@@ -48,7 +48,7 @@ test('AC-007/010: passkit adds PGA link when enabled and always loads coin balan
   assert.match(employee, /isCoinPassField/);
 });
 
-test('AC-010: coin balance renders on auxiliary row only (not header)', () => {
+test('AC-010: coin balance renders on secondary row (not header or auxiliary)', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const employeePass = buildEmployeePass({
     brand: { id: 'b1', name: 'Acme', config: { pass_header_hint: { label: 'COIN', value: '999' } } },
@@ -70,9 +70,11 @@ test('AC-010: coin balance renders on auxiliary row only (not header)', () => {
   const auxKeys = (apple.passStructure.auxiliaryFields || []).map((f) => f.key);
   const secKeys = (apple.passStructure.secondaryFields || []).map((f) => f.key);
   assert.equal(headerKeys.includes('coin_balance'), false);
-  assert.equal(auxKeys.includes('coin_balance'), true);
-  assert.deepEqual(secKeys, ['name', 'matricola', 'reparto', 'sede']);
-  const coinField = apple.passStructure.auxiliaryFields.find((f) => f.key === 'coin_balance');
+  assert.equal(auxKeys.includes('coin_balance'), false);
+  assert.deepEqual(secKeys, ['name', 'matricola', 'reparto', 'coin_balance']);
+  const repartoField = apple.passStructure.secondaryFields.find((f) => f.key === 'reparto');
+  assert.equal(repartoField.value, 'Engineering · Milano');
+  const coinField = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(coinField.value, '247');
 });
 
@@ -87,7 +89,7 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
     apiBase: 'https://studio.example.com/api/v1'
   });
   const apple = toApplePass(employeePass);
-  const coinField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'coin_balance');
+  const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.label, 'COIN');
   assert.equal(coinField.value, '0');
