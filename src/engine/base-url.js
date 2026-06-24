@@ -9,13 +9,13 @@ function normalizeHost(raw) {
 }
 
 function isHrProductLine() {
-  return String(process.env.DASHBOARD_PRODUCT_LINE || '').trim().toLowerCase() === 'hr';
+  return true;
 }
 
 function getProductBrandName() {
   const explicit = String(process.env.PRODUCT_BRAND_NAME || process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
   if (explicit) return explicit;
-  return isHrProductLine() ? 'FiloDiretto' : 'Ads2Wallet';
+  return 'FiloDiretto';
 }
 
 function resolveBaseUrlFromEnv(options = {}) {

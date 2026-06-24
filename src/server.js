@@ -224,20 +224,16 @@ app.get(['/scan', '/scan/'], (req, res, next) => {
   sendPartnerSpa(req, res);
 });
 
-// Dashboard boot: product line lock from deploy env (e.g. studio.filodiretto.app → DASHBOARD_PRODUCT_LINE=hr)
-const VALID_DASHBOARD_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
-function getDeployDashboardProductLine() {
-  const v = String(process.env.DASHBOARD_PRODUCT_LINE || '').trim().toLowerCase();
-  return VALID_DASHBOARD_PRODUCT_LINES.includes(v) ? v : null;
-}
+// Filo_Diretto repo: dashboard is HR-only (Ads2Wallet product uses a separate deploy/repo).
+const DASHBOARD_PRODUCT_LOCK = 'hr';
 
 app.get('/dashboard/boot.js', (req, res) => {
-  const lock = getDeployDashboardProductLine();
+  const lock = DASHBOARD_PRODUCT_LOCK;
   const title = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim();
   const bylineEnv = String(process.env.DASHBOARD_CHROME_BYLINE ?? '').trim();
-  const chromeByline = bylineEnv || (lock === 'hr' ? '' : 'by Underdogs Group');
+  const chromeByline = bylineEnv;
   const allowlistRaw = String(process.env.DASHBOARD_LOGIN_ALLOWLIST || '').trim();
-  const loginAllowlist = allowlistRaw || (lock === 'hr' ? 'admin@nudj.studio' : '');
+  const loginAllowlist = allowlistRaw || 'admin@nudj.studio';
   const publicBaseUrl = resolveBaseUrlFromEnv({ localhostPort: PORT });
   const productBrand = getProductBrandName();
   res.type('application/javascript');
@@ -318,7 +314,7 @@ const BUILD_VERSION = '3.0.0-' + Date.now();
 app.get('/health', async (req, res) => {
   const base = {
     status: 'ok',
-    product: getDeployDashboardProductLine() || getProductBrandName().toLowerCase(),
+    product: DASHBOARD_PRODUCT_LOCK,
     version: BUILD_VERSION,
     timestamp: new Date().toISOString(),
     ai: {

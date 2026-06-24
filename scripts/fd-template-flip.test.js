@@ -26,6 +26,14 @@ test('fd-templates.css applies flip transform for Filo template modal', () => {
   assert.match(css, /rotateY\(180deg\)/);
 });
 
+test('index.html template editor supports removing pass images', () => {
+  const html = read('src/dashboard/index.html');
+  assert.match(html, /function clearTplImage/);
+  assert.match(html, /persistTemplateImageRemovals/);
+  assert.match(html, /tplImgRemove_thumbnail/);
+  assert.match(html, /images\/\$\{imgType\}/);
+});
+
 test('index.html HR pass preview includes consolidated back sections', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /function previewHubUrl\(\)/);

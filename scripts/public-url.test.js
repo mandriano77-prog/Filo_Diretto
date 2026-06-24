@@ -61,8 +61,8 @@ test('buildPublicLandingUrl uses env base + slug', () => {
   });
 });
 
-test('getProductBrandName defaults to FiloDiretto on HR line', () => {
-  withEnv({ DASHBOARD_PRODUCT_LINE: 'hr' }, () => {
+test('getProductBrandName defaults to FiloDiretto (HR-only repo)', () => {
+  withEnv({}, () => {
     const { getProductBrandName } = loadBaseUrl();
     assert.equal(getProductBrandName(), 'FiloDiretto');
   });

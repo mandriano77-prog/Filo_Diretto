@@ -227,6 +227,7 @@
       setSlotPreview(slot, 'data:image/png;base64,' + styleImages[slot], { skipPassPreview: true });
     });
     if (typeof global.updatePassPreview === 'function') global.updatePassPreview();
+    if (typeof global.updateTplImageRemoveButtons === 'function') global.updateTplImageRemoveButtons();
   }
 
   function resetPersistedImages() {
@@ -275,6 +276,10 @@
     removeBtn.className = 'btn small sec';
     removeBtn.textContent = 'Rimuovi';
     removeBtn.addEventListener('click', function () {
+      if (typeof global.clearTplImage === 'function') {
+        global.clearTplImage(slot, { skipToast: true });
+        return;
+      }
       if (global.tplImageCache) delete global.tplImageCache[slot];
       delete persistedImages[slot];
       input.value = '';

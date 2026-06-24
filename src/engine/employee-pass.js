@@ -622,7 +622,7 @@ function toSamsungPass(employeePass) {
 }
 
 function isHrEmployeePass(brand) {
-  const line = String(brand?.config?.product_line || process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase();
+  const line = String(brand?.config?.product_line || 'hr').toLowerCase();
   return line === 'hr';
 }
 

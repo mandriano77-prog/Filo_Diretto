@@ -165,7 +165,7 @@ async function executeScheduledPush(schedule, baseUrl) {
 
   if (update_pass) {
     const { syncWalletLogoFromBrandIdentity, syncWalletIconFromBrandIdentity } = require('./brand-wallet-logo');
-    const hrDeploy = String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr';
+    const hrDeploy = true;
     try {
       await syncWalletLogoFromBrandIdentity(brand_id, brand, {
         syncTemplates: hrDeploy || brand?.config?.product_line === 'hr',

@@ -63,7 +63,7 @@ function dashboardInviteRoleLabel(role) {
 }
 
 function isHrDashboardMailer() {
-  return String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr';
+  return true;
 }
 
 function inviteEmailFromIdentity() {
@@ -265,8 +265,7 @@ const FD_DASHBOARD_EMAIL = {
 
 function dashboardEmailProductTitle(override) {
   if (override) return override;
-  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
-    || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim() || 'FiloDiretto';
 }
 
 function filoDashboardEmailWordmark(productTitle) {

@@ -116,14 +116,13 @@ function uuidv4() {
 }
 
 const DEPLOY_PRODUCT_LINES = ['ads', 'hr', 'engage', 'live'];
-/** When set (e.g. hr on hr.2wallet.app), API only exposes brands for that product line. */
+/** Filo_Diretto repo: deploy is HR-only. */
 function deployProductLineLock() {
-  const v = String(process.env.DASHBOARD_PRODUCT_LINE || '').trim().toLowerCase();
-  return DEPLOY_PRODUCT_LINES.includes(v) ? v : null;
+  return 'hr';
 }
 function brandProductLine(brand) {
   const pl = brand?.config?.product_line;
-  return DEPLOY_PRODUCT_LINES.includes(pl) ? pl : 'ads';
+  return DEPLOY_PRODUCT_LINES.includes(pl) ? pl : 'hr';
 }
 function brandAllowedOnDeploy(brand) {
   const lock = deployProductLineLock();
@@ -349,8 +348,7 @@ function buildDashboardPublicUrl(req, query = '') {
 }
 
 function dashboardProductTitle() {
-  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
-    || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+  return String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim() || 'FiloDiretto';
 }
 
 function buildPublicBrandLogoUrl(brand) {
@@ -1849,7 +1847,7 @@ router.get('/brands/:id/wallet-logo-debug', async (req, res) => {
     res.json({
       brand_id: brand.id,
       brand_name: brand.name,
-      deploy_product_line: process.env.DASHBOARD_PRODUCT_LINE || null,
+      deploy_product_line: 'hr',
       brand_product_line: brand?.config?.product_line || null,
       brand_identity_logo_media_id: mediaId,
       identity_media: identityMedia,

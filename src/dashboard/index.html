@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ads2Wallet</title>
-    <meta name="description" content="Dashboard piattaforma Wallet">
+    <title>FiloDiretto</title>
+    <meta name="description" content="FiloDiretto — piattaforma HR Wallet">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="/dashboard/boot.js"></script>
@@ -12,53 +12,45 @@
     <script>
     (function () {
         try {
-            var lock = window.__2WALLET_PRODUCT_LOCK__;
             var productTitle = (window.__2WALLET_PRODUCT_TITLE__ || '').trim();
             var byline = (typeof window.__2WALLET_CHROME_BYLINE__ === 'string')
-                ? window.__2WALLET_CHROME_BYLINE__.trim() : 'by Underdogs Group';
-            if (!byline && lock === 'hr') byline = '';
-            var base = productTitle || (lock === 'hr' ? 'FiloDiretto' : 'Ads2Wallet');
+                ? window.__2WALLET_CHROME_BYLINE__.trim() : '';
+            var base = productTitle || 'FiloDiretto';
             document.title = byline ? (base + ' — ' + byline) : base;
             var desc = document.querySelector('meta[name="description"]');
-            if (desc) desc.content = base + (lock === 'hr' ? ' — piattaforma HR Wallet' : ' — dashboard');
-            if (lock === 'hr') {
-                document.documentElement.setAttribute('data-shell', 'light');
-                document.documentElement.setAttribute('data-app', 'filodiretto');
-                var fdLegacyMediaHide = document.createElement('style');
-                fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
-                document.head.appendChild(fdLegacyMediaHide);
-                var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260624-growth-nav-sidebar';
-                var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260624-growth-nav-sidebar';
-                var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
-                var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
-                var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
-                if (useFdBundle) {
-                    var bundleCss = document.createElement('link');
-                    bundleCss.rel = 'stylesheet';
-                    bundleCss.href = fdBundleCss;
-                    document.head.appendChild(bundleCss);
-                    var bundleJs = document.createElement('script');
-                    bundleJs.src = fdBundleJs;
-                    bundleJs.defer = true;
-                    document.head.appendChild(bundleJs);
-                } else {
-                    fdCss.forEach(function (href) {
-                        var link = document.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href = href;
-                        document.head.appendChild(link);
-                    });
-                    fdJs.forEach(function (src) {
-                        var fdScript = document.createElement('script');
-                        fdScript.src = src;
-                        fdScript.defer = true;
-                        document.head.appendChild(fdScript);
-                    });
-                }
-            }
-            var host = (window.location.hostname || '').toLowerCase();
-            if (host.includes('ads2wallet')) {
-                document.documentElement.classList.add('a2w-shell');
+            if (desc) desc.content = base + ' — piattaforma HR Wallet';
+            document.documentElement.setAttribute('data-shell', 'light');
+            document.documentElement.setAttribute('data-app', 'filodiretto');
+            var fdLegacyMediaHide = document.createElement('style');
+            fdLegacyMediaHide.textContent = "html[data-app='filodiretto'] #media-library #a2wMediaTabs{display:none!important}";
+            document.head.appendChild(fdLegacyMediaHide);
+            var fdBundleCss = '/filodiretto/fd.bundle.css?v=20260624-growth-nav-sidebar';
+            var fdBundleJs = '/filodiretto/fd.bundle.js?v=20260624-growth-nav-sidebar';
+            var fdCss = ['/filodiretto/tokens.css', '/filodiretto/fd-theme.css', '/filodiretto/fd-typography.css', '/filodiretto/fd-buttons.css', '/filodiretto/fd-components.css', '/filodiretto/fd-header.css', '/filodiretto/fd-layout.css', '/filodiretto/fd-wide-layout.css', '/filodiretto/fd-mobile-gate.css', '/filodiretto/fd-wai.css', '/filodiretto/fd-brand-switcher.css', '/filodiretto/fd-nav.css', '/filodiretto/fd-brand-identity.css', '/filodiretto/fd-brand-scope.css', '/filodiretto/fd-home.css', '/filodiretto/fd-users.css', '/filodiretto/fd-contacts.css', '/filodiretto/fd-media-library.css', '/filodiretto/fd-destructive.css', '/filodiretto/fd-form-dirty.css', '/filodiretto/fd-form-help.css', '/filodiretto/fd-empty-states.css', '/filodiretto/fd-page-states.css', '/filodiretto/fd-danger-zone.css', '/filodiretto/fd-push.css', '/filodiretto/fd-reward-challenge.css', '/filodiretto/fd-analytics.css', '/filodiretto/fd-audiences.css', '/filodiretto/fd-conventions.css', '/filodiretto/fd-pga.css', '/filodiretto/fd-activity-log.css', '/filodiretto/fd-responsive-tables.css'];
+            var fdJs = ['/filodiretto/fd-buttons.js', '/filodiretto/fd-header.js', '/filodiretto/fd-layout.js', '/filodiretto/fd-mobile-gate.js', '/filodiretto/fd-wai.js', '/filodiretto/fd-brand-switcher.js', '/filodiretto/fd-icons.js', '/filodiretto/fd-nav.js', '/filodiretto/fd-legacy-campaigns.js', '/filodiretto/fd-hr-copy.js', '/filodiretto/fd-brand-scope.js', '/filodiretto/fd-brand-identity.js', '/filodiretto/fd-brand-pass-flow.js', '/filodiretto/fd-home.js', '/filodiretto/fd-users.js', '/filodiretto/fd-contacts.js', '/filodiretto/fd-media-library.js', '/filodiretto/fd-templates.js', '/filodiretto/fd-passes.js', '/filodiretto/fd-destructive.js', '/filodiretto/fd-form-dirty.js', '/filodiretto/fd-form-help.js', '/filodiretto/fd-form-a11y.js', '/filodiretto/fd-empty-states.js', '/filodiretto/fd-page-states.js', '/filodiretto/fd-danger-zone.js', '/filodiretto/fd-rbac.js', '/filodiretto/fd-push.js', '/filodiretto/fd-reward-challenge.js', '/filodiretto/fd-analytics.js', '/filodiretto/fd-audiences.js', '/filodiretto/fd-conventions.js', '/filodiretto/fd-pga.js', '/filodiretto/fd-pga-engagement.js', '/filodiretto/fd-activity-log.js', '/filodiretto/fd-responsive-tables.js', '/filodiretto/fd-profile.js'];
+            var useFdBundle = window.location.search.indexOf('fd_nobundle') === -1;
+            if (useFdBundle) {
+                var bundleCss = document.createElement('link');
+                bundleCss.rel = 'stylesheet';
+                bundleCss.href = fdBundleCss;
+                document.head.appendChild(bundleCss);
+                var bundleJs = document.createElement('script');
+                bundleJs.src = fdBundleJs;
+                bundleJs.defer = true;
+                document.head.appendChild(bundleJs);
+            } else {
+                fdCss.forEach(function (href) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = href;
+                    document.head.appendChild(link);
+                });
+                fdJs.forEach(function (src) {
+                    var fdScript = document.createElement('script');
+                    fdScript.src = src;
+                    fdScript.defer = true;
+                    document.head.appendChild(fdScript);
+                });
             }
         } catch (e) {}
     })();
@@ -77,9 +69,6 @@
     <link rel="stylesheet" href="/dashboard/styles/a2w-modal.css?v=20260527-contacts-v5">
     <link rel="stylesheet" href="/dashboard/styles/a2w-leads.css?v=20260527-contacts-v5">
     <link rel="stylesheet" href="/dashboard/styles/a2w-brand-identity.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-template-modal.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-template-campaigns.css">
-    <link rel="stylesheet" href="/dashboard/styles/a2w-setup-checklist.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-contacts-refactor.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-manual-modal.css">
     <link rel="stylesheet" href="/dashboard/styles/filo-hr-import-modal.css">
@@ -3419,8 +3408,9 @@
                     <div class="form-row" id="tplImgLogoRow">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Logo (PNG, max 320x100)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('logo')">Da Media Library</button>
+                                <button type="button" class="btn small sec" id="tplImgRemove_logo" style="display:none;" onclick="clearTplImage('logo')">Rimuovi</button>
                             </div>
                             <input type="file" id="tplImgLogo" accept="image/*,.pdf" onchange="previewTplImage(this,'logo')" style="font-size:12px;">
                             <img id="tplImgLogoPreview" alt="Anteprima logo template" style="display:none;height:32px;margin-top:4px;border-radius:4px;">
@@ -3430,8 +3420,9 @@
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Icona notifiche Wallet (quadrata)</label>
                             <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Per le push su iPhone: usa un simbolo quadrato (es. 512×512). Il logo orizzontale del pass resta troppo piccolo nelle notifiche.</p>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('wallet_icon')">Da Media Library</button>
+                                <button type="button" class="btn small sec" id="tplImgRemove_wallet_icon" style="display:none;" onclick="clearTplImage('wallet_icon')">Rimuovi</button>
                             </div>
                             <input type="file" id="tplImgWalletIcon" accept="image/*,.pdf" onchange="previewTplImage(this,'wallet_icon')" style="font-size:12px;">
                             <img id="tplImgWalletIconPreview" alt="Anteprima icona wallet" style="display:none;width:48px;height:48px;margin-top:4px;border-radius:8px;object-fit:cover;">
@@ -3442,6 +3433,7 @@
                             <label class="form-label">Strip Image (PNG, 750x246)</label>
                             <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('strip')">Da Media Library</button>
+                                <button type="button" class="btn small sec" id="tplImgRemove_strip" style="display:none;" onclick="clearTplImage('strip')">Rimuovi</button>
                                 <select id="tplStripPromoSelect" onchange="loadStripFromPromo()" style="flex:1;min-width:140px;font-size:12px;">
                                     <option value="">-- Strip Promo --</option>
                                 </select>
@@ -3453,8 +3445,9 @@
                     <div class="form-row" id="tplImgThumbRow" style="display:none;">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Thumbnail (PNG, 90x90 — mostrato sul fronte)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('thumbnail')">Da Media Library</button>
+                                <button type="button" class="btn small sec" id="tplImgRemove_thumbnail" style="display:none;" onclick="clearTplImage('thumbnail')">Rimuovi</button>
                             </div>
                             <input type="file" id="tplImgThumb" accept="image/*,.pdf" onchange="previewTplImage(this,'thumbnail')" style="font-size:12px;">
                             <img id="tplImgThumbPreview" alt="Anteprima thumbnail template" style="display:none;width:60px;height:60px;object-fit:cover;margin-top:4px;border-radius:4px;">
@@ -3463,8 +3456,9 @@
                     <div class="form-row" id="tplImgBgRow" style="display:none;">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Background (PNG, 360x440 — sfondo intero pass)</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('background')">Da Media Library</button>
+                                <button type="button" class="btn small sec" id="tplImgRemove_background" style="display:none;" onclick="clearTplImage('background')">Rimuovi</button>
                             </div>
                             <input type="file" id="tplImgBg" accept="image/*,.pdf" onchange="previewTplImage(this,'background')" style="font-size:12px;">
                             <img id="tplImgBgPreview" alt="Anteprima sfondo template" style="display:none;width:100px;margin-top:4px;border-radius:4px;">
@@ -3711,10 +3705,7 @@
 <script src="/dashboard/js/components/modal-a11y.js"></script>
 <script src="/dashboard/js/components/contacts/a2w-contacts-ux.js"></script>
     <script src="/dashboard/js/dashboard-subnav.js"></script>
-    <script src="/dashboard/js/a2w-setup-checklist.js"></script>
-    <script src="/dashboard/js/a2w-shell.js"></script>
     <script src="/dashboard/js/a2w-push-ux.js"></script>
-    <script src="/dashboard/js/a2w-template-editor.js"></script>
 <script src="/dashboard/js/filo-hr-manual-modal.js"></script>
 
 <script>
@@ -5112,7 +5103,7 @@ function getUnscopedDashboardProductLine() {
         const qp = new URLSearchParams(window.location.search).get('product');
         if (qp && VALID_PRODUCT_LINES.includes(qp)) return qp;
     } catch (_) {}
-    return 'ads';
+    return 'hr';
 }
 
 function persistDashboardProductLine(line) {
@@ -6580,6 +6571,7 @@ async function loadHrWalletIconPreview() {
         }
         preview.src = `/api/v1/media/${mediaId}/image?t=${Date.now()}`;
         preview.style.display = 'block';
+        updateTplImageRemoveButtons();
     } catch (_) {
         preview.style.display = 'none';
     }
@@ -6666,6 +6658,7 @@ async function openTemplateModal() {
     ['tplImgLogo','tplImgStrip','tplImgThumb','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     ['tplImgLogoPreview','tplImgStripPreview','tplImgThumbPreview','tplImgBgPreview'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     tplImageCache = {};
+    tplImageRemovals = {};
     tplWalletIconMediaId = null;
     const wiPreview = document.getElementById('tplImgWalletIconPreview');
     if (wiPreview) { wiPreview.style.display = 'none'; wiPreview.removeAttribute('src'); }
@@ -6678,6 +6671,7 @@ async function openTemplateModal() {
         await loadHrTemplateBackFields(null);
         await loadHrWalletIconPreview();
     }
+    updateTplImageRemoveButtons();
 }
 
 async function editTemplate(id) {
@@ -6724,6 +6718,7 @@ async function editTemplate(id) {
     }
     // Reset and load existing images
     tplImageCache = {};
+    tplImageRemovals = {};
     ['tplImgLogo','tplImgStrip','tplImgThumb','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const existingImages = t.style?.images || {};
     if (typeof a2wApplyTplStyleImages === 'function') {
@@ -6744,6 +6739,7 @@ async function editTemplate(id) {
     populateStripPromoSelect();
     onPassTypeChange();
     if (typeof a2wResetTplColorPickers === 'function') a2wResetTplColorPickers(t.style || {});
+    updateTplImageRemoveButtons();
 }
 
 async function saveTemplate() {
@@ -6801,8 +6797,15 @@ async function saveTemplate() {
     const saved = await res.json();
     const tplId = editId || saved.id;
     // Upload images if any were selected
-    if (tplId && Object.keys(tplImageCache).length > 0) {
-        await uploadTemplateImages(tplId);
+    if (tplId) {
+        if (Object.keys(tplImageCache).length > 0) {
+            await uploadTemplateImages(tplId);
+        }
+        if (Object.keys(tplImageRemovals).length > 0) {
+            await persistTemplateImageRemovals(tplId);
+            await clearHrWalletIconIfRequested();
+        }
+        tplImageRemovals = {};
     }
     if (isHrDashboard() && brandId) {
         try {
@@ -7081,9 +7084,115 @@ function onPassTypeChange() {
     // Update info box if visible
     if (document.getElementById('passTypeInfoBox').style.display !== 'none') updatePassTypeInfo();
     updatePassPreview();
+    updateTplImageRemoveButtons();
 }
 
 let tplImageCache = {}; // { logo: base64, strip: base64, ... }
+let tplImageRemovals = {}; // { thumbnail: true, ... } — persisted via DELETE on save
+
+const TPL_IMAGE_INPUT_IDS = {
+    logo: 'tplImgLogo',
+    strip: 'tplImgStrip',
+    thumbnail: 'tplImgThumb',
+    background: 'tplImgBg',
+    wallet_icon: 'tplImgWalletIcon'
+};
+
+function tplImageRowId(imageType) {
+    return {
+        logo: 'tplImgLogoRow',
+        strip: 'tplImgStripRow',
+        thumbnail: 'tplImgThumbRow',
+        background: 'tplImgBgRow',
+        wallet_icon: 'tplImgWalletIconRow'
+    }[imageType] || '';
+}
+
+function tplImageHasContent(imageType) {
+    if (tplImageCache[imageType]) return true;
+    const preview = document.getElementById(tplMediaPreviewId(imageType));
+    return !!(preview && preview.style.display !== 'none' && preview.getAttribute('src'));
+}
+
+function updateTplImageRemoveButtons() {
+    ['logo', 'wallet_icon', 'strip', 'thumbnail', 'background'].forEach((type) => {
+        const btn = document.getElementById('tplImgRemove_' + type);
+        if (!btn) return;
+        const rowId = tplImageRowId(type);
+        const row = rowId ? document.getElementById(rowId) : null;
+        if (row && row.style.display === 'none') {
+            btn.style.display = 'none';
+            return;
+        }
+        const visible = tplImageHasContent(type);
+        btn.style.display = visible ? '' : 'none';
+        btn.disabled = !visible;
+    });
+}
+
+function clearTplImageRemovalFlag(imageType) {
+    if (tplImageRemovals && Object.prototype.hasOwnProperty.call(tplImageRemovals, imageType)) {
+        delete tplImageRemovals[imageType];
+    }
+}
+
+function clearTplImage(imageType, opts = {}) {
+    if (!imageType) return;
+    if (tplImageCache[imageType]) delete tplImageCache[imageType];
+    tplImageRemovals[imageType] = true;
+    const inputId = TPL_IMAGE_INPUT_IDS[imageType];
+    const input = inputId ? document.getElementById(inputId) : null;
+    if (input) input.value = '';
+    const preview = document.getElementById(tplMediaPreviewId(imageType));
+    if (preview) {
+        preview.style.display = 'none';
+        preview.removeAttribute('src');
+    }
+    if (imageType === 'wallet_icon') tplWalletIconMediaId = null;
+    if (typeof a2wSyncTplUploadZone === 'function') a2wSyncTplUploadZone(imageType);
+    updatePassPreview();
+    updateTplImageRemoveButtons();
+    if (!opts.skipToast && typeof toast === 'function') {
+        toast((mediaTypeLabel(imageType) || imageType) + ' rimossa — salva il template per confermare');
+    }
+}
+
+async function persistTemplateImageRemovals(templateId) {
+    const types = Object.keys(tplImageRemovals).filter((t) => tplImageRemovals[t] && t !== 'wallet_icon');
+    for (const imgType of types) {
+        const res = await fetch(`${API}/templates/${templateId}/images/${imgType}`, {
+            method: 'DELETE',
+            headers: waiFetchHeaders()
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Errore rimozione ${imgType}`);
+        }
+        delete tplImageRemovals[imgType];
+    }
+}
+
+async function clearHrWalletIconIfRequested() {
+    if (!tplImageRemovals.wallet_icon || !brandId || !isHrDashboard()) return;
+    try {
+        const brand = await fetch(`${API}/brands/${brandId}`, { headers: getAuthHeaders() }).then((r) => r.json());
+        const cfg = { ...(brand.config || {}) };
+        const assets = { ...(cfg.brand_identity_assets || {}) };
+        delete assets.wallet_icon;
+        cfg.brand_identity_assets = assets;
+        cfg.wallet_icon_rev = (Number(cfg.wallet_icon_rev) || 0) + 1;
+        await fetch(`${API}/brands/${brandId}`, {
+            method: 'PUT',
+            headers: waiFetchHeaders(),
+            body: JSON.stringify({ config: cfg })
+        });
+    } catch (e) {
+        console.warn('[HR] wallet icon remove failed:', e);
+        throw new Error('Rimozione icona notifiche fallita');
+    } finally {
+        delete tplImageRemovals.wallet_icon;
+    }
+}
 let tplWalletIconMediaId = null;
 
 async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
@@ -7180,9 +7289,11 @@ function previewTplImage(input, imageType) {
     reader.onload = (e) => {
         const base64 = e.target.result.split(',')[1];
         tplImageCache[imageType] = base64;
+        clearTplImageRemovalFlag(imageType);
         const preview = document.getElementById(tplMediaPreviewId(imageType));
         if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
         updatePassPreview();
+        updateTplImageRemoveButtons();
     };
     reader.readAsDataURL(file);
 }
@@ -7211,10 +7322,12 @@ async function loadStripFromPromo() {
         const data = await res.json();
         if (data.strip_base64) {
             tplImageCache.strip = data.strip_base64;
+            clearTplImageRemovalFlag('strip');
             const preview = document.getElementById('tplImgStripPreview');
             preview.src = 'data:image/png;base64,' + data.strip_base64;
             preview.style.display = 'block';
             updatePassPreview();
+            updateTplImageRemoveButtons();
             toast('Strip caricata dalla promo!');
         }
     } catch(e) { alert('Errore caricamento strip: ' + e.message); }
@@ -11579,6 +11692,7 @@ async function tplPickFromMedia(imageType) {
     openMediaPicker(async (mediaId, imageUrl) => {
         const base64 = await fetchMediaImageBase64(mediaId);
         tplImageCache[imageType] = base64;
+        clearTplImageRemovalFlag(imageType);
         if (imageType === 'wallet_icon') tplWalletIconMediaId = mediaId;
         const preview = document.getElementById(tplMediaPreviewId(imageType));
         if (preview) {
@@ -11586,6 +11700,7 @@ async function tplPickFromMedia(imageType) {
             preview.style.display = 'block';
         }
         updatePassPreview();
+        updateTplImageRemoveButtons();
         if (imageType === 'wallet_icon') {
             await persistHrWalletIcon();
             return;

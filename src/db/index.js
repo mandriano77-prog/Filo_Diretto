@@ -2568,10 +2568,7 @@ function deployLoginAllowlistEmails() {
   if (raw) {
     return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
   }
-  if (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr') {
-    return ['admin@nudj.studio'];
-  }
-  return [];
+  return ['admin@nudj.studio'];
 }
 
 async function ensureAllowlistPlatformAdmins() {
@@ -2625,8 +2622,7 @@ async function bootstrapSuperAdminFromEnv() {
       const inviteToken = await createPasswordResetToken(user.id, 72 * 60 * 60 * 1000);
       const domain = String(process.env.CUSTOM_DOMAIN || 'studio.filodiretto.app').replace(/^https?:\/\//, '');
       const activateUrl = `https://${domain}/dashboard?reset=${encodeURIComponent(inviteToken)}`;
-      const productTitle = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim()
-        || (String(process.env.DASHBOARD_PRODUCT_LINE || '').toLowerCase() === 'hr' ? 'FiloDiretto' : 'FiloDiretto');
+      const productTitle = String(process.env.DASHBOARD_PRODUCT_TITLE || '').trim() || 'FiloDiretto';
       const { sendUserInviteEmail } = require('../engine/mailer');
       await sendUserInviteEmail({
         to: email,
