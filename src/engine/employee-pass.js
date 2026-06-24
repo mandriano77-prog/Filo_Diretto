@@ -7,8 +7,8 @@
 const EMPLOYEE_PASS_TYPE = 'employee_pass';
 /** Apple Wallet pass.json top-level key (implementation detail only). */
 const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
-/** Pass back link text — aligned with HUB PWA tabs (Convenzioni / PGA / Profilo). */
-const HUB_EMPLOYEE_LINK_TEXT = 'Convenzioni · PGA · Profilo';
+/** Pass back link text — compact labels for Wallet (Deal / PGA / COIN). */
+const HUB_EMPLOYEE_LINK_TEXT = 'DEAL · PGA · COIN';
 
 const HR_BG_DEFAULT = '#8B5CF6';
 const HR_LABEL_DEFAULT = '#A78BFA';
@@ -236,25 +236,32 @@ function buildAnnouncementBackSection(brandConfig) {
   };
 }
 
-function buildSupportBackSection(hrBack) {
+/** SUPPORT title row, then one back field per email (Wallet ignores \\n in a single field). */
+function buildSupportBackSections(hrBack) {
   const emails = [];
   if (hrBack.hr_email) emails.push(String(hrBack.hr_email).trim());
   if (hrBack.dpo_email) emails.push(String(hrBack.dpo_email).trim());
-  if (!emails.length) return null;
+  if (!emails.length) return [];
 
-  const body = emails.join('\n');
-  const attributedBody = emails.map((email) => {
-    const safeEmail = escapeHtml(email);
-    return `<a href="mailto:${safeEmail}">${safeEmail}</a>`;
-  }).join('<br/>');
-
-  return {
-    kind: 'support',
+  const sections = [{
+    kind: 'text',
     key: 'support',
     label: 'SUPPORT',
-    body,
-    attributedBody
-  };
+    body: ''
+  }];
+
+  emails.forEach((email, idx) => {
+    const safeEmail = escapeHtml(email);
+    sections.push({
+      kind: 'support',
+      key: `support_email_${idx + 1}`,
+      label: '',
+      body: email,
+      attributedBody: `<a href="mailto:${safeEmail}">${safeEmail}</a>`
+    });
+  });
+
+  return sections;
 }
 
 function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null }) {
@@ -274,8 +281,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     });
   }
 
-  const support = buildSupportBackSection(hrBack);
-  if (support) sections.push(support);
+  buildSupportBackSections(hrBack).forEach((section) => sections.push(section));
 
   if (portalUrl) {
     sections.push({
@@ -409,7 +415,11 @@ function sectionsToAppleBackFields(sections) {
       if (s.attributedBody) field.attributedValue = s.attributedBody;
       return field;
     }
-    return { key: s.key, label: s.label, value: s.body };
+    return {
+      key: s.key,
+      label: String(s.label || '').toUpperCase().slice(0, 64),
+      value: String(s.body || '').slice(0, 500)
+    };
   });
 }
 

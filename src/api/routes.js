@@ -4661,6 +4661,40 @@ router.get('/samsung-wallet/cards/:cardId/:refId', async (req, res) => {
   }
 });
 
+router.post('/samsung-wallet/cards/:cardId/:refId/requestAction', async (req, res) => {
+  try {
+    if (!samsungWallet.isConfigured()) {
+      return res.status(503).json({ error: 'Samsung Wallet not configured' });
+    }
+
+    const { cardId, refId } = req.params;
+    if (cardId !== samsungWallet.CARD_ID) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!samsungInboundHeadersOk(req, 'POST')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const pass = await getPassBySamsungRefId(refId);
+    if (!pass) {
+      return res.status(204).send();
+    }
+
+    await logEvent({
+      pass_id: pass.id,
+      brand_id: pass.brand_id,
+      event_type: 'samsung_wallet_request_action',
+      metadata: { refId, body: req.body || null }
+    });
+
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('[SamsungWallet] POST requestAction error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/samsung-wallet/cards/:cardId/:refId', async (req, res) => {
   try {
     if (!samsungWallet.isConfigured()) {

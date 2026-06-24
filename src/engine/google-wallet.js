@@ -510,10 +510,10 @@ async function resolveHrPassOptions(brand, instance, memberHint) {
       });
       hubUrl = buildHubUrl(token, brand.slug);
       meUrl = buildHubAppUrl(token, brand.slug, 'me');
+      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       const pgaSettings = await getPgaSettings(brand.id);
       if (pgaSettings?.enabled) {
         pgaUrl = buildHubAppUrl(token, brand.slug, 'pga');
-        coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       }
     } catch (err) {
       console.warn('[GoogleWallet] hub links skipped:', err.message);

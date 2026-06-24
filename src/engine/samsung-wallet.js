@@ -22,10 +22,10 @@ const TSAPI_HOST_TEMPLATE =
 
 const JWT_KID = process.env.SAMSUNG_WALLET_JWT_KID || 'WLT.PRIKEY';
 
-/** Tipo card Samsung registrato sul portale Partner (coupon | loyalty | giftcard | boardingpass | ticket | id). */
-const SAMSUNG_CARD_TYPE = (process.env.SAMSUNG_WALLET_CARD_TYPE || 'coupon').trim().toLowerCase();
+/** Tipo card Samsung registrato sul portale Partner (per HR: generic). */
+const SAMSUNG_CARD_TYPE = (process.env.SAMSUNG_WALLET_CARD_TYPE || 'generic').trim().toLowerCase();
 
-/** SubType registrato sul portale (per coupon: "others" / "discountstore" / ...). Manteniamo retrocompatibilità con LOYALTY_SUBTYPE. */
+/** SubType registrato sul portale (per HR Generic Card: "others"). Manteniamo retrocompatibilità con LOYALTY_SUBTYPE. */
 const SAMSUNG_CARD_SUBTYPE = (process.env.SAMSUNG_WALLET_CARD_SUBTYPE || process.env.SAMSUNG_WALLET_LOYALTY_SUBTYPE || 'others').trim();
 
 /** Default country code per Update Notification quando il pass non ha ancora salvato cc2 da Send Card State. */
@@ -171,19 +171,34 @@ function buildLoyaltyCardResponse(brand, template, instance, refId, cardState = 
     let logoImage = samsung.logoImage
       || 'https://gpp.walletsvc.samsung.com/mcs/images/contents/wallet_intro_logo.png';
 
+    const title = String(samsung.title || 'Pass dipendente').slice(0, 32);
+    const providerName = String(samsung.providerName || brand?.name || 'FiloDiretto').slice(0, 32);
+    const qrValue = String(samsung.barcode.value || refId).slice(0, 4096);
+    const appLink = api
+      ? api.replace(/\/api\/v1$/, '')
+      : (process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : 'https://studio.filodiretto.app');
+
     const attrs = {
-      title: samsung.title,
-      providerName: samsung.providerName,
+      title,
+      subtitle: String(samsung.cardSubTitle || 'Pass dipendente').slice(0, 32),
+      providerName,
+      startDate: now,
+      'startDate.utcOffset': 'UTC+1',
       noticeDesc: samsung.noticeDesc,
       logoImage,
       'logoImage.darkUrl': logoImage,
       bgColor: samsung.bgColor,
-      'barcode.value': String(samsung.barcode.value || refId).slice(0, 64),
-      'barcode.serialType': 'QRCODE',
-      'barcode.ptFormat': 'QRCODESERIAL',
-      'barcode.ptSubFormat': 'QR_CODE'
+      fontColor: 'light',
+      noNetworkSupportYn: 'N',
+      appLinkLogo: logoImage,
+      appLinkName: providerName,
+      appLinkData: appLink || 'https://studio.filodiretto.app',
+      'serial1.value': qrValue,
+      'serial1.serialType': 'QRCODE',
+      'serial1.ptFormat': 'QRCODE',
+      'serial1.ptSubFormat': 'QR_CODE'
     };
-    if (samsung.cardSubTitle) attrs.amount = samsung.cardSubTitle.slice(0, 32);
+    if (samsung.cardSubTitle && SAMSUNG_CARD_TYPE !== 'generic') attrs.amount = samsung.cardSubTitle.slice(0, 32);
     if (samsung.bannerImage) attrs.bannerImage = samsung.bannerImage;
 
     samsung.links.slice(0, 5).forEach((link, i) => {

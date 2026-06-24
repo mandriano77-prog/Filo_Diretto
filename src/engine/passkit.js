@@ -1029,10 +1029,10 @@ async function createPkpass(template, instance, brand, options = {}) {
       hubUrl = buildHubUrl(token, brand.slug);
       meUrl = buildHubAppUrl(token, brand.slug, 'me');
       hubLocations = await listMerchantGeofenceLocationsForBrand(brand.id);
+      coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       const pgaSettings = await getPgaSettings(brand.id);
       if (pgaSettings.enabled) {
         pgaUrl = buildHubAppUrl(token, brand.slug, 'pga');
-        coinBalance = await getCurrentBalance(brand.id, instance.serial_number);
       }
     } catch (err) {
       console.warn('[hub] pass back link skipped:', err.message);

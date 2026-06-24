@@ -39,33 +39,45 @@ function loadSamsung(overrides = {}) {
   };
 }
 
-test('buildLoyaltyCardResponse uses coupon type and IT tsapi default', () => {
+test('buildLoyaltyCardResponse renders HR employee pass and IT tsapi default', () => {
   const { mod, restore } = loadSamsung({
-    SAMSUNG_WALLET_CARD_TYPE: 'coupon',
+    SAMSUNG_WALLET_CARD_TYPE: 'generic',
     SAMSUNG_WALLET_CARD_SUBTYPE: 'others',
     SAMSUNG_WALLET_DEFAULT_CC2: 'IT',
     SAMSUNG_WALLET_CARD_ID: 'test-card',
     SAMSUNG_WALLET_CERTIFICATE_ID: 'test',
     SAMSUNG_WALLET_PARTNER_ID: 'test',
-    CUSTOM_DOMAIN: 'studio.ads2wallet.com'
+    CUSTOM_DOMAIN: 'studio.filodiretto.app'
   });
 
   try {
-    const brand = { id: 'b1', name: 'Motor K' };
-    const template = { name: 'Promo Estate', style: { backgroundColor: '#112233' } };
+    const brand = { id: 'b1', name: 'FiloDiretto', config: { product_line: 'hr' } };
+    const template = { name: 'Pass Dipendente', style: { backgroundColor: '#112233' } };
     const instance = {
       serial_number: 'SN-001',
-      field_values: { subtitle: 'Sconto 20%', expiry: '2030-12-31T23:59:59.000Z' }
+      field_values: {
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        employee_id: '42',
+        department: 'People'
+      }
     };
 
     const result = mod.buildLoyaltyCardResponse(brand, template, instance, 'refid-test', 'ACTIVE');
-    assert.equal(result.card.type, 'coupon');
+    assert.equal(result.card.type, 'generic');
     assert.equal(result.card.subType, 'others');
     const attrs = result.card.data[0].attributes;
-    assert.ok(attrs['barcode.value']);
-    assert.equal(attrs.mainTitle, 'Promo Estate');
-    assert.equal(attrs.subTitle1, 'Sconto 20%');
-    assert.ok(typeof attrs.expiry === 'number' && attrs.expiry > 0);
+    assert.ok(attrs['serial1.value']);
+    assert.equal(attrs['serial1.serialType'], 'QRCODE');
+    assert.equal(attrs['serial1.ptFormat'], 'QRCODE');
+    assert.equal(attrs.appLinkData, 'https://studio.filodiretto.app');
+    assert.equal(attrs.appLinkName, 'FiloDiretto');
+    assert.equal(typeof attrs.startDate, 'number');
+    assert.equal(attrs.title, 'Ada Lovelace');
+    assert.equal(attrs.providerName, 'FiloDiretto');
+    assert.equal(attrs.subtitle, 'Pass dipendente');
+    assert.match(attrs.noticeDesc, /MATRICOLA: #42/);
+    assert.match(attrs.noticeDesc, /REPARTO: People/);
 
     assert.equal(mod.buildTsapiBaseUrl(), 'https://it-tsapi.walletsvc.samsung.com');
     assert.equal(mod.buildTsapiBaseUrl('de'), 'https://de-tsapi.walletsvc.samsung.com');

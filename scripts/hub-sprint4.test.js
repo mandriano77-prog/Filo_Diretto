@@ -73,16 +73,16 @@ test('fd-conventions module exposes loader and tab switcher', () => {
   assert.match(convSource, /hub-analytics/);
 });
 
-test('member import rejects payloads over server-side 5 MB limit', () => {
+test('member import rejects payloads over server-side 5 MB limit', async () => {
   const { parseImportFile } = require('../src/engine/member-import');
   const tooLargeCsv = 'matricola,nome\n' + '1,'.repeat(3 * 1024 * 1024);
-  assert.throws(
+  await assert.rejects(
     () => parseImportFile({ csv_text: tooLargeCsv }),
     /File import troppo grande/
   );
 
   const tooLargeFile = Buffer.alloc(5 * 1024 * 1024 + 1).toString('base64');
-  assert.throws(
+  await assert.rejects(
     () => parseImportFile({ file_base64: tooLargeFile, filename: 'dipendenti.xlsx' }),
     /File import troppo grande/
   );
