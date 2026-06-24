@@ -1894,6 +1894,11 @@
                                     <p>Informazioni mostrate su pass, landing e canali di supporto.</p>
                                 </div>
                                 <div class="a2w-bi-contact-grid">
+                                    <div class="form-group fd-bi-hr-contact-extra fd-bi-contact-emergency">
+                                        <label class="form-label" for="biEmergencyPhone">Emergenze (telefono)</label>
+                                        <input type="text" id="biEmergencyPhone" placeholder="+39 ...">
+                                        <p class="a2w-bi-field-error" id="biEmergencyPhoneError" role="alert"></p>
+                                    </div>
                                     <div class="form-group">
                                         <label class="form-label" for="biHomepage">Home page</label>
                                         <input type="url" id="biHomepage" placeholder="https://www.brand.com">
@@ -1909,49 +1914,50 @@
                                         <input type="text" id="biSupportPhone" placeholder="+39 02 1234 5678">
                                         <p class="a2w-bi-field-error" id="biSupportPhoneError" role="alert"></p>
                                     </div>
-                                    <div class="form-group fd-bi-hr-contact-extra">
+                                </div>
+                            </section>
+
+                            <section class="card a2w-bi-section a2w-bi-section--privacy fd-bi-hr-contact-extra">
+                                <div class="a2w-bi-section__head">
+                                    <h2>Privacy</h2>
+                                    <p>Contatti DPO e informativa mostrata su pass, portale dipendente e attivazione.</p>
+                                </div>
+                                <div class="fd-bi-privacy-zone">
+                                    <div class="form-group fd-bi-privacy-zone__dpo">
                                         <label class="form-label" for="biDpoEmail">Privacy / DPO email</label>
                                         <input type="email" id="biDpoEmail" placeholder="dpo@azienda.it">
                                         <p class="a2w-bi-field-error" id="biDpoEmailError" role="alert"></p>
                                     </div>
-                                    <div class="form-group fd-bi-hr-contact-extra">
-                                        <label class="form-label" for="biEmergencyPhone">Emergenze (telefono)</label>
-                                        <input type="text" id="biEmergencyPhone" placeholder="+39 ...">
-                                        <p class="a2w-bi-field-error" id="biEmergencyPhoneError" role="alert"></p>
-                                    </div>
-                                    <div class="form-group fd-bi-hr-contact-extra fd-bi-privacy-block">
-                                        <label class="form-label">Informativa privacy</label>
-                                        <div class="fd-bi-privacy-stack">
-                                            <div class="fd-bi-privacy-card fd-bi-privacy-card--default">
-                                                <div class="fd-bi-privacy-card__head">
-                                                    <span class="fd-bi-privacy-card__badge">Predefinita</span>
-                                                    <strong>FiloDiretto</strong>
-                                                </div>
-                                                <p class="fd-bi-privacy-card__lead">Precompilata con nome azienda e DPO del brand. Usata su pass, portale e attivazione.</p>
-                                                <p class="fd-bi-privacy-card__url"><code id="biDefaultPrivacyPath">/privacy/…</code></p>
-                                                <div class="fd-bi-privacy-card__actions">
-                                                    <a class="btn small sec" id="biPrivacyPreviewBtn" href="#" target="_blank" rel="noopener noreferrer">Anteprima</a>
-                                                    <button type="button" class="btn small sec" id="biPrivacyDownloadBtn">Scarica per il legal</button>
-                                                </div>
+                                    <div class="fd-bi-privacy-stack fd-bi-privacy-stack--horizontal">
+                                        <div class="fd-bi-privacy-card fd-bi-privacy-card--default">
+                                            <div class="fd-bi-privacy-card__head">
+                                                <span class="fd-bi-privacy-card__badge">Predefinita</span>
+                                                <strong>FiloDiretto</strong>
                                             </div>
-                                            <div class="fd-bi-privacy-divider" aria-hidden="true"><span>oppure</span></div>
-                                            <div class="fd-bi-privacy-card fd-bi-privacy-card--custom" id="biCustomPrivacyCard">
-                                                <div class="fd-bi-privacy-card__head">
-                                                    <span class="fd-bi-privacy-card__badge fd-bi-privacy-card__badge--custom">Personalizzata</span>
-                                                    <strong>Informativa ad hoc</strong>
-                                                </div>
-                                                <p class="fd-bi-privacy-card__lead">Carica il documento approvato dal legale del brand (PDF o HTML).</p>
-                                                <input type="file" id="biPrivacyFileInput" accept=".pdf,.html,.htm,application/pdf,text/html" hidden>
-                                                <div class="fd-bi-privacy-card__actions">
-                                                    <button type="button" class="btn small" id="biPrivacyUploadBtn">Carica documento</button>
-                                                    <button type="button" class="btn small sec" id="biPrivacyRemoveCustomBtn" hidden>Rimuovi custom</button>
-                                                </div>
-                                                <p class="fd-bi-privacy-card__status" id="biPrivacyCustomStatus" hidden></p>
+                                            <p class="fd-bi-privacy-card__lead">Precompilata con nome azienda e DPO del brand. Usata su pass, portale e attivazione.</p>
+                                            <p class="fd-bi-privacy-card__url"><code id="biDefaultPrivacyPath">/privacy/…</code></p>
+                                            <div class="fd-bi-privacy-card__actions">
+                                                <a class="btn small sec" id="biPrivacyPreviewBtn" href="#" target="_blank" rel="noopener noreferrer">Anteprima</a>
+                                                <button type="button" class="btn small sec" id="biPrivacyDownloadBtn">Scarica per il legal</button>
                                             </div>
                                         </div>
-                                        <input type="hidden" id="biPrivacyUrl">
-                                        <p class="a2w-bi-field-error" id="biPrivacyUrlError" role="alert"></p>
+                                        <div class="fd-bi-privacy-divider fd-bi-privacy-divider--vertical" aria-hidden="true"><span>oppure</span></div>
+                                        <div class="fd-bi-privacy-card fd-bi-privacy-card--custom" id="biCustomPrivacyCard">
+                                            <div class="fd-bi-privacy-card__head">
+                                                <span class="fd-bi-privacy-card__badge fd-bi-privacy-card__badge--custom">Personalizzata</span>
+                                                <strong>Informativa ad hoc</strong>
+                                            </div>
+                                            <p class="fd-bi-privacy-card__lead">Carica il documento approvato dal legale del brand (PDF o HTML).</p>
+                                            <input type="file" id="biPrivacyFileInput" accept=".pdf,.html,.htm,application/pdf,text/html" hidden>
+                                            <div class="fd-bi-privacy-card__actions">
+                                                <button type="button" class="btn small" id="biPrivacyUploadBtn">Carica documento</button>
+                                                <button type="button" class="btn small sec" id="biPrivacyRemoveCustomBtn" hidden>Rimuovi custom</button>
+                                            </div>
+                                            <p class="fd-bi-privacy-card__status" id="biPrivacyCustomStatus" hidden></p>
+                                        </div>
                                     </div>
+                                    <input type="hidden" id="biPrivacyUrl">
+                                    <p class="a2w-bi-field-error" id="biPrivacyUrlError" role="alert"></p>
                                 </div>
                             </section>
 

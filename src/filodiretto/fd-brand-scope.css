@@ -4,8 +4,12 @@ html:not([data-app='filodiretto']) #brand-identity .fd-bi-hr-contact-extra {
   display: none !important;
 }
 
-html[data-app='filodiretto'] #brand-identity .fd-bi-hr-contact-extra {
-  display: flex;
+html[data-app='filodiretto'] #brand-identity .fd-bi-hr-contact-extra.form-group {
+  display: block;
+}
+
+html[data-app='filodiretto'] #brand-identity section.fd-bi-hr-contact-extra {
+  display: block;
 }
 
 html[data-app='filodiretto'] #brand-identity .a2w-bi-field--pass-only,

@@ -146,6 +146,10 @@ html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-
   grid-column: 1 / -1;
 }
 
+html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-main > .a2w-bi-section--privacy {
+  grid-column: 1 / -1;
+}
+
 html[data-app='filodiretto'] #brand-identity .a2w-bi-layout--brand-only .a2w-bi-contact-grid {
   display: flex;
   flex-direction: column;
@@ -800,9 +804,19 @@ html[data-app='filodiretto'] #brand-identity #a2wBiSaveBtn:not(:disabled) {
   }
 }
 
-/* Privacy block — full width in contatti (colonna destra HR) */
-html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-block {
-  margin-top: var(--fd-space-1);
+/* Privacy zone — full-width section, cards side by side */
+html[data-app='filodiretto'] #brand-identity .a2w-bi-section--privacy {
+  width: 100%;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fd-space-4);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-zone__dpo {
+  max-width: 420px;
 }
 
 html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-stack {
@@ -811,11 +825,26 @@ html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-stack {
   gap: var(--fd-space-3);
 }
 
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-stack--horizontal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--fd-space-4);
+  align-items: stretch;
+}
+
 html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
   border: 1px solid var(--fd-border);
   border-radius: var(--fd-radius-md);
   padding: var(--fd-space-4);
   background: var(--fd-color-surface-muted);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card__actions {
+  margin-top: auto;
 }
 
 html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-card.is-active {
@@ -894,4 +923,38 @@ html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider::after {
   flex: 1;
   height: 1px;
   background: var(--fd-border);
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical {
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  padding: var(--fd-space-2) 0;
+  min-width: 2.5rem;
+}
+
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical::before,
+html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical::after {
+  width: 1px;
+  height: auto;
+  min-height: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-stack--horizontal {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical {
+    flex-direction: row;
+    padding: 0;
+    min-width: 0;
+  }
+
+  html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical::before,
+  html[data-app='filodiretto'] #brand-identity .fd-bi-privacy-divider--vertical::after {
+    width: auto;
+    height: 1px;
+    min-height: 0;
+  }
 }
