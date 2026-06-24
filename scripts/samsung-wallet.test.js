@@ -76,8 +76,9 @@ test('buildLoyaltyCardResponse renders HR employee pass and IT tsapi default', (
     assert.equal(attrs.title, 'Ada Lovelace');
     assert.equal(attrs.providerName, 'FiloDiretto');
     assert.equal(attrs.subtitle, 'Pass dipendente');
-    assert.match(attrs.noticeDesc, /MATRICOLA: #42/);
+    assert.match(attrs.noticeDesc, /DIPENDENTE: Ada Lovelace/);
     assert.match(attrs.noticeDesc, /REPARTO: People/);
+    assert.doesNotMatch(attrs.noticeDesc, /MATRICOLA/);
 
     assert.equal(mod.buildTsapiBaseUrl(), 'https://it-tsapi.walletsvc.samsung.com');
     assert.equal(mod.buildTsapiBaseUrl('de'), 'https://de-tsapi.walletsvc.samsung.com');

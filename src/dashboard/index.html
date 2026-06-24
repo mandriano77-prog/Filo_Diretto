@@ -2772,6 +2772,18 @@
                         <div class="form-group" style="flex:1;"><label class="form-label">Reward</label><select id="audPlayedIw"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
                         <div class="form-group" style="flex:1;"><label class="form-label">Challenge</label><select id="audPlayedGam"><option value="">—</option><option value="true">Sì</option><option value="false">No</option></select></div>
                     </div>
+                    <div id="audHrFilters" hidden>
+                        <div class="sec-title" style="font-size:14px;margin:12px 0 6px;">Profilo dipendente</div>
+                        <p style="font-size:12px;color:var(--text2);margin:0 0 10px;">Reparto e città da anagrafica HR; gli anni in azienda si calcolano dalla data di assunzione.</p>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:1;"><label class="form-label" for="audDepartment">Reparto</label><select id="audDepartment"><option value="">Qualsiasi</option></select></div>
+                            <div class="form-group" style="flex:1;"><label class="form-label" for="audOfficeLocation">Città / sede</label><select id="audOfficeLocation"><option value="">Qualsiasi</option></select></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:1;"><label class="form-label" for="audMinTenureYears">Anni in azienda (min)</label><input type="number" id="audMinTenureYears" min="0" max="60" placeholder="es. 5"></div>
+                            <div class="form-group" style="flex:1;"><label class="form-label" for="audMaxTenureYears">Anni in azienda (max)</label><input type="number" id="audMaxTenureYears" min="0" max="60" placeholder="es. 10"></div>
+                        </div>
+                    </div>
                     <div class="sec-title" style="font-size:14px;margin:12px 0 6px;">Comportamento</div>
                     <div class="form-row">
                         <div class="form-group" style="flex:1;"><label class="form-label">Tipo filtro</label>
@@ -3385,7 +3397,7 @@
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Fronte — Campi</div>
 <p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">
-                    Su Filodiretto il fronte mostra DIPENDENTE, MATRICOLA, REPARTO e SEDE dal profilo. L’<strong>header in alto a destra</strong> (es. «LEGGI LE PUSH» / «Vedi dietro») si configura qui sotto: lascia vuoto per non mostrarlo.
+                    Su Filodiretto il fronte mostra DIPENDENTE, REPARTO e COIN dal profilo (matricola e sede restano in anagrafica HR). L’<strong>header in alto a destra</strong> (es. «LEGGI LE PUSH» / «Vedi dietro») si configura qui sotto: lascia vuoto per non mostrarlo.
                 </p>
                 <div id="tplFrontFieldsBlock">
                 <div class="form-row">
@@ -6982,8 +6994,7 @@ function updatePassPreview() {
         }
         document.getElementById('ppSecondary').innerHTML =
             '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">MATRICOLA</div><div class="pp-field-value">#4721</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering · Milano</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">COIN</div><div class="pp-field-value">247</div></div>';
         document.getElementById('ppAuxiliary').innerHTML = '';
 
@@ -8856,6 +8867,14 @@ function collectAudienceRulesFromForm() {
         played_instant_win: triSelectVal('audPlayedIw'),
         played_gamification: triSelectVal('audPlayedGam')
     };
+    const dept = (document.getElementById('audDepartment')?.value || '').trim();
+    const city = (document.getElementById('audOfficeLocation')?.value || '').trim();
+    const minTen = (document.getElementById('audMinTenureYears')?.value || '').trim();
+    const maxTen = (document.getElementById('audMaxTenureYears')?.value || '').trim();
+    if (dept) rules.department = dept;
+    if (city) rules.office_location = city;
+    if (minTen !== '') rules.min_tenure_years = parseInt(minTen, 10);
+    if (maxTen !== '') rules.max_tenure_years = parseInt(maxTen, 10);
     if (!rules.campaign_id) delete rules.campaign_id;
     if (rules.created_after) rules.created_after = new Date(rules.created_after + 'T00:00:00').toISOString();
     if (rules.created_before) rules.created_before = new Date(rules.created_before + 'T23:59:59').toISOString();
@@ -8888,6 +8907,10 @@ function fillAudienceForm(rules = {}) {
     tri('audHasPhone', rules.has_phone);
     tri('audPlayedIw', rules.played_instant_win);
     tri('audPlayedGam', rules.played_gamification);
+    set('audDepartment', rules.department || '');
+    set('audOfficeLocation', rules.office_location || '');
+    set('audMinTenureYears', rules.min_tenure_years != null ? String(rules.min_tenure_years) : '');
+    set('audMaxTenureYears', rules.max_tenure_years != null ? String(rules.max_tenure_years) : '');
     set('audUtmSource', rules.utm_source || '');
     if (rules.created_after) {
         const d = new Date(rules.created_after);
@@ -8985,20 +9008,25 @@ function openAudienceEditor(id) {
     document.getElementById('audienceEditorTitle').textContent = id ? 'Modifica audience' : 'Nuova audience';
     document.getElementById('audName').value = '';
     document.getElementById('audDescription').value = '';
+    const hrBlock = document.getElementById('audHrFilters');
+    if (hrBlock) hrBlock.hidden = !isHrDashboard();
     fillAudienceForm({});
     document.getElementById('audPreviewCount').textContent = '—';
     const modal = document.getElementById('audienceEditorModal');
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
-    if (id) {
-        const a = audiencesCache.find(x => x.id === id);
-        if (a) {
-            document.getElementById('audName').value = a.name || '';
-            document.getElementById('audDescription').value = a.description || '';
-            fillAudienceForm(a.rules || {});
-            previewAudienceRules();
+    void (async () => {
+        if (isHrDashboard()) await loadAudienceHrFilterOptions();
+        if (id) {
+            const a = audiencesCache.find(x => x.id === id);
+            if (a) {
+                document.getElementById('audName').value = a.name || '';
+                document.getElementById('audDescription').value = a.description || '';
+                fillAudienceForm(a.rules || {});
+                previewAudienceRules();
+            }
         }
-    }
+    })();
 }
 
 function closeAudienceEditor() {
@@ -9008,6 +9036,30 @@ function closeAudienceEditor() {
 }
 
 function editAudience(id) { openAudienceEditor(id); }
+
+async function loadAudienceHrFilterOptions() {
+    if (!brandId || !isHrDashboard()) return;
+    try {
+        const res = await fetch(`${API}/brands/${brandId}/employee-field-options`, { headers: getAuthHeaders() });
+        const data = res.ok ? await res.json() : {};
+        const deptSel = document.getElementById('audDepartment');
+        const citySel = document.getElementById('audOfficeLocation');
+        const deptVal = deptSel?.value || '';
+        const cityVal = citySel?.value || '';
+        if (deptSel) {
+            deptSel.innerHTML = '<option value="">Qualsiasi</option>' + (data.departments || []).map((d) =>
+                `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+            if (deptVal) deptSel.value = deptVal;
+        }
+        if (citySel) {
+            citySel.innerHTML = '<option value="">Qualsiasi</option>' + (data.sites || []).map((s) =>
+                `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+            if (cityVal) citySel.value = cityVal;
+        }
+    } catch (err) {
+        console.warn('loadAudienceHrFilterOptions', err);
+    }
+}
 
 async function previewAudienceRules() {
     if (!brandId) return;

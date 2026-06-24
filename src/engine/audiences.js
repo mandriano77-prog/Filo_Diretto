@@ -84,6 +84,59 @@ function contactLastNameSql(alias = 'p') {
   )`;
 }
 
+function parseTenureYears(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.min(n, 60);
+}
+
+/** Department from members row or pass field_values (reparto / department). */
+function passDepartmentSql(pAlias = 'p') {
+  return `COALESCE(
+    (SELECT NULLIF(TRIM(department), '') FROM members WHERE pass_id = ${pAlias}.id LIMIT 1),
+    (SELECT NULLIF(TRIM(department), '') FROM members WHERE id = ${pAlias}.member_id LIMIT 1),
+    NULLIF(TRIM(${pAlias}.field_values->>'department'), ''),
+    NULLIF(TRIM(${pAlias}.field_values->>'reparto'), '')
+  )`;
+}
+
+/** City / site from members or pass field_values (sede / office_location). */
+function passOfficeLocationSql(pAlias = 'p') {
+  return `COALESCE(
+    (SELECT NULLIF(TRIM(office_location), '') FROM members WHERE pass_id = ${pAlias}.id LIMIT 1),
+    (SELECT NULLIF(TRIM(office_location), '') FROM members WHERE id = ${pAlias}.member_id LIMIT 1),
+    NULLIF(TRIM(${pAlias}.field_values->>'office_location'), ''),
+    NULLIF(TRIM(${pAlias}.field_values->>'sede'), '')
+  )`;
+}
+
+/** Hire date ISO from members or pass field_values. */
+function passHireDateSql(pAlias = 'p') {
+  const fv = `${pAlias}.field_values`;
+  return `COALESCE(
+    (SELECT hire_date FROM members WHERE pass_id = ${pAlias}.id LIMIT 1),
+    (SELECT hire_date FROM members WHERE id = ${pAlias}.member_id LIMIT 1),
+    CASE
+      WHEN NULLIF(TRIM(${fv}->>'hire_date'), '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        THEN (NULLIF(TRIM(${fv}->>'hire_date'), ''))::date
+      WHEN NULLIF(TRIM(${fv}->>'data_assunzione'), '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        THEN (NULLIF(TRIM(${fv}->>'data_assunzione'), ''))::date
+      ELSE NULL
+    END
+  )`;
+}
+
+/** Full years in company from hire_date (null when hire date missing). */
+function passTenureYearsSql(pAlias = 'p') {
+  const hire = passHireDateSql(pAlias);
+  return `CASE
+    WHEN (${hire}) IS NOT NULL
+      THEN EXTRACT(YEAR FROM age(CURRENT_DATE, (${hire})))::int
+    ELSE NULL
+  END`;
+}
+
 function normalizeRules(rules = {}) {
   if (!rules || typeof rules !== 'object') return {};
   const tri = (v) => (v === true ? true : v === false ? false : null);
@@ -99,6 +152,10 @@ function normalizeRules(rules = {}) {
     utm_source: rules.utm_source ? String(rules.utm_source).trim() : null,
     played_instant_win: tri(rules.played_instant_win),
     played_gamification: tri(rules.played_gamification),
+    department: rules.department ? String(rules.department).trim() : null,
+    office_location: rules.office_location ? String(rules.office_location).trim() : null,
+    min_tenure_years: parseTenureYears(rules.min_tenure_years),
+    max_tenure_years: parseTenureYears(rules.max_tenure_years),
     behavior: sanitizeBehavior(rules.behavior)
   };
 }
@@ -235,6 +292,24 @@ function buildAudienceFilter(rules, startIdx = 2) {
     )`);
   }
 
+  if (r.department) {
+    clauses.push(`LOWER(${passDepartmentSql('p')}) = LOWER($${idx++})`);
+    params.push(r.department);
+  }
+  if (r.office_location) {
+    clauses.push(`LOWER(${passOfficeLocationSql('p')}) = LOWER($${idx++})`);
+    params.push(r.office_location);
+  }
+  const tenureExpr = passTenureYearsSql('p');
+  if (r.min_tenure_years != null) {
+    clauses.push(`(${tenureExpr}) IS NOT NULL AND (${tenureExpr}) >= $${idx++}`);
+    params.push(r.min_tenure_years);
+  }
+  if (r.max_tenure_years != null) {
+    clauses.push(`(${tenureExpr}) IS NOT NULL AND (${tenureExpr}) <= $${idx++}`);
+    params.push(r.max_tenure_years);
+  }
+
   appendBehaviorClauses(r.behavior, clauses, params, idx);
 
   const whereExtra = clauses.length ? ` AND ${clauses.join(' AND ')}` : '';
@@ -255,6 +330,10 @@ function hasActiveRules(rules) {
     r.utm_source ||
     r.played_instant_win !== null ||
     r.played_gamification !== null ||
+    r.department ||
+    r.office_location ||
+    r.min_tenure_years != null ||
+    r.max_tenure_years != null ||
     r.behavior
   );
 }
@@ -454,6 +533,11 @@ module.exports = {
   ALLOWED_EVENT_ACTIONS,
   sanitizeBehavior,
   normalizeRules,
+  parseTenureYears,
+  passDepartmentSql,
+  passOfficeLocationSql,
+  passHireDateSql,
+  passTenureYearsSql,
   hasActiveRules,
   buildAudienceFilter,
   countAudienceMembers,

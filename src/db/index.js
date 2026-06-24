@@ -1678,16 +1678,32 @@ async function getEmployeeFieldOptionsForBrand(brandId) {
   await ensureMembersHrSchema();
   const [depts, sites, managers] = await Promise.all([
     pool.query(
-      `SELECT DISTINCT TRIM(department) AS v
-       FROM members
-       WHERE brand_id = $1 AND department IS NOT NULL AND TRIM(department) <> ''
+      `SELECT DISTINCT v FROM (
+         SELECT TRIM(department) AS v FROM members
+         WHERE brand_id = $1 AND department IS NOT NULL AND TRIM(department) <> ''
+         UNION
+         SELECT TRIM(field_values->>'reparto') FROM pass_instances
+         WHERE brand_id = $1 AND NULLIF(TRIM(field_values->>'reparto'), '') IS NOT NULL
+         UNION
+         SELECT TRIM(field_values->>'department') FROM pass_instances
+         WHERE brand_id = $1 AND NULLIF(TRIM(field_values->>'department'), '') IS NOT NULL
+       ) d
+       WHERE v IS NOT NULL AND TRIM(v) <> ''
        ORDER BY v`,
       [brandId]
     ),
     pool.query(
-      `SELECT DISTINCT TRIM(office_location) AS v
-       FROM members
-       WHERE brand_id = $1 AND office_location IS NOT NULL AND TRIM(office_location) <> ''
+      `SELECT DISTINCT v FROM (
+         SELECT TRIM(office_location) AS v FROM members
+         WHERE brand_id = $1 AND office_location IS NOT NULL AND TRIM(office_location) <> ''
+         UNION
+         SELECT TRIM(field_values->>'sede') FROM pass_instances
+         WHERE brand_id = $1 AND NULLIF(TRIM(field_values->>'sede'), '') IS NOT NULL
+         UNION
+         SELECT TRIM(field_values->>'office_location') FROM pass_instances
+         WHERE brand_id = $1 AND NULLIF(TRIM(field_values->>'office_location'), '') IS NOT NULL
+       ) s
+       WHERE v IS NOT NULL AND TRIM(v) <> ''
        ORDER BY v`,
       [brandId]
     ),

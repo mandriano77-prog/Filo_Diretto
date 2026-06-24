@@ -71,9 +71,9 @@ test('AC-010: coin balance renders on secondary row (not header or auxiliary)', 
   const secKeys = (apple.passStructure.secondaryFields || []).map((f) => f.key);
   assert.equal(headerKeys.includes('coin_balance'), false);
   assert.equal(auxKeys.includes('coin_balance'), false);
-  assert.deepEqual(secKeys, ['name', 'matricola', 'reparto', 'coin_balance']);
+  assert.deepEqual(secKeys, ['name', 'reparto', 'coin_balance']);
   const repartoField = apple.passStructure.secondaryFields.find((f) => f.key === 'reparto');
-  assert.equal(repartoField.value, 'Engineering · Milano');
+  assert.equal(repartoField.value, 'Engineering');
   const coinField = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(coinField.value, '247');
 });

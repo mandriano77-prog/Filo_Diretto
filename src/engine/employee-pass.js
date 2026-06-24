@@ -329,20 +329,13 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip on top; anagrafica + COIN on secondary (Apple reliably renders up to 4
-  // secondary fields — auxiliary row is often clipped when secondary is already full + promo).
+  // Front layout: strip on top; nome + reparto + COIN on secondary (matricola resta solo in DB/HR).
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'DIPENDENTE', value: profile.full_name });
   }
-  secondary.push({
-    key: 'matricola',
-    label: 'MATRICOLA',
-    value: profile.employee_id ? `#${profile.employee_id}` : '—'
-  });
-  const repartoParts = [profile.department, profile.office_location].map((v) => String(v || '').trim()).filter(Boolean);
-  if (repartoParts.length) {
-    secondary.push({ key: 'reparto', label: 'REPARTO', value: repartoParts.join(' · ') });
+  if (profile.department) {
+    secondary.push({ key: 'reparto', label: 'REPARTO', value: String(profile.department).trim() });
   }
   const coinValue =
     coinBalance != null && Number.isFinite(Number(coinBalance))
