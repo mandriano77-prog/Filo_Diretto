@@ -115,7 +115,7 @@
       support_phone: document.getElementById('biSupportPhone')?.value || '',
       dpo_email: document.getElementById('biDpoEmail')?.value || '',
       privacy_url: document.getElementById('biPrivacyUrl')?.value || '',
-      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',,
+      emergency_phone: document.getElementById('biEmergencyPhone')?.value || '',
       settore: document.getElementById('biSettore')?.value || '',
       lang: document.getElementById('biLang')?.value || ''
     };
