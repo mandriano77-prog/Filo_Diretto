@@ -83,9 +83,9 @@ function readIconPackFromConfig(logos) {
 
 /**
  * Resolve notification icon buffers for .pkpass (icon.png).
- * Prefers dedicated wallet_icon media, then synced config.logos, then wide logo crop.
+ * Prefers dedicated wallet_icon media, then synced config.logos, template asset, then wide logo crop.
  */
-async function resolvePassIconBuffers(brand, resolvedLogo) {
+async function resolvePassIconBuffers(brand, resolvedLogo, template = null) {
   const cfg = brand?.config || {};
   const fromMedia = await resolveNotificationIconRawBuffer(brand);
   if (fromMedia) {
@@ -97,6 +97,13 @@ async function resolvePassIconBuffers(brand, resolvedLogo) {
   const synced = readIconPackFromConfig(cfg.logos);
   if (synced) {
     return { iconBuffers: synced, source: 'config_logos_synced' };
+  }
+  const tplIcon = template?.style?.images?.wallet_icon;
+  if (tplIcon) {
+    return {
+      iconBuffers: await buildNotificationIconFromRaw(Buffer.from(tplIcon, 'base64')),
+      source: 'template_wallet_icon'
+    };
   }
   if (resolvedLogo?.buffer) {
     return {
@@ -219,11 +226,12 @@ async function applyBrandLogoBase64(brandId, logoBase64, { brand, syncTemplates 
   const logoBuffers = await buildPassLogoBuffersFromRaw(imgBuffer);
   const cfg = brand?.config || {};
   const hasDedicatedIconAsset = !!cfg.brand_identity_assets?.wallet_icon;
+  const hasSyncedWalletIcon = !!cfg.wallet_icon_synced_at || Number(cfg.wallet_icon_rev) > 0;
   const dedicated = await resolveNotificationIconRawBuffer(brand);
   let iconPack;
   if (dedicated) {
     iconPack = await buildNotificationIconFromRaw(dedicated.buffer);
-  } else if (hasDedicatedIconAsset) {
+  } else if (hasDedicatedIconAsset || hasSyncedWalletIcon) {
     iconPack = readIconPackFromConfig(cfg.logos) || await buildNotificationIconFromRaw(imgBuffer);
   } else {
     iconPack = await buildNotificationIconFromRaw(imgBuffer);

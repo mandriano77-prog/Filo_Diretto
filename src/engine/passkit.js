@@ -986,22 +986,28 @@ async function loadHrStripBuffers({ brand, template, stripOverrideBase64 = null 
   return generateStrip(brand?.name || 'Brand', bgColor, fgColor);
 }
 
-function stripTextFitAttrs(maxWidth) {
-  const w = Math.max(40, Math.round(maxWidth));
-  return `textLength="${w}" lengthAdjust="spacingAndGlyphs"`;
+function stripOverlayTextMaxWidth(width, reserveThumbnail = false) {
+  const scale = width / 375;
+  const pad = Math.round(10 * scale);
+  if (!reserveThumbnail) return width - pad * 2;
+  const rightInset = Math.max(30, Math.round(width * 0.085));
+  const thumbW = Math.min(Math.round(width * 0.19), width - pad * 4);
+  const thumbLeft = Math.max(pad, width - thumbW - rightInset);
+  return Math.max(Math.round(120 * scale), thumbLeft - pad);
 }
 
 /** HR push promo — title + message burned into strip (not auxiliary pillar). */
-async function composePushTextOnStrip(stripBuffer, announcement, width, height) {
+async function composePushTextOnStrip(stripBuffer, announcement, width, height, options = {}) {
   const normalized = normalizePushAnnouncementForStrip(announcement);
   if (!normalized?.message || !stripBuffer) return stripBuffer;
 
   const scale = width / 375;
   const pad = Math.round(10 * scale);
   const titleSize = Math.round(9 * scale);
-  const msgSize = Math.round(10 * scale);
-  const lineH = Math.round(13 * scale);
-  const maxTextWidth = width - pad * 2;
+  const msgSize = Math.round(9 * scale);
+  const lineH = Math.round(12 * scale);
+  const reserveThumbnail = Boolean(options.reserveThumbnail);
+  const maxTextWidth = stripOverlayTextMaxWidth(width, reserveThumbnail);
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
   const title = truncateStripOverlayTitle(normalized.title, titleMax);
   const msgLines = wrapStripOverlayLines(normalized.message, msgMax, maxLines);
@@ -1036,10 +1042,9 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height) 
     ? titleY + Math.round(12 * scale)
     : barY + barPad + Math.round(9 * scale);
 
-  const fit = stripTextFitAttrs(maxTextWidth);
   const msgTspans = msgLines.map((line, idx) => {
     const dy = idx === 0 ? 0 : lineH;
-    return `<tspan x="${pad}" dy="${dy}" ${fit}>${escapeStripSvgText(line)}</tspan>`;
+    return `<tspan x="${pad}" dy="${dy}">${escapeStripSvgText(line)}</tspan>`;
   }).join('');
 
   const clipId = `stripClip${width}x${height}`;
@@ -1067,7 +1072,7 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height) 
     <g clip-path="url(#${clipId})">
       <rect x="0" y="${gradY}" width="${width}" height="${gradH}" fill="url(#${gradId})"/>
       <g clip-path="url(#${barClipId})" filter="url(#${shadowId})">
-        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" ${fit}>${escapeStripSvgText(title)}</text>` : ''}
+        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}">${escapeStripSvgText(title)}</text>` : ''}
         ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
       </g>
     </g>
@@ -1297,7 +1302,7 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log(`✓ Wallet logo from ${resolvedLogo.source}`);
   }
 
-  const resolvedPassIcon = await resolvePassIconBuffers(brand, resolvedLogo);
+  const resolvedPassIcon = await resolvePassIconBuffers(brand, resolvedLogo, template);
   if (resolvedPassIcon.iconBuffers) {
     iconBuffers = resolvedPassIcon.iconBuffers;
     console.log(`✓ Notification icon from ${resolvedPassIcon.source}`);
@@ -1393,8 +1398,9 @@ async function createPkpass(template, instance, brand, options = {}) {
   }
 
   if (pushStripCopy) {
-    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123);
-    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246);
+    const reserveThumbnail = Boolean(thumbnailBuffers);
+    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123, { reserveThumbnail });
+    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246, { reserveThumbnail });
     console.log('✓ HR: push message composited on strip');
   }
 
@@ -1494,6 +1500,7 @@ module.exports = {
   STRIP_OVERLAY_MSG_LINES,
   loadHrStripBuffers,
   composePushTextOnStrip,
+  stripOverlayTextMaxWidth,
   generateManifest,
   signManifest,
   createPkpass,

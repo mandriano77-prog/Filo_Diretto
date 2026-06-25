@@ -126,34 +126,33 @@ function isCoinPassField(label, key) {
   return k === 'coin_balance' || k === 'coin' || l === 'COIN' || /^COIN\b/.test(l);
 }
 
-/** Invisible suffix so Wallet sees a value change without showing extra digits on the pass face. */
-function pushWalletTouchSuffix(ts) {
-  const seed = Number(ts);
-  const n = (Number.isFinite(seed) ? Math.abs(seed) : Date.now()) % 24;
-  return '\u200b'.repeat(n + 1);
-}
-
-function buildCoinFieldValue(coinBalance, pushAnn) {
+function buildCoinFieldValue(coinBalance) {
   const coinValue =
     coinBalance != null && Number.isFinite(Number(coinBalance))
       ? Math.max(0, Math.floor(Number(coinBalance)))
       : 0;
-  const coinValueStr = String(coinValue);
-  const field = {
+  return {
     key: 'coin_balance',
     label: 'COIN',
-    value: coinValueStr,
+    value: String(coinValue),
     changeMessage: 'Hai %@ coin'
   };
-  if (!pushAnn?.message) return field;
+}
 
+/** Back-field Wallet lock-screen alert — avoids COIN highlight ring on pass face. */
+function buildPushAlertBackSection(pushAnn) {
+  if (!pushAnn?.message) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
   const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
   const promoValue = String(pushAnn.message).trim().slice(0, 52);
   const alertText = (promoTitle ? `${promoTitle}: ` : '') + promoValue;
-  field.value = coinValueStr + pushWalletTouchSuffix(pushTs);
-  field.changeMessage = alertText.slice(0, 178);
-  return field;
+  return {
+    kind: 'alert',
+    key: 'wallet_push_alert',
+    label: ' ',
+    body: String(Number.isFinite(pushTs) ? pushTs : Date.now()),
+    changeMessage: alertText.slice(0, 178)
+  };
 }
 
 /** Push copy for strip overlay (not auxiliary pillar). Instance overlay wins over brand config. */
@@ -299,6 +298,9 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   }
 
   const pushAnn = resolvePushAnnouncement(brandConfig, instance);
+  const pushAlert = buildPushAlertBackSection(pushAnn);
+  if (pushAlert) sections.unshift(pushAlert);
+
   if (pushAnn?.back_details) {
     sections.push({
       kind: 'text',
@@ -368,7 +370,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   if (profile.department) {
     secondary.push({ key: 'area', label: 'AREA', value: String(profile.department).trim() });
   }
-  secondary.push(buildCoinFieldValue(coinBalance, pushAnn));
+  secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
 
@@ -415,6 +417,15 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
 function sectionsToAppleBackFields(sections) {
   const fields = [];
   for (const s of sections) {
+    if (s.kind === 'alert') {
+      fields.push({
+        key: s.key,
+        label: String(s.label ?? ' ').slice(0, 64),
+        value: String(s.body || '').slice(0, 64),
+        changeMessage: String(s.changeMessage || '').slice(0, 178)
+      });
+      continue;
+    }
     if (s.kind === 'link') {
       if (s.doc) {
         const safeUrl = escapeHtml(s.url);
@@ -669,5 +680,6 @@ module.exports = {
   resolveMemberProfile,
   resolveVariableLink,
   resolvePushAnnouncement,
+  buildPushAlertBackSection,
   escapeHtml
 };

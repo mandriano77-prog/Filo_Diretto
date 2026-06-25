@@ -37,3 +37,23 @@ test('readIconPackFromConfig returns buffers', async () => {
   });
   assert.ok(pack.icon.length > 0);
 });
+
+test('resolvePassIconBuffers prefers template wallet_icon over logo crop', async () => {
+  const iconBuf = await tinyPng();
+  const pack = await require('../src/engine/brand-wallet-logo').buildNotificationIconFromRaw(iconBuf);
+  const brand = { config: {} };
+  const template = {
+    style: {
+      images: {
+        wallet_icon: iconBuf.toString('base64'),
+      },
+    },
+  };
+  const logoBuf = await sharp({
+    create: { width: 200, height: 50, channels: 3, background: { r: 10, g: 20, b: 30 } },
+  }).png().toBuffer();
+  const resolved = await resolvePassIconBuffers(brand, { buffer: logoBuf }, template);
+  assert.equal(resolved.source, 'template_wallet_icon');
+  assert.ok(resolved.iconBuffers?.icon?.length > 0);
+  assert.equal(resolved.iconBuffers.icon.length, pack.icon.length);
+});

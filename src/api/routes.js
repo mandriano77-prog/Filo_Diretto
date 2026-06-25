@@ -2559,7 +2559,8 @@ router.post('/brands/:id/push/strip-preview', async (req, res) => {
     let preview = stripBuffers.strip;
     const msg = String(message || '').trim();
     if (msg) {
-      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123);
+      const reserveThumbnail = !!template?.style?.images?.thumbnail;
+      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123, { reserveThumbnail });
     }
 
     const acceptJson = format === 'json' || req.query.format === 'json';
