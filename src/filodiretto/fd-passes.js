@@ -616,7 +616,7 @@
       '<li><strong>Installato</strong> — salvato nel wallet vs solo generato</li>' +
       '<li><strong>Apple</strong> — token push (APNs) attivo o assente</li>' +
       '<li><strong>Google</strong> — GW salvato · GW° in attesa · — non usato</li>' +
-      '<li><strong>Samsung</strong> — SW salvato · SW° in attesa</li>' +
+      '<li class="fd-wallet-samsung-ui"><strong>Samsung</strong> — SW salvato · SW° in attesa</li>' +
       '<li><strong>Push (APNs)</strong> — ✔ consegnata · ✖ errore · Nx = numero invii</li>' +
       '<li><strong>Pass ID</strong> — clic per copiare l’identificativo</li>' +
       '<li><strong>Selezione</strong> — ☑ prima colonna → Rigenera / Elimina selezionati</li>' +

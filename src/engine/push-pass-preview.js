@@ -8,7 +8,6 @@ const {
 } = require('./passkit');
 const {
   buildEmployeePass,
-  buildPushHeaderField,
   resolveEmployeePassColors,
   buildBackSections,
 } = require('./employee-pass');
@@ -70,12 +69,9 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
   });
 
   const headerField = employeePass.headerHint || null;
-  const headerFromPush = buildPushHeaderField(announcement);
-  const lockScreenBody = updatePass && headerFromPush?.changeMessage
-    ? headerFromPush.changeMessage
-    : (announcement
-      ? `${String(announcement.title || 'NOVITÀ').toUpperCase()}: ${announcement.message}`
-      : '');
+  const lockScreenBody = updatePass && announcement
+    ? `${String(announcement.title || 'NOVITÀ').toUpperCase()}: ${String(announcement.message || '').trim()}`
+    : '';
 
   let stripPreview = null;
   if (updatePass && announcement?.message) {

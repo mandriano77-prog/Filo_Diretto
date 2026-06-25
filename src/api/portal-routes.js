@@ -22,6 +22,7 @@ const { readPassPortalToken, savePassPortalToken } = require('../engine/portal-p
 const { createPkpass } = require('../engine/passkit');
 const { resolveBaseUrl } = require('../engine/base-url');
 const { resolveBrandPrivacyUrl } = require('../engine/brand-privacy-url');
+const { syncGoogleWalletObjectsForPasses } = require('../engine/google-wallet-sync');
 
 const router = express.Router();
 
@@ -322,18 +323,53 @@ router.get('/me/pass/download', async (req, res) => {
 router.post('/me/pass/regenerate', async (req, res) => {
   try {
     const pkpassBuffer = await buildPkpassForPortal(req, { rotatePortalLink: true });
+    const freshPass = await getPassInstance(req.portal.pass_id);
     await touchPass(req.portal.pass_id);
 
     const newToken = await readPassPortalToken(req.portal.pass_id);
+
+    let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: true };
+    if (freshPass?.google_wallet_object_id) {
+      const row = await getPassForPortal(req.portal.pass_id);
+      const brand = {
+        id: row.brand_id,
+        name: row.brand_name,
+        slug: row.brand_slug,
+        config:
+          typeof row.brand_config === 'string'
+            ? JSON.parse(row.brand_config)
+            : row.brand_config
+      };
+      googleSync = await syncGoogleWalletObjectsForPasses({
+        brand,
+        passes: [freshPass],
+        message: null
+      });
+      googleSync.skipped = false;
+    }
 
     await logEvent({
       pass_id: req.portal.pass_id,
       brand_id: req.portal.brand_id,
       event_type: 'portal_pass_regenerated',
-      metadata: { revoked_previous_tokens: true }
+      metadata: { revoked_previous_tokens: true, google: googleSync }
     });
 
+    const wantsJson =
+      req.query.json === '1'
+      || String(req.get('accept') || '').includes('application/json');
+
     const row = await getPassForPortal(req.portal.pass_id);
+    if (wantsJson) {
+      return res.json({
+        success: true,
+        pass_id: req.portal.pass_id,
+        portal_token: newToken || '',
+        portal_url: newToken ? buildPortalUrl(newToken) || '' : '',
+        google: googleSync
+      });
+    }
+
     res.set({
       'Content-Type': 'application/vnd.apple.pkpass',
       'Content-Disposition': `attachment; filename="${row.brand_slug || 'pass'}.pkpass"`,

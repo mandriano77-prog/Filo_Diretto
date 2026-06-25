@@ -48,7 +48,7 @@ function buildPrompt(userPrompt, stylePrompt) {
 // ─── fal.ai API call ──────────────────────────────────────────────
 async function generateWithFal(prompt, width, height, model = 'fal-ai/flux/dev', referenceImageUrl = null, stylePrompt = null) {
   const falApiKey = getFalApiKey();
-  if (!falApiKey) throw new Error('FAL_API_KEY non configurata — aggiungi FAL_API_KEY alle variabili d’ambiente (es. dashboard DigitalOcean / .env)');
+  if (!falApiKey) throw new Error('FAL_API_KEY non configurata — aggiungi FAL_API_KEY alle variabili d’ambiente (es. dashboard Railway / .env)');
 
   const url = `${FAL_BASE}/${model}`;
   console.log(`[fal.ai] POST ${url} — size ${width}x${height}${referenceImageUrl ? ' (with reference image)' : ''}`);

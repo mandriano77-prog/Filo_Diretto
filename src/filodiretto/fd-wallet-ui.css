@@ -1,0 +1,8 @@
+/* Samsung Wallet — hidden in Filo HR until SAMSUNG_WALLET_UI_ENABLED / on-request */
+html[data-app='filodiretto'][data-samsung-wallet-ui='0'] option[value='samsung'],
+html[data-app='filodiretto'][data-samsung-wallet-ui='0'] #passDetailSamsungBtn,
+html[data-app='filodiretto'][data-samsung-wallet-ui='0'] .wallet-diag-item--samsung,
+html[data-app='filodiretto'][data-samsung-wallet-ui='0'] .fd-push-preview__device--samsung,
+html[data-app='filodiretto'][data-samsung-wallet-ui='0'] .fd-wallet-samsung-ui {
+  display: none !important;
+}

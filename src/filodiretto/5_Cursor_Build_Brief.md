@@ -23,7 +23,7 @@ Entrambi i moduli condividono:
 - Stesso pattern di analytics events
 - Stessa filosofia di pricing flat (incluso nel tier, no PEPM)
 
-Output finale: Filodiretto v2 con HUB Convenzioni + PGA live, deployato in produzione DigitalOcean, pronto per onboarding 3 clienti lighthouse Q4 2026.
+Output finale: Filodiretto v2 con HUB Convenzioni + PGA live, deployato in produzione Railway, pronto per onboarding 3 clienti lighthouse Q4 2026.
 
 ---
 
@@ -54,7 +54,7 @@ Holding IP attuale: **Precise Advertising S.r.l.** (100% Adriano Coccia)
 - **AI strip generation:** fal API. Vedi `src/engine/strip-promo.js`
 - **Cron:** booted da `server.js`. Vedi `src/engine/scheduler.js`
 - **Custom domain:** definito in env `CUSTOM_DOMAIN` (no scheme), es. `studio.filodiretto.app`
-- **Hosting prod:** DigitalOcean App Platform (o Droplet + Nginx)
+- **Hosting prod:** Railway (Nixpacks, auto-deploy da `main`)
 - **Multi-tenancy:** **sempre filtrare per `brand_id`** in ogni query
 - **Dashboard admin:** single `index.html` in `src/dashboard/`, vanilla JS, inline
 
@@ -987,7 +987,7 @@ npm install ioredis                # cache PWA + rate limiting (opzionale ma rac
 
 ## 14. Environment variables nuove
 
-Da aggiungere al `.env.example` e all'App Platform DigitalOcean:
+Da aggiungere al `.env.example` e alle variabili Railway del servizio:
 
 ```bash
 # JWT hub (separato da JWT_SECRET dashboard)
@@ -1038,7 +1038,7 @@ launch_target: 2026-09-01
 repo: github.com/mandriano77-prog/Filo_Diretto
 branch: feature/hub-convenzioni-pga
 stack: nodejs-20 + express + postgresql + vanilla-js-pwa
-hosting: digitalocean-app-platform
+hosting: railway
 
 deliverables:
   db_schema: 9 nuove tabelle (4 hub + 5 pga)

@@ -19,6 +19,7 @@ const { startScheduler } = require('./engine/scheduler');
 const { runStripPromoCheck } = require('./engine/strip-promo');
 const { isAnthropicConfigured, isFalConfigured } = require('./engine/env-ai');
 const { resolveBaseUrlFromEnv, getProductBrandName, buildPublicLandingUrl } = require('./engine/base-url');
+const { isSamsungWalletUiEnabled } = require('./engine/wallet-channels');
 const { assertProductionConfig, corsOptions, isProduction, requireDebugAccess } = require('./engine/security-config');
 
 assertProductionConfig();
@@ -54,7 +55,7 @@ loadCerts();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust reverse proxy (Nginx, DigitalOcean App Platform load balancer, etc.) for correct req.protocol
+// Trust reverse proxy (Railway, Nginx, etc.) for correct req.protocol
 app.set('trust proxy', true);
 
 // Force HTTPS in production
@@ -244,7 +245,8 @@ app.get('/dashboard/boot.js', (req, res) => {
     `window.__2WALLET_CHROME_BYLINE__=${JSON.stringify(chromeByline)};` +
     `window.__2WALLET_LOGIN_ALLOWLIST__=${JSON.stringify(loginAllowlist)};` +
     `window.__PUBLIC_BASE_URL__=${JSON.stringify(publicBaseUrl)};` +
-    `window.__PRODUCT_BRAND_NAME__=${JSON.stringify(productBrand)};`
+    `window.__PRODUCT_BRAND_NAME__=${JSON.stringify(productBrand)};` +
+    `window.__FD_SAMSUNG_WALLET_UI__=${JSON.stringify(isSamsungWalletUiEnabled())};`
   );
 });
 
@@ -398,7 +400,9 @@ async function renderThankYouForPass(res, passId) {
 
   const brandName = brand.name || 'Wallet';
   const passDownloadUrl = `/api/v1/passes/${passInstance.id}/download`;
-  const logoUrl = `/api/v1/brands/${encodeURIComponent(String(brand.id))}/logo?t=${Date.now()}`;
+  const logoUrl = brand.slug
+    ? `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?t=${Date.now()}`
+    : `/api/v1/brands/${encodeURIComponent(String(brand.id))}/logo?t=${Date.now()}`;
   const portalHref = await resolvePortalHref(passInstance.id, brand.id);
 
   return res.send(renderSaveThankYouPage({

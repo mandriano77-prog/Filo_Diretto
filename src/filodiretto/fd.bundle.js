@@ -2785,7 +2785,8 @@
       '<div class="fd-stat-card">' +
       '<span class="fd-stat-card__label">Installazioni Wallet</span>' +
       '<span class="fd-stat-card__value">' + esc(ctx.walletInstalls) + '</span>' +
-      '<span class="fd-stat-card__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) + ' · Samsung ' + esc(ctx.samsung) + '</span>' +
+      '<span class="fd-stat-card__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) +
+      (ctx.samsung ? ' · Samsung ' + esc(ctx.samsung) : '') + '</span>' +
       '</div>' +
       '<div class="fd-stat-card">' +
       '<span class="fd-stat-card__label">Push inviate</span>' +
@@ -6123,7 +6124,7 @@
       '<li><strong>Installato</strong> — salvato nel wallet vs solo generato</li>' +
       '<li><strong>Apple</strong> — token push (APNs) attivo o assente</li>' +
       '<li><strong>Google</strong> — GW salvato · GW° in attesa · — non usato</li>' +
-      '<li><strong>Samsung</strong> — SW salvato · SW° in attesa</li>' +
+      '<li class="fd-wallet-samsung-ui"><strong>Samsung</strong> — SW salvato · SW° in attesa</li>' +
       '<li><strong>Push (APNs)</strong> — ✔ consegnata · ✖ errore · Nx = numero invii</li>' +
       '<li><strong>Pass ID</strong> — clic per copiare l’identificativo</li>' +
       '<li><strong>Selezione</strong> — ☑ prima colonna → Rigenera / Elimina selezionati</li>' +
@@ -8217,6 +8218,50 @@
     initFdRbac();
   }
 })(typeof window !== 'undefined' ? window : global);
+(function (global) {
+  'use strict';
+  function isSamsungWalletUiEnabled() {
+    try {
+      if (global.__FD_SAMSUNG_WALLET_UI__ === true) return true;
+    } catch (_) {}
+    return false;
+  }
+  function isFiloApp() {
+    if (document.documentElement.classList.contains('a2w-shell')) return false;
+    try {
+      if (global.__2WALLET_PRODUCT_LOCK__ === 'hr') return true;
+    } catch (_) {}
+    return document.documentElement.getAttribute('data-app') === 'filodiretto';
+  }
+  global.__FD_SAMSUNG_WALLET_UI__ = global.__FD_SAMSUNG_WALLET_UI__ === true;
+  global.fdActiveWalletChannelKeys = function fdActiveWalletChannelKeys() {
+    return isSamsungWalletUiEnabled() ? ['apple', 'google', 'samsung'] : ['apple', 'google'];
+  };
+  function hideSamsungWalletUi() {
+    if (!isFiloApp() || isSamsungWalletUiEnabled()) return;
+    document.documentElement.setAttribute('data-samsung-wallet-ui', '0');
+    document.querySelectorAll('option[value="samsung"]').forEach(function (opt) {
+      opt.disabled = true;
+      opt.hidden = true;
+    });
+    ['passDetailSamsungBtn'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+      el.tabIndex = -1;
+    });
+    document.querySelectorAll('.wallet-diag-item--samsung, .fd-push-preview__device--samsung').forEach(function (el) {
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hideSamsungWalletUi);
+  } else {
+    hideSamsungWalletUi();
+  }
+})(typeof window !== 'undefined' ? window : global);
 (function () {
   'use strict';
   var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
@@ -8234,8 +8279,20 @@
   var CHANNELS = [
     { value: 'apple', label: 'Apple Wallet', icon: '', tip: 'Invio tramite APNs (Apple Push Notification service)' },
     { value: 'google', label: 'Google Wallet', icon: '', tip: 'Aggiornamento messaggio su Google Wallet' },
-    { value: 'samsung', label: 'Samsung Wallet', icon: '', tip: 'Aggiornamento contenuto su Samsung Wallet' }
+    { value: 'samsung', label: 'Samsung Wallet', icon: '', tip: 'Aggiornamento contenuto su Samsung Wallet (solo su richiesta)' }
   ];
+  function channelKeys() {
+    if (typeof window.fdActiveWalletChannelKeys === 'function') {
+      return window.fdActiveWalletChannelKeys();
+    }
+    return ['apple', 'google'];
+  }
+  function visibleChannels() {
+    var keys = channelKeys();
+    return CHANNELS.filter(function (c) {
+      return keys.indexOf(c.value) !== -1;
+    });
+  }
   function getApiBase() {
     if (typeof window.API === 'string' && window.API) return window.API;
     return '/api/v1';
@@ -8566,9 +8623,6 @@
     google: false,
     samsung: false
   };
-  function channelKeys() {
-    return ['apple', 'google', 'samsung'];
-  }
   function isAllChannelsSelected() {
     return channelKeys().every(function (k) {
       return channelSelection[k];
@@ -8579,7 +8633,7 @@
       return channelSelection[k];
     });
     if (!active.length) return 'apple';
-    if (active.length >= 3) return 'all';
+    if (active.length >= channelKeys().length) return 'all';
     if (active.length === 1) return active[0];
     return active.join(',');
   }
@@ -8631,7 +8685,9 @@
           return ch ? ch.label : k;
         });
       if (allOn) {
-        help.textContent = 'Invio su tutti i canali Wallet (Apple, Google, Samsung)';
+        help.textContent = channelKeys().length > 2
+          ? 'Invio su tutti i canali Wallet (Apple, Google, Samsung)'
+          : 'Invio su Apple Wallet e Google Wallet';
       } else if (labels.length) {
         help.textContent = 'Invio su: ' + labels.join(', ');
       } else {
@@ -8936,7 +8992,7 @@
     seg.className = 'fd-push-channel-seg';
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', 'Canale invio');
-    CHANNELS.forEach(function (ch) {
+    visibleChannels().forEach(function (ch) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'fd-push-channel-seg__btn';
@@ -9049,111 +9105,6 @@
     if (sendBtn) card.insertBefore(block, sendBtn);
     else card.appendChild(block);
     document.getElementById('fdPushTestBtn').addEventListener('click', sendTestPush);
-  }
-  function applyPushDraft(draft) {
-    if (!draft) return;
-    var titleEl = document.getElementById('pushTitle');
-    var messageEl = document.getElementById('pushMessage');
-    if (titleEl) titleEl.value = draft.title || '';
-    if (messageEl) messageEl.value = draft.message || '';
-    updateCharCount(titleEl, document.getElementById('fdPushTitleCount'), TITLE_MAX);
-    updateCharCount(messageEl, document.getElementById('fdPushMessageCount'), MESSAGE_MAX);
-    if (draft.include_pass_link && draft.pass_link_url) {
-      var chk = document.getElementById('pushIncludePassLink');
-      if (chk) chk.checked = true;
-      if (typeof window.togglePushPassLinkFields === 'function') window.togglePushPassLinkFields();
-      var urlEl = document.getElementById('pushPassLinkUrl');
-      var labelEl = document.getElementById('pushPassLinkLabel');
-      if (urlEl) urlEl.value = draft.pass_link_url;
-      if (labelEl) labelEl.value = draft.pass_link_label || draft.title || '';
-    }
-    if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
-    syncPreview();
-    syncPassPreview();
-    [titleEl, messageEl].forEach(function (el) {
-      if (!el) return;
-      el.classList.add('fd-push-draft-filled');
-      setTimeout(function () { el.classList.remove('fd-push-draft-filled'); }, 2200);
-    });
-    var preview = document.getElementById('fdPushPreview');
-    if (preview && typeof preview.scrollIntoView === 'function') {
-      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-  async function generatePushDraft() {
-    var briefEl = document.getElementById('pushDraftBrief');
-    var btn = document.getElementById('pushDraftBtn');
-    var status = document.getElementById('pushDraftStatus');
-    var brandId = syncBrandIdForPush();
-    if (!brandId) {
-      if (status) status.textContent = 'Seleziona un brand prima di generare la bozza.';
-      return;
-    }
-    var brief = (briefEl && briefEl.value || '').trim();
-    if (!brief) {
-      if (status) status.textContent = 'Descrivi la promo in una frase (es. «-20% occhiali fino a domenica»).';
-      if (briefEl) briefEl.focus();
-      return;
-    }
-    if (btn) btn.disabled = true;
-    if (status) status.textContent = 'L’assistente compila titolo e messaggio…';
-    try {
-      var res = await fetch(
-        getApiBase() + '/brands/' + encodeURIComponent(brandId) + '/push/draft-copy',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(typeof getAuthHeaders === 'function' ? getAuthHeaders() : {})
-          },
-          body: JSON.stringify({ brief: brief })
-        }
-      );
-      var data = {};
-      try { data = await res.json(); } catch (_) {}
-      if (!res.ok) throw new Error(data.error || 'Generazione bozza non riuscita');
-      applyPushDraft(data.draft);
-      var notes = Array.isArray(data.draft && data.draft.notes) ? data.draft.notes.join(' ') : '';
-      if (status) {
-        status.textContent = notes ||
-          'Bozza pronta — controlla titolo, messaggio e anteprima a destra prima di inviare.';
-      }
-    } catch (err) {
-      if (status) status.textContent = err.message || 'Errore durante la generazione.';
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  }
-  function buildPushDraftBlock() {
-    if (document.getElementById('fdPushDraftBlock')) return;
-    var titleInput = document.getElementById('pushTitle');
-    if (!titleInput) return;
-    var titleGroup = titleInput.closest('.form-group');
-    if (!titleGroup || !titleGroup.parentElement) return;
-    var block = document.createElement('div');
-    block.id = 'fdPushDraftBlock';
-    block.className = 'fd-push-draft';
-    block.innerHTML =
-      '<label class="form-label" for="pushDraftBrief">Assistente copy</label>' +
-      '<p class="form-hint fd-push-draft__lead">Descrivi la promo in italiano: l’agente compila titolo e messaggio ' +
-      'nei limiti della strip (22/52 caratteri). Tu controlli l’anteprima e invii quando sei pronto.</p>' +
-      '<textarea id="pushDraftBrief" class="fd-push-draft__brief" rows="2" maxlength="500" ' +
-      'placeholder="es. Promozione 2x1 occhiali da sole fino a domenica, link al volantino online"></textarea>' +
-      '<div class="fd-push-draft__actions">' +
-      '<button type="button" class="fd-btn fd-btn--secondary" id="pushDraftBtn">Genera bozza</button>' +
-      '</div>' +
-      '<p class="form-hint fd-push-draft__status" id="pushDraftStatus" aria-live="polite"></p>';
-    titleGroup.parentElement.insertBefore(block, titleGroup);
-    document.getElementById('pushDraftBtn').addEventListener('click', generatePushDraft);
-    var briefEl = document.getElementById('pushDraftBrief');
-    if (briefEl) {
-      briefEl.addEventListener('keydown', function (ev) {
-        if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
-          ev.preventDefault();
-          generatePushDraft();
-        }
-      });
-    }
   }
   var fdModalOpeners = Object.create(null);
   function getFocusables(root) {
@@ -9642,7 +9593,6 @@
     }
     wirePreviewTabs(preview);
     buildChannelSegmented();
-    buildPushDraftBlock();
     buildTestBlock();
     wrapCharField('pushTitle', TITLE_MAX);
     wrapCharField('pushMessage', MESSAGE_MAX);

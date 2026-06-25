@@ -137,8 +137,10 @@ test('fd.bundle.css preserves calc() operator spacing (W.AI inset)', () => {
   const bundle = read('src/filodiretto/fd.bundle.css');
   assert.match(
     bundle,
-    /#waiOverlay\.wai-panel\{[^}]*calc\(var\(--space-5,\s*20px\)\s*\+\s*52px\)/
+    /#waiOverlay\.wai-panel\{[^}]*calc\(var\(--fd-wai-fab-inset\) \+ var\(--fd-wai-fab-size\) \+ var\(--fd-wai-fab-gap\)\)/
   );
+  assert.match(bundle, /--fd-wai-fab-size:64px/);
+  assert.match(bundle, /--fd-wai-fab-inset:44px/);
   const broken = [...bundle.matchAll(/calc\([^)]*\+[^)]*\)/g)].filter((m) => !/ \+ /.test(m[0]));
   assert.equal(broken.length, 0, 'minifier must not strip spaces around + inside calc()');
 });
@@ -404,7 +406,7 @@ test('Google Wallet HR pass resolves hub links like passkit', () => {
   assert.match(gw, /isHrEmployeePass\(brand\)\) return 'generic'/);
   assert.match(ep, /linkText \|\| s\.label/);
   assert.match(ep, /brandHasLogoAsset/);
-  assert.match(ep, /heroImage = googleImageRef\(stripUri/);
+  assert.match(gw, /brandConfigForHrPass/);
 });
 
 test('Google Wallet HR toGooglePass uses brand name and generic layout fields', () => {
@@ -418,7 +420,7 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
       config: { product_line: 'hr', logos: { logo: Buffer.from('x').toString('base64') }, strip_base64: Buffer.from('y').toString('base64') }
     },
     template: { id: 't1', name: 'Internal Template Name', style: { backgroundColor: '#8B5CF6' } },
-    instance: { serial_number: 'SN-GW-1', field_values: {} },
+    instance: { id: 'pass-gw-1', serial_number: 'SN-GW-1', field_values: {} },
     member: { first_name: 'Mario', last_name: 'Rossi', department: 'HR' },
     brandConfig: { product_line: 'hr' },
     apiBase: 'https://studio.example.com/api/v1',
@@ -429,9 +431,26 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
   assert.ok(classPatch.logo);
   assert.ok(classPatch.heroImage);
   assert.equal(objectPatch.cardTitle.defaultValue.value, 'Acme Corp');
-  assert.equal(objectPatch.subheader.defaultValue.value, 'Pass dipendente');
+  assert.equal(objectPatch.subheader.defaultValue.value, 'HR · 12 COIN');
   assert.equal(objectPatch.header.defaultValue.value, 'Mario Rossi');
+  assert.match(employeePass.images.strip, /\/passes\/.*\/wallet-strip$/);
+  assert.equal(objectPatch.textModulesData.length, 0, 'generic front fields map to header/subheader only');
   delete process.env.GOOGLE_WALLET_PASS_KIND;
+});
+
+test('Samsung Wallet UI frozen by default in Filo HR', () => {
+  const { isSamsungWalletUiEnabled, activePushChannelKeys } = require('../src/engine/wallet-channels');
+  const prev = process.env.SAMSUNG_WALLET_UI_ENABLED;
+  delete process.env.SAMSUNG_WALLET_UI_ENABLED;
+  assert.equal(isSamsungWalletUiEnabled(), false);
+  assert.deepEqual(activePushChannelKeys(), ['apple', 'google']);
+  process.env.SAMSUNG_WALLET_UI_ENABLED = 'true';
+  assert.equal(isSamsungWalletUiEnabled(), true);
+  assert.deepEqual(activePushChannelKeys(), ['apple', 'google', 'samsung']);
+  if (prev === undefined) delete process.env.SAMSUNG_WALLET_UI_ENABLED;
+  else process.env.SAMSUNG_WALLET_UI_ENABLED = prev;
+  assert.match(read('src/filodiretto/fd-wallet-ui.js'), /data-samsung-wallet-ui/);
+  assert.match(read('src/filodiretto/fd-push.js'), /fdActiveWalletChannelKeys/);
 });
 
 test('direct save thank-you page offers Google Wallet on Android', () => {
@@ -441,7 +460,8 @@ test('direct save thank-you page offers Google Wallet on Android', () => {
   assert.match(ty, /googleWalletBtn/);
   assert.match(ty, /google-wallet\/pass\//);
   assert.doesNotMatch(ty, /Scarica file \.pkpass/);
-  assert.match(server, /googleWalletEnabled: googleWallet\.isConfigured\(\)/);
+  assert.match(read('src/api/routes.js'), /\/passes\/:id\/wallet-strip/);
+  assert.match(read('src/portal/portal.js'), /google-wallet\/pass\//);
 });
 
 test('W.AI FAB uses single JS click handler without inline onclick', () => {

@@ -611,7 +611,47 @@
     }
   }
 
+  function isAndroidDevice() {
+    return /Android/i.test(navigator.userAgent || '');
+  }
+
+  async function openGoogleWalletPass(regenerate) {
+    const passId = profile && profile.pass_id;
+    if (!passId) throw new Error('Pass non disponibile');
+
+    if (regenerate) {
+      const regen = await apiJson('/me/pass/regenerate?json=1', { method: 'POST' });
+      if (regen.portal_token) setToken(regen.portal_token);
+    }
+
+    const res = await fetch('/api/v1/google-wallet/pass/' + encodeURIComponent(passId), {
+      cache: 'no-store'
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || 'Errore Google Wallet');
+    if (!data.save_link) throw new Error('Link Google Wallet non disponibile');
+    window.location.href = data.save_link;
+  }
+
   async function downloadPass(regenerate) {
+    if (isAndroidDevice()) {
+      const btn = regenerate ? $('#btn-regenerate') : $('#btn-download');
+      btn.disabled = true;
+      try {
+        await openGoogleWalletPass(regenerate);
+        toast(
+          regenerate
+            ? 'Pass aggiornato — conferma in Google Wallet'
+            : 'Apertura Google Wallet…'
+        );
+      } catch (err) {
+        toast(err.message);
+      } finally {
+        btn.disabled = false;
+      }
+      return;
+    }
+
     const path = regenerate ? '/me/pass/regenerate' : '/me/pass/download';
     const btn = regenerate ? $('#btn-regenerate') : $('#btn-download');
     btn.disabled = true;

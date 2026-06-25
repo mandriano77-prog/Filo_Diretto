@@ -140,9 +140,8 @@ function buildCoinFieldValue(coinBalance) {
 }
 
 /**
- * Header field for Wallet lock-screen alert.
- * Only FRONT fields (header/primary/secondary/auxiliary) trigger visible notifications.
- * Back fields update silently and must not carry alert payloads.
+ * Header field for Wallet lock-screen alert (legacy — not applied on HR pass face).
+ * HR keeps template header frozen; promo copy lives on strip overlay only.
  */
 function buildPushHeaderField(pushAnn) {
   if (!pushAnn?.message) return null;
@@ -358,7 +357,7 @@ function brandHasStripAsset(brand, template) {
   );
 }
 
-function walletImageUrls({ apiBase, brand, template }) {
+function walletImageUrls({ apiBase, brand, template, instance }) {
   if (!apiBase) return {};
   const tplId = template?.id;
   const slug = brand?.slug;
@@ -381,7 +380,11 @@ function walletImageUrls({ apiBase, brand, template }) {
     }
   }
   const tplImages = template?.style?.images || {};
-  urls.strip = tplImages.strip && tplId ? urls.stripTemplate : urls.stripBrand;
+  if (instance?.id) {
+    urls.strip = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-strip`;
+  } else {
+    urls.strip = tplImages.strip && tplId ? urls.stripTemplate : urls.stripBrand;
+  }
   return urls;
 }
 
@@ -392,12 +395,13 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const cfg = brandConfig || brand?.config || {};
   const profile = resolveMemberProfile(member, instance);
   const colors = resolveEmployeePassColors(template, cfg);
-  const images = walletImageUrls({ apiBase, brand, template });
+  const images = walletImageUrls({ apiBase, brand, template, instance });
   const tplImages = template?.style?.images || {};
 
   // Front layout: strip on top; nome + area + COIN on secondary (fisso — niente auxiliary sulla faccia).
+  // Push promo va SOLO sulla strip (overlay), mai su header/campi template congelati.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
-  const headerHint = buildPushHeaderField(pushAnn) || resolvePassHeaderHint(template, cfg);
+  const headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -536,7 +540,11 @@ function googleImageRef(uri, description) {
   };
 }
 
-function buildGoogleFrontTextModules(employeePass) {
+function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}) {
+  if (passKind === 'generic') {
+    // Front content lives in cardTitle / header / subheader; promo text is on the strip image.
+    return [];
+  }
   const modules = [];
   if (employeePass.headerHint && (employeePass.headerHint.label || employeePass.headerHint.value)) {
     modules.push({
@@ -546,6 +554,7 @@ function buildGoogleFrontTextModules(employeePass) {
     });
   }
   (employeePass.front.secondary || []).forEach((f, i) => {
+    if (passKind === 'generic' && (f.key === 'name' || f.key === 'area')) return;
     modules.push({
       id: `front_sec_${i}`,
       header: f.label,
@@ -621,22 +630,37 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
       type: 'QR_CODE',
       value: employeePass.barcode.value
     },
-    textModulesData: [...buildGoogleFrontTextModules(employeePass), ...textModulesData],
+    textModulesData: [...buildGoogleFrontTextModules(employeePass, { passKind }), ...textModulesData],
     linksModuleData
   };
 
   if (passKind === 'loyalty') {
     objectPatch.accountName = (employeePass.profile.full_name || 'Membro').slice(0, 64);
   } else {
+    const coinField = (employeePass.front.secondary || []).find((f) => {
+      const label = String(f.label || '').toUpperCase();
+      return f.key === 'coin' || label === 'COIN';
+    });
+    const subParts = [];
+    if (employeePass.profile.department) subParts.push(String(employeePass.profile.department).trim());
+    if (coinField && coinField.value != null && String(coinField.value).trim() !== '') {
+      subParts.push(String(coinField.value).trim() + ' COIN');
+    }
+
     objectPatch.cardTitle = {
       defaultValue: {
         language: 'it',
         value: (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64)
       }
     };
-    objectPatch.subheader = { defaultValue: { language: 'it', value: 'Pass dipendente' } };
     objectPatch.header = {
       defaultValue: { language: 'it', value: employeePass.profile.full_name || 'Membro' }
+    };
+    objectPatch.subheader = {
+      defaultValue: {
+        language: 'it',
+        value: (subParts.join(' · ') || employeePass.programName || 'Pass dipendente').slice(0, 64)
+      }
     };
     if (thumbUri && employeePass.hasTemplateImages.thumbnail) {
       objectPatch.mainImage = googleImageRef(thumbUri, 'Thumbnail');

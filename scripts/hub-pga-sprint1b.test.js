@@ -96,8 +96,8 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
-test('HR push promo: strip text + header Wallet alert (no COIN touch)', () => {
-  const { buildEmployeePass, toApplePass, resolvePushAnnouncement, buildPushHeaderField } = require('../src/engine/employee-pass');
+test('HR push promo: strip overlay only — frozen template header and secondary fields', () => {
+  const { buildEmployeePass, toApplePass, resolvePushAnnouncement } = require('../src/engine/employee-pass');
   const annPayload = {
     title: 'Fratelli La Pizza',
     message: 'Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
@@ -106,10 +106,6 @@ test('HR push promo: strip text + header Wallet alert (no COIN touch)', () => {
   const ann = resolvePushAnnouncement({}, { push_announcement: annPayload });
   assert.ok(ann);
   assert.match(ann.message, /lunedì/);
-
-  const headerField = buildPushHeaderField(ann);
-  assert.ok(headerField);
-  assert.match(headerField.changeMessage, /FRATELLI LA PIZZA/);
 
   const employeePass = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', config: {} },
@@ -126,26 +122,14 @@ test('HR push promo: strip text + header Wallet alert (no COIN touch)', () => {
   });
   const apple = toApplePass(employeePass);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.equal((apple.passStructure.headerFields || []).length, 0);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
   assert.equal(coinField.changeMessage, 'Hai %@ coin');
-  const headerAlert = (apple.passStructure.headerFields || [])[0];
-  assert.ok(headerAlert);
-  assert.equal(headerAlert.key, 'push_notice');
-  assert.match(headerAlert.changeMessage, /FRATELLI LA PIZZA/);
-  assert.doesNotMatch(headerAlert.changeMessage, /^%@$/);
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
     ['name', 'area', 'coin_balance']
-  );
-  assert.equal(
-    (apple.passStructure.secondaryFields || []).find((f) => f.key === 'name').label,
-    'NOME'
-  );
-  assert.equal(
-    (apple.passStructure.secondaryFields || []).find((f) => f.key === 'area').label,
-    'AREA'
   );
 
   const passkit = read('src/engine/passkit.js');
@@ -249,7 +233,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: header field carries Wallet lock-screen alert without COIN highlight', () => {
+test('HR push: frozen template header — promo only on strip, not pass face', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -266,15 +250,12 @@ test('HR push: header field carries Wallet lock-screen alert without COIN highli
   assert.ok(coin);
   assert.equal(coin.changeMessage, 'Hai %@ coin');
   assert.equal(coin.value, '0');
-  assert.ok(ep.headerHint);
-  assert.equal(ep.headerHint.key, 'push_notice');
-  assert.match(ep.headerHint.changeMessage, /2X1 OCCHIALI/);
+  assert.equal(ep.headerHint, null);
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(appleCoin.changeMessage, 'Hai %@ coin');
-  const appleHeader = apple.passStructure.headerFields[0];
-  assert.match(appleHeader.changeMessage, /2X1 OCCHIALI/);
+  assert.equal((apple.passStructure.headerFields || []).length, 0);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
@@ -288,6 +269,12 @@ test('strip overlay: normalize enforces HR strip char limits', () => {
   assert.ok(out);
   assert.ok(out.title.length <= STRIP_OVERLAY_TITLE_MAX_1X);
   assert.ok(out.message.length <= STRIP_OVERLAY_MSG_MAX_1X * 2 + 4);
+});
+
+test('strip overlay: emoji stripped for SVG render (Linux/sharp safe)', () => {
+  const { sanitizeStripSvgText } = require('../src/engine/passkit');
+  assert.equal(sanitizeStripSvgText('BUON WEEKEND! ☀️'), 'BUON WEEKEND!');
+  assert.equal(sanitizeStripSvgText('Caffè ☕️ oggi'), 'Caffè oggi');
 });
 
 test('strip overlay: title truncates and message wraps with ellipsis', () => {

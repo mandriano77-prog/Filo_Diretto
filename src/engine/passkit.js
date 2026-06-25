@@ -874,6 +874,15 @@ function escapeStripSvgText(value) {
     .replace(/"/g, '&quot;');
 }
 
+/** Sharp/librsvg on Linux cannot render emoji in SVG text — strip them for strip overlay only. */
+function sanitizeStripSvgText(value) {
+  return String(value || '')
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/[\u200d\uFE0F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function truncateStripOverlayTitle(text, maxChars) {
   const t = String(text || '').trim().toUpperCase();
   if (!t) return '';
@@ -1007,8 +1016,8 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   if (!normalized?.message || !stripBuffer) return stripBuffer;
 
   const scale = width / 375;
-  const pad = Math.round(10 * scale);
-  const titleSize = Math.round(9 * scale);
+  const pad = Math.round(16 * scale);
+  const titleSize = Math.round(10 * scale);
   const msgSize = Math.round(9 * scale);
   const lineH = Math.round(12 * scale);
   const reserveThumbnail = Boolean(options.reserveThumbnail);
@@ -1016,8 +1025,10 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
   const visualTitleMax = Math.min(titleMax, stripVisualCharsPerLine(maxTextWidth, Math.round(9 * scale)));
   const visualMsgMax = Math.min(msgMax, stripVisualCharsPerLine(maxTextWidth, Math.round(9 * scale)));
-  const title = truncateStripOverlayTitle(normalized.title, visualTitleMax);
-  const msgLines = wrapStripOverlayLines(normalized.message, visualMsgMax, maxLines);
+  const title = sanitizeStripSvgText(truncateStripOverlayTitle(normalized.title, visualTitleMax));
+  const msgLines = wrapStripOverlayLines(normalized.message, visualMsgMax, maxLines)
+    .map((line) => sanitizeStripSvgText(line))
+    .filter(Boolean);
   if (!title && !msgLines.length) return stripBuffer;
 
   const lum = await sampleStripBottomLuminance(stripBuffer, width, height);
@@ -1069,7 +1080,7 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
         <rect x="0" y="${barY}" width="${width}" height="${barH}"/>
       </clipPath>
       <clipPath id="${textSafeId}">
-        <rect x="${pad}" y="${gradY}" width="${maxTextWidth}" height="${gradH}"/>
+        <rect x="0" y="${gradY}" width="${width}" height="${gradH}"/>
       </clipPath>
       <linearGradient id="${gradId}" x1="0" y1="${gradY}" x2="0" y2="${height}" gradientUnits="userSpaceOnUse">
         <stop offset="0%" stop-color="rgb(0,0,0)" stop-opacity="${gradTopOpacity}"/>
@@ -1514,6 +1525,7 @@ module.exports = {
   composePushTextOnStrip,
   stripOverlayTextMaxWidth,
   stripVisualCharsPerLine,
+  sanitizeStripSvgText,
   generateManifest,
   signManifest,
   createPkpass,

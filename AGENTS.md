@@ -2,8 +2,6 @@
 
 ## What this is
 
-**Filo_Diretto repo = HR / FiloDiretto dashboard only.** The deploy always serves the HR product line (`boot.js` lock is hardcoded to `hr`). Ads2Wallet lives in a separate repo/deploy.
-
 Multi-tenant SaaS: brands run loyalty programs via Apple Wallet passes (`.pkpass`) and related flows. Back office dashboard for templates, passes, push, campaigns, analytics. Members get a store-card style pass with updates.
 
 ## Stack
@@ -75,7 +73,7 @@ Landing: `http://localhost:3000/{brand-slug}`
 1. Create a **Railway** project and connect the GitHub repo (branch `main`).
 2. Add **PostgreSQL** (Railway plugin); `DATABASE_URL` is injected when the DB is attached to the service.
 3. **Nixpacks** builds the app (`railway.json`: `npm install`, start `node src/server.js`).
-4. **Env vars**: set `CUSTOM_DOMAIN`, `JWT_SECRET`, Apple/Resend/Google keys as needed. For `studio.filodiretto.app`, set `CUSTOM_DOMAIN` to that hostname; optional `DASHBOARD_PRODUCT_TITLE` for white-label chrome. `DASHBOARD_PRODUCT_LINE` is not required (HR is fixed in code).
+4. **Env vars**: set `CUSTOM_DOMAIN`, `JWT_SECRET`, Apple/Resend/Google keys as needed. For a dedicated HR studio host (e.g. `studio.filodiretto.app`), set `CUSTOM_DOMAIN` to that hostname; optional `DASHBOARD_PRODUCT_TITLE` for white-label chrome; point only the `studio.*` DNS at this app (root domain can host a separate marketing site).
 5. Custom domain → point DNS → HTTPS handled by Railway.
 6. **Health check**: HTTP GET `/health` (configured in `railway.json`).
 
@@ -108,8 +106,6 @@ Le push **non partono** se si superano i limiti (`POST /push/send` → 400). Fon
 | **Messaggio** | **52** | 2 righe × 26 caratteri sulla strip |
 
 Copy breve; emoji e punteggiatura contano. URL lunghi → **Includi link nel pass**, non nel messaggio. Anteprima in `fd-push.js` usa gli stessi limiti.
-
-**Assistente bozza:** `POST /brands/:id/push/draft-copy` con `{ brief }` — l’AI compila titolo/messaggio (e opzionalmente link); il manager rivede l’anteprima e invia con `POST /push/send`. UI: blocco «Assistente copy» nel pannello push immediata (`fd-push.js`).
 
 ## Testing
 

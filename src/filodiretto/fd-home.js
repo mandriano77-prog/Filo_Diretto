@@ -350,7 +350,8 @@
       '<div class="fd-stat-card">' +
       '<span class="fd-stat-card__label">Installazioni Wallet</span>' +
       '<span class="fd-stat-card__value">' + esc(ctx.walletInstalls) + '</span>' +
-      '<span class="fd-stat-card__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) + ' · Samsung ' + esc(ctx.samsung) + '</span>' +
+      '<span class="fd-stat-card__hint">Apple ' + esc(ctx.apple) + ' · Google ' + esc(ctx.google) +
+      (ctx.samsung ? ' · Samsung ' + esc(ctx.samsung) : '') + '</span>' +
       '</div>' +
       '<div class="fd-stat-card">' +
       '<span class="fd-stat-card__label">Push inviate</span>' +

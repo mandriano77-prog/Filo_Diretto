@@ -25,22 +25,26 @@ const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
 const { normalizePushAnnouncementForStrip } = require('./passkit');
 const { attachBackDetailsToAnnouncement } = require('./push-text-limits');
+const { activePushChannelKeys } = require('./wallet-channels');
 
 const activeJobIds = new Set();
 const APNS_RESULT_SAMPLE_LIMIT = Math.max(0, Math.min(parseInt(process.env.APNS_RESULT_SAMPLE_LIMIT || '50', 10) || 50, 200));
 
-const PUSH_CHANNEL_KEYS = ['apple', 'google', 'samsung'];
+function pushChannelKeys() {
+  return activePushChannelKeys();
+}
 
 function normalizePushChannelList(channel) {
+  const allowed = pushChannelKeys();
   const raw = String(channel || 'apple').trim().toLowerCase();
   if (!raw) return ['apple'];
   if (raw === 'both') return ['apple', 'google'];
-  if (raw === 'all') return [...PUSH_CHANNEL_KEYS];
+  if (raw === 'all') return [...allowed];
   if (raw.includes(',')) {
-    const parts = raw.split(',').map((s) => s.trim()).filter((k) => PUSH_CHANNEL_KEYS.includes(k));
+    const parts = raw.split(',').map((s) => s.trim()).filter((k) => allowed.includes(k));
     return parts.length ? [...new Set(parts)] : null;
   }
-  return PUSH_CHANNEL_KEYS.includes(raw) ? [raw] : null;
+  return allowed.includes(raw) ? [raw] : null;
 }
 
 function parseWalletPushFlags(channel) {

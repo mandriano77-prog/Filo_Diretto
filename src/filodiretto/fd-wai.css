@@ -3,6 +3,12 @@
  * Scoped to html[data-app='filodiretto'] only.
  */
 
+html[data-app='filodiretto'] {
+  --fd-wai-fab-size: 64px;
+  --fd-wai-fab-inset: 44px;
+  --fd-wai-fab-gap: 10px;
+}
+
 /* Hide redundant page-level CTAs (FAB remains the primary entry) */
 html[data-app='filodiretto'] .fd-wai-page-cta--hidden {
   display: none !important;
@@ -29,13 +35,19 @@ html[data-app='filodiretto'] .fd-wai-inline-link:hover {
 
 /* FAB: single global affordance, visually secondary to page task */
 html[data-app='filodiretto'] #waiBtn.wai-fab {
-  width: 48px;
-  height: 48px;
-  font-size: 10px;
-  bottom: var(--space-5, 20px);
-  right: var(--space-5, 20px);
+  width: var(--fd-wai-fab-size);
+  height: var(--fd-wai-fab-size);
+  font-size: 12px;
+  bottom: var(--fd-wai-fab-inset);
+  right: var(--fd-wai-fab-inset);
   z-index: 10040;
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12));
+}
+
+html[data-app='filodiretto'] #waiBtn.wai-fab.wai-fab--collapsed {
+  width: var(--fd-wai-fab-size);
+  height: var(--fd-wai-fab-size);
+  font-size: 12px;
 }
 
 html[data-app='filodiretto'] body.fd-wai-open #waiBtn.wai-fab {
@@ -46,7 +58,7 @@ html[data-app='filodiretto'] body.fd-wai-open #waiBtn.wai-fab {
 html[data-app='filodiretto'] #waiOverlay.wai-panel {
   position: fixed;
   z-index: 10039;
-  inset: auto var(--space-5, 20px) calc(var(--space-5, 20px) + 52px) auto;
+  inset: auto var(--fd-wai-fab-inset) calc(var(--fd-wai-fab-inset) + var(--fd-wai-fab-size) + var(--fd-wai-fab-gap)) auto;
   width: 460px;
   max-width: calc(100vw - 32px);
   max-height: min(70vh, 600px);
@@ -62,7 +74,7 @@ html[data-app='filodiretto'] #waiOverlay.wai-panel.wai-panel--open {
   html[data-app='filodiretto'] #waiOverlay.wai-panel {
     width: calc(100vw - 24px);
     right: 12px;
-    bottom: 72px;
+    bottom: calc(12px + var(--fd-wai-fab-size) + var(--fd-wai-fab-gap));
     max-height: 70vh;
   }
 }

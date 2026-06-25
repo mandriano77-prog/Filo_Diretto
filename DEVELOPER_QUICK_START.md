@@ -1,6 +1,6 @@
 # Nudj MVP - Developer Quick Start
 
-> **Allineamento 2026:** lo stack live è **Node.js + PostgreSQL** (`pg`), deploy tipico **DigitalOcean** (App Platform o Droplet + DB gestito). Variabili, URL pubblici (`CUSTOM_DOMAIN`) e cron sono descritti in **`CLAUDE.md`**. Il contenuto qui sotto (SQLite / `data/nudj.db`) è **storico**: non riflette più il progetto nella cartella corrente; usalo solo come richiamo sul motore pass, non come guida allo stack.
+> **Allineamento 2026:** lo stack live è **Node.js + PostgreSQL** (`pg`), deploy su **Railway** (Nixpacks, auto-deploy da `main`). Variabili, URL pubblici (`CUSTOM_DOMAIN`) e cron sono descritti in **`CLAUDE.md`**. Il contenuto qui sotto (SQLite / `data/nudj.db`) è **storico**: non riflette più il progetto nella cartella corrente; usalo solo come richiamo sul motore pass, non come guida allo stack.
 
 ## Overview
 

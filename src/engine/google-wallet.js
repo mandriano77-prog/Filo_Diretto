@@ -551,13 +551,14 @@ async function buildPassObject(brand, template, instance, memberHint) {
   const objectId = buildObjectId(instance.serial_number, brand);
 
   if (isHrEmployeePass(brand)) {
+    const { brandConfigForHrPass } = require('./pass-push-state');
     const hrOpts = await resolveHrPassOptions(brand, instance, memberHint);
     const employeePass = buildEmployeePass({
       brand,
       template,
       instance,
       member: hrOpts.member,
-      brandConfig: brand.config,
+      brandConfig: brandConfigForHrPass(brand, instance),
       apiBase: API_BASE,
       portalUrl: hrOpts.portalUrl,
       hubUrl: hrOpts.hubUrl,

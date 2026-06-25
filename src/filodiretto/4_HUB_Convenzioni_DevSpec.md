@@ -5,7 +5,7 @@
 **Data:** giugno 2026
 **Autore:** Adriano Coccia · Founder Filodiretto
 **Repo:** [mandriano77-prog/Filo_Diretto](https://github.com/mandriano77-prog/Filo_Diretto)
-**Stack target:** Node.js 20+ · Express · PostgreSQL · DigitalOcean App Platform
+**Stack target:** Node.js 20+ · Express · PostgreSQL · Railway
 **Target dev:** developer full-stack senior o agente AI tipo Claude Code
 **Effort stimato:** 8 settimane · 4 sprint da 2 settimane · 1 FTE full-stack
 **Stakeholder tecnico:** Digital Builders S.r.l. (Nando Bocca + Simone Ricci)
@@ -26,7 +26,7 @@ Filodiretto è una piattaforma multi-tenant che fa di Apple/Google/Samsung Walle
 - **Images:** Sharp
 - **AI strip:** fal API
 - **Domain:** definito in env `CUSTOM_DOMAIN`
-- **Hosting:** DigitalOcean App Platform o Droplet
+- **Hosting:** Railway (Nixpacks, auto-deploy da `main`)
 - **Multi-tenant:** sempre filtrare per `brand_id`
 
 ### 1.3 Cosa NON si tocca
@@ -485,13 +485,13 @@ npm install node-fetch          # geocoding Nominatim (se Node <18)
 # Già presenti nel repo: pg, sharp, archiver, jsonwebtoken, express
 ```
 
-Nessuna nuova dipendenza pesante. Tutto compatibile con Node 20 + DigitalOcean App Platform.
+Nessuna nuova dipendenza pesante. Tutto compatibile con Node 20 + Railway.
 
 ---
 
 ## 13. Environment variables aggiuntive
 
-Da aggiungere al `.env.example` e all'App Platform DigitalOcean:
+Da aggiungere al `.env.example` e alle variabili Railway del servizio:
 
 ```bash
 # JWT hub (separato da JWT_SECRET dashboard)
@@ -520,7 +520,7 @@ GEOFENCING_MAX_PER_DAY=3
 project: Filodiretto
 feature: HUB Convenzioni
 stack: nodejs-20, express, postgresql, vanilla-js-pwa
-hosting: digitalocean-app-platform
+hosting: railway
 new_subapp: hub.filodiretto.app
 auth: jwt-hs256-separato
 

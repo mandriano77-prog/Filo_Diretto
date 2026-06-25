@@ -836,6 +836,45 @@ router.get('/passes/:id/download', async (req, res) => {
   }
 });
 
+router.get('/passes/:id/wallet-strip', async (req, res) => {
+  try {
+    const passInstance = await getPassInstance(req.params.id);
+    if (!passInstance) return res.status(404).json({ error: 'Pass non trovato' });
+    const brand = await getBrand(passInstance.brand_id);
+    const template = await getTemplate(passInstance.template_id);
+    if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
+
+    const { isHrPassBrand, loadHrStripBuffers, composePushTextOnStrip } = require('../engine/passkit');
+    const { brandConfigForHrPass } = require('../engine/pass-push-state');
+    const { resolvePushAnnouncement } = require('../engine/employee-pass');
+
+    const passBrand = isHrPassBrand(brand)
+      ? { ...brand, config: brandConfigForHrPass(brand, passInstance) }
+      : brand;
+    const cfg = passBrand.config || {};
+    const stripBuffers = await loadHrStripBuffers({
+      brand: passBrand,
+      template,
+      stripOverrideBase64: cfg.stripOverride || null
+    });
+    let strip = stripBuffers.strip;
+    const pushAnn = resolvePushAnnouncement(cfg, passInstance);
+    if (pushAnn?.message) {
+      const reserveThumbnail = !!template?.style?.images?.thumbnail;
+      strip = await composePushTextOnStrip(strip, pushAnn, 375, 123, { reserveThumbnail });
+    }
+
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=120'
+    });
+    res.send(strip);
+  } catch (err) {
+    console.error('[wallet-strip] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Apple Wallet Protocol ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 
 // Log all Apple Wallet protocol calls for debugging
@@ -2484,10 +2523,10 @@ router.post('/passes/:id/regenerate', async (req, res) => {
     }
 
     let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: true };
-    if (pass.google_wallet_object_id) {
+    if (freshPass.google_wallet_object_id) {
       googleSync = await syncGoogleWalletObjectsForPasses({
         brand,
-        passes: [pass],
+        passes: [freshPass],
         message: null
       });
       googleSync.skipped = false;
