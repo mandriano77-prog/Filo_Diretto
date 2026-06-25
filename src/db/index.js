@@ -804,6 +804,8 @@ async function getDb() {
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_url VARCHAR(512)`).catch(() => {});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_set_at TIMESTAMPTZ`).catch(() => {});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS dynamic_link_expires_at TIMESTAMPTZ`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS push_announcement JSONB`).catch(() => {});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS push_strip_base64 TEXT`).catch(() => {});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS member_id TEXT REFERENCES members(id) ON DELETE SET NULL`).catch(() => {});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ`).catch(() => {});
 
@@ -1934,6 +1936,40 @@ async function updatePassDynamicLinks(passIds, { label, url, expiresAt }) {
     [label || 'AZIONE RICHIESTA', url, expiresAt || null, ids]
   );
   return { updated: result.rowCount || 0 };
+}
+
+/** Apply push strip/message overlay to targeted passes only (not brand-wide). */
+async function updatePassPushOverlays(passIds, { announcement, stripBase64 } = {}) {
+  const ids = (passIds || []).filter(Boolean);
+  if (!ids.length) return { updated: 0 };
+  const annJson = announcement ? JSON.stringify(announcement) : null;
+  const result = await pool.query(
+    `UPDATE pass_instances
+     SET push_announcement = $1::jsonb,
+         push_strip_base64 = $2,
+         last_updated = NOW()
+     WHERE id = ANY($3::text[])`,
+    [annJson, stripBase64 || null, ids]
+  );
+  return { updated: result.rowCount || 0 };
+}
+
+/** Reset pass to standard template (download/regenerate fresh install). */
+async function clearPassPushOverlay(passId) {
+  if (!passId) return { cleared: false };
+  await pool.query(
+    `UPDATE pass_instances
+     SET push_announcement = NULL,
+         push_strip_base64 = NULL,
+         dynamic_link_label = NULL,
+         dynamic_link_url = NULL,
+         dynamic_link_set_at = NULL,
+         dynamic_link_expires_at = NULL,
+         last_updated = NOW()
+     WHERE id = $1`,
+    [passId]
+  );
+  return { cleared: true };
 }
 
 async function touchPassesForTemplate(templateId) {
@@ -4354,6 +4390,8 @@ module.exports = {
   deleteMemberRecord,
   importEmployeesBatch,
   updatePassDynamicLinks,
+  updatePassPushOverlays,
+  clearPassPushOverlay,
   touchPassesForTemplate,
   listPasses,
   countPasses,

@@ -8,6 +8,7 @@ const {
   getInstantWinCampaign,
   getGamificationCampaign,
   updatePassDynamicLinks,
+  updatePassPushOverlays,
   touchPassesByIds,
   markPassesPushDelivered,
   markPassPushStatus,
@@ -217,14 +218,16 @@ async function executeWalletPush(body, ctx = {}) {
       console.warn('[PUSH] wallet logo sync skipped:', syncErr.message);
     }
 
-    const config = brand.config || {};
-    config.pushAnnouncement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+    const config = { ...(brand.config || {}) };
+    const announcement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
       || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() };
 
     if (!instant_win_id) delete config.instantWinActive;
     if (!gamification_id) delete config.gamificationActive;
 
     const pushStripB64 = ctx.resolvedStripBase64 || null;
+    let overlayStrip = pushStripB64 || null;
+    delete config.pushAnnouncement;
     delete config.stripOverride;
 
     let passLink = null;
@@ -254,7 +257,7 @@ async function executeWalletPush(body, ctx = {}) {
       delete config.pushLinkOut;
     }
 
-    if (pushStripB64) {
+    if (pushStripB64 && !hrDeploy) {
       config.stripOverride = pushStripB64;
     }
 
@@ -266,8 +269,9 @@ async function executeWalletPush(body, ctx = {}) {
           label: iwCampaign.push_message || iwCampaign.name || 'Gioca e Vinci!',
           game_type: iwCampaign.game_type,
         };
-        if (!pushStripB64 && iwCampaign.strip_base64) {
-          config.stripOverride = iwCampaign.strip_base64;
+        if (!overlayStrip && iwCampaign.strip_base64) {
+          overlayStrip = iwCampaign.strip_base64;
+          if (!hrDeploy) config.stripOverride = iwCampaign.strip_base64;
         }
       }
     }
@@ -280,8 +284,9 @@ async function executeWalletPush(body, ctx = {}) {
           label: gamCampaign.push_message || gamCampaign.name || 'Gioca ora!',
           game_type: gamCampaign.game_type,
         };
-        if (!pushStripB64 && gamCampaign.strip_base64) {
-          config.stripOverride = gamCampaign.strip_base64;
+        if (!overlayStrip && gamCampaign.strip_base64) {
+          overlayStrip = gamCampaign.strip_base64;
+          if (!hrDeploy) config.stripOverride = gamCampaign.strip_base64;
         }
       }
     }
@@ -289,6 +294,12 @@ async function executeWalletPush(body, ctx = {}) {
     await updateBrand(brand_id, { config });
 
     if (targetPasses.length) {
+      if (hrDeploy) {
+        await updatePassPushOverlays(targetPasses.map((p) => p.id), {
+          announcement,
+          stripBase64: overlayStrip || null,
+        });
+      }
       await touchPassesByIds(targetPasses.map((p) => p.id));
     }
   }

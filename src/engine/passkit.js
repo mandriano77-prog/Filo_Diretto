@@ -1177,6 +1177,8 @@ function signManifest(manifestJson, certPath, keyPath, wwdrPath) {
  */
 async function createPkpass(template, instance, brand, options = {}) {
   const hrBrand = isHrPassBrand(brand);
+  const { brandConfigForHrPass } = require('./pass-push-state');
+  const passBrand = hrBrand ? { ...brand, config: brandConfigForHrPass(brand, instance) } : brand;
   const {
     baseUrl = 'http://localhost:3000',
     certPath = path.join(__dirname, '../../certs/signerCert.pem'),
@@ -1250,7 +1252,7 @@ async function createPkpass(template, instance, brand, options = {}) {
   }
 
   // Generate pass.json
-  const passJson = generatePassJson(template, instance, brand, {
+  const passJson = generatePassJson(template, instance, passBrand, {
     ...options,
     baseUrl,
     portalUrl,
@@ -1263,7 +1265,7 @@ async function createPkpass(template, instance, brand, options = {}) {
   });
 
   // Generate images - use brand.config colors first, then template.style, then defaults
-  const brandCfg = brand.config || {};
+  const brandCfg = passBrand.config || {};
   const bgColor = brandCfg.backgroundColor || template.style?.backgroundColor || '#0D0B1A';
   const fgColor = brandCfg.foregroundColor || template.style?.foregroundColor || '#FFFFFF';
 
@@ -1342,7 +1344,7 @@ async function createPkpass(template, instance, brand, options = {}) {
     stripBuffers = await generateStrip(brand.name, bgColor, fgColor);
   }
 
-  const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg) : null;
+  const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
 
   // Thumbnail — for generic and eventTicket; su storeCard HR viene composita sulla strip
   let thumbnailBuffers = null;

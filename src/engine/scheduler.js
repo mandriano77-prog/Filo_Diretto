@@ -165,6 +165,8 @@ async function executeScheduledPush(schedule, baseUrl) {
 
   if (update_pass) {
     const { syncWalletLogoFromBrandIdentity, syncWalletIconFromBrandIdentity } = require('./brand-wallet-logo');
+    const { normalizePushAnnouncementForStrip } = require('./passkit');
+    const { updatePassPushOverlays } = require('../db');
     const hrDeploy = true;
     try {
       await syncWalletLogoFromBrandIdentity(brand_id, brand, {
@@ -175,16 +177,17 @@ async function executeScheduledPush(schedule, baseUrl) {
       console.warn('[Scheduler] wallet logo sync skipped:', syncErr.message);
     }
 
-    const updatedConfig = {
-      ...(brand.config || {}),
-      pushAnnouncement: {
-        title,
-        message,
-        date: new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        timestamp: new Date().toISOString(),
-      },
-    };
+    const updatedConfig = { ...(brand.config || {}) };
+    delete updatedConfig.pushAnnouncement;
+    delete updatedConfig.stripOverride;
     await updateBrand(brand_id, { config: updatedConfig });
+
+    const announcement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+      || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() };
+
+    if (targetPasses.length) {
+      await updatePassPushOverlays(targetPasses.map((p) => p.id), { announcement, stripBase64: null });
+    }
 
     if (include_pass_link && pass_link_url) {
       const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

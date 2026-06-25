@@ -17,7 +17,7 @@ const {
   createTemplate, getTemplate, listTemplates, updateTemplate, deleteTemplate,
   createCampaign, getCampaign, listCampaigns, updateCampaign, deleteCampaign,
   incrementCampaignDownloads, incrementCampaignInstalls,
-  createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesByIds, touchPassesForTemplate, listPasses, countPasses, deletePass,
+  createPassInstance, getPassInstance, getPassBySerial, updatePassInstance, touchPass, touchPassesByIds, touchPassesForTemplate, listPasses, countPasses, deletePass, clearPassPushOverlay,
   getMemberForPass, listEmployeesForBrand, getEmployeeFieldOptionsForBrand,
   isEmployeeMatricolaAvailable, importEmployeesBatch,
   findMemberByBrandKey, createMemberRecord, updateMemberRecord, deleteMemberRecord,
@@ -2441,13 +2441,16 @@ router.post('/passes/:id/regenerate', async (req, res) => {
     const brand = await getBrand(pass.brand_id);
     const template = await getTemplate(pass.template_id);
 
+    await clearPassPushOverlay(pass.id);
+    const freshPass = await getPassInstance(pass.id);
+
     const baseUrl = resolveBaseUrl(req);
     const wantsJson =
       req.query.json === '1'
       || String(req.get('accept') || '').includes('application/json')
       || (req.body && req.body.json === true);
 
-    const pkpassBuffer = await createPkpass(template, pass, brand, {
+    const pkpassBuffer = await createPkpass(template, freshPass, brand, {
       baseUrl,
       passTypeIdentifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       teamIdentifier: process.env.TEAM_IDENTIFIER || 'YOUR_TEAM_ID',

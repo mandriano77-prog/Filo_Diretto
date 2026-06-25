@@ -156,8 +156,11 @@ function buildCoinFieldValue(coinBalance, pushAnn) {
   return field;
 }
 
-/** Push copy for strip overlay (not auxiliary pillar). */
-function resolvePushAnnouncement(brandConfig) {
+/** Push copy for strip overlay (not auxiliary pillar). Instance overlay wins over brand config. */
+function resolvePushAnnouncement(brandConfig, instance) {
+  const { parsePushAnnouncementRecord } = require('./pass-push-state');
+  const fromInstance = parsePushAnnouncementRecord(instance?.push_announcement);
+  if (fromInstance) return fromInstance;
   const ann = brandConfig?.pushAnnouncement;
   if (!ann || !ann.message) return null;
   const message = String(ann.message || '').trim();
@@ -344,7 +347,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const tplImages = template?.style?.images || {};
 
   // Front layout: strip on top; nome + area + COIN on secondary (fisso — niente auxiliary sulla faccia).
-  const pushAnn = resolvePushAnnouncement(cfg);
+  const pushAnn = resolvePushAnnouncement(cfg, instance);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });

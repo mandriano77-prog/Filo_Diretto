@@ -98,22 +98,25 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
 
 test('HR push promo: strip text + coin touch for Wallet alert (no extra front field)', () => {
   const { buildEmployeePass, toApplePass, resolvePushAnnouncement } = require('../src/engine/employee-pass');
-  const ann = resolvePushAnnouncement({
-    pushAnnouncement: {
-      title: 'Fratelli La Pizza',
-      message: 'Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
-      ts: Date.now()
-    }
-  });
+  const annPayload = {
+    title: 'Fratelli La Pizza',
+    message: 'Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
+    ts: Date.now()
+  };
+  const ann = resolvePushAnnouncement({}, { push_announcement: annPayload });
   assert.ok(ann);
   assert.match(ann.message, /lunedì/);
 
   const employeePass = buildEmployeePass({
-    brand: { id: 'b1', name: 'NTI', config: { pushAnnouncement: ann } },
+    brand: { id: 'b1', name: 'NTI', config: {} },
     template: { name: 'HR' },
-    instance: { serial_number: 'SN1', field_values: {} },
+    instance: {
+      serial_number: 'SN1',
+      field_values: {},
+      push_announcement: annPayload,
+    },
     member: { first_name: 'Adriano', last_name: 'Coccia', department: 'Direzione' },
-    brandConfig: { pushAnnouncement: ann },
+    brandConfig: {},
     apiBase: 'https://studio.example.com/api/v1',
     coinBalance: 25
   });
@@ -209,10 +212,14 @@ test('HR back: dynamic push link appears first when instance has dynamic_link_ur
 test('HR push: coin field carries Wallet lock-screen alert without auxiliary row', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
-    brand: { id: 'b1', name: 'NTI', slug: 'nti', config: { pushAnnouncement: { title: '2x1 OCCHIALI', message: 'Solo questa settimana', ts: 1710000000001 } } },
+    brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
     template: { style: {} },
-    instance: { serial_number: 'SN1' },
-    member: { full_name: 'Test', department: 'HR' }
+    instance: {
+      serial_number: 'SN1',
+      push_announcement: { title: '2x1 OCCHIALI', message: 'Solo questa settimana', ts: 1710000000001 },
+    },
+    member: { full_name: 'Test', department: 'HR' },
+    brandConfig: {},
   });
   assert.equal(ep.front.auxiliary.length, 0);
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
