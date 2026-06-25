@@ -75,7 +75,7 @@ const {
   TZ
 } = require('../engine/audience-prompt');
 const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } = require('../engine/holder-events');
-const { createPkpass } = require('../engine/passkit');
+const { createPkpass, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X } = require('../engine/passkit');
 const { buildPkpassCached } = require('../engine/pkpass-cache');
 const googleWallet = require('../engine/google-wallet');
 const samsungWallet = require('../engine/samsung-wallet');
@@ -2545,6 +2545,12 @@ router.post('/push/send', async (req, res) => {
     } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
     if (!requireBrandId(req, res, brand_id)) return;
+    if (String(title).trim().length > STRIP_OVERLAY_TITLE_MAX_1X) {
+      return res.status(400).json({ error: `Titolo max ${STRIP_OVERLAY_TITLE_MAX_1X} caratteri (leggibilità strip)` });
+    }
+    if (String(message).trim().length > STRIP_OVERLAY_MSG_MAX_1X * 2) {
+      return res.status(400).json({ error: `Messaggio max ${STRIP_OVERLAY_MSG_MAX_1X * 2} caratteri (2 righe sulla strip)` });
+    }
     if (!assertPushChannel(channel)) {
       return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all o combinazioni apple,google)' });
     }

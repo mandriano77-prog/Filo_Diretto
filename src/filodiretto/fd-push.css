@@ -74,6 +74,11 @@ html[data-app='filodiretto'] #push .fd-push-preview {
   background: var(--fd-color-surface, #fff);
 }
 
+html[data-app='filodiretto'] #push .fd-pass-row-menu {
+  position: relative;
+  display: inline-flex;
+}
+
 html[data-app='filodiretto'] #push .fd-pass-row-menu__panel {
   position: absolute;
   right: 0;

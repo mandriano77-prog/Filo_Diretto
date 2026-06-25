@@ -192,6 +192,17 @@ test('HR back: dynamic push link appears first when instance has dynamic_link_ur
   assert.match(linkFields[0].attributedValue, /https:\/\/example\.com\/offerta/);
 });
 
+test('strip overlay: normalize enforces HR strip char limits', () => {
+  const { normalizePushAnnouncementForStrip, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X } = require('../src/engine/passkit');
+  const out = normalizePushAnnouncementForStrip({
+    title: 'Salmoiraghi & Viganò: 2x1 occhiali',
+    message: 'Solo questa settimana acquisti due occhiali da sole il meno caro è in omaggio per te'
+  });
+  assert.ok(out);
+  assert.ok(out.title.length <= STRIP_OVERLAY_TITLE_MAX_1X);
+  assert.ok(out.message.length <= STRIP_OVERLAY_MSG_MAX_1X * 2 + 4);
+});
+
 test('strip overlay: title truncates and message wraps with ellipsis', () => {
   const { wrapStripOverlayLines, truncateStripOverlayTitle } = require('../src/engine/passkit');
   assert.equal(truncateStripOverlayTitle('Fratelli La Pizza Special Edition', 22), 'FRATELLI LA PIZZA SPE…');

@@ -22,6 +22,7 @@ const { sendPushBatch, closeApnsSession, shouldPruneApnsRegistration } = require
 const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
+const { normalizePushAnnouncementForStrip } = require('./passkit');
 
 const activeJobIds = new Set();
 const APNS_RESULT_SAMPLE_LIMIT = Math.max(0, Math.min(parseInt(process.env.APNS_RESULT_SAMPLE_LIMIT || '50', 10) || 50, 200));
@@ -217,7 +218,8 @@ async function executeWalletPush(body, ctx = {}) {
     }
 
     const config = brand.config || {};
-    config.pushAnnouncement = { title, message, ts: Date.now() };
+    config.pushAnnouncement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+      || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() };
 
     if (!instant_win_id) delete config.instantWinActive;
     if (!gamification_id) delete config.gamificationActive;
@@ -286,7 +288,7 @@ async function executeWalletPush(body, ctx = {}) {
 
     await updateBrand(brand_id, { config });
 
-    if (sendApple && targetPasses.length) {
+    if (targetPasses.length) {
       await touchPassesByIds(targetPasses.map((p) => p.id));
     }
   }

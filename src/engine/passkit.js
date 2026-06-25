@@ -753,6 +753,11 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.locations = normalizedLocs;
   }
 
+  // Push update — surface pass on lock screen near send time (Wallet silent APN + relevantDate).
+  if (useHrBack && brandConfig.pushAnnouncement?.ts) {
+    passJson.relevantDate = new Date(Number(brandConfig.pushAnnouncement.ts)).toISOString();
+  }
+
   // Relevant date — triggers lock screen notification at this time
   if (brandConfig.relevantDate) {
     passJson.relevantDate = brandConfig.relevantDate;
@@ -876,6 +881,52 @@ function truncateStripOverlayTitle(text, maxChars) {
   return `${t.slice(0, Math.max(1, maxChars - 1))}…`;
 }
 
+const STRIP_OVERLAY_TITLE_MAX_1X = 22;
+const STRIP_OVERLAY_MSG_MAX_1X = 26;
+const STRIP_OVERLAY_MSG_LINES = 2;
+
+function stripOverlayLimitsForWidth(width) {
+  const scale = width >= 750 ? 2 : 1;
+  return {
+    titleMax: STRIP_OVERLAY_TITLE_MAX_1X * scale,
+    msgMax: STRIP_OVERLAY_MSG_MAX_1X * scale,
+    msgLines: STRIP_OVERLAY_MSG_LINES
+  };
+}
+
+/** Truncate push copy to safe strip overlay limits (server + preview). */
+function normalizePushAnnouncementForStrip(announcement) {
+  if (!announcement?.message) return null;
+  const title = truncateStripOverlayTitle(announcement.title, STRIP_OVERLAY_TITLE_MAX_1X);
+  const msgLines = wrapStripOverlayLines(
+    announcement.message,
+    STRIP_OVERLAY_MSG_MAX_1X,
+    STRIP_OVERLAY_MSG_LINES
+  );
+  const message = msgLines.join(' ').trim();
+  if (!message) return null;
+  return {
+    title,
+    message,
+    ts: Number(announcement.ts || Date.now())
+  };
+}
+
+async function sampleStripBottomLuminance(stripBuffer, width, height) {
+  const zoneH = Math.max(1, Math.round(height * 0.5));
+  try {
+    const stats = await sharp(stripBuffer)
+      .extract({ left: 0, top: height - zoneH, width, height: zoneH })
+      .stats();
+    const r = stats.channels[0]?.mean ?? 128;
+    const g = stats.channels[1]?.mean ?? 128;
+    const b = stats.channels[2]?.mean ?? 128;
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  } catch {
+    return 72;
+  }
+}
+
 function wrapStripOverlayLines(text, maxChars, maxLines) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [];
@@ -935,23 +986,34 @@ async function loadHrStripBuffers({ brand, template, stripOverrideBase64 = null 
 
 /** HR push promo — title + message burned into strip (not auxiliary pillar). */
 async function composePushTextOnStrip(stripBuffer, announcement, width, height) {
-  if (!announcement?.message || !stripBuffer) return stripBuffer;
+  const normalized = normalizePushAnnouncementForStrip(announcement);
+  if (!normalized?.message || !stripBuffer) return stripBuffer;
+
   const scale = width / 375;
-  const pad = Math.round(12 * scale);
+  const pad = Math.round(10 * scale);
   const titleSize = Math.round(10 * scale);
-  const msgSize = Math.round(12 * scale);
-  const lineH = Math.round(15 * scale);
-  const titleMax = width >= 750 ? 44 : 22;
-  const msgMax = width >= 750 ? 38 : 26;
-  const title = truncateStripOverlayTitle(announcement.title, titleMax);
-  const msgLines = wrapStripOverlayLines(announcement.message, msgMax, 2);
+  const msgSize = Math.round(11 * scale);
+  const lineH = Math.round(14 * scale);
+  const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
+  const title = truncateStripOverlayTitle(normalized.title, titleMax);
+  const msgLines = wrapStripOverlayLines(normalized.message, msgMax, maxLines);
   if (!title && !msgLines.length) return stripBuffer;
 
-  const blockH = (title ? Math.round(14 * scale) : 0) + msgLines.length * lineH + pad;
-  const titleY = height - blockH + (title ? Math.round(12 * scale) : Math.round(4 * scale));
+  const lum = await sampleStripBottomLuminance(stripBuffer, width, height);
+  const lightBg = lum > 145;
+  const scrimFill = lightBg ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.78)';
+  const titleFill = lightBg ? 'rgba(15,23,42,0.88)' : 'rgba(255,255,255,0.92)';
+  const msgFill = lightBg ? '#0f172a' : '#ffffff';
+
+  const titleBlockH = title ? Math.round(13 * scale) : 0;
+  const msgBlockH = msgLines.length * lineH;
+  const barPad = Math.round(8 * scale);
+  const barH = barPad * 2 + titleBlockH + (title && msgLines.length ? Math.round(3 * scale) : 0) + msgBlockH;
+  const barY = height - barH;
+  const titleY = barY + barPad + (title ? Math.round(10 * scale) : 0);
   const msgY = title
-    ? titleY + Math.round(14 * scale)
-    : height - pad - (msgLines.length - 1) * lineH;
+    ? titleY + Math.round(13 * scale)
+    : barY + barPad + Math.round(10 * scale);
 
   const msgTspans = msgLines.map((line, idx) => {
     const dy = idx === 0 ? 0 : lineH;
@@ -964,16 +1026,11 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height) 
       <clipPath id="${clipId}">
         <rect width="${width}" height="${height}"/>
       </clipPath>
-      <linearGradient id="pushStripGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
-        <stop offset="45%" stop-color="#000000" stop-opacity="0.08"/>
-        <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
-      </linearGradient>
     </defs>
     <g clip-path="url(#${clipId})">
-      <rect width="${width}" height="${height}" fill="url(#pushStripGrad)"/>
-      ${title ? `<text x="${pad}" y="${titleY}" fill="rgba(255,255,255,0.88)" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="700">${escapeStripSvgText(title)}</text>` : ''}
-      ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="#ffffff" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
+      <rect x="0" y="${barY}" width="${width}" height="${barH}" fill="${scrimFill}"/>
+      ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="700">${escapeStripSvgText(title)}</text>` : ''}
+      ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
     </g>
   </svg>`;
 
@@ -1389,6 +1446,10 @@ module.exports = {
   generateStrip,
   wrapStripOverlayLines,
   truncateStripOverlayTitle,
+  normalizePushAnnouncementForStrip,
+  STRIP_OVERLAY_TITLE_MAX_1X,
+  STRIP_OVERLAY_MSG_MAX_1X,
+  STRIP_OVERLAY_MSG_LINES,
   loadHrStripBuffers,
   composePushTextOnStrip,
   generateManifest,

@@ -1641,23 +1641,25 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="pushTitle">Titolo</label>
-                            <input type="text" id="pushTitle" placeholder="es. Offerta speciale weekend!" aria-describedby="pushTitleError">
+                            <input type="text" id="pushTitle" maxlength="22" placeholder="es. Offerta weekend!" aria-describedby="pushTitleError pushTitleHint">
+                            <p class="form-hint" id="pushTitleHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 22 caratteri — compare in maiuscolo sulla strip del pass.</p>
                             <p class="push-field-error" id="pushTitleError" role="alert"></p>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="pushMessage">Messaggio</label>
-                            <textarea id="pushMessage" rows="3" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError"></textarea>
+                            <textarea id="pushMessage" rows="3" maxlength="52" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
+                            <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 52 caratteri (2 righe sulla strip). Testo e colore si adattano all'immagine.</p>
                             <p class="push-field-error" id="pushMessageError" role="alert"></p>
                         </div>
                         <div class="form-group" style="margin-top:4px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                                 <input type="checkbox" id="pushUpdatePass" checked onchange="togglePushStripBlock()" style="width:auto;accent-color:var(--teal);">
-                                <span>Aggiorna contenuto pass (notifica visibile sul lock screen)</span>
+                                <span>Aggiorna contenuto pass (testo sulla strip; su iPhone il Wallet riceve un aggiornamento silenzioso, non un banner come le app)</span>
                             </label>
                         </div>
                         <div id="pushStripBlock" class="form-group" style="margin-top:8px;">
                             <label class="form-label">Strip per questa push (opzionale)</label>
-                            <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — non modifica la strip permanente del brand. La strip della campagna collegata ha priorità su questa strip temporanea.</p>
+                            <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — scegli un'immagine diversa dalla strip permanente del brand. Senza selezione, resta l'immagine del template e si aggiorna solo il testo sovrapposto.</p>
                             <div id="pushStripPreview" class="dropzone" role="button" tabindex="0" title="Scegli una strip temporanea per questa push" onclick="pushPickStripFromMedia()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pushPickStripFromMedia();}">
                                 <span class="dropzone__placeholder">Trascina o clicca per scegliere una strip temporanea</span>
                             </div>
@@ -1685,7 +1687,7 @@
                                 <label class="form-label">Scadenza link</label>
                                 <input type="datetime-local" id="pushPassLinkExpires">
                             </div>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Il link compare in cima al retro del pass fino alla scadenza (default 7 giorni).</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Il link compare in cima al retro del pass (prima di HUB / SUPPORT / AREA PRIVATA) fino alla scadenza. Attiva la spunta e compila URL + etichetta.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;display:none;" id="pushLegacyLinkOut">
                             <label class="form-label">Link out — retro Link 1 (legacy Ads)</label>
@@ -7750,6 +7752,8 @@ function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
     } else if (apnsSent === 0) {
         msg += `\n\nDiagnostica APNs: invio senza consegne.`;
         msg += `\nControlla certificati APNs e token registrati nel debug push.`;
+    } else if (apnsSent > 0) {
+        msg += `\n\nSu iPhone: Apple Wallet aggiorna il pass in background (nessun banner con titolo/messaggio). Apri Wallet per vedere strip e retro aggiornati.`;
     }
     return msg;
 }
@@ -8422,7 +8426,7 @@ async function loadPushHistory() {
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(l.message || '')}">${esc(l.message)}</td>
             <td>${l.sent_count||0}</td>
             <td style="text-align:right;">
-                <div class="pass-row-actions">
+                <div class="pass-row-actions" data-push-id="${esc(pid)}">
                     <button type="button" class="pass-action-btn pass-action-btn--view" onclick="resendPushFromHistory('${esc(pid)}')">Reinvia</button>
                     <button type="button" class="pass-action-btn pass-action-btn--danger" onclick="deletePushFromHistory('${esc(pid)}')" title="Elimina" aria-label="Elimina">&#128465;</button>
                 </div>
