@@ -22,6 +22,7 @@ const { getTargetPassesForPush, getAppleDevicesForAudience } = require('./audien
 const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
+const { attachBackDetailsToAnnouncement } = require('./push-text-limits');
 
 /**
  * First `next_run_at` when saving a scheduled push from the dashboard.
@@ -144,7 +145,7 @@ async function applyScheduledApplePushResults(devices, batchResults) {
 async function executeScheduledPush(schedule, baseUrl) {
   const {
     brand_id, title, message, target, update_pass, channel = 'apple', campaign_id, audience_id,
-    include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
+    include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_details,
   } = schedule;
   const pushTargetOpts = { campaign_id, audience_id };
   const legacyBoth = channel === 'both';
@@ -182,8 +183,11 @@ async function executeScheduledPush(schedule, baseUrl) {
     delete updatedConfig.stripOverride;
     await updateBrand(brand_id, { config: updatedConfig });
 
-    const announcement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
-      || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() };
+    const announcement = attachBackDetailsToAnnouncement(
+      normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+        || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() },
+      back_details
+    );
 
     if (targetPasses.length) {
       await updatePassPushOverlays(targetPasses.map((p) => p.id), { announcement, stripBase64: null });

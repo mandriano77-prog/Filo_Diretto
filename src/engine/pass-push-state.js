@@ -16,11 +16,14 @@ function parsePushAnnouncementRecord(raw) {
   const message = String(ann?.message || '').trim();
   if (!message) return null;
   const ts = Number(ann.ts ?? ann.timestamp);
-  return {
+  const backRaw = String(ann?.back_details ?? ann?.backDetails ?? '').trim();
+  const out = {
     title: String(ann.title || '').trim(),
     message,
     ts: Number.isFinite(ts) ? ts : Date.now(),
   };
+  if (backRaw) out.back_details = backRaw.slice(0, 500);
+  return out;
 }
 
 /** Effective HR push overlay for one pass instance (null = standard template). */

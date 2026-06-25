@@ -7,6 +7,8 @@ const PUSH_TITLE_MAX = 22;
 const PUSH_MESSAGE_MAX = 52;
 const PUSH_MESSAGE_LINE_MAX = 26;
 const PUSH_MESSAGE_LINES = 2;
+/** Retro pass only — clausole/dettagli promo (non strip, non lock screen). */
+const PUSH_BACK_DETAILS_MAX = 500;
 
 function validatePushText(title, message) {
   const t = String(title ?? '').trim();
@@ -32,6 +34,31 @@ function validatePushText(title, message) {
   }
 
   return errors;
+}
+
+function normalizePushBackDetails(raw) {
+  const d = String(raw ?? '').trim();
+  if (!d) return null;
+  return d.slice(0, PUSH_BACK_DETAILS_MAX);
+}
+
+function validatePushBackDetails(backDetails) {
+  const d = String(backDetails ?? '').trim();
+  if (!d) return [];
+  if (d.length > PUSH_BACK_DETAILS_MAX) {
+    return [{
+      field: 'pushBackDetails',
+      message: `Dettagli retro max ${PUSH_BACK_DETAILS_MAX} caratteri`,
+    }];
+  }
+  return [];
+}
+
+function attachBackDetailsToAnnouncement(announcement, backDetailsRaw) {
+  if (!announcement) return announcement;
+  const back_details = normalizePushBackDetails(backDetailsRaw);
+  if (!back_details) return announcement;
+  return { ...announcement, back_details };
 }
 
 function firstPushTextError(title, message) {
@@ -63,7 +90,11 @@ module.exports = {
   PUSH_MESSAGE_MAX,
   PUSH_MESSAGE_LINE_MAX,
   PUSH_MESSAGE_LINES,
+  PUSH_BACK_DETAILS_MAX,
   validatePushText,
+  validatePushBackDetails,
+  normalizePushBackDetails,
+  attachBackDetailsToAnnouncement,
   firstPushTextError,
   PUSH_TEXT_AGENT_RULES,
 };

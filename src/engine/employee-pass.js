@@ -165,11 +165,14 @@ function resolvePushAnnouncement(brandConfig, instance) {
   if (!ann || !ann.message) return null;
   const message = String(ann.message || '').trim();
   if (!message) return null;
-  return {
+  const out = {
     title: String(ann.title || '').trim(),
     message,
-    ts: Number(ann.ts || Date.now())
+    ts: Number(ann.ts || Date.now()),
   };
+  const backRaw = String(ann.back_details ?? ann.backDetails ?? '').trim();
+  if (backRaw) out.back_details = backRaw;
+  return out;
 }
 
 function rgbToHex(color) {
@@ -284,7 +287,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
-  // Promo copy lives on strip image — dynamic push link (if any) precedes HUB / SUPPORT / AREA PRIVATA.
+  // Promo copy lives on strip image — dynamic push link (if any) precedes optional dettagli / HUB / SUPPORT / AREA PRIVATA.
   const dynamicLink = resolveVariableLink(instance, template, brandConfig);
   if (dynamicLink?.url) {
     sections.push({
@@ -292,6 +295,16 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       key: 'dynamic_push_link',
       label: dynamicLink.label,
       url: dynamicLink.url
+    });
+  }
+
+  const pushAnn = resolvePushAnnouncement(brandConfig, instance);
+  if (pushAnn?.back_details) {
+    sections.push({
+      kind: 'text',
+      key: 'push_back_details',
+      label: 'DETTAGLI',
+      body: pushAnn.back_details,
     });
   }
 

@@ -1689,6 +1689,12 @@
                             </div>
                             <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Il link compare in cima al retro del pass (prima di HUB / SUPPORT / AREA PRIVATA) fino alla scadenza. Attiva la spunta e compila URL + etichetta.</p>
                         </div>
+                        <div class="form-group" style="margin-top:8px;">
+                            <label class="form-label" for="pushBackDetails">Dettagli retro pass (opzionale)</label>
+                            <textarea id="pushBackDetails" rows="4" maxlength="500" placeholder="es. Offerta valida fino al 31/12. Non cumulabile con altre promozioni." style="resize:vertical;" aria-describedby="pushBackDetailsHint pushBackDetailsError"></textarea>
+                            <p class="form-hint" id="pushBackDetailsHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 500 caratteri — clausole e condizioni sul retro del pass (non sulla strip né nella notifica).</p>
+                            <p class="push-field-error" id="pushBackDetailsError" role="alert"></p>
+                        </div>
                         <div class="form-group" style="margin-top:8px;display:none;" id="pushLegacyLinkOut">
                             <label class="form-label">Link out — retro Link 1 (legacy Ads)</label>
                             <div class="form-row">
@@ -1733,6 +1739,11 @@
                         <div class="form-group">
                             <label class="form-label">Messaggio</label>
                             <textarea id="schedMessage" rows="3" placeholder="es. Non perderti le novità di questa settimana!" style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="schedBackDetails">Dettagli retro pass (opzionale)</label>
+                            <textarea id="schedBackDetails" rows="4" maxlength="500" placeholder="es. Offerta valida fino al 31/12. Non cumulabile con altre promozioni." style="resize:vertical;"></textarea>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Max 500 caratteri — clausole e condizioni sul retro del pass (non sulla strip né nella notifica).</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Frequenza</label>
@@ -7754,8 +7765,9 @@ function pushClearStrip() {
 let pushHistoryCache = [];
 const PUSH_TITLE_MAX = 22;
 const PUSH_MESSAGE_MAX = 52;
+const PUSH_BACK_DETAILS_MAX = 500;
 
-function applyPushTextValidation(title, message) {
+function applyPushTextValidation(title, message, backDetails) {
     let invalid = false;
     if (!title) {
         setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
@@ -7769,6 +7781,11 @@ function applyPushTextValidation(title, message) {
         invalid = true;
     } else if (message.length > PUSH_MESSAGE_MAX) {
         setPushFieldError('pushMessage', `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (2 righe sulla strip)`);
+        invalid = true;
+    }
+    const details = String(backDetails ?? '').trim();
+    if (details.length > PUSH_BACK_DETAILS_MAX) {
+        setPushFieldError('pushBackDetails', `Dettagli retro max ${PUSH_BACK_DETAILS_MAX} caratteri`);
         invalid = true;
     }
     return !invalid;
@@ -7858,7 +7875,7 @@ function setPushFieldError(fieldId, message) {
 }
 
 function clearPushFieldErrors() {
-    ['pushTitle', 'pushMessage'].forEach((id) => setPushFieldError(id, ''));
+    ['pushTitle', 'pushMessage', 'pushBackDetails'].forEach((id) => setPushFieldError(id, ''));
     const banner = document.getElementById('pushSendError');
     if (banner) {
         banner.textContent = '';
@@ -7902,6 +7919,8 @@ function buildImmediatePushBody() {
         const expLocal = document.getElementById('pushPassLinkExpires')?.value;
         if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
     }
+    const backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
+    if (backDetails) body.back_details = backDetails;
     applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
     if (!isHrDashboard()) {
         const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
@@ -7927,6 +7946,8 @@ function resetImmediatePushForm() {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const backDetailsEl = document.getElementById('pushBackDetails');
+    if (backDetailsEl) backDetailsEl.value = '';
     const pbl = document.getElementById('pushBackLinkLabel');
     const pbu = document.getElementById('pushBackLinkUrl');
     if (pbl) pbl.value = '';
@@ -7940,11 +7961,12 @@ async function sendImmediatePush() {
     clearPushFieldErrors();
     const title = (document.getElementById('pushTitle')?.value || '').trim();
     const message = (document.getElementById('pushMessage')?.value || '').trim();
+    const backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
     if (!brandId) {
         toast('Seleziona un brand');
         return;
     }
-    if (!applyPushTextValidation(title, message)) return;
+    if (!applyPushTextValidation(title, message, backDetails)) return;
 
     const body = buildImmediatePushBody();
     setPushSendLoading(true);
@@ -8000,12 +8022,19 @@ async function createScheduledPush() {
         body.days = [...document.querySelectorAll('.sched-day:checked')].map(cb => parseInt(cb.value));
         if (!body.days.length) return alert('Seleziona almeno un giorno');
     }
+    const backDetails = (document.getElementById('schedBackDetails')?.value || '').trim();
+    if (backDetails.length > PUSH_BACK_DETAILS_MAX) {
+        return alert(`Dettagli retro max ${PUSH_BACK_DETAILS_MAX} caratteri`);
+    }
+    if (backDetails) body.back_details = backDetails;
     const res = await fetch(`${API}/push/scheduled`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { alert(data.error || 'Errore pianificazione'); return; }
     toast('Notifica programmata!');
     document.getElementById('schedTitle').value = '';
     document.getElementById('schedMessage').value = '';
+    const schedBackDetailsEl = document.getElementById('schedBackDetails');
+    if (schedBackDetailsEl) schedBackDetailsEl.value = '';
     loadScheduledPush();
 }
 
@@ -8024,7 +8053,7 @@ async function loadScheduledPush() {
                 <div class="card-info">
                     <div class="card-title">${esc(s.title)}</div>
                     <div class="card-desc">${esc(s.message)}</div>
-                    <div class="card-meta">${typeLabel} &middot; ${channelLabel} &middot; ${s.schedule_time || ''}${s.next_run_at ? ` · pross.: ${esc(new Date(s.next_run_at).toLocaleString('it-IT'))}` : ''}${s.active ? '' : '<span style="color:var(--orange);"> (in pausa)</span>'}</div>
+                    <div class="card-meta">${typeLabel} &middot; ${channelLabel} &middot; ${s.schedule_time || ''}${s.next_run_at ? ` · pross.: ${esc(new Date(s.next_run_at).toLocaleString('it-IT'))}` : ''}${s.back_details ? ' · <span style="color:var(--teal);">dettagli retro</span>' : ''}${s.active ? '' : '<span style="color:var(--orange);"> (in pausa)</span>'}</div>
                 </div>
                 <div class="card-actions">
                     <button class="btn small sec" onclick="toggleScheduled('${s.id}',${!s.active})">${s.active?'Pausa':'Attiva'}</button>

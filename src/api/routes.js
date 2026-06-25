@@ -76,7 +76,14 @@ const {
 } = require('../engine/audience-prompt');
 const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } = require('../engine/holder-events');
 const { createPkpass, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X } = require('../engine/passkit');
-const { validatePushText, PUSH_TITLE_MAX, PUSH_MESSAGE_MAX } = require('../engine/push-text-limits');
+const {
+  validatePushText,
+  validatePushBackDetails,
+  normalizePushBackDetails,
+  PUSH_TITLE_MAX,
+  PUSH_MESSAGE_MAX,
+  PUSH_BACK_DETAILS_MAX,
+} = require('../engine/push-text-limits');
 const { buildPkpassCached } = require('../engine/pkpass-cache');
 const googleWallet = require('../engine/google-wallet');
 const samsungWallet = require('../engine/samsung-wallet');
@@ -2576,6 +2583,7 @@ router.post('/push/send', async (req, res) => {
       back_link_label, back_link_url,
       include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
       strip_media_id, strip_base64,
+      back_details,
       test_pass_id,
     } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
@@ -2586,6 +2594,14 @@ router.post('/push/send', async (req, res) => {
         error: textErrors[0].message,
         field: textErrors[0].field,
         limits: { title_max: PUSH_TITLE_MAX, message_max: PUSH_MESSAGE_MAX },
+      });
+    }
+    const backDetailsErrors = validatePushBackDetails(back_details);
+    if (backDetailsErrors.length) {
+      return res.status(400).json({
+        error: backDetailsErrors[0].message,
+        field: backDetailsErrors[0].field,
+        limits: { back_details_max: PUSH_BACK_DETAILS_MAX },
       });
     }
     if (!assertPushChannel(channel)) {
@@ -2693,7 +2709,15 @@ router.post('/push/scheduled', async (req, res) => {
     if (req.body.channel && !assertPushChannel(req.body.channel)) {
       return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all o combinazioni apple,google)' });
     }
+    const backDetailsErrors = validatePushBackDetails(req.body.back_details);
+    if (backDetailsErrors.length) {
+      return res.status(400).json({
+        error: backDetailsErrors[0].message,
+        limits: { back_details_max: PUSH_BACK_DETAILS_MAX },
+      });
+    }
     const body = { ...req.body };
+    body.back_details = normalizePushBackDetails(body.back_details);
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
       body.schedule_days = body.days.map((x) => String(x)).join(',');
     }
@@ -2716,7 +2740,20 @@ router.put('/push/scheduled/:id', async (req, res) => {
     if (req.body.channel && !assertPushChannel(req.body.channel)) {
       return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all o combinazioni apple,google)' });
     }
-    const item = await updateScheduledPush(req.params.id, req.body);
+    if (req.body.back_details !== undefined) {
+      const backDetailsErrors = validatePushBackDetails(req.body.back_details);
+      if (backDetailsErrors.length) {
+        return res.status(400).json({
+          error: backDetailsErrors[0].message,
+          limits: { back_details_max: PUSH_BACK_DETAILS_MAX },
+        });
+      }
+    }
+    const patch = { ...req.body };
+    if (patch.back_details !== undefined) {
+      patch.back_details = normalizePushBackDetails(patch.back_details);
+    }
+    const item = await updateScheduledPush(req.params.id, patch);
     res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

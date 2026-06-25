@@ -38,3 +38,13 @@ test('targeted pass uses instance push overlay', () => {
 test('parsePushAnnouncementRecord rejects empty message', () => {
   assert.equal(parsePushAnnouncementRecord({ title: 'A', message: '  ' }), null);
 });
+
+test('parsePushAnnouncementRecord preserves back_details', () => {
+  const ann = parsePushAnnouncementRecord({
+    title: '2x1',
+    message: 'Solo oggi',
+    back_details: 'Valido fino al 31/12',
+    ts: 1,
+  });
+  assert.equal(ann.back_details, 'Valido fino al 31/12');
+});

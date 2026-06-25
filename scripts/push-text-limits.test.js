@@ -30,6 +30,13 @@ test('validatePushText accepts valid copy', () => {
   assert.equal(validatePushText('2x1 OCCHIALI', 'Solo questa settimana: 2x1 sugli occhiali').length, 0);
 });
 
+test('validatePushBackDetails rejects over-limit text', () => {
+  const { validatePushBackDetails, PUSH_BACK_DETAILS_MAX } = require('../src/engine/push-text-limits');
+  const errors = validatePushBackDetails('x'.repeat(PUSH_BACK_DETAILS_MAX + 1));
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].field, 'pushBackDetails');
+});
+
 test('agent rules mention limits', () => {
   assert.match(PUSH_TEXT_AGENT_RULES, /22/);
   assert.match(PUSH_TEXT_AGENT_RULES, /52/);

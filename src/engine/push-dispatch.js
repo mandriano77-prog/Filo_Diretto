@@ -24,6 +24,7 @@ const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
 const { normalizePushAnnouncementForStrip } = require('./passkit');
+const { attachBackDetailsToAnnouncement } = require('./push-text-limits');
 
 const activeJobIds = new Set();
 const APNS_RESULT_SAMPLE_LIMIT = Math.max(0, Math.min(parseInt(process.env.APNS_RESULT_SAMPLE_LIMIT || '50', 10) || 50, 200));
@@ -149,6 +150,7 @@ async function executeWalletPush(body, ctx = {}) {
     pass_link_url,
     pass_link_label,
     pass_link_expires_at,
+    back_details,
     test_pass_id,
   } = body;
 
@@ -219,8 +221,11 @@ async function executeWalletPush(body, ctx = {}) {
     }
 
     const config = { ...(brand.config || {}) };
-    const announcement = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
-      || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() };
+    const announcement = attachBackDetailsToAnnouncement(
+      normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+        || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() },
+      back_details
+    );
 
     if (!instant_win_id) delete config.instantWinActive;
     if (!gamification_id) delete config.gamificationActive;

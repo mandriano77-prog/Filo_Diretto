@@ -8221,6 +8221,7 @@
   'use strict';
   var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
   var MESSAGE_MAX = 52; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
+  var BACK_DETAILS_MAX = 500; // sync: src/engine/push-text-limits.js PUSH_BACK_DETAILS_MAX
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
   var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
@@ -8337,6 +8338,10 @@
         url: linkUrl
       });
     }
+    var backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
+    if (backDetails) {
+      rows.push({ key: 'push_back_details', label: 'DETTAGLI', body: backDetails });
+    }
     rows.push({ key: 'hub_employee', label: HR_HUB_BACK_TITLE });
     rows.push({ key: 'support', label: HR_SUPPORT_LABEL });
     rows.push({ key: 'portal_profile', label: HR_PORTAL_BACK_TITLE });
@@ -8347,6 +8352,13 @@
     if (!list) return;
     var rows = buildPassBackPreviewRows();
     list.innerHTML = rows.map(function (row) {
+      if (row.body) {
+        var preview = row.body.length > 120 ? row.body.slice(0, 117) + '…' : row.body;
+        return '<li class="fd-push-preview__pass-back-row" data-key="' + esc(row.key) + '">' +
+          '<span class="fd-push-preview__pass-back-label">' + esc(row.label) + '</span>' +
+          '<span class="fd-push-preview__pass-back-body">' + esc(preview) + '</span>' +
+          '</li>';
+      }
       var urlHint = row.url ? ' <span class="fd-push-preview__pass-back-url">' + esc(row.url) + '</span>' : '';
       return '<li class="fd-push-preview__pass-back-row" data-key="' + esc(row.key) + '">' +
         '<span class="fd-push-preview__pass-back-label">' + esc(row.label) + '</span>' + urlHint +
@@ -8439,7 +8451,7 @@
   function wirePassPreviewListeners() {
     var ids = [
       'pushTitle', 'pushMessage', 'pushUpdatePass', 'pushIncludePassLink',
-      'pushPassLinkUrl', 'pushPassLinkLabel'
+      'pushPassLinkUrl', 'pushPassLinkLabel', 'pushBackDetails'
     ];
     ids.forEach(function (id) {
       var el = document.getElementById(id);
@@ -8630,6 +8642,8 @@
       var expLocal = document.getElementById('pushPassLinkExpires')?.value;
       if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
     }
+    var backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
+    if (backDetails) body.back_details = backDetails;
     applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
     if (updatePass && window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
     if (extra.test_pass_id) body.test_pass_id = extra.test_pass_id;
@@ -8727,6 +8741,15 @@
       }
       return;
     }
+    var backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
+    if (backDetails.length > BACK_DETAILS_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushBackDetails', 'Dettagli retro max ' + BACK_DETAILS_MAX + ' caratteri');
+      } else if (typeof alert === 'function') {
+        alert('Dettagli retro max ' + BACK_DETAILS_MAX + ' caratteri');
+      }
+      return;
+    }
     var btn = document.getElementById('fdPushTestBtn');
     if (btn) {
       btn.disabled = true;
@@ -8778,6 +8801,12 @@
       }
     }
   }
+  function charCounterIdForInput(inputId) {
+    if (inputId === 'pushTitle') return 'fdPushTitleCount';
+    if (inputId === 'pushMessage') return 'fdPushMessageCount';
+    if (inputId === 'pushBackDetails') return 'fdPushBackDetailsCount';
+    return '';
+  }
   function wrapCharField(inputId, max) {
     var input = document.getElementById(inputId);
     if (!input || input.dataset.fdCharWrapped === '1') return;
@@ -8785,6 +8814,7 @@
     var group = input.closest('.form-group');
     if (!group) return;
     var label = group.querySelector('.form-label');
+    var counterId = charCounterIdForInput(inputId);
     if (label && !label.parentElement.classList.contains('fd-push-field-head')) {
       var head = document.createElement('div');
       head.className = 'fd-push-field-head';
@@ -8792,11 +8822,11 @@
       head.appendChild(label);
       var count = document.createElement('span');
       count.className = 'fd-push-char-count';
-      count.id = inputId === 'pushTitle' ? 'fdPushTitleCount' : 'fdPushMessageCount';
+      count.id = counterId;
       count.textContent = '0/' + max;
       head.appendChild(count);
     }
-    var counter = document.getElementById(inputId === 'pushTitle' ? 'fdPushTitleCount' : 'fdPushMessageCount');
+    var counter = counterId ? document.getElementById(counterId) : null;
     input.addEventListener('input', function () {
       updateCharCount(input, counter, max);
       syncPreview();
@@ -8881,7 +8911,7 @@
       '<div class="fd-push-preview__pass fd-push-preview__pass--back">' +
       '<span class="fd-push-preview__device-label">Pass Wallet · retro</span>' +
       '<ul class="fd-push-preview__pass-back-rows" data-fd-push-preview-back-rows></ul>' +
-      '<p class="fd-push-preview__pass-back-note">Il link push compare in cima al retro quando «Includi link nel pass» è attivo.</p>' +
+      '<p class="fd-push-preview__pass-back-note">Link push e dettagli opzionali compaiono in cima al retro, prima di HUB / SUPPORT / AREA PRIVATA.</p>' +
       '</div>';
     return aside;
   }
@@ -9322,6 +9352,13 @@
       }
       invalid = true;
     }
+    var backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
+    if (backDetails.length > BACK_DETAILS_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushBackDetails', 'Dettagli retro max ' + BACK_DETAILS_MAX + ' caratteri');
+      }
+      invalid = true;
+    }
     if (invalid) return;
     ensurePushConfirmModal();
     var channel = document.getElementById('pushChannel')?.value || 'apple';
@@ -9492,6 +9529,7 @@
     buildTestBlock();
     wrapCharField('pushTitle', TITLE_MAX);
     wrapCharField('pushMessage', MESSAGE_MAX);
+    wrapCharField('pushBackDetails', BACK_DETAILS_MAX);
     syncPreview();
     wirePassPreviewListeners();
     loadTestPasses();

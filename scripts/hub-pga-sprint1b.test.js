@@ -209,6 +209,37 @@ test('HR back: dynamic push link appears first when instance has dynamic_link_ur
   assert.match(linkFields[0].attributedValue, /https:\/\/example\.com\/offerta/);
 });
 
+test('HR back: push back_details after dynamic link', () => {
+  const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
+  const sections = buildBackSections({
+    brand: { hr_email: 'supporto@nti.it' },
+    template: {},
+    instance: {
+      dynamic_link_url: 'https://example.com/offerta',
+      dynamic_link_label: 'Vai all\'offerta',
+      dynamic_link_expires_at: new Date(Date.now() + 86400000).toISOString(),
+      push_announcement: {
+        title: '2x1 OCCHIALI',
+        message: 'Solo questa settimana',
+        back_details: 'Non cumulabile. Valido fino al 31/12.',
+        ts: 1710000000001,
+      },
+    },
+    member: {},
+    hubUrl: 'https://studio.example.com/hub/conv?token=t',
+    portalUrl: 'https://studio.example.com/portal/?t=t',
+  });
+  assert.equal(sections[0].key, 'dynamic_push_link');
+  assert.equal(sections[1].key, 'push_back_details');
+  assert.equal(sections[1].label, 'DETTAGLI');
+  assert.match(sections[1].body, /Non cumulabile/);
+  const backFields = sectionsToAppleBackFields(sections);
+  const detailsField = backFields.find((f) => f.key === 'push_back_details');
+  assert.ok(detailsField);
+  assert.equal(detailsField.label, 'DETTAGLI');
+  assert.match(detailsField.value, /Non cumulabile/);
+});
+
 test('HR push: coin field carries Wallet lock-screen alert without auxiliary row', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
@@ -258,6 +289,14 @@ test('strip overlay: title truncates and message wraps with ellipsis', () => {
 test('strip preview API route registered', () => {
   assert.match(read('src/api/routes.js'), /\/brands\/:id\/push\/strip-preview/);
   assert.match(read('src/api/routes.js'), /composePushTextOnStrip/);
+});
+
+test('scheduled push: back_details stored and applied on execute', () => {
+  assert.match(read('src/db/index.js'), /scheduled_push ADD COLUMN IF NOT EXISTS back_details/);
+  assert.match(read('src/db/index.js'), /back_details/);
+  assert.match(read('src/engine/scheduler.js'), /attachBackDetailsToAnnouncement/);
+  assert.match(read('src/api/routes.js'), /validatePushBackDetails\(req\.body\.back_details\)/);
+  assert.match(read('src/dashboard/index.html'), /schedBackDetails/);
 });
 
 test('AC-025: coin anniversaries cron scheduled at boot', () => {
