@@ -7728,6 +7728,27 @@ function pushClearStrip() {
 }
 
 let pushHistoryCache = [];
+const PUSH_TITLE_MAX = 22;
+const PUSH_MESSAGE_MAX = 52;
+
+function applyPushTextValidation(title, message) {
+    let invalid = false;
+    if (!title) {
+        setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
+        invalid = true;
+    } else if (title.length > PUSH_TITLE_MAX) {
+        setPushFieldError('pushTitle', `Titolo max ${PUSH_TITLE_MAX} caratteri (leggibilità strip)`);
+        invalid = true;
+    }
+    if (!message) {
+        setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
+        invalid = true;
+    } else if (message.length > PUSH_MESSAGE_MAX) {
+        setPushFieldError('pushMessage', `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (2 righe sulla strip)`);
+        invalid = true;
+    }
+    return !invalid;
+}
 
 function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
     const apnsSent = data.sent_apns ?? data.sent ?? 0;
@@ -7895,20 +7916,11 @@ async function sendImmediatePush() {
     clearPushFieldErrors();
     const title = (document.getElementById('pushTitle')?.value || '').trim();
     const message = (document.getElementById('pushMessage')?.value || '').trim();
-    let invalid = false;
-    if (!title) {
-        setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
-        invalid = true;
-    }
-    if (!message) {
-        setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
-        invalid = true;
-    }
     if (!brandId) {
         toast('Seleziona un brand');
         return;
     }
-    if (invalid) return;
+    if (!applyPushTextValidation(title, message)) return;
 
     const body = buildImmediatePushBody();
     setPushSendLoading(true);

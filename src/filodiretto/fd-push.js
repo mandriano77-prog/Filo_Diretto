@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var TITLE_MAX = 22;
-  var MESSAGE_MAX = 52;
+  var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
+  var MESSAGE_MAX = 52; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
   var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
@@ -546,7 +546,16 @@
       return;
     }
     if (title.length > TITLE_MAX || message.length > MESSAGE_MAX) {
-      if (typeof alert === 'function') alert('Titolo o messaggio supera il limite consigliato per APNs');
+      if (typeof window.setPushFieldError === 'function') {
+        if (title.length > TITLE_MAX) {
+          window.setPushFieldError('pushTitle', 'Titolo max ' + TITLE_MAX + ' caratteri (leggibilità strip)');
+        }
+        if (message.length > MESSAGE_MAX) {
+          window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (2 righe sulla strip)');
+        }
+      } else if (typeof alert === 'function') {
+        alert('Titolo max ' + TITLE_MAX + ' caratteri, messaggio max ' + MESSAGE_MAX);
+      }
       return;
     }
 
@@ -1064,6 +1073,19 @@
     if (!syncBrandIdForPush()) {
       if (typeof toast === 'function') toast('Seleziona un brand');
       return;
+    }
+    if (invalid) return;
+    if (title.length > TITLE_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushTitle', 'Titolo max ' + TITLE_MAX + ' caratteri (leggibilità strip)');
+      }
+      invalid = true;
+    }
+    if (message.length > MESSAGE_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (2 righe sulla strip)');
+      }
+      invalid = true;
     }
     if (invalid) return;
 

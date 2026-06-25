@@ -119,7 +119,8 @@ test('HR push promo: strip text + push_notice auxiliary for Wallet alert', () =>
   const apple = toApplePass(employeePass);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
   assert.equal(apple.passStructure.auxiliaryFields[0].key, 'push_notice');
-  assert.equal(apple.passStructure.auxiliaryFields[0].changeMessage, '%@');
+  assert.match(apple.passStructure.auxiliaryFields[0].changeMessage, /FRATELLI LA PIZZA/);
+  assert.doesNotMatch(apple.passStructure.auxiliaryFields[0].changeMessage, /^%@$/);
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
     ['name', 'reparto', 'coin_balance']
@@ -204,9 +205,9 @@ test('HR push: auxiliary push_notice for Wallet lock-screen alert', () => {
   });
   assert.equal(ep.front.auxiliary.length, 1);
   assert.equal(ep.front.auxiliary[0].key, 'push_notice');
-  assert.equal(ep.front.auxiliary[0].changeMessage, '%@');
+  assert.match(ep.front.auxiliary[0].changeMessage, /2X1 OCCHIALI/);
   const apple = toApplePass(ep);
-  assert.equal(apple.passStructure.auxiliaryFields[0].changeMessage, '%@');
+  assert.match(apple.passStructure.auxiliaryFields[0].changeMessage, /2X1 OCCHIALI/);
 });
 
 test('strip overlay: normalize enforces HR strip char limits', () => {

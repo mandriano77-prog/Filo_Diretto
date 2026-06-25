@@ -112,6 +112,17 @@ Redeploy: push to tracked branch or “Deploy” in UI.
 - **Schema**: incremental `ALTER`/DDL in `getDb()` — no separate migration CLI.
 - **Cron**: started from `server.js` (scheduler, strip promo, email recap, etc.).
 
+## Push HR — limiti testo (obbligatori per agent e API)
+
+Le push **non partono** se si superano i limiti (`POST /push/send` → 400). Fonte unica: `src/engine/push-text-limits.js`.
+
+| Campo | Max | Note |
+|-------|-----|------|
+| **Titolo** | **22** | Maiuscolo sulla strip + notifica Wallet |
+| **Messaggio** | **52** | 2 righe × 26 caratteri sulla strip |
+
+Copy breve; emoji e punteggiatura contano. URL lunghi → **Includi link nel pass**, non nel messaggio. Anteprima in `fd-push.js` usa gli stessi limiti.
+
 ## Testing
 
 Smoke test after deploy:
