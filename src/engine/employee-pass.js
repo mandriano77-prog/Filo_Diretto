@@ -256,7 +256,16 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
 
-  // Promo copy lives on strip image — back stays HUB / SUPPORT / AREA PRIVATA only.
+  // Promo copy lives on strip image — dynamic push link (if any) precedes HUB / SUPPORT / AREA PRIVATA.
+  const dynamicLink = resolveVariableLink(instance, template, brandConfig);
+  if (dynamicLink?.url) {
+    sections.push({
+      kind: 'link',
+      key: 'dynamic_push_link',
+      label: dynamicLink.label,
+      url: dynamicLink.url
+    });
+  }
 
   if (hubUrl) {
     sections.push({

@@ -2496,6 +2496,43 @@ router.post('/passes/:id/regenerate', async (req, res) => {
 });
 
 
+router.post('/brands/:id/push/strip-preview', async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    if (!requireBrandId(req, res, brandId)) return;
+    const brand = await getBrand(brandId);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const { title, message, strip_base64, strip_media_id, format } = req.body || {};
+    let stripOverride = null;
+    if (strip_media_id || strip_base64) {
+      stripOverride = await resolvePushStripBase64({ brand_id: brandId, strip_media_id, strip_base64 });
+    }
+
+    const templates = await listTemplates(brandId);
+    const template = templates[0] || { style: { images: {} } };
+    const { loadHrStripBuffers, composePushTextOnStrip } = require('../engine/passkit');
+    const stripBuffers = await loadHrStripBuffers({ brand, template, stripOverrideBase64: stripOverride });
+
+    let preview = stripBuffers.strip;
+    const msg = String(message || '').trim();
+    if (msg) {
+      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123);
+    }
+
+    const acceptJson = format === 'json' || req.query.format === 'json';
+    if (acceptJson) {
+      return res.json({ strip_preview: `data:image/png;base64,${preview.toString('base64')}` });
+    }
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-store');
+    res.send(preview);
+  } catch (err) {
+    console.error('Strip preview error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/push/send', async (req, res) => {
   try {
     const {

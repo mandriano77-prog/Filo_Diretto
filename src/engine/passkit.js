@@ -869,18 +869,27 @@ function escapeStripSvgText(value) {
     .replace(/"/g, '&quot;');
 }
 
+function truncateStripOverlayTitle(text, maxChars) {
+  const t = String(text || '').trim().toUpperCase();
+  if (!t) return '';
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
 function wrapStripOverlayLines(text, maxChars, maxLines) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [];
   const lines = [];
   let line = '';
   for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
+    let w = word;
+    if (w.length > maxChars) w = `${w.slice(0, Math.max(1, maxChars - 1))}…`;
+    const candidate = line ? `${line} ${w}` : w;
     if (candidate.length > maxChars && line) {
       lines.push(line);
-      line = word;
+      line = w;
     } else {
-      line = candidate;
+      line = candidate.length > maxChars ? `${candidate.slice(0, Math.max(1, maxChars - 1))}…` : candidate;
     }
     if (lines.length >= maxLines) break;
   }
@@ -895,22 +904,53 @@ function wrapStripOverlayLines(text, maxChars, maxLines) {
   return lines;
 }
 
+/** Load HR strip buffers (1x/2x) — same precedence as createPkpass. */
+async function loadHrStripBuffers({ brand, template, stripOverrideBase64 = null }) {
+  const brandCfg = brand?.config || {};
+  const tplImages = template?.style?.images || {};
+  const bgColor = brandCfg.backgroundColor || template?.style?.backgroundColor || '#0D0B1A';
+  const fgColor = brandCfg.foregroundColor || template?.style?.foregroundColor || '#FFFFFF';
+  const defaultStripPath = path.join(__dirname, '..', '..', 'public', 'assets', 'default-strip.png');
+
+  async function resizeStrip(rawStrip) {
+    const strip1x = await sharp(rawStrip).resize(375, 123, { fit: 'cover' }).png().toBuffer();
+    const strip2x = await sharp(rawStrip).resize(750, 246, { fit: 'cover' }).png().toBuffer();
+    return { strip: strip1x, strip2x };
+  }
+
+  if (stripOverrideBase64) {
+    return resizeStrip(Buffer.from(stripOverrideBase64, 'base64'));
+  }
+  if (tplImages.strip) {
+    return resizeStrip(Buffer.from(tplImages.strip, 'base64'));
+  }
+  if (brandCfg.logos?.strip) {
+    return resizeStrip(Buffer.from(brandCfg.logos.strip, 'base64'));
+  }
+  if (fs.existsSync(defaultStripPath)) {
+    return resizeStrip(fs.readFileSync(defaultStripPath));
+  }
+  return generateStrip(brand?.name || 'Brand', bgColor, fgColor);
+}
+
 /** HR push promo — title + message burned into strip (not auxiliary pillar). */
 async function composePushTextOnStrip(stripBuffer, announcement, width, height) {
   if (!announcement?.message || !stripBuffer) return stripBuffer;
   const scale = width / 375;
   const pad = Math.round(12 * scale);
-  const titleSize = Math.round(11 * scale);
-  const msgSize = Math.round(14 * scale);
-  const lineH = Math.round(17 * scale);
-  const title = String(announcement.title || '').trim().toUpperCase().slice(0, 48);
-  const msgLines = wrapStripOverlayLines(announcement.message, width >= 750 ? 44 : 30, 2);
+  const titleSize = Math.round(10 * scale);
+  const msgSize = Math.round(12 * scale);
+  const lineH = Math.round(15 * scale);
+  const titleMax = width >= 750 ? 44 : 22;
+  const msgMax = width >= 750 ? 38 : 26;
+  const title = truncateStripOverlayTitle(announcement.title, titleMax);
+  const msgLines = wrapStripOverlayLines(announcement.message, msgMax, 2);
   if (!title && !msgLines.length) return stripBuffer;
 
-  const blockH = (title ? Math.round(16 * scale) : 0) + msgLines.length * lineH + pad;
-  const titleY = height - blockH + (title ? Math.round(14 * scale) : Math.round(4 * scale));
+  const blockH = (title ? Math.round(14 * scale) : 0) + msgLines.length * lineH + pad;
+  const titleY = height - blockH + (title ? Math.round(12 * scale) : Math.round(4 * scale));
   const msgY = title
-    ? titleY + Math.round(16 * scale)
+    ? titleY + Math.round(14 * scale)
     : height - pad - (msgLines.length - 1) * lineH;
 
   const msgTspans = msgLines.map((line, idx) => {
@@ -918,17 +958,23 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height) 
     return `<tspan x="${pad}" dy="${dy}">${escapeStripSvgText(line)}</tspan>`;
   }).join('');
 
+  const clipId = `stripClip${width}x${height}`;
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
+      <clipPath id="${clipId}">
+        <rect width="${width}" height="${height}"/>
+      </clipPath>
       <linearGradient id="pushStripGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
         <stop offset="45%" stop-color="#000000" stop-opacity="0.08"/>
         <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
       </linearGradient>
     </defs>
-    <rect width="${width}" height="${height}" fill="url(#pushStripGrad)"/>
-    ${title ? `<text x="${pad}" y="${titleY}" fill="rgba(255,255,255,0.88)" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="700">${escapeStripSvgText(title)}</text>` : ''}
-    ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="#ffffff" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
+    <g clip-path="url(#${clipId})">
+      <rect width="${width}" height="${height}" fill="url(#pushStripGrad)"/>
+      ${title ? `<text x="${pad}" y="${titleY}" fill="rgba(255,255,255,0.88)" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="700">${escapeStripSvgText(title)}</text>` : ''}
+      ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="#ffffff" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600">${msgTspans}</text>` : ''}
+    </g>
   </svg>`;
 
   return sharp(stripBuffer)
@@ -1341,6 +1387,9 @@ module.exports = {
   generateIcon,
   generateLogo,
   generateStrip,
+  wrapStripOverlayLines,
+  truncateStripOverlayTitle,
+  loadHrStripBuffers,
   composePushTextOnStrip,
   generateManifest,
   signManifest,

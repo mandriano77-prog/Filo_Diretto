@@ -8222,6 +8222,12 @@
   var TITLE_MAX = 50;
   var MESSAGE_MAX = 178;
   var TEST_PASS_KEY = 'fd:pushTestPassId';
+  var STRIP_PREVIEW_DEBOUNCE_MS = 400;
+  var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
+  var HR_PORTAL_BACK_TITLE = 'AREA PRIVATA';
+  var HR_SUPPORT_LABEL = 'SUPPORT';
+  var stripPreviewTimer = null;
+  var stripPreviewSeq = 0;
   var CHANNELS = [
     { value: 'apple', label: 'Apple Wallet', icon: '', tip: 'Invio tramite APNs (Apple Push Notification service)' },
     { value: 'google', label: 'Google Wallet', icon: '', tip: 'Aggiornamento messaggio su Google Wallet' },
@@ -8317,6 +8323,143 @@
     document.querySelectorAll('[data-fd-push-preview-brand]').forEach(function (el) {
       el.textContent = brand;
     });
+    syncPassPreview();
+  }
+  function buildPassBackPreviewRows() {
+    var rows = [];
+    var includeLink = document.getElementById('pushIncludePassLink')?.checked;
+    var linkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+    var linkLabel = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
+    if (includeLink && linkUrl) {
+      rows.push({
+        key: 'dynamic_push_link',
+        label: linkLabel || 'Scopri di più',
+        url: linkUrl
+      });
+    }
+    rows.push({ key: 'hub_employee', label: HR_HUB_BACK_TITLE });
+    rows.push({ key: 'support', label: HR_SUPPORT_LABEL });
+    rows.push({ key: 'portal_profile', label: HR_PORTAL_BACK_TITLE });
+    return rows;
+  }
+  function renderPassBackPreview() {
+    var list = document.querySelector('[data-fd-push-preview-back-rows]');
+    if (!list) return;
+    var rows = buildPassBackPreviewRows();
+    list.innerHTML = rows.map(function (row) {
+      var urlHint = row.url ? ' <span class="fd-push-preview__pass-back-url">' + esc(row.url) + '</span>' : '';
+      return '<li class="fd-push-preview__pass-back-row" data-key="' + esc(row.key) + '">' +
+        '<span class="fd-push-preview__pass-back-label">' + esc(row.label) + '</span>' + urlHint +
+        '</li>';
+    }).join('');
+  }
+  function scheduleStripPreview() {
+    if (stripPreviewTimer) clearTimeout(stripPreviewTimer);
+    stripPreviewTimer = setTimeout(fetchStripPreview, STRIP_PREVIEW_DEBOUNCE_MS);
+  }
+  async function fetchStripPreview() {
+    var brandId = syncBrandIdForPush();
+    var hint = document.querySelector('[data-fd-push-preview-strip-hint]');
+    var img = document.querySelector('[data-fd-push-preview-strip]');
+    var loading = document.querySelector('[data-fd-push-preview-strip-loading]');
+    var updatePass = document.getElementById('pushUpdatePass')?.checked;
+    var message = (document.getElementById('pushMessage')?.value || '').trim();
+    if (!updatePass || !message) {
+      if (img) {
+        img.hidden = true;
+        img.removeAttribute('src');
+      }
+      if (hint) {
+        hint.hidden = false;
+        hint.textContent = updatePass
+          ? 'Inserisci un messaggio per vedere il testo sulla strip'
+          : 'Abilita «Aggiorna contenuto pass» per vedere il testo sulla strip';
+      }
+      if (loading) loading.hidden = true;
+      return;
+    }
+    if (!brandId) {
+      if (hint) {
+        hint.hidden = false;
+        hint.textContent = 'Seleziona un brand per l\'anteprima strip';
+      }
+      return;
+    }
+    if (hint) hint.hidden = true;
+    if (loading) loading.hidden = false;
+    var seq = ++stripPreviewSeq;
+    try {
+      var body = {
+        title: (document.getElementById('pushTitle')?.value || '').trim(),
+        message: message,
+        format: 'json'
+      };
+      if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
+      var res = await fetch(
+        getApiBase() + '/brands/' + encodeURIComponent(brandId) + '/push/strip-preview',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(typeof getAuthHeaders === 'function' ? getAuthHeaders() : {})
+          },
+          body: JSON.stringify(body)
+        }
+      );
+      if (seq !== stripPreviewSeq) return;
+      if (!res.ok) {
+        var errBody = {};
+        try { errBody = await res.json(); } catch (_) {}
+        throw new Error(errBody.error || 'Anteprima non disponibile');
+      }
+      var data = await res.json();
+      if (img && data.strip_preview) {
+        img.src = data.strip_preview;
+        img.hidden = false;
+      }
+    } catch (_) {
+      if (seq === stripPreviewSeq) {
+        if (img) {
+          img.hidden = true;
+          img.removeAttribute('src');
+        }
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent = 'Anteprima strip non disponibile';
+        }
+      }
+    } finally {
+      if (seq === stripPreviewSeq && loading) loading.hidden = true;
+    }
+  }
+  function syncPassPreview() {
+    renderPassBackPreview();
+    scheduleStripPreview();
+  }
+  function wirePassPreviewListeners() {
+    var ids = [
+      'pushTitle', 'pushMessage', 'pushUpdatePass', 'pushIncludePassLink',
+      'pushPassLinkUrl', 'pushPassLinkLabel'
+    ];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.dataset.fdPassPreviewBound === '1') return;
+      el.dataset.fdPassPreviewBound = '1';
+      el.addEventListener('input', syncPassPreview);
+      el.addEventListener('change', syncPassPreview);
+    });
+    var brandSel = document.getElementById('brandSelector');
+    if (brandSel && brandSel.dataset.fdPassPreviewBound !== '1') {
+      brandSel.dataset.fdPassPreviewBound = '1';
+      brandSel.addEventListener('change', syncPassPreview);
+    }
+    var stripPreview = document.getElementById('pushStripPreview');
+    if (stripPreview && stripPreview.dataset.fdPassPreviewObs !== '1') {
+      stripPreview.dataset.fdPassPreviewObs = '1';
+      new MutationObserver(function () {
+        scheduleStripPreview();
+      }).observe(stripPreview, { childList: true, subtree: true });
+    }
   }
   var channelSelection = {
     apple: true,
@@ -8717,9 +8860,19 @@
       '<div class="fd-push-preview__lock-title" data-fd-push-preview-title>Titolo notifica</div>' +
       '<div class="fd-push-preview__lock-body" data-fd-push-preview-body>Testo del messaggio…</div>' +
       '</div></div>' +
-      '<div class="fd-push-preview__pass">' +
+      '<div class="fd-push-preview__pass fd-push-preview__pass--front">' +
+      '<span class="fd-push-preview__device-label">Pass Wallet · fronte</span>' +
+      '<div class="fd-push-preview__pass-card">' +
       '<div class="fd-push-preview__pass-name" data-fd-push-preview-brand>Brand</div>' +
-      '<div>Anteprima pass Wallet (contenuto aggiornato se attivo)</div>' +
+      '<div class="fd-push-preview__pass-strip">' +
+      '<img class="fd-push-preview__pass-strip-img" data-fd-push-preview-strip alt="Anteprima strip pass" hidden>' +
+      '<div class="fd-push-preview__pass-strip-hint" data-fd-push-preview-strip-hint>Abilita «Aggiorna contenuto pass» per vedere il testo sulla strip</div>' +
+      '<div class="fd-push-preview__pass-strip-loading" data-fd-push-preview-strip-loading hidden>Caricamento anteprima…</div>' +
+      '</div></div></div>' +
+      '<div class="fd-push-preview__pass fd-push-preview__pass--back">' +
+      '<span class="fd-push-preview__device-label">Pass Wallet · retro</span>' +
+      '<ul class="fd-push-preview__pass-back-rows" data-fd-push-preview-back-rows></ul>' +
+      '<p class="fd-push-preview__pass-back-note">Il link push compare in cima al retro quando «Includi link nel pass» è attivo.</p>' +
       '</div>';
     return aside;
   }
@@ -9212,6 +9365,7 @@
     wrapCharField('pushTitle', TITLE_MAX);
     wrapCharField('pushMessage', MESSAGE_MAX);
     syncPreview();
+    wirePassPreviewListeners();
     loadTestPasses();
     wirePushSendConfirm();
     var brandSel = document.getElementById('brandSelector');

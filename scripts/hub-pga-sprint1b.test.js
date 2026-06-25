@@ -167,6 +167,48 @@ test('HR back links: title-only embedded CTA (no duplicate label row)', () => {
   assert.match(fields[1].attributedValue, /<a href="[^"]+">AREA PRIVATA<\/a>/);
 });
 
+test('HR back: dynamic push link appears first when instance has dynamic_link_url', () => {
+  const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
+  const sections = buildBackSections({
+    brand: { hr_email: 'supporto@nti.it' },
+    template: {},
+    instance: {
+      dynamic_link_url: 'https://example.com/offerta',
+      dynamic_link_label: 'Compila il questionario',
+      dynamic_link_expires_at: new Date(Date.now() + 86400000).toISOString()
+    },
+    member: {},
+    hubUrl: 'https://studio.example.com/hub/conv?token=t',
+    portalUrl: 'https://studio.example.com/portal/?t=t'
+  });
+  assert.equal(sections[0].key, 'dynamic_push_link');
+  assert.equal(sections[0].kind, 'link');
+  assert.equal(sections[0].label, 'Compila il questionario');
+  assert.equal(sections[0].url, 'https://example.com/offerta');
+  assert.equal(sections[1].key, 'hub_employee');
+  const linkFields = sectionsToAppleBackFields(sections.filter((s) => s.kind === 'link'));
+  assert.equal(linkFields.length, 4);
+  assert.equal(linkFields[0].value, 'Compila il questionario');
+  assert.match(linkFields[0].attributedValue, /https:\/\/example\.com\/offerta/);
+});
+
+test('strip overlay: title truncates and message wraps with ellipsis', () => {
+  const { wrapStripOverlayLines, truncateStripOverlayTitle } = require('../src/engine/passkit');
+  assert.equal(truncateStripOverlayTitle('Fratelli La Pizza Special Edition', 22), 'FRATELLI LA PIZZA SPE…');
+  const lines = wrapStripOverlayLines(
+    'Dal lunedì al venerdì con il pass hai lo sconto del venti per cento su tutto',
+    26,
+    2
+  );
+  assert.equal(lines.length, 2);
+  assert.match(lines[1], /…$/);
+});
+
+test('strip preview API route registered', () => {
+  assert.match(read('src/api/routes.js'), /\/brands\/:id\/push\/strip-preview/);
+  assert.match(read('src/api/routes.js'), /composePushTextOnStrip/);
+});
+
 test('AC-025: coin anniversaries cron scheduled at boot', () => {
   assert.match(read('src/engine/coin-anniversaries.js'), /runCoinAnniversariesJob/);
   assert.match(read('src/server.js'), /scheduleCoinAnniversariesJob/);
