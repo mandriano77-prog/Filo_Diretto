@@ -323,6 +323,7 @@ async function executeWalletPush(body, ctx = {}) {
     googleSync = await syncGoogleWalletObjectsForPasses({
       brand,
       passes: targetPasses,
+      title,
       message,
     });
   }

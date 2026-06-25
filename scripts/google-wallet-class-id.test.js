@@ -113,3 +113,28 @@ test('HR brands force generic pass kind even when env is loyalty', () => {
     restore();
   }
 });
+
+test('buildGoogleNotifyMessagePayload uses TEXT_AND_NOTIFY and HR limits', () => {
+  const { mod, restore } = loadGoogleWallet({ GOOGLE_WALLET_ISSUER_ID: '1' });
+  try {
+    const payload = mod.buildGoogleNotifyMessagePayload({
+      title: 'promo estate',
+      message: 'Solo oggi sconto 20% in sede',
+      messageId: 'msg_1',
+    });
+    assert.equal(payload.message.messageType, 'TEXT_AND_NOTIFY');
+    assert.equal(payload.message.header, 'PROMO ESTATE');
+    assert.equal(payload.message.body, 'Solo oggi sconto 20% in sede');
+    assert.equal(payload.message.id, 'msg_1');
+  } finally {
+    restore();
+  }
+});
+
+test('updatePassMessage uses addMessage not textModulesData patch', () => {
+  const fs = require('fs');
+  const source = fs.readFileSync(MOD, 'utf8');
+  assert.match(source, /addMessage/);
+  assert.match(source, /TEXT_AND_NOTIFY/);
+  assert.doesNotMatch(source, /latest_message/);
+});

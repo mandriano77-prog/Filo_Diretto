@@ -10,6 +10,7 @@ async function syncGoogleWalletObjectsForPasses({
   brand,
   passes,
   message,
+  title,
   concurrency = DEFAULT_CONCURRENCY,
 }) {
   if (!googleWallet.isConfigured()) {
@@ -42,9 +43,8 @@ async function syncGoogleWalletObjectsForPasses({
         const passObject = await googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
         await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
         if (message) {
-          await googleWallet.updatePassMessage(pass.serial_number, message, brand);
-        }
-        outcomes[index] = { ok: true };
+          await googleWallet.updatePassMessage(pass.serial_number, message, brand, { title });
+        }        outcomes[index] = { ok: true };
       } catch (err) {
         console.error('[GoogleWallet] Sync error for serial', pass.serial_number, err.message);
         outcomes[index] = { ok: false, error: err.message };

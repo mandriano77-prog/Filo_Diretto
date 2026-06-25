@@ -212,6 +212,7 @@ async function executeScheduledPush(schedule, baseUrl) {
       const googleSync = await syncGoogleWalletObjectsForPasses({
         brand: syncedBrand,
         passes: targetPasses,
+        title,
         message,
       });
       console.log('[GoogleWallet] Scheduled sync', googleSync);

@@ -807,14 +807,92 @@ async function updatePassObject(serialNumber, updates, brand) {
   }
 }
 
-async function updatePassMessage(serialNumber, message, brand) {
-  return updatePassObject(serialNumber, {
-    textModulesData: [{
-      id: 'latest_message',
-      header: 'Novità',
-      body: message
-    }]
-  }, brand);
+const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX } = require('./push-text-limits');
+
+function isGoogleNotifyQuotaError(err) {
+  const combined = [
+    err?.message,
+    err?.body?.error?.message,
+    err?.body?.error?.status,
+    ...(err?.body?.error?.errors || []).map((e) => `${e.reason || ''} ${e.message || ''}`),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return combined.includes('quotaexceeded') || combined.includes('quota exceeded');
+}
+
+/** Build AddMessage payload — triggers Android push when messageType is TEXT_AND_NOTIFY. */
+function buildGoogleNotifyMessagePayload({ title, message, messageId }) {
+  const header = String(title || 'NOVITÀ').trim().toUpperCase().slice(0, PUSH_TITLE_MAX) || 'NOVITÀ';
+  const body = String(message || '').trim().slice(0, PUSH_MESSAGE_MAX);
+  if (!body) throw new Error('Google notify message body required');
+  const id = String(messageId || `push_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`)
+    .replace(/[^A-Za-z0-9._-]/g, '_')
+    .slice(0, 64);
+  return {
+    message: {
+      header,
+      body,
+      id,
+      messageType: 'TEXT_AND_NOTIFY',
+    },
+  };
+}
+
+async function addPassNotifyMessage(serialNumber, { title, message }, brand, options = {}) {
+  const passKind = resolvePassKind(brand);
+  const objectPath = passKind === 'loyalty' ? 'loyaltyObject' : 'genericObject';
+  const objectId = buildObjectId(serialNumber, brand);
+  const legacyObjectId = buildLegacyObjectId(serialNumber);
+  const messageId = options.messageId || `push_${serialNumber}_${Date.now()}`;
+  const payload = buildGoogleNotifyMessagePayload({ title, message, messageId });
+
+  async function postAddMessage(targetId, body) {
+    const path = `/${objectPath}/${encodeURIComponent(targetId)}/addMessage`;
+    const result = await walletApiPost(path, body);
+    console.log(`[GoogleWallet] addMessage ${targetId} type=${body.message.messageType}`);
+    return result;
+  }
+
+  async function tryNotify(targetId) {
+    try {
+      return await postAddMessage(targetId, payload);
+    } catch (err) {
+      if (options.silentOnQuota !== false && isGoogleNotifyQuotaError(err)) {
+        console.warn(`[GoogleWallet] notify quota exceeded for ${targetId}, falling back to TEXT`);
+        const silentPayload = {
+          message: { ...payload.message, messageType: 'TEXT' },
+        };
+        return postAddMessage(targetId, silentPayload);
+      }
+      throw err;
+    }
+  }
+
+  try {
+    return await tryNotify(objectId);
+  } catch (e) {
+    if (legacyObjectId !== objectId) {
+      try {
+        return await tryNotify(legacyObjectId);
+      } catch (legacyErr) {
+        console.error(`[GoogleWallet] addMessage failed for ${objectId} and legacy ${legacyObjectId}:`, legacyErr.message);
+        throw legacyErr;
+      }
+    }
+    console.error(`[GoogleWallet] addMessage failed for ${objectId}:`, e.message);
+    throw e;
+  }
+}
+
+/**
+ * Send a Google Wallet push notification (AddMessage TEXT_AND_NOTIFY).
+ * Does not mutate front-of-pass fields — promo stays on strip image only.
+ */
+async function updatePassMessage(serialNumber, message, brand, options = {}) {
+  const title = options.title ?? options.header ?? null;
+  return addPassNotifyMessage(serialNumber, { title, message }, brand, options);
 }
 
 // ── Google Wallet API helpers ─────────────────────────────────────────
@@ -955,5 +1033,8 @@ module.exports = {
   generateSaveLinkLegacy,
   createPassObjectOnServer,
   updatePassObject,
-  updatePassMessage
+  buildGoogleNotifyMessagePayload,
+  addPassNotifyMessage,
+  updatePassMessage,
+  isGoogleNotifyQuotaError,
 };
