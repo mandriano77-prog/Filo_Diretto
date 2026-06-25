@@ -7753,7 +7753,8 @@ function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
         msg += `\n\nDiagnostica APNs: invio senza consegne.`;
         msg += `\nControlla certificati APNs e token registrati nel debug push.`;
     } else if (apnsSent > 0) {
-        msg += `\n\nSu iPhone: Apple Wallet aggiorna il pass in background (nessun banner con titolo/messaggio). Apri Wallet per vedere strip e retro aggiornati.`;
+        msg += `\n\nSu iPhone: dovresti ricevere un avviso Wallet con il testo della promo (campo in basso sul pass).`;
+        msg += `\nSe non compare: Impostazioni → Notifiche → Wallet → Consenti avvisi, poi riapri il pass.`;
     }
     return msg;
 }

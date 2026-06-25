@@ -95,7 +95,7 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
-test('HR push promo: three secondary pillars only (message on strip, not auxiliary)', () => {
+test('HR push promo: strip text + push_notice auxiliary for Wallet alert', () => {
   const { buildEmployeePass, toApplePass, resolvePushAnnouncement } = require('../src/engine/employee-pass');
   const ann = resolvePushAnnouncement({
     pushAnnouncement: {
@@ -117,7 +117,9 @@ test('HR push promo: three secondary pillars only (message on strip, not auxilia
     coinBalance: 25
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
+  assert.equal(apple.passStructure.auxiliaryFields[0].key, 'push_notice');
+  assert.equal(apple.passStructure.auxiliaryFields[0].changeMessage, '%@');
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
     ['name', 'reparto', 'coin_balance']
@@ -190,6 +192,21 @@ test('HR back: dynamic push link appears first when instance has dynamic_link_ur
   assert.equal(linkFields.length, 4);
   assert.equal(linkFields[0].value, 'Compila il questionario');
   assert.match(linkFields[0].attributedValue, /https:\/\/example\.com\/offerta/);
+});
+
+test('HR push: auxiliary push_notice for Wallet lock-screen alert', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const ep = buildEmployeePass({
+    brand: { id: 'b1', name: 'NTI', slug: 'nti', config: { pushAnnouncement: { title: '2x1 OCCHIALI', message: 'Solo questa settimana', ts: 1710000000001 } } },
+    template: { style: {} },
+    instance: { serial_number: 'SN1' },
+    member: { full_name: 'Test', department: 'HR' }
+  });
+  assert.equal(ep.front.auxiliary.length, 1);
+  assert.equal(ep.front.auxiliary[0].key, 'push_notice');
+  assert.equal(ep.front.auxiliary[0].changeMessage, '%@');
+  const apple = toApplePass(ep);
+  assert.equal(apple.passStructure.auxiliaryFields[0].changeMessage, '%@');
 });
 
 test('strip overlay: normalize enforces HR strip char limits', () => {

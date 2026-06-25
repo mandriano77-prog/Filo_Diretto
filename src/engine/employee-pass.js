@@ -338,6 +338,20 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   });
 
   const auxiliary = [];
+  const pushAnn = resolvePushAnnouncement(cfg);
+  if (pushAnn?.message) {
+    // Apple Wallet: only front fields with changeMessage trigger lock-screen alerts (APNs payload stays empty).
+    const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
+    const pushTs = Number(pushAnn.ts || Date.now());
+    const zwsp = '\u200b'.repeat((pushTs % 10) + 1);
+    const promoValue = String(pushAnn.message).trim().slice(0, 26);
+    auxiliary.push({
+      key: 'push_notice',
+      label: promoTitle,
+      value: `${promoValue}${zwsp}`,
+      changeMessage: '%@'
+    });
+  }
 
   const backSections = buildBackSections({
     brand,
