@@ -140,23 +140,27 @@ function buildCoinFieldValue(coinBalance) {
 }
 
 /**
- * Header field for Wallet lock-screen alert (legacy — not applied on HR pass face).
- * HR keeps template header frozen; promo copy lives on strip overlay only.
+ * Invisible auxiliary field — triggers Apple Wallet lock-screen alert via changeMessage.
+ * Promo copy stays on strip overlay; header/NOME/AREA/COIN remain frozen on the face.
+ * Only front fields (not back) trigger lock-screen notifications on iOS.
  */
-function buildPushHeaderField(pushAnn) {
+function buildPushWalletAlertField(pushAnn) {
   if (!pushAnn?.message) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
   const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-  const promoValue = String(pushAnn.message).trim().slice(0, 40);
   const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, 52);
   const zwsp = '\u200b'.repeat((pushTs % 9) + 1);
   return {
     key: 'push_notice',
-    label: promoTitle,
-    value: `${promoValue}${zwsp}`.slice(0, 64),
+    label: '\u200b',
+    value: zwsp,
     changeMessage: alertText.slice(0, 178),
-    textAlignment: 'PKTextAlignmentRight',
   };
+}
+
+/** @deprecated use buildPushWalletAlertField — kept for callers expecting the old name */
+function buildPushHeaderField(pushAnn) {
+  return buildPushWalletAlertField(pushAnn);
 }
 
 /** Push copy for strip overlay (not auxiliary pillar). Instance overlay wins over brand config. */
@@ -398,8 +402,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template, instance });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip on top; nome + area + COIN on secondary (fisso — niente auxiliary sulla faccia).
-  // Push promo va SOLO sulla strip (overlay), mai su header/campi template congelati.
+  // Front layout: strip promo + secondary NOME/AREA/COIN frozen; invisible auxiliary for Wallet alert only.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
   const headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
@@ -412,6 +415,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
+  const walletAlert = pushAnn ? buildPushWalletAlertField(pushAnn) : null;
+  if (walletAlert) auxiliary.push(walletAlert);
 
   const backSections = buildBackSections({
     brand,
@@ -562,6 +567,7 @@ function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}
     });
   });
   (employeePass.front.auxiliary || []).forEach((f, i) => {
+    if (f.key === 'push_notice') return;
     modules.push({
       id: `front_aux_${i}`,
       header: f.label,
@@ -742,5 +748,6 @@ module.exports = {
   resolveVariableLink,
   resolvePushAnnouncement,
   buildPushHeaderField,
+  buildPushWalletAlertField,
   escapeHtml
 };

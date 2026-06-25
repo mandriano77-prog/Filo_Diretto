@@ -121,8 +121,11 @@ test('HR push promo: strip overlay only — frozen template header and secondary
     coinBalance: 25
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   assert.equal((apple.passStructure.headerFields || []).length, 0);
+  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'push_notice');
+  assert.ok(alertField);
+  assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
+  assert.equal(alertField.label, '\u200b');
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
@@ -233,7 +236,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: frozen template header — promo only on strip, not pass face', () => {
+test('HR push: frozen template header — invisible auxiliary triggers Wallet alert', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -245,7 +248,8 @@ test('HR push: frozen template header — promo only on strip, not pass face', (
     member: { full_name: 'Test', department: 'HR' },
     brandConfig: {},
   });
-  assert.equal(ep.front.auxiliary.length, 0);
+  assert.equal(ep.front.auxiliary.length, 1);
+  assert.equal(ep.front.auxiliary[0].key, 'push_notice');
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);
   assert.equal(coin.changeMessage, 'Hai %@ coin');
@@ -256,7 +260,8 @@ test('HR push: frozen template header — promo only on strip, not pass face', (
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(appleCoin.changeMessage, 'Hai %@ coin');
   assert.equal((apple.passStructure.headerFields || []).length, 0);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  const appleAlert = apple.passStructure.auxiliaryFields[0];
+  assert.match(appleAlert.changeMessage, /2X1 OCCHIALI/);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
 
