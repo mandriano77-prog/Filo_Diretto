@@ -2,7 +2,16 @@
  * Resolve wallet logo/icon sources from Brand Identity media + legacy config.logos.
  */
 const sharp = require('sharp');
-const { getMedia, getBrand, listTemplates, updateBrand, updateTemplate, touchPassesForTemplate, listPasses, touchPass } = require('../db');
+const {
+  getMedia,
+  getBrand,
+  listTemplates,
+  updateBrand,
+  updateTemplate,
+  touchPassesForTemplate,
+  listPasses,
+  getDevicesForBrand,
+} = require('../db');
 
 async function resolveBrandLogoRawBuffer(brand) {
   const cfg = brand?.config || {};
@@ -85,11 +94,9 @@ async function resolvePassIconBuffers(brand, resolvedLogo) {
       source: fromMedia.source
     };
   }
-  if (cfg.brand_identity_assets?.wallet_icon) {
-    const synced = readIconPackFromConfig(cfg.logos);
-    if (synced) {
-      return { iconBuffers: synced, source: 'config_logos_synced' };
-    }
+  const synced = readIconPackFromConfig(cfg.logos);
+  if (synced) {
+    return { iconBuffers: synced, source: 'config_logos_synced' };
   }
   if (resolvedLogo?.buffer) {
     return {
@@ -167,6 +174,27 @@ async function buildWalletLogoAndIconFromRaw(rawLogoBuffer, brand) {
   return { logoBuffers, iconBuffers };
 }
 
+async function touchAndNotifyBrandPasses(brandId) {
+  const passes = await listPasses(brandId);
+  const passIds = passes.map((p) => p.id);
+  if (passIds.length) {
+    const { touchPassesByIds } = require('../db');
+    await touchPassesByIds(passIds);
+  }
+  let pushSent = 0;
+  try {
+    const devices = await getDevicesForBrand(brandId);
+    if (devices.length) {
+      const { sendPushBatch } = require('./apns');
+      const batch = await sendPushBatch(devices.map((d) => d.push_token));
+      pushSent = batch.filter((r) => r.success).length;
+    }
+  } catch (err) {
+    console.warn('[wallet-icon] APNs notify after icon update failed:', err.message);
+  }
+  return { touched: passIds.length, push_sent: pushSent };
+}
+
 async function applyWalletIconBase64(brandId, iconBase64, { brand, touchPasses = true } = {}) {
   const imgBuffer = Buffer.from(iconBase64, 'base64');
   const iconPack = await buildNotificationIconFromRaw(imgBuffer);
@@ -181,8 +209,7 @@ async function applyWalletIconBase64(brandId, iconBase64, { brand, touchPasses =
   config.wallet_icon_synced_at = new Date().toISOString();
   await updateBrand(brandId, { config });
   if (touchPasses) {
-    const passes = await listPasses(brandId);
-    for (const p of passes) await touchPass(p.id);
+    await touchAndNotifyBrandPasses(brandId);
   }
   return config;
 }
@@ -296,6 +323,7 @@ module.exports = {
   buildPassLogoBuffersFromRaw,
   buildWalletLogoAndIconFromRaw,
   applyBrandLogoBase64,
+  touchAndNotifyBrandPasses,
   applyWalletIconBase64,
   syncWalletLogoFromBrandIdentity,
   syncWalletIconFromBrandIdentity,

@@ -1848,7 +1848,12 @@ router.post('/brands/:id/wallet-icon', async (req, res) => {
     const refreshed = await getBrand(req.params.id);
     await applyWalletIconBase64(req.params.id, iconB64, { brand: refreshed, touchPasses: true });
 
-    res.json({ success: true, wallet_icon_media_id: media.id });
+    res.json({
+      success: true,
+      wallet_icon_media_id: media.id,
+      wallet_icon_rev: (refreshed.config?.wallet_icon_rev || 0) + 1,
+      hint: 'I pass sono stati aggiornati. Su iPhone la notifica può mostrare ancora la vecchia icona finché Wallet non scarica il pass aggiornato (apri Wallet o reinvia una push).'
+    });
   } catch (err) {
     console.error('Wallet icon upload error:', err);
     res.status(500).json({ error: err.message });
@@ -1868,7 +1873,12 @@ router.post('/brands/:id/wallet-icon/sync', async (req, res) => {
     const synced = await assignWalletIconMedia(req.params.id, mediaId, { touchPasses: true })
       || await syncWalletIconFromBrandIdentity(req.params.id, brand, { touchPasses: true, mediaId });
     if (!synced) return res.status(400).json({ error: 'Impossibile sincronizzare icona notifiche' });
-    res.json({ success: true, wallet_icon_media_id: mediaId });
+    const latest = await getBrand(req.params.id);
+    res.json({
+      success: true,
+      wallet_icon_media_id: mediaId,
+      wallet_icon_rev: latest?.config?.wallet_icon_rev || 0,
+    });
   } catch (err) {
     console.error('Wallet icon sync error:', err);
     res.status(500).json({ error: err.message });

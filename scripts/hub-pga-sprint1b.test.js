@@ -71,9 +71,10 @@ test('AC-010: coin balance renders on secondary row (not header or auxiliary)', 
   const secKeys = (apple.passStructure.secondaryFields || []).map((f) => f.key);
   assert.equal(headerKeys.includes('coin_balance'), false);
   assert.equal(auxKeys.includes('coin_balance'), false);
-  assert.deepEqual(secKeys, ['name', 'reparto', 'coin_balance']);
-  const repartoField = apple.passStructure.secondaryFields.find((f) => f.key === 'reparto');
-  assert.equal(repartoField.value, 'Engineering');
+  assert.deepEqual(secKeys, ['name', 'area', 'coin_balance']);
+  const areaField = apple.passStructure.secondaryFields.find((f) => f.key === 'area');
+  assert.equal(areaField.label, 'AREA');
+  assert.equal(areaField.value, 'Engineering');
   const coinField = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(coinField.value, '247');
 });
@@ -95,7 +96,7 @@ test('AC-010b: COIN row always present on HR pass (defaults to 0)', () => {
   assert.equal(coinField.value, '0');
 });
 
-test('HR push promo: strip text + push_notice auxiliary for Wallet alert', () => {
+test('HR push promo: strip text + coin touch for Wallet alert (no extra front field)', () => {
   const { buildEmployeePass, toApplePass, resolvePushAnnouncement } = require('../src/engine/employee-pass');
   const ann = resolvePushAnnouncement({
     pushAnnouncement: {
@@ -117,13 +118,23 @@ test('HR push promo: strip text + push_notice auxiliary for Wallet alert', () =>
     coinBalance: 25
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
-  assert.equal(apple.passStructure.auxiliaryFields[0].key, 'push_notice');
-  assert.match(apple.passStructure.auxiliaryFields[0].changeMessage, /FRATELLI LA PIZZA/);
-  assert.doesNotMatch(apple.passStructure.auxiliaryFields[0].changeMessage, /^%@$/);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
+  assert.ok(coinField);
+  assert.equal(coinField.value.replace(/\u200b/g, ''), '25');
+  assert.match(coinField.changeMessage, /FRATELLI LA PIZZA/);
+  assert.doesNotMatch(coinField.changeMessage, /^%@$/);
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
-    ['name', 'reparto', 'coin_balance']
+    ['name', 'area', 'coin_balance']
+  );
+  assert.equal(
+    (apple.passStructure.secondaryFields || []).find((f) => f.key === 'name').label,
+    'NOME'
+  );
+  assert.equal(
+    (apple.passStructure.secondaryFields || []).find((f) => f.key === 'area').label,
+    'AREA'
   );
 
   const passkit = read('src/engine/passkit.js');
@@ -195,7 +206,7 @@ test('HR back: dynamic push link appears first when instance has dynamic_link_ur
   assert.match(linkFields[0].attributedValue, /https:\/\/example\.com\/offerta/);
 });
 
-test('HR push: auxiliary push_notice for Wallet lock-screen alert', () => {
+test('HR push: coin field carries Wallet lock-screen alert without auxiliary row', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: { pushAnnouncement: { title: '2x1 OCCHIALI', message: 'Solo questa settimana', ts: 1710000000001 } } },
@@ -203,11 +214,15 @@ test('HR push: auxiliary push_notice for Wallet lock-screen alert', () => {
     instance: { serial_number: 'SN1' },
     member: { full_name: 'Test', department: 'HR' }
   });
-  assert.equal(ep.front.auxiliary.length, 1);
-  assert.equal(ep.front.auxiliary[0].key, 'push_notice');
-  assert.match(ep.front.auxiliary[0].changeMessage, /2X1 OCCHIALI/);
+  assert.equal(ep.front.auxiliary.length, 0);
+  const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
+  assert.ok(coin);
+  assert.match(coin.changeMessage, /2X1 OCCHIALI/);
+  assert.equal(coin.value.replace(/\u200b/g, ''), '0');
   const apple = toApplePass(ep);
-  assert.match(apple.passStructure.auxiliaryFields[0].changeMessage, /2X1 OCCHIALI/);
+  const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
+  assert.match(appleCoin.changeMessage, /2X1 OCCHIALI/);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
 });
 
 test('strip overlay: normalize enforces HR strip char limits', () => {

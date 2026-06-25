@@ -3435,7 +3435,7 @@
 
                 <div class="sec-title" style="font-size:14px;margin:16px 0 8px;">Fronte — Campi</div>
 <p id="tplFrontHrNote" style="display:none;font-size:12px;color:var(--text2);margin:0 0 12px;line-height:1.5;">
-                    Su Filodiretto il fronte mostra DIPENDENTE, REPARTO e COIN dal profilo (matricola e sede restano in anagrafica HR). L’<strong>header in alto a destra</strong> (es. «LEGGI LE PUSH» / «Vedi dietro») si configura qui sotto: lascia vuoto per non mostrarlo.
+                    Su Filodiretto il fronte mostra NOME, AREA e COIN dal profilo (matricola e sede restano in anagrafica HR). L’<strong>header in alto a destra</strong> (es. «LEGGI LE PUSH» / «Vedi dietro») si configura qui sotto: lascia vuoto per non mostrarlo.
                 </p>
                 <div id="tplFrontFieldsBlock">
                 <div class="form-row">
@@ -3473,7 +3473,7 @@
                     <div class="form-row" id="tplImgWalletIconRow" style="display:none;">
                         <div class="form-group" style="flex:1;">
                             <label class="form-label">Icona notifiche Wallet (quadrata)</label>
-                            <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Per le push su iPhone: usa un simbolo quadrato (es. 512×512). Il logo orizzontale del pass resta troppo piccolo nelle notifiche.</p>
+                            <p style="font-size:11px;color:var(--text2);margin:0 0 8px;line-height:1.45;">Per le push su iPhone: simbolo quadrato (512×512). Separata dal logo pass — dopo il salvataggio i pass vengono aggiornati e notificati in Wallet.</p>
                             <div class="fd-tpl-img-toolbar">
                                 <button type="button" class="btn small" onclick="tplPickFromMedia('wallet_icon')">Library</button>
                                 <button type="button" class="btn small sec" id="tplImgRemove_wallet_icon" style="display:none;" onclick="clearTplImage('wallet_icon')">Rimuovi</button>
@@ -6894,6 +6894,11 @@ async function saveTemplate() {
     }
 
     if (!body.name) { throw new Error('Nome template obbligatorio'); }
+    const iconPendingAtStart = isHrDashboard() && brandId
+      && !!(tplImageCache.wallet_icon || tplWalletIconMediaId);
+    if (iconPendingAtStart) {
+        await persistHrWalletIcon();
+    }
     const url = editId ? `${API}/templates/${editId}` : `${API}/templates`;
     const method = editId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, headers: waiFetchHeaders(), body: JSON.stringify(body) });
@@ -6932,7 +6937,7 @@ async function saveTemplate() {
         } catch (e) {
             console.warn('[HR] pass_header_hint sync failed:', e);
         }
-        await persistHrWalletIcon({ reapplyExisting: true });
+        await persistHrWalletIcon({ reapplyExisting: !iconPendingAtStart });
     }
     closeModal('templateModal');
     if (editId && saved.wallet_refresh) {
@@ -7060,8 +7065,8 @@ function updatePassPreview() {
             hrHf.innerHTML = '';
         }
         document.getElementById('ppSecondary').innerHTML =
-            '<div class="pp-field"><div class="pp-field-label">DIPENDENTE</div><div class="pp-field-value">Mario Rossi</div></div>' +
-            '<div class="pp-field"><div class="pp-field-label">REPARTO</div><div class="pp-field-value">Engineering</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">NOME</div><div class="pp-field-value">Mario Rossi</div></div>' +
+            '<div class="pp-field"><div class="pp-field-label">AREA</div><div class="pp-field-value">Engineering</div></div>' +
             '<div class="pp-field"><div class="pp-field-label">COIN</div><div class="pp-field-value">247</div></div>';
         document.getElementById('ppAuxiliary').innerHTML = '';
 
@@ -7376,24 +7381,39 @@ async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
         }
         delete tplImageCache.wallet_icon;
         tplWalletIconMediaId = null;
-        toast('Icona notifiche aggiornata — rigenera i pass con una push o reinstalla');
+        toast('Icona notifiche aggiornata — i pass ricevono l\'aggiornamento in Wallet');
         return { ok: true };
     }
     const mediaId = tplWalletIconMediaId;
-    if (!mediaId && !reapplyExisting) return { ok: false, skipped: true };
+    if (mediaId) {
+        try {
+            const res = await fetch(`${API}/brands/${brandId}/wallet-icon/sync`, {
+                method: 'POST',
+                headers: waiFetchHeaders(),
+                body: JSON.stringify({ media_id: mediaId })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                toast(err.error || 'Sync icona notifiche fallita');
+                return { ok: false };
+            }
+            tplWalletIconMediaId = null;
+            toast('Icona notifiche sincronizzata sui pass');
+            return { ok: true };
+        } catch (e) {
+            console.warn('[HR] wallet icon sync failed:', e);
+            toast('Sync icona notifiche fallita');
+            return { ok: false };
+        }
+    }
+    if (!reapplyExisting) return { ok: false, skipped: true };
     try {
         const res = await fetch(`${API}/brands/${brandId}/wallet-icon/sync`, {
             method: 'POST',
             headers: waiFetchHeaders(),
-            body: JSON.stringify(mediaId ? { media_id: mediaId } : {})
+            body: JSON.stringify({})
         });
-        if (res.ok) {
-            tplWalletIconMediaId = null;
-            if (mediaId || reapplyExisting) {
-                toast('Icona notifiche sincronizzata sui pass');
-            }
-            return { ok: true };
-        }
+        if (res.ok) return { ok: true };
         if (res.status === 400) return { ok: false, skipped: true };
         const err = await res.json().catch(() => ({}));
         toast(err.error || 'Sync icona notifiche fallita');
@@ -7465,6 +7485,10 @@ function previewTplImage(input, imageType) {
         updatePassPreview();
         updateTplImageRemoveButtons();
         notifyTplDirtyState();
+        if (imageType === 'wallet_icon') {
+            tplWalletIconMediaId = null;
+            persistHrWalletIcon().catch((e) => console.warn('[HR] wallet icon persist:', e));
+        }
     };
     reader.readAsDataURL(file);
 }
@@ -11932,9 +11956,13 @@ async function tplPickFromMedia(imageType) {
     const pickerFilter = imageType === 'wallet_icon' ? 'all' : imageType;
     openMediaPicker(async (mediaId, imageUrl) => {
         const base64 = await fetchMediaImageBase64(mediaId);
-        tplImageCache[imageType] = base64;
         clearTplImageRemovalFlag(imageType);
-        if (imageType === 'wallet_icon') tplWalletIconMediaId = mediaId;
+        if (imageType === 'wallet_icon') {
+            tplWalletIconMediaId = mediaId;
+            delete tplImageCache.wallet_icon;
+        } else {
+            tplImageCache[imageType] = base64;
+        }
         const preview = document.getElementById(tplMediaPreviewId(imageType));
         if (preview) {
             preview.src = 'data:image/png;base64,' + base64;

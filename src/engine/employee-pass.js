@@ -126,9 +126,34 @@ function isCoinPassField(label, key) {
   return k === 'coin_balance' || k === 'coin' || l === 'COIN' || /^COIN\b/.test(l);
 }
 
-function buildAnnouncementAuxField(brandConfig) {
-  // Push promo text is rendered on the strip image (see passkit.composePushTextOnStrip).
-  return null;
+/** Invisible suffix so Wallet sees a value change without showing extra digits on the pass face. */
+function pushWalletTouchSuffix(ts) {
+  const seed = Number(ts);
+  const n = (Number.isFinite(seed) ? Math.abs(seed) : Date.now()) % 24;
+  return '\u200b'.repeat(n + 1);
+}
+
+function buildCoinFieldValue(coinBalance, pushAnn) {
+  const coinValue =
+    coinBalance != null && Number.isFinite(Number(coinBalance))
+      ? Math.max(0, Math.floor(Number(coinBalance)))
+      : 0;
+  const coinValueStr = String(coinValue);
+  const field = {
+    key: 'coin_balance',
+    label: 'COIN',
+    value: coinValueStr,
+    changeMessage: 'Hai %@ coin'
+  };
+  if (!pushAnn?.message) return field;
+
+  const pushTs = Number(pushAnn.ts || Date.now());
+  const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
+  const promoValue = String(pushAnn.message).trim().slice(0, 52);
+  const alertText = (promoTitle ? `${promoTitle}: ` : '') + promoValue;
+  field.value = coinValueStr + pushWalletTouchSuffix(pushTs);
+  field.changeMessage = alertText.slice(0, 178);
+  return field;
 }
 
 /** Push copy for strip overlay (not auxiliary pillar). */
@@ -318,40 +343,18 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip on top; nome + reparto + COIN on secondary (matricola resta solo in DB/HR).
+  // Front layout: strip on top; nome + area + COIN on secondary (fisso — niente auxiliary sulla faccia).
+  const pushAnn = resolvePushAnnouncement(cfg);
   const secondary = [];
   if (profile.full_name) {
-    secondary.push({ key: 'name', label: 'DIPENDENTE', value: profile.full_name });
+    secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
   }
   if (profile.department) {
-    secondary.push({ key: 'reparto', label: 'REPARTO', value: String(profile.department).trim() });
+    secondary.push({ key: 'area', label: 'AREA', value: String(profile.department).trim() });
   }
-  const coinValue =
-    coinBalance != null && Number.isFinite(Number(coinBalance))
-      ? Math.max(0, Math.floor(Number(coinBalance)))
-      : 0;
-  secondary.push({
-    key: 'coin_balance',
-    label: 'COIN',
-    value: String(coinValue),
-    changeMessage: 'Hai %@ coin'
-  });
+  secondary.push(buildCoinFieldValue(coinBalance, pushAnn));
 
   const auxiliary = [];
-  const pushAnn = resolvePushAnnouncement(cfg);
-  if (pushAnn?.message) {
-    // Lock-screen alert only: changeMessage without %@ → full alert text; value stays invisible (no duplicate promo row).
-    const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-    const pushTs = Number(pushAnn.ts || Date.now());
-    const promoValue = String(pushAnn.message).trim().slice(0, 52);
-    const alertText = (promoTitle ? `${promoTitle}: ` : '') + promoValue;
-    auxiliary.push({
-      key: 'push_notice',
-      label: '\u200b',
-      value: `\u200b${pushTs}`,
-      changeMessage: alertText.slice(0, 178)
-    });
-  }
 
   const backSections = buildBackSections({
     brand,
