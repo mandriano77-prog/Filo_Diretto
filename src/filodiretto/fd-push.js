@@ -747,6 +747,125 @@
     document.getElementById('fdPushTestBtn').addEventListener('click', sendTestPush);
   }
 
+  function applyPushDraft(draft) {
+    if (!draft) return;
+    var titleEl = document.getElementById('pushTitle');
+    var messageEl = document.getElementById('pushMessage');
+    if (titleEl) titleEl.value = draft.title || '';
+    if (messageEl) messageEl.value = draft.message || '';
+
+    updateCharCount(titleEl, document.getElementById('fdPushTitleCount'), TITLE_MAX);
+    updateCharCount(messageEl, document.getElementById('fdPushMessageCount'), MESSAGE_MAX);
+
+    if (draft.include_pass_link && draft.pass_link_url) {
+      var chk = document.getElementById('pushIncludePassLink');
+      if (chk) chk.checked = true;
+      if (typeof window.togglePushPassLinkFields === 'function') window.togglePushPassLinkFields();
+      var urlEl = document.getElementById('pushPassLinkUrl');
+      var labelEl = document.getElementById('pushPassLinkLabel');
+      if (urlEl) urlEl.value = draft.pass_link_url;
+      if (labelEl) labelEl.value = draft.pass_link_label || draft.title || '';
+    }
+
+    if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
+    syncPreview();
+    syncPassPreview();
+
+    [titleEl, messageEl].forEach(function (el) {
+      if (!el) return;
+      el.classList.add('fd-push-draft-filled');
+      setTimeout(function () { el.classList.remove('fd-push-draft-filled'); }, 2200);
+    });
+
+    var preview = document.getElementById('fdPushPreview');
+    if (preview && typeof preview.scrollIntoView === 'function') {
+      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  async function generatePushDraft() {
+    var briefEl = document.getElementById('pushDraftBrief');
+    var btn = document.getElementById('pushDraftBtn');
+    var status = document.getElementById('pushDraftStatus');
+    var brandId = syncBrandIdForPush();
+    if (!brandId) {
+      if (status) status.textContent = 'Seleziona un brand prima di generare la bozza.';
+      return;
+    }
+    var brief = (briefEl && briefEl.value || '').trim();
+    if (!brief) {
+      if (status) status.textContent = 'Descrivi la promo in una frase (es. «-20% occhiali fino a domenica»).';
+      if (briefEl) briefEl.focus();
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    if (status) status.textContent = 'L’assistente compila titolo e messaggio…';
+
+    try {
+      var res = await fetch(
+        getApiBase() + '/brands/' + encodeURIComponent(brandId) + '/push/draft-copy',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(typeof getAuthHeaders === 'function' ? getAuthHeaders() : {})
+          },
+          body: JSON.stringify({ brief: brief })
+        }
+      );
+      var data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok) throw new Error(data.error || 'Generazione bozza non riuscita');
+
+      applyPushDraft(data.draft);
+      var notes = Array.isArray(data.draft && data.draft.notes) ? data.draft.notes.join(' ') : '';
+      if (status) {
+        status.textContent = notes ||
+          'Bozza pronta — controlla titolo, messaggio e anteprima a destra prima di inviare.';
+      }
+    } catch (err) {
+      if (status) status.textContent = err.message || 'Errore durante la generazione.';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function buildPushDraftBlock() {
+    if (document.getElementById('fdPushDraftBlock')) return;
+    var titleInput = document.getElementById('pushTitle');
+    if (!titleInput) return;
+    var titleGroup = titleInput.closest('.form-group');
+    if (!titleGroup || !titleGroup.parentElement) return;
+
+    var block = document.createElement('div');
+    block.id = 'fdPushDraftBlock';
+    block.className = 'fd-push-draft';
+    block.innerHTML =
+      '<label class="form-label" for="pushDraftBrief">Assistente copy</label>' +
+      '<p class="form-hint fd-push-draft__lead">Descrivi la promo in italiano: l’agente compila titolo e messaggio ' +
+      'nei limiti della strip (22/52 caratteri). Tu controlli l’anteprima e invii quando sei pronto.</p>' +
+      '<textarea id="pushDraftBrief" class="fd-push-draft__brief" rows="2" maxlength="500" ' +
+      'placeholder="es. Promozione 2x1 occhiali da sole fino a domenica, link al volantino online"></textarea>' +
+      '<div class="fd-push-draft__actions">' +
+      '<button type="button" class="fd-btn fd-btn--secondary" id="pushDraftBtn">Genera bozza</button>' +
+      '</div>' +
+      '<p class="form-hint fd-push-draft__status" id="pushDraftStatus" aria-live="polite"></p>';
+
+    titleGroup.parentElement.insertBefore(block, titleGroup);
+
+    document.getElementById('pushDraftBtn').addEventListener('click', generatePushDraft);
+    var briefEl = document.getElementById('pushDraftBrief');
+    if (briefEl) {
+      briefEl.addEventListener('keydown', function (ev) {
+        if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
+          ev.preventDefault();
+          generatePushDraft();
+        }
+      });
+    }
+  }
+
   var fdModalOpeners = Object.create(null);
 
   function getFocusables(root) {
@@ -1274,6 +1393,7 @@
     }
 
     buildChannelSegmented();
+    buildPushDraftBlock();
     buildTestBlock();
     wrapCharField('pushTitle', TITLE_MAX);
     wrapCharField('pushMessage', MESSAGE_MAX);

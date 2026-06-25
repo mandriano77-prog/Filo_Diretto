@@ -99,6 +99,7 @@ async function syncGoogleWalletClassForTemplate(brand, template) {
 }
 const { generateLandingCopy, generateCreativeCopy } = require('../engine/ai-copy');
 const { planScheduledPush } = require('../engine/push-assistant');
+const { draftImmediatePushCopy } = require('../engine/push-draft-copy');
 const { askWai, EXECUTABLE_INTENTS, validateWaiResponse } = require('../engine/wai');
 const { resolveBaseUrl, getProductBrandName } = require('../engine/base-url');
 const { requiredSecret, requireDebugAccess } = require('../engine/security-config');
@@ -2496,6 +2497,26 @@ router.post('/passes/:id/regenerate', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+router.post('/brands/:id/push/draft-copy', async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    if (!requireOwnedBrandPk(req, res, brandId)) return;
+    if (!requireWriteAccess(req, res)) return;
+    const brand = await getBrand(brandId);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const brief = String(req.body.brief || req.body.prompt || '').trim();
+    if (!brief) return res.status(400).json({ error: 'brief richiesto — descrivi la promo in una frase' });
+
+    const recentPushes = (await listPushes(brandId)).slice(0, 5);
+    const draft = await draftImmediatePushCopy({ brand, brief, recentPushes });
+    res.json({ draft });
+  } catch (err) {
+    console.error('Push draft-copy error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.post('/brands/:id/push/strip-preview', async (req, res) => {
   try {

@@ -123,6 +123,8 @@ Le push **non partono** se si superano i limiti (`POST /push/send` → 400). Fon
 
 Copy breve; emoji e punteggiatura contano. URL lunghi → **Includi link nel pass**, non nel messaggio. Anteprima in `fd-push.js` usa gli stessi limiti.
 
+**Assistente bozza:** `POST /brands/:id/push/draft-copy` con `{ brief }` — l’AI compila titolo/messaggio (e opzionalmente link); il manager rivede l’anteprima e invia con `POST /push/send`. UI: blocco «Assistente copy» nel pannello push immediata (`fd-push.js`).
+
 ## Testing
 
 Smoke test after deploy:
