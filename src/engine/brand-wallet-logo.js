@@ -94,16 +94,16 @@ async function resolvePassIconBuffers(brand, resolvedLogo, template = null) {
       source: fromMedia.source
     };
   }
-  const synced = readIconPackFromConfig(cfg.logos);
-  if (synced) {
-    return { iconBuffers: synced, source: 'config_logos_synced' };
-  }
   const tplIcon = template?.style?.images?.wallet_icon;
   if (tplIcon) {
     return {
       iconBuffers: await buildNotificationIconFromRaw(Buffer.from(tplIcon, 'base64')),
       source: 'template_wallet_icon'
     };
+  }
+  const synced = readIconPackFromConfig(cfg.logos);
+  if (synced && (Number(cfg.wallet_icon_rev) > 0 || cfg.wallet_icon_synced_at)) {
+    return { iconBuffers: synced, source: 'config_logos_synced' };
   }
   if (resolvedLogo?.buffer) {
     return {

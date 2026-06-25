@@ -139,19 +139,24 @@ function buildCoinFieldValue(coinBalance) {
   };
 }
 
-/** Back-field Wallet lock-screen alert — avoids COIN highlight ring on pass face. */
-function buildPushAlertBackSection(pushAnn) {
+/**
+ * Header field for Wallet lock-screen alert.
+ * Only FRONT fields (header/primary/secondary/auxiliary) trigger visible notifications.
+ * Back fields update silently and must not carry alert payloads.
+ */
+function buildPushHeaderField(pushAnn) {
   if (!pushAnn?.message) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
   const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-  const promoValue = String(pushAnn.message).trim().slice(0, 52);
-  const alertText = (promoTitle ? `${promoTitle}: ` : '') + promoValue;
+  const promoValue = String(pushAnn.message).trim().slice(0, 40);
+  const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, 52);
+  const zwsp = '\u200b'.repeat((pushTs % 9) + 1);
   return {
-    kind: 'alert',
-    key: 'wallet_push_alert',
-    label: ' ',
-    body: String(Number.isFinite(pushTs) ? pushTs : Date.now()),
-    changeMessage: alertText.slice(0, 178)
+    key: 'push_notice',
+    label: promoTitle,
+    value: `${promoValue}${zwsp}`.slice(0, 64),
+    changeMessage: alertText.slice(0, 178),
+    textAlignment: 'PKTextAlignmentRight',
   };
 }
 
@@ -298,8 +303,6 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   }
 
   const pushAnn = resolvePushAnnouncement(brandConfig, instance);
-  const pushAlert = buildPushAlertBackSection(pushAnn);
-  if (pushAlert) sections.unshift(pushAlert);
 
   if (pushAnn?.back_details) {
     sections.push({
@@ -363,6 +366,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
 
   // Front layout: strip on top; nome + area + COIN on secondary (fisso — niente auxiliary sulla faccia).
   const pushAnn = resolvePushAnnouncement(cfg, instance);
+  const headerHint = buildPushHeaderField(pushAnn) || resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -394,7 +398,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
     pass_instance_id: instance?.id || null,
     serial_number: instance?.serial_number || null,
     brandName: brand?.name || '',
-    headerHint: resolvePassHeaderHint(template, cfg),
+    headerHint,
     logoText: '',
     programName: (template?.name || brand?.name || '').slice(0, 64),
     templateName: template?.name || '',
@@ -680,6 +684,6 @@ module.exports = {
   resolveMemberProfile,
   resolveVariableLink,
   resolvePushAnnouncement,
-  buildPushAlertBackSection,
+  buildPushHeaderField,
   escapeHtml
 };

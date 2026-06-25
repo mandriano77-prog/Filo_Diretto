@@ -2576,6 +2576,35 @@ router.post('/brands/:id/push/strip-preview', async (req, res) => {
   }
 });
 
+/** HR push — full pass preview (strip, lock screen copy, front/back fields). */
+router.post('/brands/:id/push/pass-preview', async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    if (!requireBrandId(req, res, brandId)) return;
+    const brand = await getBrand(brandId);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const templates = await listTemplates(brandId);
+    const template = templates[0] || { style: { images: {} } };
+    const body = { ...(req.body || {}) };
+    if (body.strip_media_id || body.strip_base64) {
+      body.strip_base64 = await resolvePushStripBase64({
+        brand_id: brandId,
+        strip_media_id: body.strip_media_id,
+        strip_base64: body.strip_base64,
+      });
+    }
+
+    const { buildPushPassPreview } = require('../engine/push-pass-preview');
+    const preview = await buildPushPassPreview({ brand, template, body });
+    res.set('Cache-Control', 'no-store');
+    res.json(preview);
+  } catch (err) {
+    console.error('Pass preview error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/push/send', async (req, res) => {
   try {
     const {

@@ -8229,6 +8229,8 @@
   var HR_SUPPORT_LABEL = 'SUPPORT';
   var stripPreviewTimer = null;
   var stripPreviewSeq = 0;
+  var passPreviewCache = null;
+  var activePreviewTab = 'notify';
   var CHANNELS = [
     { value: 'apple', label: 'Apple Wallet', icon: '', tip: 'Invio tramite APNs (Apple Push Notification service)' },
     { value: 'google', label: 'Google Wallet', icon: '', tip: 'Aggiornamento messaggio su Google Wallet' },
@@ -8305,24 +8307,32 @@
     if (len > max) counter.classList.add('is-over');
     else if (len > max * 0.9) counter.classList.add('is-warn');
   }
+  function truncateBrandName(name, max) {
+    var n = String(name || '').trim();
+    if (n.length <= max) return n;
+    return n.slice(0, Math.max(1, max - 1)) + '…';
+  }
+  function buildLockScreenPreviewText(titleRaw, messageRaw) {
+    var title = String(titleRaw || '').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
+    var message = String(messageRaw || '').trim().slice(0, 52);
+    if (!message) return '';
+    return title + ': ' + message;
+  }
   function syncPreview() {
     var titleEl = document.getElementById('pushTitle');
     var messageEl = document.getElementById('pushMessage');
-    var titlePlaceholder = (titleEl && titleEl.getAttribute('placeholder')) || 'Titolo notifica';
-    var messagePlaceholder = (messageEl && messageEl.getAttribute('placeholder')) || 'Testo del messaggio…';
     var titleRaw = titleEl ? titleEl.value : '';
     var messageRaw = messageEl ? messageEl.value : '';
-    var title = titleRaw.trim() ? titleRaw : titlePlaceholder;
-    var message = messageRaw.trim() ? messageRaw : messagePlaceholder;
     var brand = getBrandLabel();
-    document.querySelectorAll('[data-fd-push-preview-title]').forEach(function (el) {
-      el.textContent = title;
-    });
-    document.querySelectorAll('[data-fd-push-preview-body]').forEach(function (el) {
-      el.textContent = message;
-    });
+    var lockBody = passPreviewCache?.lock_screen?.body
+      || buildLockScreenPreviewText(titleRaw, messageRaw)
+      || 'Inserisci titolo e messaggio';
     document.querySelectorAll('[data-fd-push-preview-brand]').forEach(function (el) {
-      el.textContent = brand;
+      var isLock = el.closest('.fd-push-preview__notif-banner');
+      el.textContent = isLock ? truncateBrandName(brand, 18) : brand;
+    });
+    document.querySelectorAll('[data-fd-push-preview-lock-body]').forEach(function (el) {
+      el.textContent = lockBody;
     });
     syncPassPreview();
   }
@@ -8347,36 +8357,110 @@
     rows.push({ key: 'portal_profile', label: HR_PORTAL_BACK_TITLE });
     return rows;
   }
-  function renderPassBackPreview() {
+  function renderPassBackPreviewFromApi(backRows) {
     var list = document.querySelector('[data-fd-push-preview-back-rows]');
     if (!list) return;
-    var rows = buildPassBackPreviewRows();
+    var rows = backRows || buildPassBackPreviewRows().map(function (row) {
+      if (row.body) return { type: 'text', label: row.label, body: row.body };
+      return { type: 'link', label: row.label, url: row.url };
+    });
     list.innerHTML = rows.map(function (row) {
-      if (row.body) {
-        var preview = row.body.length > 120 ? row.body.slice(0, 117) + '…' : row.body;
-        return '<li class="fd-push-preview__pass-back-row" data-key="' + esc(row.key) + '">' +
-          '<span class="fd-push-preview__pass-back-label">' + esc(row.label) + '</span>' +
-          '<span class="fd-push-preview__pass-back-body">' + esc(preview) + '</span>' +
-          '</li>';
+      if (row.type === 'text' && row.body) {
+        var preview = row.body.length > 200 ? row.body.slice(0, 197) + '…' : row.body;
+        return '<li class="fd-wallet-pass-back__row fd-wallet-pass-back__row--text">' +
+          '<span class="fd-wallet-pass-back__label">' + esc(row.label) + '</span>' +
+          '<span class="fd-wallet-pass-back__body">' + esc(preview) + '</span></li>';
       }
-      var urlHint = row.url ? ' <span class="fd-push-preview__pass-back-url">' + esc(row.url) + '</span>' : '';
-      return '<li class="fd-push-preview__pass-back-row" data-key="' + esc(row.key) + '">' +
-        '<span class="fd-push-preview__pass-back-label">' + esc(row.label) + '</span>' + urlHint +
-        '</li>';
+      return '<li class="fd-wallet-pass-back__row fd-wallet-pass-back__row--link">' +
+        '<a href="#" tabindex="-1" onclick="return false">' + esc(row.label || row.url || 'Link') + '</a></li>';
     }).join('');
+  }
+  function renderPassBackPreview() {
+    renderPassBackPreviewFromApi(passPreviewCache?.back || null);
+  }
+  function applyPassPreviewData(data) {
+    passPreviewCache = data || null;
+    var card = document.querySelector('[data-fd-push-preview-pass-card]');
+    if (card && data?.colors) {
+      card.style.setProperty('--fd-pass-bg', data.colors.background || 'rgb(13, 11, 26)');
+      card.style.setProperty('--fd-pass-fg', data.colors.foreground || 'rgb(255, 255, 255)');
+      card.style.setProperty('--fd-pass-label', data.colors.label || 'rgb(168, 85, 247)');
+    }
+    var logoImg = document.querySelector('[data-fd-push-preview-logo]');
+    if (logoImg) {
+      if (data?.logo_data_url) {
+        logoImg.src = data.logo_data_url;
+        logoImg.hidden = false;
+      } else {
+        logoImg.hidden = true;
+        logoImg.removeAttribute('src');
+      }
+    }
+    var iconImg = document.querySelector('[data-fd-push-preview-icon]');
+    if (iconImg) {
+      if (data?.wallet_icon_data_url) {
+        iconImg.src = data.wallet_icon_data_url;
+        iconImg.hidden = false;
+      } else {
+        iconImg.hidden = true;
+        iconImg.removeAttribute('src');
+      }
+    }
+    var headerEl = document.querySelector('[data-fd-push-preview-header]');
+    if (headerEl) {
+      if (data?.header?.label || data?.header?.value) {
+        headerEl.innerHTML =
+          '<span class="fd-wallet-pass__hf-label">' + esc(data.header.label) + '</span>' +
+          '<span class="fd-wallet-pass__hf-value">' + esc(data.header.value) + '</span>';
+        headerEl.hidden = false;
+      } else {
+        headerEl.innerHTML = '';
+        headerEl.hidden = true;
+      }
+    }
+    var secondaryEl = document.querySelector('[data-fd-push-preview-secondary]');
+    if (secondaryEl && data?.secondary?.length) {
+      secondaryEl.innerHTML = data.secondary.map(function (f) {
+        return '<div class="fd-wallet-pass__field">' +
+          '<span class="fd-wallet-pass__field-label">' + esc(f.label) + '</span>' +
+          '<span class="fd-wallet-pass__field-value">' + esc(f.value) + '</span></div>';
+      }).join('');
+    }
+    var backTitle = document.querySelector('[data-fd-push-preview-back-title]');
+    if (backTitle && data?.brand_name) {
+      backTitle.textContent = (data.brand_name.split(/\s+/)[0] || 'PASS').toUpperCase() + ' PASS';
+    }
+    renderPassBackPreviewFromApi(data?.back || null);
+    syncPreview();
   }
   function scheduleStripPreview() {
     if (stripPreviewTimer) clearTimeout(stripPreviewTimer);
-    stripPreviewTimer = setTimeout(fetchStripPreview, STRIP_PREVIEW_DEBOUNCE_MS);
+    stripPreviewTimer = setTimeout(fetchPassPreview, STRIP_PREVIEW_DEBOUNCE_MS);
   }
-  async function fetchStripPreview() {
+  function buildPassPreviewRequestBody() {
+    var includeLink = document.getElementById('pushIncludePassLink')?.checked;
+    var body = {
+      title: (document.getElementById('pushTitle')?.value || '').trim(),
+      message: (document.getElementById('pushMessage')?.value || '').trim(),
+      update_pass: document.getElementById('pushUpdatePass')?.checked !== false,
+      back_details: (document.getElementById('pushBackDetails')?.value || '').trim() || undefined,
+      include_pass_link: !!includeLink,
+      pass_link_url: (document.getElementById('pushPassLinkUrl')?.value || '').trim() || undefined,
+      pass_link_label: (document.getElementById('pushPassLinkLabel')?.value || '').trim() || undefined,
+    };
+    if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
+    return body;
+  }
+  async function fetchPassPreview() {
     var brandId = syncBrandIdForPush();
     var hint = document.querySelector('[data-fd-push-preview-strip-hint]');
     var img = document.querySelector('[data-fd-push-preview-strip]');
     var loading = document.querySelector('[data-fd-push-preview-strip-loading]');
-    var updatePass = document.getElementById('pushUpdatePass')?.checked;
-    var message = (document.getElementById('pushMessage')?.value || '').trim();
+    var body = buildPassPreviewRequestBody();
+    var updatePass = body.update_pass;
+    var message = body.message;
     if (!updatePass || !message) {
+      passPreviewCache = null;
       if (img) {
         img.hidden = true;
         img.removeAttribute('src');
@@ -8384,16 +8468,18 @@
       if (hint) {
         hint.hidden = false;
         hint.textContent = updatePass
-          ? 'Inserisci un messaggio per vedere il testo sulla strip'
-          : 'Abilita «Aggiorna contenuto pass» per vedere il testo sulla strip';
+          ? 'Inserisci un messaggio per vedere l\'anteprima completa'
+          : 'Abilita «Aggiorna contenuto pass» per l\'anteprima strip e pass';
       }
       if (loading) loading.hidden = true;
+      renderPassBackPreview();
+      syncPreview();
       return;
     }
     if (!brandId) {
       if (hint) {
         hint.hidden = false;
-        hint.textContent = 'Seleziona un brand per l\'anteprima strip';
+        hint.textContent = 'Seleziona un brand per l\'anteprima';
       }
       return;
     }
@@ -8401,14 +8487,8 @@
     if (loading) loading.hidden = false;
     var seq = ++stripPreviewSeq;
     try {
-      var body = {
-        title: (document.getElementById('pushTitle')?.value || '').trim(),
-        message: message,
-        format: 'json'
-      };
-      if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
       var res = await fetch(
-        getApiBase() + '/brands/' + encodeURIComponent(brandId) + '/push/strip-preview',
+        getApiBase() + '/brands/' + encodeURIComponent(brandId) + '/push/pass-preview',
         {
           method: 'POST',
           headers: {
@@ -8425,20 +8505,28 @@
         throw new Error(errBody.error || 'Anteprima non disponibile');
       }
       var data = await res.json();
+      if (seq !== stripPreviewSeq) return;
       if (img && data.strip_preview) {
         img.src = data.strip_preview;
         img.hidden = false;
+      } else if (img) {
+        img.hidden = true;
+        img.removeAttribute('src');
       }
+      applyPassPreviewData(data);
     } catch (_) {
       if (seq === stripPreviewSeq) {
+        passPreviewCache = null;
         if (img) {
           img.hidden = true;
           img.removeAttribute('src');
         }
         if (hint) {
           hint.hidden = false;
-          hint.textContent = 'Anteprima strip non disponibile';
+          hint.textContent = 'Anteprima pass non disponibile';
         }
+        renderPassBackPreview();
+        syncPreview();
       }
     } finally {
       if (seq === stripPreviewSeq && loading) loading.hidden = true;
@@ -8870,49 +8958,77 @@
     group.appendChild(help);
     setChannelValue(sel.value || 'apple');
   }
+  function setPreviewTab(tab) {
+    activePreviewTab = tab || 'notify';
+    document.querySelectorAll('.fd-push-preview__tab').forEach(function (btn) {
+      var on = btn.getAttribute('data-preview-tab') === activePreviewTab;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('.fd-push-preview__panel').forEach(function (panel) {
+      panel.hidden = panel.getAttribute('data-preview-panel') !== activePreviewTab;
+    });
+  }
+  function wirePreviewTabs(root) {
+    var scope = root || document.getElementById('fdPushPreview') || document;
+    scope.querySelectorAll('.fd-push-preview__tab').forEach(function (btn) {
+      if (btn.dataset.fdPreviewTabBound === '1') return;
+      btn.dataset.fdPreviewTabBound = '1';
+      btn.addEventListener('click', function () {
+        setPreviewTab(btn.getAttribute('data-preview-tab'));
+      });
+    });
+  }
   function buildPreviewPanel() {
     if (document.getElementById('fdPushPreview')) return;
     var aside = document.createElement('aside');
     aside.id = 'fdPushPreview';
     aside.className = 'fd-push-preview';
-    aside.setAttribute('aria-label', 'Anteprima notifica');
+    aside.setAttribute('aria-label', 'Anteprima push e pass');
     aside.innerHTML =
       '<h2 class="fd-push-preview__title">Anteprima live</h2>' +
-      '<div class="fd-push-preview__device fd-push-preview__device--ios">' +
-      '<span class="fd-push-preview__device-label">iPhone · lock screen</span>' +
-      '<div class="fd-push-preview__lock">' +
-      '<div class="fd-push-preview__lock-app" data-fd-push-preview-brand>Brand</div>' +
-      '<div class="fd-push-preview__lock-title" data-fd-push-preview-title>Titolo notifica</div>' +
-      '<div class="fd-push-preview__lock-body" data-fd-push-preview-body>Testo del messaggio…</div>' +
-      '</div></div>' +
-      '<div class="fd-push-preview__device fd-push-preview__device--android">' +
-      '<span class="fd-push-preview__device-label">Android · notifica</span>' +
-      '<div class="fd-push-preview__lock">' +
-      '<div class="fd-push-preview__lock-app" data-fd-push-preview-brand>Brand</div>' +
-      '<div class="fd-push-preview__lock-title" data-fd-push-preview-title>Titolo notifica</div>' +
-      '<div class="fd-push-preview__lock-body" data-fd-push-preview-body>Testo del messaggio…</div>' +
-      '</div></div>' +
-      '<div class="fd-push-preview__device fd-push-preview__device--samsung">' +
-      '<span class="fd-push-preview__device-label">Samsung · notifica</span>' +
-      '<div class="fd-push-preview__lock">' +
-      '<div class="fd-push-preview__lock-app" data-fd-push-preview-brand>Brand</div>' +
-      '<div class="fd-push-preview__lock-title" data-fd-push-preview-title>Titolo notifica</div>' +
-      '<div class="fd-push-preview__lock-body" data-fd-push-preview-body>Testo del messaggio…</div>' +
-      '</div></div>' +
-      '<div class="fd-push-preview__pass fd-push-preview__pass--front">' +
-      '<span class="fd-push-preview__device-label">Pass Wallet · fronte</span>' +
-      '<div class="fd-push-preview__pass-card">' +
-      '<div class="fd-push-preview__pass-name" data-fd-push-preview-brand>Brand</div>' +
-      '<div class="fd-push-preview__pass-strip">' +
-      '<img class="fd-push-preview__pass-strip-img" data-fd-push-preview-strip alt="Anteprima strip pass" hidden>' +
-      '<div class="fd-push-preview__pass-strip-hint" data-fd-push-preview-strip-hint>Abilita «Aggiorna contenuto pass» per vedere il testo sulla strip</div>' +
-      '<div class="fd-push-preview__pass-strip-loading" data-fd-push-preview-strip-loading hidden>Caricamento anteprima…</div>' +
+      '<p class="fd-push-preview__lead">Stesso motore del pass reale — strip, notifica Wallet, fronte e retro.</p>' +
+      '<div class="fd-push-preview__tabs" role="tablist">' +
+      '<button type="button" class="fd-push-preview__tab is-active" role="tab" data-preview-tab="notify" aria-selected="true">Notifica</button>' +
+      '<button type="button" class="fd-push-preview__tab" role="tab" data-preview-tab="front" aria-selected="false">Fronte</button>' +
+      '<button type="button" class="fd-push-preview__tab" role="tab" data-preview-tab="back" aria-selected="false">Retro</button>' +
+      '</div>' +
+      '<div class="fd-push-preview__panel is-active" data-preview-panel="notify" role="tabpanel">' +
+      '<div class="fd-push-preview__ios-scene">' +
+      '<div class="fd-push-preview__notif-banner">' +
+      '<img class="fd-push-preview__notif-icon" data-fd-push-preview-icon alt="" width="38" height="38" hidden>' +
+      '<div class="fd-push-preview__notif-copy">' +
+      '<div class="fd-push-preview__notif-meta">' +
+      '<span class="fd-push-preview__notif-app" data-fd-push-preview-brand>Brand</span>' +
+      '<span class="fd-push-preview__notif-now">adesso</span></div>' +
+      '<div class="fd-push-preview__notif-body" data-fd-push-preview-lock-body>Titolo: messaggio…</div>' +
       '</div></div></div>' +
-      '<div class="fd-push-preview__pass fd-push-preview__pass--back">' +
-      '<span class="fd-push-preview__device-label">Pass Wallet · retro</span>' +
-      '<ul class="fd-push-preview__pass-back-rows" data-fd-push-preview-back-rows></ul>' +
-      '<p class="fd-push-preview__pass-back-note">Link push e dettagli opzionali compaiono in cima al retro, prima di HUB / SUPPORT / AREA PRIVATA.</p>' +
-      '</div>';
+      '<p class="fd-push-preview__note">Su iPhone Wallet mostra brand + testo promo (changeMessage), non il messaggio generico.</p>' +
+      '</div>' +
+      '<div class="fd-push-preview__panel" data-preview-panel="front" role="tabpanel" hidden>' +
+      '<div class="fd-wallet-pass" data-fd-push-preview-pass-card>' +
+      '<div class="fd-wallet-pass__top">' +
+      '<div class="fd-wallet-pass__brand">' +
+      '<img class="fd-wallet-pass__logo" data-fd-push-preview-logo alt="" hidden>' +
+      '<span class="fd-wallet-pass__brand-name" data-fd-push-preview-brand>Brand</span></div>' +
+      '<div class="fd-wallet-pass__header-field" data-fd-push-preview-header hidden></div></div>' +
+      '<div class="fd-wallet-pass__strip">' +
+      '<img class="fd-wallet-pass__strip-img" data-fd-push-preview-strip alt="Strip pass" hidden>' +
+      '<div class="fd-push-preview__pass-strip-hint" data-fd-push-preview-strip-hint>Inserisci messaggio e abilita aggiornamento pass</div>' +
+      '<div class="fd-push-preview__pass-strip-loading" data-fd-push-preview-strip-loading hidden>Caricamento…</div></div>' +
+      '<div class="fd-wallet-pass__secondary" data-fd-push-preview-secondary>' +
+      '<div class="fd-wallet-pass__field"><span class="fd-wallet-pass__field-label">NOME</span><span class="fd-wallet-pass__field-value">Mario Rossi</span></div>' +
+      '<div class="fd-wallet-pass__field"><span class="fd-wallet-pass__field-label">AREA</span><span class="fd-wallet-pass__field-value">Engineering</span></div>' +
+      '<div class="fd-wallet-pass__field"><span class="fd-wallet-pass__field-label">COIN</span><span class="fd-wallet-pass__field-value">25</span></div></div>' +
+      '<div class="fd-wallet-pass__qr" aria-hidden="true"></div></div></div>' +
+      '<div class="fd-push-preview__panel" data-preview-panel="back" role="tabpanel" hidden>' +
+      '<div class="fd-wallet-pass-back">' +
+      '<div class="fd-wallet-pass-back__nav"><span class="fd-wallet-pass-back__chev">‹</span>' +
+      '<span class="fd-wallet-pass-back__title" data-fd-push-preview-back-title>BRAND PASS</span></div>' +
+      '<ul class="fd-wallet-pass-back__rows" data-fd-push-preview-back-rows></ul></div>' +
+      '<p class="fd-push-preview__note">Link promo e DETTAGLI in cima, poi HUB / SUPPORT / AREA PRIVATA.</p></div>';
+    wirePreviewTabs(aside);
+    setPreviewTab(activePreviewTab);
     return aside;
   }
   function buildTestBlock() {
@@ -9524,6 +9640,7 @@
     if (preview && preview.parentElement !== asideCol) {
       asideCol.appendChild(preview);
     }
+    wirePreviewTabs(preview);
     buildChannelSegmented();
     buildPushDraftBlock();
     buildTestBlock();

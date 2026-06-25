@@ -18,6 +18,7 @@ test('resolvePassIconBuffers uses synced config.logos without wallet_icon media 
   const pack = await require('../src/engine/brand-wallet-logo').buildNotificationIconFromRaw(iconBuf);
   const brand = {
     config: {
+      wallet_icon_rev: 1,
       logos: {
         icon: pack.icon.toString('base64'),
         'icon@2x': pack.icon2x.toString('base64'),
