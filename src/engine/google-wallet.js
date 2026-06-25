@@ -79,8 +79,14 @@ function getPassKind() {
   return raw === 'loyalty' ? 'loyalty' : 'generic';
 }
 
-function isLoyaltyMode() {
-  return getPassKind() === 'loyalty';
+/** HR employee passes always use Generic (store-card layout), not Loyalty text modules. */
+function resolvePassKind(brand) {
+  if (brand && isHrEmployeePass(brand)) return 'generic';
+  return getPassKind();
+}
+
+function isLoyaltyMode(brand) {
+  return resolvePassKind(brand) === 'loyalty';
 }
 
 function getReviewStatus() {
@@ -172,13 +178,13 @@ function buildLegacyObjectId(serialNumber) {
 }
 
 function buildClassId(brand, template) {
-  return isLoyaltyMode()
+  return isLoyaltyMode(brand)
     ? buildLoyaltyClassId(brand, template)
     : buildGenericClassId(brand, template);
 }
 
-function buildObjectId(serialNumber) {
-  return isLoyaltyMode()
+function buildObjectId(serialNumber, brand) {
+  return isLoyaltyMode(brand)
     ? buildLoyaltyObjectId(serialNumber)
     : buildGenericObjectId(serialNumber);
 }
@@ -234,7 +240,7 @@ async function getAccessToken() {
  * loyaltyClasses + loyaltyObjects in the payload — exactly like the Laravel code.
  * This avoids the "testing only" restriction from pre-registered classes.
  */
-function createSaveJWT(classObject, passObject) {
+function createSaveJWT(classObject, passObject, brand) {
   if (!SERVICE_ACCOUNT_JSON) throw new Error('Google Wallet service account not configured');
 
   const rawHost =
@@ -245,7 +251,7 @@ function createSaveJWT(classObject, passObject) {
   const host = rawHost.replace(/^https?:\/\//i, '').replace(/\/+$/g, '');
   const origin = host ? `https://${host}` : 'https://localhost';
 
-  const passKind = getPassKind();
+  const passKind = resolvePassKind(brand);
   const payloadData = passKind === 'loyalty'
     ? {
       loyaltyClasses: [classObject],
@@ -300,7 +306,7 @@ function createSaveJWT(classObject, passObject) {
  * It just returns the class object to be embedded in the JWT.
  */
 function buildPassClass(brand, template) {
-  const passKind = getPassKind();
+  const passKind = resolvePassKind(brand);
   const classId = buildClassId(brand, template);
 
   let classObj;
@@ -383,7 +389,7 @@ function buildPassClass(brand, template) {
  * Kept for backward compatibility — now just builds without API call.
  */
 async function createOrUpdatePassClass(brand, template) {
-  if (isLoyaltyMode()) {
+  if (isLoyaltyMode(brand)) {
     console.warn('[GoogleWallet] Loyalty mode uses JWT-embedded class. Skipping pre-registration.');
     return buildPassClass(brand, template);
   }
@@ -408,7 +414,7 @@ async function createOrUpdatePassClass(brand, template) {
 
 async function getClassRegistration(brand, template) {
   const classId = buildClassId(brand, template);
-  const passKind = getPassKind();
+  const passKind = resolvePassKind(brand);
   if (passKind === 'loyalty') {
     return {
       class_id: classId,
@@ -443,7 +449,7 @@ async function getClassRegistration(brand, template) {
  */
 async function ensurePassReadyOnServer(brand, template, passObject) {
   await createOrUpdatePassClass(brand, template);
-  return createPassObjectOnServer(passObject);
+  return createPassObjectOnServer(passObject, brand);
 }
 
 function formatGoogleWalletError(err) {
@@ -540,9 +546,9 @@ async function resolveHrPassOptions(brand, instance, memberHint) {
 }
 
 async function buildPassObject(brand, template, instance, memberHint) {
-  const passKind = getPassKind();
+  const passKind = resolvePassKind(brand);
   const classId = buildClassId(brand, template);
-  const objectId = buildObjectId(instance.serial_number);
+  const objectId = buildObjectId(instance.serial_number, brand);
 
   if (isHrEmployeePass(brand)) {
     const hrOpts = await resolveHrPassOptions(brand, instance, memberHint);
@@ -696,7 +702,7 @@ async function buildPassObject(brand, template, instance, memberHint) {
  */
 function generateSaveLink(brand, template, passObject) {
   const classObject = buildPassClass(brand, template);
-  const jwt = createSaveJWT(classObject, passObject);
+  const jwt = createSaveJWT(classObject, passObject, brand);
   logWalletDebug('generateSaveLink', {
     classId: classObject?.id || null,
     objectId: passObject?.id || null,
@@ -749,8 +755,8 @@ function generateSaveLinkLegacy(passObject) {
  * Create or update the pass object on Google's servers.
  * Still useful if you want server-side push updates later.
  */
-async function createPassObjectOnServer(passObject) {
-  const passKind = getPassKind();
+async function createPassObjectOnServer(passObject, brand) {
+  const passKind = resolvePassKind(brand);
   const objectPath = passKind === 'loyalty' ? 'loyaltyObject' : 'genericObject';
   const objectUrl = `/${objectPath}/${encodeURIComponent(passObject.id)}`;
   try {
@@ -773,10 +779,10 @@ async function createPassObjectOnServer(passObject) {
   return created;
 }
 
-async function updatePassObject(serialNumber, updates) {
-  const passKind = getPassKind();
+async function updatePassObject(serialNumber, updates, brand) {
+  const passKind = resolvePassKind(brand);
   const objectPath = passKind === 'loyalty' ? 'loyaltyObject' : 'genericObject';
-  const objectId = buildObjectId(serialNumber);
+  const objectId = buildObjectId(serialNumber, brand);
 
   try {
     const updated = await walletApiPatch(`/${objectPath}/${objectId}`, updates);
@@ -800,14 +806,14 @@ async function updatePassObject(serialNumber, updates) {
   }
 }
 
-async function updatePassMessage(serialNumber, message) {
+async function updatePassMessage(serialNumber, message, brand) {
   return updatePassObject(serialNumber, {
     textModulesData: [{
       id: 'latest_message',
       header: 'Novità',
       body: message
     }]
-  });
+  }, brand);
 }
 
 // ── Google Wallet API helpers ─────────────────────────────────────────

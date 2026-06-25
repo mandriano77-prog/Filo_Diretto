@@ -171,13 +171,14 @@ function thankYouStyles() {
   `;
 }
 
-function thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl }) {
+function thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl, platformHint }) {
   const brand = escapeHtml(brandName);
   const portalTarget = portalHref && portalHref !== '#' ? portalHref : '#';
   const portalBtn = `<a class="btn-primary" href="${escapeHtml(portalTarget)}"${portalTarget === '#' ? ' aria-disabled="true" onclick="return false;"' : ''}>Apri il mio profilo →</a>`;
   const downloadLink = passDownloadUrl
     ? `<a class="link-secondary" href="${escapeHtml(passDownloadUrl)}">Pass non installato? Scarica di nuovo</a>`
     : '';
+  const hint = platformHint || 'le comunicazioni arrivano direttamente sulla lock-screen del tuo smartphone — niente email, niente intranet.';
 
   return `
     <div class="icon-circle">
@@ -185,7 +186,7 @@ function thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl }) {
     </div>
     <h1>Benvenuto in ${brand}.</h1>
     <p class="body-copy lead">Il pass è ora nel tuo wallet.<br>
-    Hai appena attivato il <strong>filo diretto</strong> con ${brand}: le comunicazioni arrivano direttamente sulla lock-screen del tuo iPhone — niente email, niente intranet.</p>
+    Hai appena attivato il <strong>filo diretto</strong> con ${brand}: ${escapeHtml(hint)}</p>
     <p class="muted">Puoi gestire cosa ricevere dal tuo profilo personale, in qualsiasi momento.</p>
     <div class="cta-stack actions">
       ${portalBtn}
@@ -199,11 +200,24 @@ function renderSaveThankYouPage({
   passDownloadUrl,
   portalHref,
   brandColor,
+  passId,
+  googleWalletEnabled = false,
   footer = getThankYouFooter()
 }) {
   const safeBrand = escapeHtml(brandName);
   const initial = escapeHtml((brandName || 'B').charAt(0).toUpperCase());
-  const successBlock = thankYouSuccessBlock({ brandName, portalHref, passDownloadUrl });
+  const iosSuccessBlock = thankYouSuccessBlock({
+    brandName,
+    portalHref,
+    passDownloadUrl,
+    platformHint: 'le comunicazioni arrivano direttamente sulla lock-screen del tuo iPhone — niente email, niente intranet.'
+  });
+  const androidSuccessBlock = thankYouSuccessBlock({
+    brandName,
+    portalHref,
+    passDownloadUrl: null,
+    platformHint: 'le comunicazioni arrivano direttamente su Google Wallet — niente email, niente intranet.'
+  });
   const accent = normalizeHexColor(brandColor) || '#8B5CF6';
   const accentDark = shadeHex(accent, 0.85);
   const accentLight = shadeHex(accent, 1.2);
@@ -233,7 +247,23 @@ function renderSaveThankYouPage({
     </div>
 
     <div id="stateSuccess" class="hidden state-success">
-      ${successBlock}
+      ${iosSuccessBlock}
+    </div>
+
+    <div id="stateAndroid" class="hidden">
+      <div class="icon-circle" style="border-color:var(--brand);">
+        <span style="font-size:28px;color:var(--brand);">&#128241;</span>
+      </div>
+      <h1>Aggiungi a Google Wallet</h1>
+      <p class="muted">Su Android il pass si installa con un tap su <strong>Google Wallet</strong>. Nessun file da scaricare.</p>
+      <div class="cta-stack" style="margin-top:20px;">
+        <button type="button" class="btn-primary" id="googleWalletBtn">Aggiungi a Google Wallet</button>
+      </div>
+      <p class="muted hidden" id="googleWalletError" style="margin-top:12px;color:#ff8888;"></p>
+    </div>
+
+    <div id="stateAndroidSuccess" class="hidden state-success">
+      ${androidSuccessBlock}
     </div>
 
     <div id="stateUnsupported" class="hidden">
@@ -241,10 +271,7 @@ function renderSaveThankYouPage({
         <span style="font-size:28px;color:#ffb020;">&#9888;</span>
       </div>
       <h1>Apri da smartphone</h1>
-      <p class="muted">Per evitare confusione, il flusso ufficiale supportato è mobile-first: apri questo link su <strong>iPhone</strong> e tocca <strong>Aggiungi</strong> in Wallet.</p>
-      <div class="cta-stack" style="margin-top:20px;">
-        <a href="${escapeHtml(passDownloadUrl)}" class="btn-primary">Scarica file .pkpass</a>
-      </div>
+      <p class="muted">Per installare il pass, apri questo link su <strong>iPhone</strong> (Apple Wallet) o su <strong>Android</strong> con Google Wallet.</p>
     </div>
 
     <div id="stateError" class="hidden">
@@ -273,19 +300,57 @@ function renderSaveThankYouPage({
     logoImg.src = ${JSON.stringify(logoUrl)};
 
     (function() {
+      const passId = ${JSON.stringify(passId || '')};
+      const googleWalletEnabled = ${googleWalletEnabled ? 'true' : 'false'};
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-      if (!isIOS) {
-        document.getElementById('stateLoading').classList.add('hidden');
-        document.getElementById('stateUnsupported').classList.remove('hidden');
+      const isAndroid = /Android/i.test(navigator.userAgent || '');
+
+      function hide(id) { document.getElementById(id).classList.add('hidden'); }
+      function show(id) { document.getElementById(id).classList.remove('hidden'); }
+
+      if (isAndroid && googleWalletEnabled && passId) {
+        hide('stateLoading');
+        show('stateAndroid');
+        const btn = document.getElementById('googleWalletBtn');
+        btn.addEventListener('click', async function() {
+          btn.disabled = true;
+          btn.textContent = 'Caricamento…';
+          const errEl = document.getElementById('googleWalletError');
+          try {
+            const res = await fetch('/api/v1/google-wallet/pass/' + encodeURIComponent(passId), { cache: 'no-store' });
+            if (!res.ok) {
+              const err = await res.json().catch(function(){ return {}; });
+              throw new Error(err.error || 'Errore Google Wallet');
+            }
+            const data = await res.json();
+            if (data.save_link) {
+              window.location.href = data.save_link;
+              return;
+            }
+            throw new Error('Link non disponibile');
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'Riprova';
+            errEl.textContent = e.message || 'Errore';
+            errEl.classList.remove('hidden');
+          }
+        });
         return;
       }
+
+      if (!isIOS) {
+        hide('stateLoading');
+        show('stateUnsupported');
+        return;
+      }
+
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = ${JSON.stringify(passDownloadUrl)};
       document.body.appendChild(iframe);
       setTimeout(function() {
-        document.getElementById('stateLoading').classList.add('hidden');
-        document.getElementById('stateSuccess').classList.remove('hidden');
+        hide('stateLoading');
+        show('stateSuccess');
       }, 3500);
     })();
   </script>

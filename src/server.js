@@ -388,6 +388,7 @@ const {
   createPassInstance, logEvent, incrementCampaignDownloads
 } = require('./db');
 const { renderSaveThankYouPage, resolvePortalHref } = require('./engine/thank-you-html');
+const googleWallet = require('./engine/google-wallet');
 
 async function renderThankYouForPass(res, passId) {
   const passInstance = await getPassInstance(passId);
@@ -405,7 +406,9 @@ async function renderThankYouForPass(res, passId) {
     logoUrl,
     passDownloadUrl,
     portalHref,
-    brandColor: brand?.config?.labelColor || null
+    brandColor: brand?.config?.labelColor || null,
+    passId: passInstance.id,
+    googleWalletEnabled: googleWallet.isConfigured()
   }));
 }
 

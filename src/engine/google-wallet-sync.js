@@ -42,7 +42,7 @@ async function syncGoogleWalletObjectsForPasses({
         const passObject = await googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
         await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
         if (message) {
-          await googleWallet.updatePassMessage(pass.serial_number, message);
+          await googleWallet.updatePassMessage(pass.serial_number, message, brand);
         }
         outcomes[index] = { ok: true };
       } catch (err) {

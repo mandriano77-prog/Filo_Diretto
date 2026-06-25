@@ -400,8 +400,48 @@ test('Google Wallet HR pass resolves hub links like passkit', () => {
   assert.match(gw, /async function buildPassObject/);
   assert.match(gw, /resolveHrPassOptions/);
   assert.match(gw, /hubUrl: hrOpts\.hubUrl/);
+  assert.match(gw, /function resolvePassKind/);
+  assert.match(gw, /isHrEmployeePass\(brand\)\) return 'generic'/);
   assert.match(ep, /linkText \|\| s\.label/);
-  assert.match(ep, /announcement_full/);
+  assert.match(ep, /brandHasLogoAsset/);
+  assert.match(ep, /heroImage = googleImageRef\(stripUri/);
+});
+
+test('Google Wallet HR toGooglePass uses brand name and generic layout fields', () => {
+  process.env.GOOGLE_WALLET_PASS_KIND = 'loyalty';
+  const { buildEmployeePass, toGooglePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: {
+      id: 'b1',
+      name: 'Acme Corp',
+      slug: 'acme',
+      config: { product_line: 'hr', logos: { logo: Buffer.from('x').toString('base64') }, strip_base64: Buffer.from('y').toString('base64') }
+    },
+    template: { id: 't1', name: 'Internal Template Name', style: { backgroundColor: '#8B5CF6' } },
+    instance: { serial_number: 'SN-GW-1', field_values: {} },
+    member: { first_name: 'Mario', last_name: 'Rossi', department: 'HR' },
+    brandConfig: { product_line: 'hr' },
+    apiBase: 'https://studio.example.com/api/v1',
+    coinBalance: 12
+  });
+  const { classPatch, objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
+  assert.equal(classPatch.hexBackgroundColor.toLowerCase(), '#8b5cf6');
+  assert.ok(classPatch.logo);
+  assert.ok(classPatch.heroImage);
+  assert.equal(objectPatch.cardTitle.defaultValue.value, 'Acme Corp');
+  assert.equal(objectPatch.subheader.defaultValue.value, 'Pass dipendente');
+  assert.equal(objectPatch.header.defaultValue.value, 'Mario Rossi');
+  delete process.env.GOOGLE_WALLET_PASS_KIND;
+});
+
+test('direct save thank-you page offers Google Wallet on Android', () => {
+  const ty = read('src/engine/thank-you-html.js');
+  const server = read('src/server.js');
+  assert.match(ty, /stateAndroid/);
+  assert.match(ty, /googleWalletBtn/);
+  assert.match(ty, /google-wallet\/pass\//);
+  assert.doesNotMatch(ty, /Scarica file \.pkpass/);
+  assert.match(server, /googleWalletEnabled: googleWallet\.isConfigured\(\)/);
 });
 
 test('W.AI FAB uses single JS click handler without inline onclick', () => {

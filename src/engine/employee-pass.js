@@ -337,17 +337,48 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   return sections;
 }
 
+function brandHasLogoAsset(brand, template) {
+  const cfg = brand?.config || {};
+  const tplImages = template?.style?.images || {};
+  return !!(
+    cfg.brand_identity_assets?.logo
+    || cfg.logos?.logo
+    || cfg.logos?.['logo@2x']
+    || tplImages.logo
+  );
+}
+
+function brandHasStripAsset(brand, template) {
+  const cfg = brand?.config || {};
+  const tplImages = template?.style?.images || {};
+  return !!(
+    tplImages.strip
+    || cfg.logos?.strip
+    || cfg.strip_base64
+  );
+}
+
 function walletImageUrls({ apiBase, brand, template }) {
   if (!apiBase) return {};
   const tplId = template?.id;
   const slug = brand?.slug;
   const urls = {};
-  if (slug) urls.logo = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/logo`;
-  if (slug) urls.stripBrand = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/strip`;
+  if (slug && brandHasLogoAsset(brand, template)) {
+    urls.logo = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/logo`;
+  }
+  if (slug && brandHasStripAsset(brand, template)) {
+    urls.stripBrand = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/strip`;
+  }
   if (tplId) {
-    urls.stripTemplate = `${apiBase}/templates/${tplId}/wallet-image/strip`;
-    urls.thumbnail = `${apiBase}/templates/${tplId}/wallet-image/thumbnail`;
-    urls.background = `${apiBase}/templates/${tplId}/wallet-image/background`;
+    if (template?.style?.images?.strip) {
+      urls.stripTemplate = `${apiBase}/templates/${tplId}/wallet-image/strip`;
+    }
+    if (template?.style?.images?.thumbnail) {
+      urls.thumbnail = `${apiBase}/templates/${tplId}/wallet-image/thumbnail`;
+    }
+    if (template?.style?.images?.background) {
+      urls.background = `${apiBase}/templates/${tplId}/wallet-image/background`;
+    }
   }
   const tplImages = template?.style?.images || {};
   urls.strip = tplImages.strip && tplId ? urls.stripTemplate : urls.stripBrand;
@@ -572,14 +603,16 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
 
   if (passKind === 'loyalty') {
     if (logoUri) classPatch.programLogo = googleImageRef(logoUri, employeePass.brandName);
+    if (stripUri) classPatch.heroImage = googleImageRef(stripUri, 'Banner');
+    classPatch.programName = (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64);
   } else {
     if (logoUri) classPatch.logo = googleImageRef(logoUri, employeePass.brandName);
     if (stripUri) classPatch.heroImage = googleImageRef(stripUri, 'Strip');
   }
 
   classPatch.hexBackgroundColor = employeePass.colors.hexBackgroundColor;
-  if (!logoUri) {
-    classPatch.programName = employeePass.programName;
+  if (passKind === 'loyalty' && !logoUri) {
+    classPatch.programName = (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64);
   }
 
   const objectPatch = {
@@ -598,10 +631,10 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
     objectPatch.cardTitle = {
       defaultValue: {
         language: 'it',
-        value: (employeePass.programName || employeePass.brandName || 'Pass dipendente').slice(0, 64)
+        value: (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64)
       }
     };
-    objectPatch.subheader = { defaultValue: { language: 'it', value: employeePass.brandName } };
+    objectPatch.subheader = { defaultValue: { language: 'it', value: 'Pass dipendente' } };
     objectPatch.header = {
       defaultValue: { language: 'it', value: employeePass.profile.full_name || 'Membro' }
     };

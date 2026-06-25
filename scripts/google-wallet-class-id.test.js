@@ -93,3 +93,23 @@ test('pass route ensures class before object', () => {
   assert.match(routes, /ensurePassReadyOnServer\(brand, template, passObject\)/);
   assert.match(routes, /syncGoogleWalletClassForTemplate/);
 });
+
+test('HR brands force generic pass kind even when env is loyalty', () => {
+  const { mod, restore } = loadGoogleWallet({
+    GOOGLE_WALLET_ISSUER_ID: '3388000000023116539',
+    GOOGLE_WALLET_PASS_KIND: 'loyalty',
+    CUSTOM_DOMAIN: 'studio.example.com'
+  });
+  try {
+    const hrBrand = { slug: 'acme', name: 'Acme', config: { product_line: 'hr' } };
+    const adsBrand = { slug: 'shop', name: 'Shop', config: { product_line: 'ads' } };
+    const template = { id: 'tpl-1', style: { backgroundColor: '#111111' } };
+    const hrClass = mod.buildPassClass(hrBrand, template);
+    const adsClass = mod.buildPassClass(adsBrand, template);
+    assert.match(hrClass.id, /^3388000000023116539\.acme_/);
+    assert.match(adsClass.id, /^3388000000023116539\.loyalty_shop_/);
+    assert.ok(hrClass.logo || hrClass.heroImage || hrClass.hexBackgroundColor);
+  } finally {
+    restore();
+  }
+});
