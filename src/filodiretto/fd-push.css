@@ -192,23 +192,31 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
 
 @media (min-width: 1024px) {
   html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
-    position: sticky;
-    top: var(--fd-push-preview-sticky-top);
-    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
-    overflow: auto;
+    min-height: 1px;
+    overflow: visible;
     scrollbar-gutter: stable;
   }
 
   html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col .fd-push-preview {
-    position: static;
-  }
-
-  html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
-    position: sticky;
+    position: fixed;
     top: var(--fd-push-preview-sticky-top);
+    right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
+    width: var(--fd-push-preview-width);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
+    z-index: var(--fd-z-sticky, 100);
+  }
+
+  html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
+    position: fixed;
+    top: var(--fd-push-preview-sticky-top);
+    right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
+    width: var(--fd-push-preview-width);
+    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+    z-index: var(--fd-z-sticky, 100);
   }
 }
 
