@@ -126,6 +126,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.ok(alertField);
   assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
   assert.equal(alertField.label, '\u200b');
+  assert.notEqual(alertField.value, '\u200b');
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
@@ -138,6 +139,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   const passkit = read('src/engine/passkit.js');
   assert.match(passkit, /composePushTextOnStrip/);
   assert.match(passkit, /resolvePushAnnouncement/);
+  assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
   assert.doesNotMatch(passkit, /lengthAdjust/);
 });
 

@@ -1016,10 +1016,10 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   if (!normalized?.message || !stripBuffer) return stripBuffer;
 
   const scale = width / 375;
-  const pad = Math.round(16 * scale);
-  const titleSize = Math.round(10 * scale);
-  const msgSize = Math.round(9 * scale);
-  const lineH = Math.round(12 * scale);
+  const pad = Math.round(18 * scale);
+  const titleSize = Math.round(12 * scale);
+  const msgSize = Math.round(11 * scale);
+  const lineH = Math.round(14 * scale);
   const reserveThumbnail = Boolean(options.reserveThumbnail);
   const maxTextWidth = stripOverlayTextMaxWidth(width, reserveThumbnail);
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
@@ -1037,9 +1037,9 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   const msgFill = '#ffffff';
   const titleWeight = darkBottom ? '800' : '700';
 
-  const titleBlockH = title ? Math.round(12 * scale) : 0;
+  const titleBlockH = title ? Math.round(15 * scale) : 0;
   const msgBlockH = msgLines.length * lineH;
-  const barPad = Math.round(7 * scale);
+  const barPad = Math.round(9 * scale);
   const barGap = title && msgLines.length ? Math.round(2 * scale) : 0;
   let barH = barPad * 2 + titleBlockH + barGap + msgBlockH;
   let barY = height - barH;
@@ -1071,6 +1071,11 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   const gradTopOpacity = darkBottom ? '0.08' : '0';
   const gradMidOpacity = darkBottom ? '0.35' : '0.28';
   const gradBottomOpacity = darkBottom ? '0.55' : '0.68';
+  const panelX = Math.max(0, pad - Math.round(10 * scale));
+  const panelY = Math.max(0, barY - Math.round(2 * scale));
+  const panelW = Math.min(width - panelX - Math.round(8 * scale), maxTextWidth + Math.round(20 * scale));
+  const panelH = Math.min(height - panelY, barH + Math.round(4 * scale));
+  const panelR = Math.round(8 * scale);
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <clipPath id="${clipId}">
@@ -1093,6 +1098,7 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
     </defs>
     <g clip-path="url(#${clipId})">
       <rect x="0" y="${gradY}" width="${width}" height="${gradH}" fill="url(#${gradId})"/>
+      <rect x="${panelX}" y="${panelY}" width="${panelW}" height="${panelH}" rx="${panelR}" fill="rgba(0,0,0,0.62)"/>
       <g clip-path="url(#${textSafeId})" filter="url(#${shadowId})">
         ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" text-anchor="start">${escapeStripSvgText(title)}</text>` : ''}
         ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600" text-anchor="start">${msgTspans}</text>` : ''}
@@ -1391,9 +1397,9 @@ async function createPkpass(template, instance, brand, options = {}) {
 
   const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
 
-  // Thumbnail — for generic and eventTicket; su storeCard HR viene composita sulla strip
+  // Thumbnail — for generic and eventTicket only. HR storeCard must not inject extra artwork.
   let thumbnailBuffers = null;
-  if (tplImages.thumbnail) {
+  if (!hrBrand && tplImages.thumbnail) {
     const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
     thumbnailBuffers = {
       thumb: await sharp(rawThumb).resize(90, 90, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer(),
@@ -1413,17 +1419,9 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using template-level background');
   }
 
-  const stripHasEmbeddedThumb = Boolean(hrBrand && thumbnailBuffers);
-  if (stripHasEmbeddedThumb) {
-    stripBuffers.strip = await compositeThumbnailOnStrip(stripBuffers.strip, thumbnailBuffers.thumb, 375, 123);
-    stripBuffers.strip2x = await compositeThumbnailOnStrip(stripBuffers.strip2x, thumbnailBuffers.thumb2x, 750, 246);
-    console.log('[passkit] Employee pass: thumbnail composita sulla strip');
-  }
-
   if (pushStripCopy) {
-    const reserveThumbnail = stripHasEmbeddedThumb;
-    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123, { reserveThumbnail });
-    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246, { reserveThumbnail });
+    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123);
+    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246);
     console.log('✓ HR: push message composited on strip');
   }
 

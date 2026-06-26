@@ -139,6 +139,15 @@ function buildCoinFieldValue(coinBalance) {
   };
 }
 
+function invisibleChangeToken(value) {
+  const raw = String(value == null ? Date.now() : value);
+  const alphabet = ['\u200b', '\u200c', '\u200d', '\u2060'];
+  return raw
+    .split('')
+    .map((ch, idx) => alphabet[(ch.charCodeAt(0) + idx) % alphabet.length])
+    .join('');
+}
+
 /**
  * Invisible auxiliary field — triggers Apple Wallet lock-screen alert via changeMessage.
  * Promo copy stays on strip overlay; header/NOME/AREA/COIN remain frozen on the face.
@@ -149,11 +158,10 @@ function buildPushWalletAlertField(pushAnn) {
   const pushTs = Number(pushAnn.ts || Date.now());
   const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
   const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, 52);
-  const zwsp = '\u200b'.repeat((pushTs % 9) + 1);
   return {
     key: 'push_notice',
     label: '\u200b',
-    value: zwsp,
+    value: invisibleChangeToken(`${pushTs}:${promoTitle}:${pushAnn.message}`),
     changeMessage: alertText.slice(0, 178),
   };
 }
