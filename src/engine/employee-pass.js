@@ -361,6 +361,24 @@ function brandHasStripAsset(brand, template) {
   );
 }
 
+function resolveWalletImageVersion(instance) {
+  if (!instance) return null;
+  if (instance.last_updated) return instance.last_updated;
+  if (instance.last_push_at) return instance.last_push_at;
+  const raw = instance.push_announcement;
+  if (!raw) return null;
+  let ann = raw;
+  if (typeof raw === 'string') {
+    try {
+      ann = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  const ts = Number(ann?.ts ?? ann?.timestamp);
+  return Number.isFinite(ts) ? ts : null;
+}
+
 function walletImageUrls({ apiBase, brand, template, instance }) {
   if (!apiBase) return {};
   const tplId = template?.id;
@@ -385,7 +403,11 @@ function walletImageUrls({ apiBase, brand, template, instance }) {
   }
   const tplImages = template?.style?.images || {};
   if (instance?.id) {
-    urls.strip = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-strip`;
+    const stripVersion = resolveWalletImageVersion(instance);
+    const versionSuffix = stripVersion
+      ? `?v=${encodeURIComponent(String(stripVersion))}`
+      : '';
+    urls.strip = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-strip${versionSuffix}`;
   } else {
     urls.strip = tplImages.strip && tplId ? urls.stripTemplate : urls.stripBrand;
   }
@@ -643,6 +665,9 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
   if (passKind === 'loyalty') {
     objectPatch.accountName = (employeePass.profile.full_name || 'Membro').slice(0, 64);
   } else {
+    if (logoUri) objectPatch.logo = googleImageRef(logoUri, employeePass.brandName);
+    if (stripUri) objectPatch.heroImage = googleImageRef(stripUri, 'Strip');
+
     const coinField = (employeePass.front.secondary || []).find((f) => {
       const label = String(f.label || '').toUpperCase();
       return f.key === 'coin' || label === 'COIN';

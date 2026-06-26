@@ -430,10 +430,13 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
   assert.equal(classPatch.hexBackgroundColor.toLowerCase(), '#8b5cf6');
   assert.ok(classPatch.logo);
   assert.ok(classPatch.heroImage);
+  assert.ok(objectPatch.logo);
+  assert.ok(objectPatch.heroImage);
   assert.equal(objectPatch.cardTitle.defaultValue.value, 'Acme Corp');
   assert.equal(objectPatch.subheader.defaultValue.value, 'HR · 12 COIN');
   assert.equal(objectPatch.header.defaultValue.value, 'Mario Rossi');
   assert.match(employeePass.images.strip, /\/passes\/.*\/wallet-strip$/);
+  assert.match(objectPatch.heroImage.sourceUri.uri, /\/passes\/.*\/wallet-strip$/);
   assert.equal(objectPatch.textModulesData.length, 0, 'generic front fields map to header/subheader only');
   delete process.env.GOOGLE_WALLET_PASS_KIND;
 });
