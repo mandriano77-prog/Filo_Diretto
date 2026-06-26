@@ -1,5 +1,6 @@
 html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 340px;
+  --fd-push-preview-sticky-top: 24px;
 }
 
 html[data-app='filodiretto'] #push.push--fd-ds {
@@ -189,9 +190,30 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
   grid-column: 1 / -1;
 }
 
+@media (min-width: 1024px) {
+  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
+    position: sticky;
+    top: var(--fd-push-preview-sticky-top);
+    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+
+  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col .fd-push-preview {
+    position: static;
+  }
+
+  html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
+    position: sticky;
+    top: var(--fd-push-preview-sticky-top);
+    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
 html[data-app='filodiretto'] .fd-push-preview {
-  position: sticky;
-  top: var(--fd-space-4);
+  position: relative;
   padding: var(--fd-space-4);
   border: 1px solid var(--fd-border);
   border-radius: var(--fd-radius-md);

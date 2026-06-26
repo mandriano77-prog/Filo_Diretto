@@ -65,15 +65,17 @@ test('Reward table empty state hides thead and formats redemption rate', () => {
 test('Push preview and unified channel segmented control', () => {
   const js = read('src/filodiretto/fd-push.js');
   const css = read('src/filodiretto/fd-push.css');
-  assert.match(js, /titleRaw\.trim\(\)/);
+  assert.match(js, /String\(titleRaw \|\| ''\)\.trim\(\)/);
   assert.match(js, /toggleChannel/);
   assert.match(js, /channelsToApiValue/);
   assert.match(js, /sel\.setAttribute\('hidden'/);
   assert.match(css, /fd-push-channel-native/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*position:\s*sticky/);
+  assert.match(css, /fd-push-preview-sticky-top/);
 });
 
-test('index.html bundle cache references bi-save-landing tag', () => {
+test('index.html bundle cache references current Filo bundle tag', () => {
   const html = read('src/dashboard/index.html');
-  assert.match(html, /fd\.bundle\.css\?v=20260622-bi-save-landing/);
-  assert.match(html, /fd\.bundle\.js\?v=20260622-bi-save-landing/);
+  assert.match(html, /fd\.bundle\.css\?v=20260624-analytics-kpi/);
+  assert.match(html, /fd\.bundle\.js\?v=20260624-analytics-kpi/);
 });
