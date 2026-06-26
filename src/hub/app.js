@@ -449,6 +449,24 @@
     return String(name || '?').trim().charAt(0).toUpperCase() || '?';
   }
 
+  function merchantLogoFallback(className, name) {
+    return `<div class="${className} placeholder">${esc(merchantInitial(name))}</div>`;
+  }
+
+  function merchantLogoHtml(merchant, className) {
+    if (!merchant?.logo_url) return merchantLogoFallback(className, merchant?.name);
+    return `<img class="${className}" src="${esc(merchant.logo_url)}" alt="" data-hub-logo data-logo-name="${esc(merchant.name)}">`;
+  }
+
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (!img || !img.matches || !img.matches('img[data-hub-logo]')) return;
+    const fallback = document.createElement('div');
+    fallback.className = `${img.className} placeholder`;
+    fallback.textContent = merchantInitial(img.getAttribute('data-logo-name'));
+    img.replaceWith(fallback);
+  }, true);
+
   function formatDate(value) {
     if (!value) return null;
     try {
@@ -495,9 +513,7 @@
     const rows = filteredMerchants();
     const cards = rows.length
       ? rows.map((m) => {
-        const logo = m.logo_url
-          ? `<img class="hub-card-logo" src="${esc(m.logo_url)}" alt="">`
-          : `<div class="hub-card-logo placeholder">${esc(merchantInitial(m.name))}</div>`;
+        const logo = merchantLogoHtml(m, 'hub-card-logo');
         const dist = state.nearbyEnabled ? formatDistance(state.nearbyMap[m.id]) : null;
         const distHtml = dist ? `<p class="hub-card-distance">${esc(dist)}</p>` : '';
         return `<button type="button" class="hub-card" data-merchant-id="${esc(m.id)}">
@@ -602,9 +618,7 @@
     state.detail = merchant;
     logEvent('view', merchant.id);
 
-    const logo = merchant.logo_url
-      ? `<img class="hub-detail-logo" src="${esc(merchant.logo_url)}" alt="">`
-      : `<div class="hub-detail-logo placeholder">${esc(merchantInitial(merchant.name))}</div>`;
+    const logo = merchantLogoHtml(merchant, 'hub-detail-logo');
 
     const expiry = formatDate(merchant.valid_until);
     const online = merchant.online_enabled ? `

@@ -1,6 +1,7 @@
 'use strict';
 
 const { parse } = require('csv-parse/sync');
+const { normalizePublicImageUrl } = require('./hub-logo-url');
 
 const REQUIRED_COLUMNS = ['merchant_name', 'category', 'discount_label'];
 const VALID_CATEGORIES = new Set([
@@ -20,7 +21,7 @@ function rowToMerchantPayload(row) {
   return {
     name: String(row.merchant_name || '').trim(),
     category: String(row.category || '').trim().toLowerCase(),
-    logo_url: row.logo_url ? String(row.logo_url).trim() : null,
+    logo_url: normalizePublicImageUrl(row.logo_url),
     description: row.description ? String(row.description).trim() : null,
     discount_label: String(row.discount_label || '').trim(),
     conditions: row.conditions ? String(row.conditions).trim() : null,

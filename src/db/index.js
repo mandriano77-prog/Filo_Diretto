@@ -1,6 +1,7 @@
 const dns = require('dns');
 const { Pool } = require('pg');
 const { randomBytes, createHash, randomUUID } = require('crypto');
+const { normalizePublicImageUrl } = require('../engine/hub-logo-url');
 
 // Railway private mesh: prefer IPv4 first (avoids ETIMEDOUT on broken IPv6 paths).
 if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
@@ -3267,7 +3268,7 @@ async function createMerchant(data) {
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
     RETURNING *`,
     [
-      brand_id, name, category, logo_url || null, description || null, discount_label,
+      brand_id, name, category, normalizePublicImageUrl(logo_url), description || null, discount_label,
       conditions || null, valid_from || null, valid_until || null, active !== false,
       !!online_enabled, online_url || null, online_promo_code || null, !!physical_enabled
     ]
@@ -3332,7 +3333,7 @@ async function updateMerchant(id, brandId, fields) {
   for (const [k, v] of Object.entries(fields || {})) {
     if (!MERCHANT_MUTABLE_FIELDS.includes(k)) continue;
     sets.push(`${k} = $${i++}`);
-    vals.push(v);
+    vals.push(k === 'logo_url' ? normalizePublicImageUrl(v) : v);
   }
   if (!sets.length) return getMerchant(id, brandId);
   sets.push('updated_at = NOW()');

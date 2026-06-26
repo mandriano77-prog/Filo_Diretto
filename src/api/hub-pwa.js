@@ -9,6 +9,7 @@ const {
   sendPgaBookingEmployeeConfirmation
 } = require('../engine/mailer');
 const db = require('../db');
+const { normalizePublicImageUrl } = require('../engine/hub-logo-url');
 
 const HUB_EVENT_TYPES = new Set([
   'view', 'search_found', 'click_site', 'copy_code', 'show_qr', 'scan_qr', 'geofence_push'
@@ -79,7 +80,7 @@ function publicBrand(brand) {
     id: brand.id,
     name: brand.name,
     slug: brand.slug,
-    logo_url: brand.logo_url || brand.config?.logo_url || null
+    logo_url: normalizePublicImageUrl(brand.logo_url || brand.config?.logo_url)
   };
 }
 
@@ -90,7 +91,7 @@ function publicSettings(settings) {
   }
   if (!Array.isArray(categories)) categories = [];
   return {
-    logo_url: settings?.logo_url || null,
+    logo_url: normalizePublicImageUrl(settings?.logo_url),
     accent_color: settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,
@@ -104,7 +105,7 @@ function publicMerchant(row) {
     id: row.id,
     name: row.name,
     category: row.category,
-    logo_url: row.logo_url,
+    logo_url: normalizePublicImageUrl(row.logo_url),
     description: row.description,
     discount_label: row.discount_label,
     conditions: row.conditions,

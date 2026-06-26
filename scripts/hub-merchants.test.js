@@ -14,8 +14,10 @@ const {
   verifyHubToken,
   buildHubUrl
 } = require('../src/engine/hub-jwt');
+const { normalizePublicImageUrl } = require('../src/engine/hub-logo-url');
 
 const DB_SOURCE = fs.readFileSync(path.join(__dirname, '../src/db/index.js'), 'utf8');
+const HUB_APP_SOURCE = fs.readFileSync(path.join(__dirname, '../src/hub/app.js'), 'utf8');
 
 test('getDb schema includes HUB Convenzioni tables', () => {
   for (const table of ['merchants', 'merchant_locations', 'convention_activations', 'hub_settings']) {
@@ -38,6 +40,20 @@ test('CSV parser validates required columns and parses semicolon rows', () => {
   assert.equal(payload.category, 'fitness');
   assert.equal(payload.discount_label, '-15% abbonamento');
   assert.equal(validateMerchantRow(payload, 2), null);
+});
+
+test('hub merchant logo URLs are normalized for public rendering', () => {
+  assert.equal(normalizePublicImageUrl('logo.clearbit.com/acme.com'), 'https://logo.clearbit.com/acme.com');
+  assert.equal(normalizePublicImageUrl('//cdn.example.com/logo.png'), 'https://cdn.example.com/logo.png');
+  assert.equal(normalizePublicImageUrl('http://example.com/logo.png'), 'https://example.com/logo.png');
+  assert.equal(normalizePublicImageUrl('/assets/logo.png'), '/assets/logo.png');
+  assert.equal(normalizePublicImageUrl('javascript:alert(1)'), null);
+});
+
+test('hub minisite replaces broken merchant logos with placeholder', () => {
+  assert.match(HUB_APP_SOURCE, /data-hub-logo/);
+  assert.match(HUB_APP_SOURCE, /document\.addEventListener\('error'/);
+  assert.match(HUB_APP_SOURCE, /img\.replaceWith\(fallback\)/);
 });
 
 test('CSV parser rejects missing required column', () => {
