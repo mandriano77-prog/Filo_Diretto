@@ -22,47 +22,6 @@ const {
   buildPassLogoBuffersFromRaw
 } = require('./brand-wallet-logo');
 
-/** Rimuove sfondo nero/opaco e ridimensiona la thumb per overlay sulla strip HR. */
-async function prepareThumbForStripOverlay(thumbBuffer, maxW, maxH) {
-  const resized = await sharp(thumbBuffer)
-    .ensureAlpha()
-    .resize(maxW, maxH, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const { data, info } = resized;
-  const ch = info.channels;
-  for (let i = 0; i < data.length; i += ch) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    if (r < 40 && g < 40 && b < 40) data[i + 3] = 0;
-  }
-
-  return sharp(data, { raw: { width: info.width, height: info.height, channels: ch } })
-    .png()
-    .toBuffer();
-}
-
-/** Incolla thumbnail sulla strip — Apple non mostra thumbnail.png su storeCard. */
-async function compositeThumbnailOnStrip(stripBuffer, thumbBuffer, width, height) {
-  const pad = Math.max(10, Math.round(width * 0.035));
-  const maxW = Math.min(Math.round(width * 0.19), width - pad * 4);
-  const maxH = Math.min(Math.round(height * 0.72), height - pad * 2);
-  const thumbSized = await prepareThumbForStripOverlay(thumbBuffer, maxW, maxH);
-  const meta = await sharp(thumbSized).metadata();
-  const thumbW = meta.width || maxW;
-  const thumbH = meta.height || maxH;
-  // Keep a visible slice of strip on the right side.
-  const rightInset = Math.max(30, Math.round(width * 0.085));
-  const left = Math.max(pad, width - thumbW - rightInset);
-  const top = Math.max(2, Math.round((height - thumbH) / 2) - Math.round(height * 0.12));
-  return sharp(stripBuffer)
-    .composite([{ input: thumbSized, left, top }])
-    .png()
-    .toBuffer();
-}
-
 /**
  * Generate SVG path for a letter using geometric shapes (no font dependency).
  * Returns SVG elements string for the given letter, sized to fit within (w, h).
@@ -1009,7 +968,7 @@ function stripOverlayTextMaxWidth(width, reserveThumbnail = false) {
 }
 
 function stripVisualCharsPerLine(maxTextWidth, fontSize) {
-  return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.62)));
+  return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.78)));
 }
 
 /** HR push promo — title + message burned into strip (not auxiliary pillar). */
@@ -1020,13 +979,13 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   const scale = width / 375;
   const pad = Math.round(36 * scale);
   const titleSize = Math.round(13 * scale);
-  const msgSize = Math.round(12 * scale);
-  const lineH = Math.round(15 * scale);
+  const msgSize = Math.round(11 * scale);
+  const lineH = Math.round(13 * scale);
   const reserveThumbnail = Boolean(options.reserveThumbnail);
   const maxTextWidth = stripOverlayTextMaxWidth(width, reserveThumbnail);
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
-  const visualTitleMax = Math.min(titleMax, stripVisualCharsPerLine(maxTextWidth, Math.round(9 * scale)));
-  const visualMsgMax = Math.min(msgMax, stripVisualCharsPerLine(maxTextWidth, Math.round(9 * scale)));
+  const visualTitleMax = Math.min(titleMax, stripVisualCharsPerLine(maxTextWidth, titleSize));
+  const visualMsgMax = Math.min(msgMax, stripVisualCharsPerLine(maxTextWidth, msgSize));
   const title = sanitizeStripSvgText(truncateStripOverlayTitle(normalized.title, visualTitleMax));
   const msgLines = wrapStripOverlayLines(normalized.message, visualMsgMax, maxLines)
     .map((line) => sanitizeStripSvgText(line))

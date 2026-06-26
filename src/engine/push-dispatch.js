@@ -325,6 +325,7 @@ async function executeWalletPush(body, ctx = {}) {
       passes: targetPasses,
       title,
       message,
+      back_details,
     });
   }
 

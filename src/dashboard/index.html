@@ -1647,8 +1647,8 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="pushMessage">Messaggio</label>
-                            <textarea id="pushMessage" rows="3" maxlength="52" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
-                            <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 52 caratteri (2 righe sulla strip). Testo e colore si adattano all'immagine.</p>
+                            <textarea id="pushMessage" rows="3" maxlength="66" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
+                            <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 66 caratteri (3 righe sulla strip). Testo e colore si adattano all'immagine.</p>
                             <p class="push-field-error" id="pushMessageError" role="alert"></p>
                         </div>
                         <div class="form-group" style="margin-top:4px;">
@@ -7764,7 +7764,7 @@ function pushClearStrip() {
 
 let pushHistoryCache = [];
 const PUSH_TITLE_MAX = 22;
-const PUSH_MESSAGE_MAX = 52;
+const PUSH_MESSAGE_MAX = 66;
 const PUSH_BACK_DETAILS_MAX = 500;
 
 function applyPushTextValidation(title, message, backDetails) {
@@ -7780,7 +7780,7 @@ function applyPushTextValidation(title, message, backDetails) {
         setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
         invalid = true;
     } else if (message.length > PUSH_MESSAGE_MAX) {
-        setPushFieldError('pushMessage', `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (2 righe sulla strip)`);
+        setPushFieldError('pushMessage', `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (3 righe sulla strip)`);
         invalid = true;
     }
     const details = String(backDetails ?? '').trim();

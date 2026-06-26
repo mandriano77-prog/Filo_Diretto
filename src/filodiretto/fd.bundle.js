@@ -8265,7 +8265,7 @@
 (function () {
   'use strict';
   var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
-  var MESSAGE_MAX = 52; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
+  var MESSAGE_MAX = 66; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
   var BACK_DETAILS_MAX = 500; // sync: src/engine/push-text-limits.js PUSH_BACK_DETAILS_MAX
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
@@ -8371,7 +8371,7 @@
   }
   function buildLockScreenPreviewText(titleRaw, messageRaw) {
     var title = String(titleRaw || '').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-    var message = String(messageRaw || '').trim().slice(0, 52);
+    var message = String(messageRaw || '').trim().slice(0, MESSAGE_MAX);
     if (!message) return '';
     return title + ': ' + message;
   }
@@ -8878,7 +8878,7 @@
           window.setPushFieldError('pushTitle', 'Titolo max ' + TITLE_MAX + ' caratteri (leggibilità strip)');
         }
         if (message.length > MESSAGE_MAX) {
-          window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (2 righe sulla strip)');
+          window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (3 righe sulla strip)');
         }
       } else if (typeof alert === 'function') {
         alert('Titolo max ' + TITLE_MAX + ' caratteri, messaggio max ' + MESSAGE_MAX);
@@ -9415,7 +9415,7 @@
     }
     if (message.length > MESSAGE_MAX) {
       if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (2 righe sulla strip)');
+        window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (3 righe sulla strip)');
       }
       invalid = true;
     }

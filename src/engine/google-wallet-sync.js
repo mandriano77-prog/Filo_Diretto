@@ -1,5 +1,6 @@
 const googleWallet = require('./google-wallet');
 const { getTemplate } = require('../db');
+const { parsePushAnnouncementRecord } = require('./pass-push-state');
 
 const DEFAULT_CONCURRENCY = Math.max(
   1,
@@ -11,6 +12,7 @@ async function syncGoogleWalletObjectsForPasses({
   passes,
   message,
   title,
+  back_details,
   concurrency = DEFAULT_CONCURRENCY,
 }) {
   if (!googleWallet.isConfigured()) {
@@ -40,7 +42,8 @@ async function syncGoogleWalletObjectsForPasses({
           outcomes[index] = { ok: false, error: 'missing_template' };
           continue;
         }
-        const passObject = await googleWallet.buildPassObject(brand, template, pass, pass.customer_data || {});
+        const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details });
+        const passObject = await googleWallet.buildPassObject(brand, template, passForGoogle, passForGoogle.customer_data || {});
         await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
         if (message) {
           await googleWallet.updatePassMessage(pass.serial_number, message, brand, { title });
@@ -60,7 +63,23 @@ async function syncGoogleWalletObjectsForPasses({
   return { attempted, updated, errors, skipped: false };
 }
 
+function withCurrentPushDetails(pass, { title, message, back_details } = {}) {
+  const backDetails = String(back_details || '').trim();
+  if (!backDetails) return pass;
+  const current = parsePushAnnouncementRecord(pass?.push_announcement) || {};
+  const next = {
+    ...current,
+    title: String(title || current.title || '').trim(),
+    message: String(message || current.message || '').trim(),
+    back_details: backDetails.slice(0, 500),
+    ts: Number(current.ts) || Date.now(),
+  };
+  if (!next.message) return pass;
+  return { ...pass, push_announcement: next };
+}
+
 module.exports = {
   syncGoogleWalletObjectsForPasses,
   DEFAULT_CONCURRENCY,
+  withCurrentPushDetails,
 };

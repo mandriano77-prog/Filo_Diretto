@@ -102,7 +102,7 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - days: array numeri 0-6 (0=dom) solo per weekly
 - date: YYYY-MM-DD solo per once
 - title: max 22 caratteri, incisivo, adatto a lock screen e strip
-- message: max 52 caratteri, completa il titolo, massimo 2 righe sulla strip
+- message: max 66 caratteri, completa il titolo, massimo 3 righe sulla strip
 - channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:

@@ -1,12 +1,12 @@
 /**
  * HR push copy limits — single source of truth (strip overlay + API + dashboard).
- * Titolo: 1 riga sulla strip. Messaggio: max 2 righe da 26 caratteri.
+ * Titolo: 1 riga sulla strip. Messaggio: max 3 righe da 22 caratteri.
  */
 
 const PUSH_TITLE_MAX = 22;
-const PUSH_MESSAGE_MAX = 52;
-const PUSH_MESSAGE_LINE_MAX = 26;
-const PUSH_MESSAGE_LINES = 2;
+const PUSH_MESSAGE_MAX = 66;
+const PUSH_MESSAGE_LINE_MAX = 22;
+const PUSH_MESSAGE_LINES = 3;
 /** Retro pass only — clausole/dettagli promo (non strip, non lock screen). */
 const PUSH_BACK_DETAILS_MAX = 500;
 
@@ -75,12 +75,12 @@ Le push **non partono** se superi questi limiti (validazione API \`POST /push/se
 | Campo | Max caratteri | Note |
 |-------|---------------|------|
 | **Titolo** | **22** | Maiuscolo sulla strip + etichetta notifica Wallet |
-| **Messaggio** | **52** | 2 righe × 26 caratteri sulla strip |
+| **Messaggio** | **66** | 3 righe × 22 caratteri sulla strip |
 
 Regole per copy / agent:
 - Scrivi frasi **corte**; conta emoji e punteggiatura come 1 carattere.
 - Titolo: hook breve (es. \`2x1 OCCHIALI 😎\` — verifica ≤22).
-- Messaggio: max 2 righe leggibili; se serve URL usa **Includi link nel pass**, non nel messaggio.
+- Messaggio: max 3 righe leggibili; se serve URL usa **Includi link nel pass**, non nel messaggio.
 - Anteprima strip nel back office (\`fd-push\`) usa gli stessi limiti.
 - Costanti codice: \`src/engine/push-text-limits.js\` (\`PUSH_TITLE_MAX\`, \`PUSH_MESSAGE_MAX\`).
 `.trim();

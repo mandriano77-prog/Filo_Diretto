@@ -3,7 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { clampPushDraft, heuristicPushDraft } = require('../src/engine/push-draft-copy');
-const { validatePushText } = require('../src/engine/push-text-limits');
+const { PUSH_MESSAGE_MAX, validatePushText } = require('../src/engine/push-text-limits');
 
 test('clampPushDraft enforces title and message limits', () => {
   const draft = clampPushDraft({
@@ -11,7 +11,7 @@ test('clampPushDraft enforces title and message limits', () => {
     message: 'M'.repeat(80),
   });
   assert.ok(draft.title.length <= 22);
-  assert.ok(draft.message.length <= 52);
+  assert.ok(draft.message.length <= PUSH_MESSAGE_MAX);
   assert.equal(validatePushText(draft.title, draft.message).length, 0);
   assert.equal(draft.valid, true);
 });

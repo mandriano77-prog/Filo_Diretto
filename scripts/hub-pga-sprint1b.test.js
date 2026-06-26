@@ -140,6 +140,8 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   const passkit = read('src/engine/passkit.js');
   assert.match(passkit, /composePushTextOnStrip/);
   assert.match(passkit, /resolvePushAnnouncement/);
+  assert.doesNotMatch(passkit, /compositeThumbnailOnStrip/);
+  assert.doesNotMatch(passkit, /prepareThumbForStripOverlay/);
   assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
   assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);
   assert.doesNotMatch(passkit, /stripGrad/);
@@ -272,14 +274,14 @@ test('HR push: frozen template header — invisible auxiliary triggers Wallet al
 });
 
 test('strip overlay: normalize enforces HR strip char limits', () => {
-  const { normalizePushAnnouncementForStrip, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X } = require('../src/engine/passkit');
+  const { normalizePushAnnouncementForStrip, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X, STRIP_OVERLAY_MSG_LINES } = require('../src/engine/passkit');
   const out = normalizePushAnnouncementForStrip({
     title: 'Salmoiraghi & Viganò: 2x1 occhiali',
     message: 'Solo questa settimana acquisti due occhiali da sole il meno caro è in omaggio per te'
   });
   assert.ok(out);
   assert.ok(out.title.length <= STRIP_OVERLAY_TITLE_MAX_1X);
-  assert.ok(out.message.length <= STRIP_OVERLAY_MSG_MAX_1X * 2 + 4);
+  assert.ok(out.message.length <= STRIP_OVERLAY_MSG_MAX_1X * STRIP_OVERLAY_MSG_LINES + 4);
 });
 
 test('strip overlay: emoji stripped for SVG render (Linux/sharp safe)', () => {

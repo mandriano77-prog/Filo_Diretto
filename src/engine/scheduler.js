@@ -214,6 +214,7 @@ async function executeScheduledPush(schedule, baseUrl) {
         passes: targetPasses,
         title,
         message,
+        back_details,
       });
       console.log('[GoogleWallet] Scheduled sync', googleSync);
     } catch (e) {

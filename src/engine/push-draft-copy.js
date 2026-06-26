@@ -6,6 +6,7 @@ const {
   PUSH_TITLE_MAX,
   PUSH_MESSAGE_MAX,
   PUSH_MESSAGE_LINE_MAX,
+  PUSH_MESSAGE_LINES,
   PUSH_TEXT_AGENT_RULES,
   validatePushText,
 } = require('./push-text-limits');
@@ -18,7 +19,7 @@ ${PUSH_TEXT_AGENT_RULES}
 
 VINCOLI ASSOLUTI (se superati la push viene rifiutata dal server):
 - title: massimo ${PUSH_TITLE_MAX} caratteri (maiuscolo sulla strip)
-- message: massimo ${PUSH_MESSAGE_MAX} caratteri (2 righe × ${PUSH_MESSAGE_LINE_MAX} sulla strip)
+- message: massimo ${PUSH_MESSAGE_MAX} caratteri (${PUSH_MESSAGE_LINES} righe × ${PUSH_MESSAGE_LINE_MAX} sulla strip)
 - NON mettere URL nel messaggio: usa pass_link_url + pass_link_label se serve un link
 - pass_link_label max 64 caratteri
 

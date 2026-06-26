@@ -5,6 +5,7 @@
 
 /** Canonical pass type in DB / API / UI for HR employee passes. */
 const EMPLOYEE_PASS_TYPE = 'employee_pass';
+const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX } = require('./push-text-limits');
 /** Apple Wallet pass.json top-level key (implementation detail only). */
 const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
 /** Apple Wallet back link titles (title = embedded CTA, no duplicate subtitle). */
@@ -156,8 +157,8 @@ function invisibleChangeToken(value) {
 function buildPushWalletAlertField(pushAnn) {
   if (!pushAnn?.message) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
-  const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-  const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, 52);
+  const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, PUSH_TITLE_MAX) || 'NOVITÀ';
+  const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, PUSH_MESSAGE_MAX);
   return {
     key: 'push_notice',
     label: '\u200b',

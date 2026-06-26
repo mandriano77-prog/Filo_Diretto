@@ -469,6 +469,33 @@ test('Google Wallet HR strip URL uses safe cache buster for dated pass updates',
   assert.doesNotMatch(uri, /%20|%3A|GMT|Fri|Jun|\s/);
 });
 
+test('Google Wallet HR object includes current push back details', () => {
+  const { buildEmployeePass, toGooglePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'Acme Corp', config: { product_line: 'hr' } },
+    template: { id: 't1', name: 'HR', style: {} },
+    instance: {
+      id: 'pass-gw-2',
+      serial_number: 'SN-GW-2',
+      field_values: {},
+      push_announcement: {
+        title: 'TEST',
+        message: 'Messaggio fronte',
+        back_details: 'Offerta valida fino a domenica.',
+        ts: 1710000000001,
+      },
+    },
+    member: { first_name: 'Mario', last_name: 'Rossi', department: 'HR' },
+    brandConfig: { product_line: 'hr' },
+    apiBase: 'https://studio.example.com/api/v1',
+  });
+  const { objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
+  const details = objectPatch.textModulesData.find((m) => m.id === 'push_back_details');
+  assert.ok(details);
+  assert.equal(details.header, 'DETTAGLI');
+  assert.match(details.body, /Offerta valida/);
+});
+
 test('Google Wallet HR wallet-strip route dependencies are exported', () => {
   const passkit = require('../src/engine/passkit');
   assert.equal(typeof passkit.isHrPassBrand, 'function');

@@ -5,13 +5,17 @@ const assert = require('node:assert/strict');
 const {
   PUSH_TITLE_MAX,
   PUSH_MESSAGE_MAX,
+  PUSH_MESSAGE_LINE_MAX,
+  PUSH_MESSAGE_LINES,
   validatePushText,
   PUSH_TEXT_AGENT_RULES,
 } = require('../src/engine/push-text-limits');
 
 test('push text limits constants', () => {
   assert.equal(PUSH_TITLE_MAX, 22);
-  assert.equal(PUSH_MESSAGE_MAX, 52);
+  assert.equal(PUSH_MESSAGE_MAX, 66);
+  assert.equal(PUSH_MESSAGE_LINE_MAX, 22);
+  assert.equal(PUSH_MESSAGE_LINES, 3);
 });
 
 test('validatePushText rejects over-limit title', () => {
@@ -21,7 +25,7 @@ test('validatePushText rejects over-limit title', () => {
 });
 
 test('validatePushText rejects over-limit message', () => {
-  const errors = validatePushText('OK', 'M'.repeat(53));
+  const errors = validatePushText('OK', 'M'.repeat(67));
   assert.equal(errors.length, 1);
   assert.equal(errors[0].field, 'pushMessage');
 });
@@ -39,5 +43,6 @@ test('validatePushBackDetails rejects over-limit text', () => {
 
 test('agent rules mention limits', () => {
   assert.match(PUSH_TEXT_AGENT_RULES, /22/);
-  assert.match(PUSH_TEXT_AGENT_RULES, /52/);
+  assert.match(PUSH_TEXT_AGENT_RULES, /66/);
+  assert.match(PUSH_TEXT_AGENT_RULES, /3 righe/);
 });
