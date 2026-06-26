@@ -438,8 +438,7 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
   assert.match(objectPatch.logo.sourceUri.uri, /\/passes\/.*\/wallet-icon\.png$/);
   assert.match(employeePass.images.strip, /\/passes\/.*\/wallet-strip$/);
   assert.match(objectPatch.heroImage.sourceUri.uri, /\/passes\/.*\/wallet-strip$/);
-  assert.equal(objectPatch.textModulesData[0].header, 'COIN');
-  assert.equal(objectPatch.textModulesData[0].body, '12');
+  assert.equal(objectPatch.textModulesData.length, 0, 'COIN stays on the visible face, not in details');
   delete process.env.GOOGLE_WALLET_PASS_KIND;
 });
 

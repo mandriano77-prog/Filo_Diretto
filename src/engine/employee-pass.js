@@ -698,13 +698,6 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
     const coinValue = coinField && coinField.value != null
       ? String(coinField.value).trim().slice(0, 32)
       : '';
-    if (coinField && coinField.value != null && String(coinField.value).trim() !== '') {
-      objectPatch.textModulesData.unshift({
-        id: 'coin_balance',
-        header: 'COIN',
-        body: coinValue
-      });
-    }
 
     objectPatch.cardTitle = {
       defaultValue: {
