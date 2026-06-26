@@ -559,3 +559,9 @@ test('Push history resend preserves the original strip image', () => {
   assert.match(dispatch, /logPush\(\{[\s\S]*strip_base64:\s*overlayStrip \|\| null/);
   assert.match(dashboard, /if \(log\.strip_base64\) body\.strip_base64 = log\.strip_base64/);
 });
+
+test('push dispatch keeps overlayStrip in function scope for final logging', () => {
+  const dispatch = read('src/engine/push-dispatch.js');
+  assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);
+  assert.doesNotMatch(dispatch, /if \(update_pass !== false\) \{[\s\S]{0,260}let overlayStrip/);
+});

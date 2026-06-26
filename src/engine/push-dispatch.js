@@ -175,6 +175,7 @@ async function executeWalletPush(body, ctx = {}) {
 
   const googleEligible = targetPasses.filter((p) => p.google_wallet_object_id);
   const samsungEligible = targetPasses.filter((p) => p.samsung_wallet_ref_id && p.samsung_wallet_saved);
+  let overlayStrip = null;
 
   let devices = [];
   if (sendApple) {
@@ -235,7 +236,7 @@ async function executeWalletPush(body, ctx = {}) {
     if (!gamification_id) delete config.gamificationActive;
 
     const pushStripB64 = ctx.resolvedStripBase64 || null;
-    let overlayStrip = pushStripB64 || null;
+    overlayStrip = pushStripB64 || null;
     delete config.pushAnnouncement;
     delete config.stripOverride;
 
