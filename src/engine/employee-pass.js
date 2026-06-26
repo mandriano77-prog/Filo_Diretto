@@ -371,8 +371,20 @@ function brandHasStripAsset(brand, template) {
 
 function resolveWalletImageVersion(instance) {
   if (!instance) return null;
-  if (instance.last_updated) return instance.last_updated;
-  if (instance.last_push_at) return instance.last_push_at;
+  const toSafeVersion = (value) => {
+    if (value == null || value === '') return null;
+    if (value instanceof Date) return String(value.getTime());
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return String(Math.trunc(numeric));
+    const parsed = Date.parse(String(value));
+    if (Number.isFinite(parsed)) return String(parsed);
+    const safe = String(value).trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    return safe || null;
+  };
+  const lastUpdated = toSafeVersion(instance.last_updated);
+  if (lastUpdated) return lastUpdated;
+  const lastPushAt = toSafeVersion(instance.last_push_at);
+  if (lastPushAt) return lastPushAt;
   const raw = instance.push_announcement;
   if (!raw) return null;
   let ann = raw;
@@ -384,7 +396,7 @@ function resolveWalletImageVersion(instance) {
     }
   }
   const ts = Number(ann?.ts ?? ann?.timestamp);
-  return Number.isFinite(ts) ? ts : null;
+  return Number.isFinite(ts) ? String(Math.trunc(ts)) : null;
 }
 
 function walletImageUrls({ apiBase, brand, template, instance }) {
@@ -413,7 +425,7 @@ function walletImageUrls({ apiBase, brand, template, instance }) {
   if (instance?.id) {
     const stripVersion = resolveWalletImageVersion(instance);
     const versionSuffix = stripVersion
-      ? `?v=${encodeURIComponent(String(stripVersion))}`
+      ? `?v=${stripVersion}`
       : '';
     urls.strip = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-strip${versionSuffix}`;
   } else {

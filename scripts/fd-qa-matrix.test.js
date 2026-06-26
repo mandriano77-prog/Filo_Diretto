@@ -441,6 +441,40 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
   delete process.env.GOOGLE_WALLET_PASS_KIND;
 });
 
+test('Google Wallet HR strip URL uses safe cache buster for dated pass updates', () => {
+  const { buildEmployeePass, toGooglePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: {
+      id: 'b1',
+      name: 'Acme Corp',
+      slug: 'acme',
+      config: { product_line: 'hr', strip_base64: Buffer.from('y').toString('base64') }
+    },
+    template: { id: 't1', name: 'Template', style: {} },
+    instance: {
+      id: '9c42ca17-b4bf-4887-a4b1-228cea78aefb',
+      serial_number: 'SN-GW-2',
+      field_values: {},
+      last_updated: 'Fri Jun 26 2026 15:26:43 GMT+0200'
+    },
+    member: { first_name: 'Mario', last_name: 'Rossi', department: 'HR' },
+    brandConfig: { product_line: 'hr' },
+    apiBase: 'https://studio.example.com/api/v1',
+    coinBalance: 0
+  });
+  const { objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
+  const uri = objectPatch.heroImage.sourceUri.uri;
+  assert.match(uri, /\/wallet-strip\?v=\d+$/);
+  assert.doesNotMatch(uri, /%20|%3A|GMT|Fri|Jun|\s/);
+});
+
+test('Google Wallet HR wallet-strip route dependencies are exported', () => {
+  const passkit = require('../src/engine/passkit');
+  assert.equal(typeof passkit.isHrPassBrand, 'function');
+  assert.equal(typeof passkit.loadHrStripBuffers, 'function');
+  assert.equal(typeof passkit.composePushTextOnStrip, 'function');
+});
+
 test('Samsung Wallet UI frozen by default in Filo HR', () => {
   const { isSamsungWalletUiEnabled, activePushChannelKeys } = require('../src/engine/wallet-channels');
   const prev = process.env.SAMSUNG_WALLET_UI_ENABLED;

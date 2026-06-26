@@ -1493,6 +1493,7 @@ module.exports = {
   wrapStripOverlayLines,
   truncateStripOverlayTitle,
   normalizePushAnnouncementForStrip,
+  isHrPassBrand,
   STRIP_OVERLAY_TITLE_MAX_1X,
   STRIP_OVERLAY_MSG_MAX_1X,
   STRIP_OVERLAY_MSG_LINES,
