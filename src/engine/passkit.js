@@ -997,13 +997,15 @@ async function loadHrStripBuffers({ brand, template, stripOverrideBase64 = null 
 
 function stripOverlayTextMaxWidth(width, reserveThumbnail = false) {
   const scale = width / 375;
-  const pad = Math.round(16 * scale);
-  if (!reserveThumbnail) return width - pad * 2;
+  const pad = Math.round(36 * scale);
+  const rightSafety = Math.round(42 * scale);
+  const safeWidth = Math.max(Math.round(180 * scale), width - pad * 2 - rightSafety);
+  if (!reserveThumbnail) return safeWidth;
   const thumbPad = Math.max(10, Math.round(width * 0.035));
   const rightInset = Math.max(30, Math.round(width * 0.085));
   const thumbW = Math.min(Math.round(width * 0.19), width - thumbPad * 4);
   const thumbLeft = Math.max(thumbPad, width - thumbW - rightInset);
-  return Math.max(Math.round(96 * scale), thumbLeft - pad - Math.round(8 * scale));
+  return Math.min(safeWidth, Math.max(Math.round(96 * scale), thumbLeft - pad - Math.round(8 * scale)));
 }
 
 function stripVisualCharsPerLine(maxTextWidth, fontSize) {

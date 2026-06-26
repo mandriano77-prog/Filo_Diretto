@@ -13,6 +13,7 @@ const { getAnthropicApiKey } = require('./env-ai');
 const { pickWaiModel, formatModelLabel, getWaiModelFallbacks } = require('./ai-models');
 const { getProductBrandName, resolveBaseUrlFromEnv } = require('./base-url');
 const { resolvePushChannel } = require('./push-assistant');
+const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX, validatePushText } = require('./push-text-limits');
 
 const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
@@ -100,8 +101,8 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - schedule_time: HH:MM formato 24h, fuso Europa/Roma
 - days: array numeri 0-6 (0=dom) solo per weekly
 - date: YYYY-MM-DD solo per once
-- title: max 60 char, incisivo, adatto a lock screen
-- message: max 180 char, completa il titolo, crea valore
+- title: max 22 caratteri, incisivo, adatto a lock screen e strip
+- message: max 52 caratteri, completa il titolo, massimo 2 righe sulla strip
 - channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
@@ -537,14 +538,14 @@ function coerceWaiProposal(prompt, raw) {
     ? intent
     : ((wantsSchedule && !wantsImmediate) ? 'push.schedule' : 'push.send');
 
-  const title = String(payload.title || details.title || 'Novità dal pass').trim().slice(0, 60);
+  const title = String(payload.title || details.title || 'Novità dal pass').trim().slice(0, PUSH_TITLE_MAX);
   const message = String(
     payload.message
     || details.message
     || details.message_it
     || preview.summary
     || 'Scopri la novità nel tuo pass.'
-  ).trim().slice(0, 180);
+  ).trim().slice(0, PUSH_MESSAGE_MAX);
   const warnings = normalizeWarnings(preview.warnings);
   if (intent === 'strip.generate') {
     warnings.push('Proposta convertita in push con nuova strip AI.');
@@ -656,13 +657,15 @@ function validateWaiResponse(raw, brandId, userPrompt) {
 
   if (intent === 'push.schedule' || intent === 'push.send') {
     rehydratePushPayloadFromPreview(intent, payload, preview);
-    payload.title = String(payload.title || preview.details?.title || '').trim().slice(0, 60);
+    payload.title = String(payload.title || preview.details?.title || '').trim().slice(0, PUSH_TITLE_MAX);
     payload.message = String(
       payload.message || preview.details?.message || preview.details?.message_it || preview.summary || ''
-    ).trim().slice(0, 180);
+    ).trim().slice(0, PUSH_MESSAGE_MAX);
     if (!payload.title || !payload.message) {
       throw new Error('Titolo e messaggio push obbligatori');
     }
+    const textErrors = validatePushText(payload.title, payload.message);
+    if (textErrors.length) throw new Error(textErrors[0].message);
     payload.channel = resolvePushChannel(
       payload.channel || preview.details?.channel,
       userPrompt || preview.summary || ''

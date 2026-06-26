@@ -84,9 +84,8 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
       template,
       stripOverrideBase64: stripOverride,
     });
-    const reserveThumbnail = !!template?.style?.images?.thumbnail;
     let strip = stripBuffers.strip;
-    strip = await composePushTextOnStrip(strip, announcement, 375, 123, { reserveThumbnail });
+    strip = await composePushTextOnStrip(strip, announcement, 375, 123);
     stripPreview = toDataUrl(strip);
   }
 

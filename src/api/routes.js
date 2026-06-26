@@ -5306,7 +5306,7 @@ async function generateWaiStripBase64({ brand_id, prompt_en }) {
   if (!brand) throw new Error('Brand non trovato');
   const stylePrompt = brand.config?.aiStylePrompt || null;
   const imageUrl = await generateWithFal(
-    `${prompt_en}, promotional banner, wide aspect ratio`,
+    `${prompt_en}, promotional banner, wide aspect ratio, clean panoramic background, no text, no watermarks, no logos, no UI elements, no badges, no stickers, no circles, no frames, no icons`,
     WAI_STRIP_GENERATE_WIDTH,
     WAI_STRIP_GENERATE_HEIGHT,
     WAI_STRIP_GENERATE_MODEL,
@@ -5344,13 +5344,16 @@ async function maybeGenerateAndApplyWaiStrip(payload) {
 
 async function performImmediatePushForWai(payload) {
   const brand = await getBrand(payload.brand_id);
+  let stripBase64 = null;
   if (payload.strip_base64) {
-    await applyGeneratedStripToBrand(payload.brand_id, payload.strip_base64);
+    stripBase64 = payload.strip_base64;
+    await applyGeneratedStripToBrand(payload.brand_id, stripBase64);
   } else if (payload.strip_prompt_en) {
-    await maybeGenerateAndApplyWaiStrip(payload);
+    stripBase64 = await maybeGenerateAndApplyWaiStrip(payload);
   }
   return executeWalletPush(payload, {
     hrDeploy: isHrBrand(brand, { headers: {} }),
+    resolvedStripBase64: stripBase64,
   });
 }
 
