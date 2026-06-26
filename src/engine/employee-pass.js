@@ -428,6 +428,7 @@ function walletImageUrls({ apiBase, brand, template, instance }) {
       ? `?v=${stripVersion}`
       : '';
     urls.strip = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-strip${versionSuffix}`;
+    urls.logoIcon = `${apiBase}/passes/${encodeURIComponent(instance.id)}/wallet-icon.png${versionSuffix}`;
   } else {
     urls.strip = tplImages.strip && tplId ? urls.stripTemplate : urls.stripBrand;
   }
@@ -654,21 +655,22 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
   });
 
   const classPatch = {};
-  const logoUri = employeePass.images.logo;
+  const classLogoUri = employeePass.images.logo;
+  const objectLogoUri = employeePass.images.logoIcon || employeePass.images.logo;
   const stripUri = employeePass.images.strip;
   const thumbUri = employeePass.images.thumbnail;
 
   if (passKind === 'loyalty') {
-    if (logoUri) classPatch.programLogo = googleImageRef(logoUri, employeePass.brandName);
+    if (classLogoUri) classPatch.programLogo = googleImageRef(classLogoUri, employeePass.brandName);
     if (stripUri) classPatch.heroImage = googleImageRef(stripUri, 'Banner');
     classPatch.programName = (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64);
   } else {
-    if (logoUri) classPatch.logo = googleImageRef(logoUri, employeePass.brandName);
+    if (classLogoUri) classPatch.logo = googleImageRef(classLogoUri, employeePass.brandName);
     if (stripUri) classPatch.heroImage = googleImageRef(stripUri, 'Strip');
   }
 
   classPatch.hexBackgroundColor = employeePass.colors.hexBackgroundColor;
-  if (passKind === 'loyalty' && !logoUri) {
+  if (passKind === 'loyalty' && !classLogoUri) {
     classPatch.programName = (employeePass.brandName || employeePass.programName || 'Pass dipendente').slice(0, 64);
   }
 
@@ -685,17 +687,20 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
   if (passKind === 'loyalty') {
     objectPatch.accountName = (employeePass.profile.full_name || 'Membro').slice(0, 64);
   } else {
-    if (logoUri) objectPatch.logo = googleImageRef(logoUri, employeePass.brandName);
+    if (objectLogoUri) objectPatch.logo = googleImageRef(objectLogoUri, employeePass.brandName);
     if (stripUri) objectPatch.heroImage = googleImageRef(stripUri, 'Strip');
 
     const coinField = (employeePass.front.secondary || []).find((f) => {
       const label = String(f.label || '').toUpperCase();
       return f.key === 'coin' || label === 'COIN';
     });
-    const subParts = [];
-    if (employeePass.profile.department) subParts.push(String(employeePass.profile.department).trim());
+    const areaValue = String(employeePass.profile.department || employeePass.programName || 'Pass dipendente').trim();
     if (coinField && coinField.value != null && String(coinField.value).trim() !== '') {
-      subParts.push(String(coinField.value).trim() + ' COIN');
+      objectPatch.textModulesData.unshift({
+        id: 'coin_balance',
+        header: 'COIN',
+        body: String(coinField.value).trim().slice(0, 32)
+      });
     }
 
     objectPatch.cardTitle = {
@@ -710,7 +715,7 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
     objectPatch.subheader = {
       defaultValue: {
         language: 'it',
-        value: (subParts.join(' · ') || employeePass.programName || 'Pass dipendente').slice(0, 64)
+        value: areaValue.slice(0, 64)
       }
     };
     if (thumbUri && employeePass.hasTemplateImages.thumbnail) {
