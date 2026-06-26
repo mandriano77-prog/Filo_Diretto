@@ -142,6 +142,8 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.match(passkit, /resolvePushAnnouncement/);
   assert.doesNotMatch(passkit, /compositeThumbnailOnStrip/);
   assert.doesNotMatch(passkit, /prepareThumbForStripOverlay/);
+  assert.match(passkit, /generateTransparentThumbnailBuffers/);
+  assert.match(passkit, /thumbnail@3x\.png/);
   assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
   assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);
   assert.doesNotMatch(passkit, /stripGrad/);
@@ -234,12 +236,12 @@ test('HR back: push back_details after dynamic link', () => {
   });
   assert.equal(sections[0].key, 'dynamic_push_link');
   assert.equal(sections[1].key, 'push_back_details');
-  assert.equal(sections[1].label, 'DETTAGLI');
+  assert.equal(sections[1].label, '2X1 OCCHIALI');
   assert.match(sections[1].body, /Non cumulabile/);
   const backFields = sectionsToAppleBackFields(sections);
   const detailsField = backFields.find((f) => f.key === 'push_back_details');
   assert.ok(detailsField);
-  assert.equal(detailsField.label, 'DETTAGLI');
+  assert.equal(detailsField.label, '2X1 OCCHIALI');
   assert.match(detailsField.value, /Non cumulabile/);
 });
 

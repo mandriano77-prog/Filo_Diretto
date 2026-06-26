@@ -971,6 +971,23 @@ function stripVisualCharsPerLine(maxTextWidth, fontSize) {
   return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.78)));
 }
 
+async function generateTransparentThumbnailBuffers() {
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+  const create = (size) => sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: transparent,
+    },
+  }).png().toBuffer();
+  return {
+    thumb: await create(90),
+    thumb2x: await create(180),
+    thumb3x: await create(270),
+  };
+}
+
 /** HR push promo — title + message burned into strip (not auxiliary pillar). */
 async function composePushTextOnStrip(stripBuffer, announcement, width, height, options = {}) {
   const normalized = normalizePushAnnouncementForStrip(announcement);
@@ -1335,9 +1352,12 @@ async function createPkpass(template, instance, brand, options = {}) {
 
   const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
 
-  // Thumbnail — for generic and eventTicket only. HR storeCard must not inject extra artwork.
+  // Thumbnail — HR uses transparent files to overwrite any previously cached Apple thumbnail.
   let thumbnailBuffers = null;
-  if (!hrBrand && tplImages.thumbnail) {
+  if (hrBrand) {
+    thumbnailBuffers = await generateTransparentThumbnailBuffers();
+    console.log('✓ HR: transparent thumbnail override');
+  } else if (tplImages.thumbnail) {
     const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
     thumbnailBuffers = {
       thumb: await sharp(rawThumb).resize(90, 90, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer(),
@@ -1376,6 +1396,9 @@ async function createPkpass(template, instance, brand, options = {}) {
   if (hrBrand) {
     files['strip.png'] = stripBuffers.strip;
     files['strip@2x.png'] = stripBuffers.strip2x;
+    files['thumbnail.png'] = thumbnailBuffers.thumb;
+    files['thumbnail@2x.png'] = thumbnailBuffers.thumb2x;
+    files['thumbnail@3x.png'] = thumbnailBuffers.thumb3x;
   } else {
     const passType = template.pass_type || 'storeCard';
     if (passType === 'coupon' || passType === 'storeCard' || (passType === 'eventTicket' && !backgroundBuffers)) {

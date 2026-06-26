@@ -86,6 +86,11 @@ function resolveVariableLink(instance, template, brandConfig = {}) {
   return null;
 }
 
+function pushBackDetailsLabel(pushAnn) {
+  const title = String(pushAnn?.title || '').trim().toUpperCase();
+  return title ? title.slice(0, 40) : 'INFO PROMO';
+}
+
 function parseJsonArray(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -320,7 +325,7 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     sections.push({
       kind: 'text',
       key: 'push_back_details',
-      label: 'DETTAGLI',
+      label: pushBackDetailsLabel(pushAnn),
       body: pushAnn.back_details,
     });
   }
