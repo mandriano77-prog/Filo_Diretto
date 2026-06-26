@@ -523,3 +523,13 @@ test('W.AI API calls include auth headers', () => {
     assert.match(block, /waiFetchHeaders\(\)/, 'W.AI fetch must use waiFetchHeaders()');
   });
 });
+
+test('Push history resend preserves the original strip image', () => {
+  const db = read('src/db/index.js');
+  const dispatch = read('src/engine/push-dispatch.js');
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(db, /push_log ADD COLUMN IF NOT EXISTS strip_base64 TEXT/);
+  assert.match(db, /INSERT INTO push_log[\s\S]*strip_base64/);
+  assert.match(dispatch, /logPush\(\{[\s\S]*strip_base64:\s*overlayStrip \|\| null/);
+  assert.match(dashboard, /if \(log\.strip_base64\) body\.strip_base64 = log\.strip_base64/);
+});

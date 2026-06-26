@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS push_log (
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   campaign_id TEXT,
+  strip_base64 TEXT,
   sent_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -538,6 +539,7 @@ async function getDb() {
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS sent_count INTEGER DEFAULT 0`).catch(()=>{});
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'apple'`).catch(()=>{});
+    await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS strip_base64 TEXT`).catch(()=>{});
 
     // scheduled_push Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
@@ -2185,12 +2187,12 @@ async function getCampaignAnalytics(brandId) {
 // Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ Push Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 async function logPush(data) {
-  const { brand_id, title, message, campaign_id = null, sent_count = 0, channel = 'apple' } = data;
+  const { brand_id, title, message, campaign_id = null, sent_count = 0, channel = 'apple', strip_base64 = null } = data;
   if (!brand_id || !title || !message) throw new Error('Brand ID, title, and message are required');
   const result = await pool.query(
-    `INSERT INTO push_log (brand_id, title, message, campaign_id, sent_count, channel) VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, brand_id, title, message, campaign_id, sent_count, channel, created_at`,
-    [brand_id, title, message, campaign_id, sent_count, channel]
+    `INSERT INTO push_log (brand_id, title, message, campaign_id, sent_count, channel, strip_base64) VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, brand_id, title, message, campaign_id, sent_count, channel, strip_base64, created_at`,
+    [brand_id, title, message, campaign_id, sent_count, channel, strip_base64 || null]
   );
   return result.rows[0];
 }

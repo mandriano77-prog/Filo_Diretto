@@ -8524,6 +8524,7 @@ async function resendPushFromHistory(pushId) {
             update_pass: true
         };
         if (log.campaign_id) body.campaign_id = log.campaign_id;
+        if (log.strip_base64) body.strip_base64 = log.strip_base64;
         const data = await submitPushAndWait(body);
         alert(buildPushDeliveryMessage(data, 'Reinvio completato.'));
         toast('Push reinviata');

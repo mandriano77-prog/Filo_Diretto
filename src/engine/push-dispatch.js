@@ -346,7 +346,7 @@ async function executeWalletPush(body, ctx = {}) {
   }
 
   const sentCombined = sentAppleCount + (googleSync.updated || 0) + (samsungSync.notified || 0);
-  await logPush({ brand_id, title, message, campaign_id, sent_count: sentCombined, channel });
+  await logPush({ brand_id, title, message, campaign_id, sent_count: sentCombined, channel, strip_base64: overlayStrip || null });
 
   return {
     sent_apns: sentAppleCount,
