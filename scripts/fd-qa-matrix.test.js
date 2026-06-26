@@ -433,7 +433,7 @@ test('Google Wallet HR toGooglePass uses brand name and generic layout fields', 
   assert.ok(objectPatch.logo);
   assert.ok(objectPatch.heroImage);
   assert.equal(objectPatch.cardTitle.defaultValue.value, 'Acme Corp');
-  assert.equal(objectPatch.subheader.defaultValue.value, 'HR');
+  assert.equal(objectPatch.subheader.defaultValue.value, 'HR\n12 COIN');
   assert.equal(objectPatch.header.defaultValue.value, 'Mario Rossi');
   assert.match(objectPatch.logo.sourceUri.uri, /\/passes\/.*\/wallet-icon\.png$/);
   assert.match(employeePass.images.strip, /\/passes\/.*\/wallet-strip$/);

@@ -695,11 +695,14 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
       return f.key === 'coin' || label === 'COIN';
     });
     const areaValue = String(employeePass.profile.department || employeePass.programName || 'Pass dipendente').trim();
+    const coinValue = coinField && coinField.value != null
+      ? String(coinField.value).trim().slice(0, 32)
+      : '';
     if (coinField && coinField.value != null && String(coinField.value).trim() !== '') {
       objectPatch.textModulesData.unshift({
         id: 'coin_balance',
         header: 'COIN',
-        body: String(coinField.value).trim().slice(0, 32)
+        body: coinValue
       });
     }
 
@@ -715,7 +718,7 @@ function toGooglePass(employeePass, { passKind = 'generic' } = {}) {
     objectPatch.subheader = {
       defaultValue: {
         language: 'it',
-        value: areaValue.slice(0, 64)
+        value: [areaValue, coinValue ? `${coinValue} COIN` : ''].filter(Boolean).join('\n').slice(0, 64)
       }
     };
     if (thumbUri && employeePass.hasTemplateImages.thumbnail) {
