@@ -125,6 +125,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'push_notice');
   assert.ok(alertField);
   assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
+  assert.match(alertField.changeMessage, /%@$/);
   assert.equal(alertField.label, '\u200b');
   assert.notEqual(alertField.value, '\u200b');
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
@@ -140,6 +141,8 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.match(passkit, /composePushTextOnStrip/);
   assert.match(passkit, /resolvePushAnnouncement/);
   assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
+  assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);
+  assert.doesNotMatch(passkit, /stripGrad/);
   assert.doesNotMatch(passkit, /lengthAdjust/);
 });
 
@@ -264,6 +267,7 @@ test('HR push: frozen template header — invisible auxiliary triggers Wallet al
   assert.equal((apple.passStructure.headerFields || []).length, 0);
   const appleAlert = apple.passStructure.auxiliaryFields[0];
   assert.match(appleAlert.changeMessage, /2X1 OCCHIALI/);
+  assert.match(appleAlert.changeMessage, /%@$/);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
 

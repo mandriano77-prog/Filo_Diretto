@@ -860,8 +860,7 @@ router.get('/passes/:id/wallet-strip', async (req, res) => {
     let strip = stripBuffers.strip;
     const pushAnn = resolvePushAnnouncement(cfg, passInstance);
     if (pushAnn?.message) {
-      const reserveThumbnail = !!template?.style?.images?.thumbnail;
-      strip = await composePushTextOnStrip(strip, pushAnn, 375, 123, { reserveThumbnail });
+      strip = await composePushTextOnStrip(strip, pushAnn, 375, 123);
     }
 
     res.set({
@@ -2598,8 +2597,7 @@ router.post('/brands/:id/push/strip-preview', async (req, res) => {
     let preview = stripBuffers.strip;
     const msg = String(message || '').trim();
     if (msg) {
-      const reserveThumbnail = !!template?.style?.images?.thumbnail;
-      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123, { reserveThumbnail });
+      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123);
     }
 
     const acceptJson = format === 'json' || req.query.format === 'json';

@@ -1016,10 +1016,10 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   if (!normalized?.message || !stripBuffer) return stripBuffer;
 
   const scale = width / 375;
-  const pad = Math.round(18 * scale);
-  const titleSize = Math.round(12 * scale);
-  const msgSize = Math.round(11 * scale);
-  const lineH = Math.round(14 * scale);
+  const pad = Math.round(36 * scale);
+  const titleSize = Math.round(13 * scale);
+  const msgSize = Math.round(12 * scale);
+  const lineH = Math.round(15 * scale);
   const reserveThumbnail = Boolean(options.reserveThumbnail);
   const maxTextWidth = stripOverlayTextMaxWidth(width, reserveThumbnail);
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
@@ -1048,11 +1048,6 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
     barY = 0;
   }
 
-  // Soft gradient under text only — no opaque white/black band cutting the strip.
-  const gradBleed = Math.round(14 * scale);
-  const gradY = Math.max(0, barY - gradBleed);
-  const gradH = height - gradY;
-  const gradId = `stripGrad${width}x${height}`;
   const shadowId = `stripTxtShadow${width}x${height}`;
 
   const titleY = barY + barPad + (title ? Math.round(9 * scale) : 0);
@@ -1066,42 +1061,24 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   }).join('');
 
   const clipId = `stripClip${width}x${height}`;
-  const barClipId = `stripBarClip${width}x${height}`;
   const textSafeId = `stripTextSafe${width}x${height}`;
-  const gradTopOpacity = darkBottom ? '0.08' : '0';
-  const gradMidOpacity = darkBottom ? '0.35' : '0.28';
-  const gradBottomOpacity = darkBottom ? '0.55' : '0.68';
-  const panelX = Math.max(0, pad - Math.round(10 * scale));
-  const panelY = Math.max(0, barY - Math.round(2 * scale));
-  const panelW = Math.min(width - panelX - Math.round(8 * scale), maxTextWidth + Math.round(20 * scale));
-  const panelH = Math.min(height - panelY, barH + Math.round(4 * scale));
-  const panelR = Math.round(8 * scale);
+  const textStroke = Math.max(2, Math.round(2.4 * scale));
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <clipPath id="${clipId}">
         <rect width="${width}" height="${height}"/>
       </clipPath>
-      <clipPath id="${barClipId}">
-        <rect x="0" y="${barY}" width="${width}" height="${barH}"/>
-      </clipPath>
       <clipPath id="${textSafeId}">
-        <rect x="0" y="${gradY}" width="${width}" height="${gradH}"/>
+        <rect x="${pad}" y="${Math.max(0, barY - Math.round(4 * scale))}" width="${Math.max(1, maxTextWidth)}" height="${Math.min(height, barH + Math.round(8 * scale))}"/>
       </clipPath>
-      <linearGradient id="${gradId}" x1="0" y1="${gradY}" x2="0" y2="${height}" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="rgb(0,0,0)" stop-opacity="${gradTopOpacity}"/>
-        <stop offset="45%" stop-color="rgb(0,0,0)" stop-opacity="${gradMidOpacity}"/>
-        <stop offset="100%" stop-color="rgb(0,0,0)" stop-opacity="${gradBottomOpacity}"/>
-      </linearGradient>
       <filter id="${shadowId}" x="-8%" y="-20%" width="116%" height="160%">
-        <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.9"/>
+        <feDropShadow dx="0" dy="1" stdDeviation="1.1" flood-color="#000000" flood-opacity="0.95"/>
       </filter>
     </defs>
     <g clip-path="url(#${clipId})">
-      <rect x="0" y="${gradY}" width="${width}" height="${gradH}" fill="url(#${gradId})"/>
-      <rect x="${panelX}" y="${panelY}" width="${panelW}" height="${panelH}" rx="${panelR}" fill="rgba(0,0,0,0.62)"/>
       <g clip-path="url(#${textSafeId})" filter="url(#${shadowId})">
-        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" text-anchor="start">${escapeStripSvgText(title)}</text>` : ''}
-        ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="600" text-anchor="start">${msgTspans}</text>` : ''}
+        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" stroke="#000000" stroke-width="${textStroke}" paint-order="stroke fill" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" text-anchor="start">${escapeStripSvgText(title)}</text>` : ''}
+        ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" stroke="#000000" stroke-width="${textStroke}" paint-order="stroke fill" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="700" text-anchor="start">${msgTspans}</text>` : ''}
       </g>
     </g>
   </svg>`;

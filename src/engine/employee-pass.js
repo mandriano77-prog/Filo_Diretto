@@ -162,7 +162,7 @@ function buildPushWalletAlertField(pushAnn) {
     key: 'push_notice',
     label: '\u200b',
     value: invisibleChangeToken(`${pushTs}:${promoTitle}:${pushAnn.message}`),
-    changeMessage: alertText.slice(0, 178),
+    changeMessage: `${alertText.slice(0, 174)} %@`,
   };
 }
 
