@@ -868,12 +868,7 @@ function stripOverlayLimitsForWidth(width) {
 function normalizePushAnnouncementForStrip(announcement) {
   if (!announcement?.message) return null;
   const title = truncateStripOverlayTitle(announcement.title, STRIP_OVERLAY_TITLE_MAX_1X);
-  const msgLines = wrapStripOverlayLines(
-    announcement.message,
-    STRIP_OVERLAY_MSG_MAX_1X,
-    STRIP_OVERLAY_MSG_LINES
-  );
-  const message = msgLines.join(' ').trim();
+  const message = sanitizeStripSvgText(announcement.message).slice(0, STRIP_OVERLAY_MSG_MAX_1X * STRIP_OVERLAY_MSG_LINES).trim();
   if (!message) return null;
   return {
     title,
@@ -882,40 +877,52 @@ function normalizePushAnnouncementForStrip(announcement) {
   };
 }
 
-async function sampleStripBottomLuminance(stripBuffer, width, height) {
-  const zoneH = Math.max(1, Math.round(height * 0.5));
+async function sampleStripTextLuminance(stripBuffer, width, height, sampleArea = null) {
+  const fallback = 72;
+  const area = sampleArea || {
+    left: 0,
+    top: Math.max(0, Math.round(height * 0.45)),
+    width,
+    height: Math.max(1, Math.round(height * 0.55))
+  };
   try {
+    const left = Math.max(0, Math.min(width - 1, Math.round(area.left)));
+    const top = Math.max(0, Math.min(height - 1, Math.round(area.top)));
+    const extractWidth = Math.max(1, Math.min(width - left, Math.round(area.width)));
+    const extractHeight = Math.max(1, Math.min(height - top, Math.round(area.height)));
     const stats = await sharp(stripBuffer)
-      .extract({ left: 0, top: height - zoneH, width, height: zoneH })
+      .extract({ left, top, width: extractWidth, height: extractHeight })
       .stats();
     const r = stats.channels[0]?.mean ?? 128;
     const g = stats.channels[1]?.mean ?? 128;
     const b = stats.channels[2]?.mean ?? 128;
     return 0.299 * r + 0.587 * g + 0.114 * b;
   } catch {
-    return 72;
+    return fallback;
   }
 }
 
-function wrapStripOverlayLines(text, maxChars, maxLines) {
+function wrapStripOverlayLines(text, maxChars, maxLines, { ellipsis = true } = {}) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [];
   const lines = [];
   let line = '';
   for (const word of words) {
     let w = word;
-    if (w.length > maxChars) w = `${w.slice(0, Math.max(1, maxChars - 1))}…`;
+    if (w.length > maxChars) w = ellipsis ? `${w.slice(0, Math.max(1, maxChars - 1))}…` : w.slice(0, maxChars);
     const candidate = line ? `${line} ${w}` : w;
     if (candidate.length > maxChars && line) {
       lines.push(line);
       line = w;
     } else {
-      line = candidate.length > maxChars ? `${candidate.slice(0, Math.max(1, maxChars - 1))}…` : candidate;
+      line = candidate.length > maxChars
+        ? (ellipsis ? `${candidate.slice(0, Math.max(1, maxChars - 1))}…` : candidate.slice(0, maxChars))
+        : candidate;
     }
     if (lines.length >= maxLines) break;
   }
   if (line && lines.length < maxLines) lines.push(line);
-  if (lines.length === maxLines) {
+  if (ellipsis && lines.length === maxLines) {
     const consumed = lines.join(' ').split(/\s+/).length;
     if (words.length > consumed) {
       const last = lines[lines.length - 1];
@@ -956,8 +963,8 @@ async function loadHrStripBuffers({ brand, template, stripOverrideBase64 = null 
 
 function stripOverlayTextMaxWidth(width, reserveThumbnail = false) {
   const scale = width / 375;
-  const pad = Math.round(36 * scale);
-  const rightSafety = Math.round(42 * scale);
+  const pad = Math.round(18 * scale);
+  const rightSafety = Math.round(20 * scale);
   const safeWidth = Math.max(Math.round(180 * scale), width - pad * 2 - rightSafety);
   if (!reserveThumbnail) return safeWidth;
   const thumbPad = Math.max(10, Math.round(width * 0.035));
@@ -968,7 +975,7 @@ function stripOverlayTextMaxWidth(width, reserveThumbnail = false) {
 }
 
 function stripVisualCharsPerLine(maxTextWidth, fontSize) {
-  return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.78)));
+  return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.64)));
 }
 
 async function generateCoverThumbnailBuffers(backgroundColor) {
@@ -995,30 +1002,41 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
   if (!normalized?.message || !stripBuffer) return stripBuffer;
 
   const scale = width / 375;
-  const pad = Math.round(36 * scale);
-  const titleSize = Math.round(13 * scale);
-  const msgSize = Math.round(11 * scale);
-  const lineH = Math.round(13 * scale);
+  const pad = Math.round(18 * scale);
   const reserveThumbnail = Boolean(options.reserveThumbnail);
   const maxTextWidth = stripOverlayTextMaxWidth(width, reserveThumbnail);
   const { titleMax, msgMax, msgLines: maxLines } = stripOverlayLimitsForWidth(width);
-  const visualTitleMax = Math.min(titleMax, stripVisualCharsPerLine(maxTextWidth, titleSize));
-  const visualMsgMax = Math.min(msgMax, stripVisualCharsPerLine(maxTextWidth, msgSize));
-  const title = sanitizeStripSvgText(truncateStripOverlayTitle(normalized.title, visualTitleMax));
-  const msgLines = wrapStripOverlayLines(normalized.message, visualMsgMax, maxLines)
-    .map((line) => sanitizeStripSvgText(line))
-    .filter(Boolean);
-  if (!title && !msgLines.length) return stripBuffer;
+  const titleBase = sanitizeStripSvgText(normalized.title);
+  const messageBase = sanitizeStripSvgText(normalized.message);
 
-  const lum = await sampleStripBottomLuminance(stripBuffer, width, height);
-  const darkBottom = lum < 95;
-  const titleFill = '#ffffff';
-  const msgFill = '#ffffff';
-  const titleWeight = darkBottom ? '800' : '700';
+  let layout = null;
+  const sizeSteps = [
+    { title: 13, msg: 11, line: 13 },
+    { title: 12, msg: 10, line: 12 },
+    { title: 11, msg: 9, line: 11 },
+    { title: 10, msg: 8, line: 10 },
+  ];
+  for (const step of sizeSteps) {
+    const titleSize = Math.round(step.title * scale);
+    const msgSize = Math.round(step.msg * scale);
+    const lineH = Math.round(step.line * scale);
+    const visualTitleMax = Math.min(titleMax, stripVisualCharsPerLine(maxTextWidth, titleSize));
+    const visualMsgMax = Math.min(msgMax, stripVisualCharsPerLine(maxTextWidth, msgSize));
+    const title = truncateStripOverlayTitle(titleBase, visualTitleMax);
+    const msgLines = wrapStripOverlayLines(messageBase, visualMsgMax, maxLines, { ellipsis: false })
+      .map((line) => sanitizeStripSvgText(line))
+      .filter(Boolean);
+    const rendered = msgLines.join(' ').trim();
+    layout = { title, msgLines, titleSize, msgSize, lineH };
+    if (rendered.length >= messageBase.length || step === sizeSteps[sizeSteps.length - 1]) break;
+  }
+
+  const { title, msgLines, titleSize, msgSize, lineH } = layout || {};
+  if (!title && !msgLines.length) return stripBuffer;
 
   const titleBlockH = title ? Math.round(15 * scale) : 0;
   const msgBlockH = msgLines.length * lineH;
-  const barPad = Math.round(9 * scale);
+  const barPad = Math.round(8 * scale);
   const barGap = title && msgLines.length ? Math.round(2 * scale) : 0;
   let barH = barPad * 2 + titleBlockH + barGap + msgBlockH;
   let barY = height - barH;
@@ -1026,6 +1044,19 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
     barH = height;
     barY = 0;
   }
+
+  const lum = await sampleStripTextLuminance(stripBuffer, width, height, {
+    left: pad,
+    top: Math.max(0, barY),
+    width: maxTextWidth,
+    height: Math.min(height, barH)
+  });
+  const lightArea = lum >= 150;
+  const titleFill = lightArea ? '#111827' : '#FFFFFF';
+  const msgFill = lightArea ? '#1F2937' : '#FFFFFF';
+  const shadowColor = lightArea ? '#FFFFFF' : '#000000';
+  const shadowOpacity = lightArea ? '0.62' : '0.72';
+  const titleWeight = '800';
 
   const shadowId = `stripTxtShadow${width}x${height}`;
 
@@ -1041,7 +1072,6 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
 
   const clipId = `stripClip${width}x${height}`;
   const textSafeId = `stripTextSafe${width}x${height}`;
-  const textStroke = Math.max(2, Math.round(2.4 * scale));
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <clipPath id="${clipId}">
@@ -1051,13 +1081,13 @@ async function composePushTextOnStrip(stripBuffer, announcement, width, height, 
         <rect x="${pad}" y="${Math.max(0, barY - Math.round(4 * scale))}" width="${Math.max(1, maxTextWidth)}" height="${Math.min(height, barH + Math.round(8 * scale))}"/>
       </clipPath>
       <filter id="${shadowId}" x="-8%" y="-20%" width="116%" height="160%">
-        <feDropShadow dx="0" dy="1" stdDeviation="1.1" flood-color="#000000" flood-opacity="0.95"/>
+        <feDropShadow dx="0" dy="1" stdDeviation="0.75" flood-color="${shadowColor}" flood-opacity="${shadowOpacity}"/>
       </filter>
     </defs>
     <g clip-path="url(#${clipId})">
       <g clip-path="url(#${textSafeId})" filter="url(#${shadowId})">
-        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" stroke="#000000" stroke-width="${textStroke}" paint-order="stroke fill" font-family="Helvetica,Arial,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" text-anchor="start">${escapeStripSvgText(title)}</text>` : ''}
-        ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" stroke="#000000" stroke-width="${textStroke}" paint-order="stroke fill" font-family="Helvetica,Arial,sans-serif" font-size="${msgSize}" font-weight="700" text-anchor="start">${msgTspans}</text>` : ''}
+        ${title ? `<text x="${pad}" y="${titleY}" fill="${titleFill}" font-family="Arial,Helvetica,sans-serif" font-size="${titleSize}" font-weight="${titleWeight}" text-anchor="start">${escapeStripSvgText(title)}</text>` : ''}
+        ${msgLines.length ? `<text x="${pad}" y="${msgY}" fill="${msgFill}" font-family="Arial,Helvetica,sans-serif" font-size="${msgSize}" font-weight="700" text-anchor="start">${msgTspans}</text>` : ''}
       </g>
     </g>
   </svg>`;
@@ -1353,11 +1383,11 @@ async function createPkpass(template, instance, brand, options = {}) {
 
   const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
 
-  // Thumbnail — HR uses pass-background files to cover stale Apple thumbnails/cached badges.
+  // Thumbnail — never include one for HR store cards: Apple renders it as a side badge.
   let thumbnailBuffers = null;
   if (hrBrand) {
-    thumbnailBuffers = await generateCoverThumbnailBuffers(bgColor);
-    console.log('✓ HR: background thumbnail override');
+    thumbnailBuffers = null;
+    console.log('✓ HR: thumbnail disabled');
   } else if (tplImages.thumbnail) {
     const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
     thumbnailBuffers = {
@@ -1397,9 +1427,6 @@ async function createPkpass(template, instance, brand, options = {}) {
   if (hrBrand) {
     files['strip.png'] = stripBuffers.strip;
     files['strip@2x.png'] = stripBuffers.strip2x;
-    files['thumbnail.png'] = thumbnailBuffers.thumb;
-    files['thumbnail@2x.png'] = thumbnailBuffers.thumb2x;
-    files['thumbnail@3x.png'] = thumbnailBuffers.thumb3x;
   } else {
     const passType = template.pass_type || 'storeCard';
     if (passType === 'coupon' || passType === 'storeCard' || (passType === 'eventTicket' && !backgroundBuffers)) {
