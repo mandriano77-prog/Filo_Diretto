@@ -277,7 +277,7 @@
 
     var headerWrap = section.querySelector(':scope > div');
     var title = section.querySelector('h1.page-title, h1.sec-title');
-    var createBtn = section.querySelector('[onclick*="openTemplateModal"]');
+    var createBtn = section.querySelector('[data-fd-template-create]');
     if (headerWrap && title && !headerWrap.classList.contains('fd-page-header')) {
       headerWrap.classList.add('fd-page-header', 'fd-tpl-header');
       headerWrap.style.display = '';
@@ -302,14 +302,24 @@
       var existingLead = copy.querySelector('.fd-page-header__lead, .fd-tpl-lead');
       if (existingLead) existingLead.classList.add('fd-page-header__lead');
 
+      var actions = headerWrap.querySelector('.fd-page-header__actions');
+      if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'fd-page-header__actions fd-tpl-header__actions';
+        headerWrap.appendChild(actions);
+      }
+      if (!createBtn) {
+        createBtn = document.createElement('button');
+        createBtn.type = 'button';
+        createBtn.textContent = '+ Nuovo Template';
+        createBtn.setAttribute('data-fd-template-create', '1');
+        createBtn.setAttribute('data-requires-write', 'templates');
+        createBtn.addEventListener('click', function () {
+          if (typeof window.openTemplateModal === 'function') window.openTemplateModal();
+        });
+        actions.appendChild(createBtn);
+      }
       if (createBtn) {
-        var actions = headerWrap.querySelector('.fd-page-header__actions');
-        if (!actions) {
-          actions = document.createElement('div');
-          actions.className = 'fd-page-header__actions fd-tpl-header__actions';
-          actions.appendChild(createBtn);
-          headerWrap.appendChild(actions);
-        }
         createBtn.classList.add('fd-btn', 'fd-btn--primary');
         createBtn.classList.remove('sec', 'small');
       }
@@ -329,7 +339,7 @@
   function setHeaderCreateButtonVisible(visible) {
     var section = document.getElementById('templates');
     if (!section) return;
-    var createBtn = section.querySelector('.fd-tpl-header__actions [onclick*="openTemplateModal"]');
+    var createBtn = section.querySelector('.fd-tpl-header__actions [data-fd-template-create]');
     if (!createBtn) return;
     createBtn.hidden = !visible;
     createBtn.setAttribute('aria-hidden', visible ? 'false' : 'true');
