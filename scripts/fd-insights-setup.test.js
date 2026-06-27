@@ -86,6 +86,30 @@ test('Utenti tenant wizard translates duplicate db errors into clear actions', (
   assert.match(js, /selezionalo dal menu in alto/);
 });
 
+test('Manager users page is brand scoped, tenant wizard remains admin only', () => {
+  const usersJs = readFd('fd-users.js');
+  const rbacJs = readFd('fd-rbac.js');
+  const dashboard = read('src/dashboard/index.html');
+  const routes = read('src/api/routes.js');
+  assert.match(usersJs, /canManageDashboardUsers/);
+  assert.match(usersJs, /fdTenantWizardBtn/);
+  assert.match(usersJs, /isAdminUser/);
+  assert.match(rbacJs, /users: 'full'/);
+  assert.match(dashboard, /function canManageDashboardUsers/);
+  assert.match(dashboard, /data-section-id="users"[^>]+data-role-min="manager"/);
+  assert.match(routes, /requireUserManagerAccess/);
+  assert.match(routes, /req\.user\.brand_id/);
+  assert.match(routes, /Un manager non può creare o modificare utenti admin/);
+});
+
+test('Template empty state hides duplicated header create button', () => {
+  const js = readFd('fd-templates.js');
+  assert.match(js, /setHeaderCreateButtonVisible/);
+  assert.match(js, /setHeaderCreateButtonVisible\(false\)/);
+  assert.match(js, /setHeaderCreateButtonVisible\(true\)/);
+  assert.match(js, /createBtn\.hidden = !visible/);
+});
+
 test('Home exposes brand setup checklist for managers and admins', () => {
   const js = readFd('fd-home.js');
   const css = readFd('fd-home.css');

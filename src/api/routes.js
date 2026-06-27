@@ -1511,6 +1511,47 @@ function requireAdmin(req, res) {
   return true;
 }
 
+function isUserAdmin(req) {
+  return normalizeRole(req.user?.role) === 'admin';
+}
+
+function isUserManager(req) {
+  return normalizeRole(req.user?.role) === 'manager';
+}
+
+function requireUserManagerAccess(req, res) {
+  if (isUserAdmin(req)) return true;
+  if (isUserManager(req) && req.user?.brand_id) return true;
+  res.status(403).json({ error: 'Puoi gestire utenti solo per il tuo brand' });
+  return false;
+}
+
+function requireManagedUserTarget(req, res, target) {
+  if (isUserAdmin(req)) return true;
+  if (!target) {
+    res.status(404).json({ error: 'Utente non trovato' });
+    return false;
+  }
+  if (!req.user?.brand_id || String(target.brand_id || '') !== String(req.user.brand_id)) {
+    res.status(403).json({ error: 'Puoi gestire solo utenti del tuo brand' });
+    return false;
+  }
+  if (normalizeRole(target.role) === 'admin') {
+    res.status(403).json({ error: 'Un manager non può gestire utenti admin' });
+    return false;
+  }
+  return true;
+}
+
+function normalizeManagerUserPayload(req, role) {
+  if (isUserAdmin(req)) return null;
+  const r = normalizeRole(role);
+  if (r === 'admin') return 'Un manager non può creare o modificare utenti admin';
+  req.body.role = r;
+  req.body.brand_id = req.user.brand_id;
+  return null;
+}
+
 function normalizeUserBrandPayload(body, role) {
   const r = normalizeRole(role || body.role || 'manager');
   if (r === 'admin') {
@@ -1620,11 +1661,11 @@ router.put('/auth/change-password', async (req, res) => {
   }
 });
 
-// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Users (admin only) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
+// Users: admin all brands; manager only own brand.
 router.get('/users', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
-    const qBrand = req.query.brand_id || null;
+    if (!requireUserManagerAccess(req, res)) return;
+    const qBrand = isUserAdmin(req) ? (req.query.brand_id || null) : req.user.brand_id;
     const users = await listUsers(qBrand || null);
     res.json(users);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1632,13 +1673,15 @@ router.get('/users', async (req, res) => {
 
 router.post('/users', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
-    if (rejectIfDeployOperatorNotAllowed(req, res)) return;
+    if (!requireUserManagerAccess(req, res)) return;
+    if (isUserAdmin(req) && rejectIfDeployOperatorNotAllowed(req, res)) return;
     const tempPassword = req.body.password || randomBytes(12).toString('base64url');
     req.body.password = tempPassword;
     const role = normalizeRole(req.body.role || 'manager');
     if (!isValidRole(role)) return res.status(400).json({ error: 'Ruolo non valido' });
     req.body.role = role;
+    const managerErr = normalizeManagerUserPayload(req, role);
+    if (managerErr) return res.status(403).json({ error: managerErr });
     normalizeUserBrandPayload(req.body, role);
     const brandErr = validateScopedUserBrand(role, req.body.brand_id);
     if (brandErr) return res.status(400).json({ error: brandErr });
@@ -1652,9 +1695,10 @@ router.post('/users', async (req, res) => {
 
 router.post('/users/:id/resend-invite', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!requireUserManagerAccess(req, res)) return;
     const user = await getUser(req.params.id);
     if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+    if (!requireManagedUserTarget(req, res, user)) return;
 
     await sendDashboardUserInviteEmail(req, user);
 
@@ -1664,15 +1708,18 @@ router.post('/users/:id/resend-invite', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!requireUserManagerAccess(req, res)) return;
     const existing = await getUser(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Utente non trovato' });
+    if (!requireManagedUserTarget(req, res, existing)) return;
     if (req.body.role !== undefined) {
       const role = normalizeRole(req.body.role);
       if (!isValidRole(role)) return res.status(400).json({ error: 'Ruolo non valido' });
       req.body.role = role;
     }
     const effectiveRole = normalizeRole(req.body.role ?? existing.role);
+    const managerErr = normalizeManagerUserPayload(req, effectiveRole);
+    if (managerErr) return res.status(403).json({ error: managerErr });
     normalizeUserBrandPayload(req.body, effectiveRole);
     const effectiveBrandId = req.body.brand_id !== undefined ? req.body.brand_id : existing.brand_id;
     const brandErr = validateScopedUserBrand(effectiveRole, effectiveBrandId);
@@ -1684,10 +1731,11 @@ router.put('/users/:id', async (req, res) => {
 
 router.delete('/users/:id', async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
-    if (rejectIfDeployOperatorNotAllowed(req, res)) return;
+    if (!requireUserManagerAccess(req, res)) return;
+    if (isUserAdmin(req) && rejectIfDeployOperatorNotAllowed(req, res)) return;
     const target = await getUser(req.params.id);
     if (!target) return res.status(404).json({ error: 'Utente non trovato' });
+    if (!requireManagedUserTarget(req, res, target)) return;
     if (String(target.id) === String(req.user.id)) {
       return res.status(400).json({ error: 'Non puoi eliminare il tuo account mentre sei connesso' });
     }

@@ -9,9 +9,10 @@ test('normalizeRole maps viewer to reporter', () => {
   assert.equal(rbac.normalizeRole('sender'), 'sender');
 });
 
-test('manager cannot read activity_log or users', () => {
+test('manager cannot read activity_log but can manage scoped users', () => {
   assert.equal(rbac.canRead('manager', 'activity_log'), false);
-  assert.equal(rbac.canRead('manager', 'users'), false);
+  assert.equal(rbac.canRead('manager', 'users'), true);
+  assert.equal(rbac.canWrite('manager', 'users'), true);
   assert.equal(rbac.canWrite('manager', 'push'), true);
 });
 

@@ -326,6 +326,15 @@
     }
   }
 
+  function setHeaderCreateButtonVisible(visible) {
+    var section = document.getElementById('templates');
+    if (!section) return;
+    var createBtn = section.querySelector('.fd-tpl-header__actions [onclick*="openTemplateModal"]');
+    if (!createBtn) return;
+    createBtn.hidden = !visible;
+    createBtn.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
+
   async function fetchBrandSnapshot() {
     var brandId = window.brandId;
     if (!brandId) return window.__fdBrandPassSnapshot || null;
@@ -382,6 +391,7 @@
       var el = document.getElementById('templatesList');
       if (!el) return orig.apply(this, arguments);
       enhanceTemplatesSectionDesign();
+      setHeaderCreateButtonVisible(false);
       el.innerHTML = renderLoadingSkeleton();
       try {
         var api = window.API || '/api/v1';
@@ -391,6 +401,7 @@
         var passCounts = await fetchPassCountsByTemplate();
         var brandSnapshot = await fetchBrandSnapshot();
         if (!templates.length) {
+          setHeaderCreateButtonVisible(false);
           if (typeof window.renderEmptyState === 'function') {
             el.innerHTML = window.renderEmptyState({
               title: 'Nessun template',
@@ -405,6 +416,7 @@
           if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
           return;
         }
+        setHeaderCreateButtonVisible(true);
         el.innerHTML =
           '<div class="fd-tpl-list">' +
           templates

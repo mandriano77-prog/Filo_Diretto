@@ -1428,7 +1428,7 @@
             <details class="nav-group nav-group--setup" data-nav-group="setup" open>
                 <summary class="nav-group-label">Setup</summary>
                 <div class="nav-group-items">
-                    <div class="nav-item" onclick="nav('users')" data-section-id="users" data-requires-perm="users" data-role-min="admin" role="button" tabindex="0">Utenti</div>
+                    <div class="nav-item" onclick="nav('users')" data-section-id="users" data-requires-perm="users" data-role-min="manager" role="button" tabindex="0">Utenti</div>
                 </div>
             </details>
         </div>
@@ -3259,7 +3259,7 @@
                 <h1 class="sec-title page-title">Utenti</h1>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <p style="color:var(--text2);font-size:13px;">Crea e gestisci gli accessi alla dashboard.</p>
-                    <button class="btn" onclick="openCreateUserModal()" data-role-min="admin" id="createUserBtn">+ Nuovo Utente</button>
+                    <button class="btn" onclick="openCreateUserModal()" data-role-min="manager" id="createUserBtn">+ Nuovo Utente</button>
                 </div>
                 <table class="table table-keep-actions" id="usersTable">
                     <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Brand</th><th>Stato</th><th>Azioni</th></tr></thead>
@@ -4594,6 +4594,17 @@ function isDashboardAdmin(user) {
 }
 window.isDashboardAdmin = isDashboardAdmin;
 
+function canManageDashboardUsers(user) {
+    user = user || currentUser;
+    if (!user) return false;
+    if (isDashboardAdmin(user)) return true;
+    const role = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
+        ? FdRbac.normalizeRole(user.role)
+        : (user.role === 'viewer' ? 'reporter' : user.role);
+    return role === 'manager' && !!user.brand_id;
+}
+window.canManageDashboardUsers = canManageDashboardUsers;
+
 // ==================== NAV ====================
 function updateNavState() {
     const rawRole = currentUser?.role || 'admin';
@@ -4604,12 +4615,14 @@ function updateNavState() {
     const isAdmin = role === 'admin' || isAllowlistOperatorEmail(currentUser?.email);
     const hasBrand = !!brandId;
 
-    // Hide users nav for non-admin; hide create-user when deploy has login allowlist
+    const canManageUsers = canManageDashboardUsers(currentUser);
+
+    // Hide users nav for roles that cannot manage scoped users.
     document.querySelectorAll('.nav-item').forEach(n => {
         const section = n.getAttribute('onclick')?.match(/nav\('(.+?)'\)/)?.[1];
         if (isViewer && ['users'].includes(section)) {
             n.style.display = 'none';
-        } else if (section === 'users' && !isAdmin) {
+        } else if (section === 'users' && !canManageUsers) {
             n.style.display = 'none';
         } else {
             n.style.display = '';
@@ -4619,7 +4632,7 @@ function updateNavState() {
     if (createUserBtn) {
         const allowlist = getDashboardLoginAllowlist();
         const filoHr = typeof isHrDashboard === 'function' && isHrDashboard();
-        createUserBtn.style.display = (isAdmin && (!allowlist || filoHr)) ? '' : 'none';
+        createUserBtn.style.display = (canManageUsers && (!allowlist || filoHr)) ? '' : 'none';
     }
 
     // Hide Dashboard/Inizio once a brand is selected (Filo HR keeps Inizio as operational home).
@@ -13964,7 +13977,7 @@ async function savePassDesign() {
 
 // ==================== USERS ====================
 async function loadUsers() {
-    if (!isDashboardAdmin()) return;
+    if (!canManageDashboardUsers()) return;
     if (typeof fdLoadUsers === 'function' && (isFiloOperationalHome() || (typeof isHrDashboard === 'function' && isHrDashboard()))) {
         return fdLoadUsers();
     }
@@ -14013,6 +14026,17 @@ async function populateUserBrandSelect(selectedId) {
     const brandSel = document.getElementById('userBrand');
     if (!brandSel) return;
     brandSel.innerHTML = '<option value="">— Seleziona brand —</option>';
+    if (!isDashboardAdmin() && currentUser?.brand_id) {
+        const opt = document.createElement('option');
+        opt.value = currentUser.brand_id;
+        opt.textContent = currentBrandName || 'Il tuo brand';
+        brandSel.appendChild(opt);
+        brandSel.value = String(currentUser.brand_id);
+        if (typeof window.fdSyncUserBrandFieldVisibility === 'function') {
+            window.fdSyncUserBrandFieldVisibility();
+        }
+        return;
+    }
     let brands = brandsListCache && brandsListCache.length ? brandsListCache : null;
     if (!brands) {
         try {
@@ -14044,8 +14068,10 @@ function openCreateUserModal() {
     document.getElementById('userName').value = '';
     document.getElementById('userEmail').value = '';
     document.getElementById('userRole').value = 'manager';
+    const adminRoleOpt = document.querySelector('#userRole option[value="admin"]');
+    if (adminRoleOpt) adminRoleOpt.hidden = !isDashboardAdmin();
     syncUserModalMode(false);
-    populateUserBrandSelect(null);
+    populateUserBrandSelect(isDashboardAdmin() ? null : currentUser?.brand_id);
     document.getElementById('userModal').classList.add('active');
 }
 
@@ -14060,6 +14086,8 @@ async function openEditUserModal(user) {
     const role = (typeof FdRbac !== 'undefined' && FdRbac.normalizeRole)
         ? FdRbac.normalizeRole(user.role)
         : (user.role === 'viewer' ? 'reporter' : user.role);
+    const adminRoleOpt = document.querySelector('#userRole option[value="admin"]');
+    if (adminRoleOpt) adminRoleOpt.hidden = !isDashboardAdmin();
     document.getElementById('userRole').value = role || 'manager';
     await populateUserBrandSelect(user.brand_id || null);
     document.getElementById('userModal').classList.add('active');
@@ -14081,6 +14109,10 @@ async function saveUser() {
         : body.role;
     if (role !== 'admin' && !body.brand_id) return alert('Seleziona un brand per questo ruolo');
     if (role === 'admin') body.brand_id = null;
+    if (!isDashboardAdmin()) {
+        if (role === 'admin') return toast('Errore: un manager non può creare admin');
+        body.brand_id = currentUser?.brand_id || body.brand_id;
+    }
 
     if (editId) {
         const res = await fetch(`${API}/users/${editId}`, {

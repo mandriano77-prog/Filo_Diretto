@@ -10,7 +10,7 @@
     manager: {
       brand_identity: 'full', media_library: 'full', templates: 'full', passes: 'full',
       push: 'full', rewards: 'full', challenges: 'full', employees: 'full',
-      audiences: 'full', analytics: 'full', activity_log: 'none', users: 'none', welcome: 'full',
+      audiences: 'full', analytics: 'full', activity_log: 'none', users: 'full', welcome: 'full',
       profile: 'full', conventions: 'full',
       pga_catalog: 'full', pga_engagement: 'full'
     },

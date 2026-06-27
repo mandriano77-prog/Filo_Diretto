@@ -3080,6 +3080,14 @@
   function toast(msg) {
     if (typeof window.toast === 'function') window.toast(msg);
   }
+  function canManageUsers() {
+    if (typeof window.canManageDashboardUsers === 'function') return window.canManageDashboardUsers();
+    return document.body.classList.contains('role-admin') || document.body.classList.contains('role-manager');
+  }
+  function isAdminUser() {
+    if (typeof window.isDashboardAdmin === 'function') return window.isDashboardAdmin();
+    return document.body.classList.contains('role-admin');
+  }
   function closeAllMenus() {
     document.querySelectorAll('.fd-users-kebab-menu').forEach(function (m) {
       m.hidden = true;
@@ -3115,8 +3123,7 @@
   function ensureCreateUserButton() {
     var btn = document.getElementById('createUserBtn');
     if (!btn) return;
-    var isAdmin = document.body.classList.contains('role-admin');
-    btn.style.display = isAdmin ? '' : 'none';
+    btn.style.display = canManageUsers() ? '' : 'none';
     btn.classList.add('fd-btn', 'fd-btn--primary');
     btn.classList.remove('fd-btn-primary');
   }
@@ -3346,7 +3353,7 @@
     return modal;
   }
   function openTenantWizard() {
-    if (!document.body.classList.contains('role-admin')) return;
+    if (!isAdminUser()) return;
     var modal = ensureTenantWizardModal();
     modal.querySelector('#fdTenantWizardForm').reset();
     var slugEl = modal.querySelector('#fdTenantBrandSlug');
@@ -3361,7 +3368,7 @@
   function ensureTenantWizardButton() {
     var createUserBtn = document.getElementById('createUserBtn');
     if (!createUserBtn) return;
-    var isAdmin = document.body.classList.contains('role-admin');
+    var isAdmin = isAdminUser();
     var toolbar = createUserBtn.closest('.fd-users-toolbar') || createUserBtn.parentNode;
     if (!toolbar) return;
     var btn = document.getElementById('fdTenantWizardBtn');
@@ -3404,6 +3411,13 @@
     }
   }
   window.fdSyncUserBrandFieldVisibility = syncUserBrandFieldVisibility;
+  function syncUserRoleOptions() {
+    var roleEl = document.getElementById('userRole');
+    if (!roleEl) return;
+    var adminOption = roleEl.querySelector('option[value="admin"]');
+    if (adminOption) adminOption.hidden = !isAdminUser();
+    if (!isAdminUser() && roleEl.value === 'admin') roleEl.value = 'manager';
+  }
   function wireCreateUserForm() {
     if (document.body.dataset.fdUserFormBound === '1') return;
     document.body.dataset.fdUserFormBound = '1';
@@ -3418,7 +3432,11 @@
       emailEl.setAttribute('name', 'email');
     }
     var roleEl = document.getElementById('userRole');
-    if (roleEl) roleEl.addEventListener('change', syncUserBrandFieldVisibility);
+    if (roleEl) roleEl.addEventListener('change', function () {
+      syncUserRoleOptions();
+      syncUserBrandFieldVisibility();
+    });
+    syncUserRoleOptions();
     syncUserBrandFieldVisibility();
     patchUserModalHooks();
   }
@@ -3429,6 +3447,7 @@
     if (typeof origOpen === 'function') {
       window.openCreateUserModal = function () {
         origOpen.apply(this, arguments);
+        syncUserRoleOptions();
         syncUserBrandFieldVisibility();
       };
     }
@@ -3668,7 +3687,7 @@
   }
   async function fdLoadUsers() {
     if (!isFiloUsersApp()) return;
-    if (typeof window.isDashboardAdmin === 'function' && !window.isDashboardAdmin()) return;
+    if (!canManageUsers()) return;
     ensureDismissBound();
     ensureUsersChrome();
     ensureCreateUserButton();
@@ -5687,6 +5706,14 @@
       window.fdRelocateBrandPassFlowBar(section);
     }
   }
+  function setHeaderCreateButtonVisible(visible) {
+    var section = document.getElementById('templates');
+    if (!section) return;
+    var createBtn = section.querySelector('.fd-tpl-header__actions [onclick*="openTemplateModal"]');
+    if (!createBtn) return;
+    createBtn.hidden = !visible;
+    createBtn.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
   async function fetchBrandSnapshot() {
     var brandId = window.brandId;
     if (!brandId) return window.__fdBrandPassSnapshot || null;
@@ -5741,6 +5768,7 @@
       var el = document.getElementById('templatesList');
       if (!el) return orig.apply(this, arguments);
       enhanceTemplatesSectionDesign();
+      setHeaderCreateButtonVisible(false);
       el.innerHTML = renderLoadingSkeleton();
       try {
         var api = window.API || '/api/v1';
@@ -5750,6 +5778,7 @@
         var passCounts = await fetchPassCountsByTemplate();
         var brandSnapshot = await fetchBrandSnapshot();
         if (!templates.length) {
+          setHeaderCreateButtonVisible(false);
           if (typeof window.renderEmptyState === 'function') {
             el.innerHTML = window.renderEmptyState({
               title: 'Nessun template',
@@ -5764,6 +5793,7 @@
           if (typeof window.fdRbacHook === 'function') window.fdRbacHook('templates');
           return;
         }
+        setHeaderCreateButtonVisible(true);
         el.innerHTML =
           '<div class="fd-tpl-list">' +
           templates
@@ -7942,7 +7972,7 @@
     manager: {
       brand_identity: 'full', media_library: 'full', templates: 'full', passes: 'full',
       push: 'full', rewards: 'full', challenges: 'full', employees: 'full',
-      audiences: 'full', analytics: 'full', activity_log: 'none', users: 'none', welcome: 'full',
+      audiences: 'full', analytics: 'full', activity_log: 'none', users: 'full', welcome: 'full',
       profile: 'full', conventions: 'full',
       pga_catalog: 'full', pga_engagement: 'full'
     },

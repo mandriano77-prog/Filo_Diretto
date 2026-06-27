@@ -19,7 +19,7 @@ const SECTION_PERMS = Object.freeze({
     audiences: 'full',
     analytics: 'full',
     activity_log: 'none',
-    users: 'none',
+    users: 'full',
     welcome: 'full',
     conventions: 'full',
     pga_catalog: 'full',

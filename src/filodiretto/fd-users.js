@@ -37,6 +37,16 @@
     if (typeof window.toast === 'function') window.toast(msg);
   }
 
+  function canManageUsers() {
+    if (typeof window.canManageDashboardUsers === 'function') return window.canManageDashboardUsers();
+    return document.body.classList.contains('role-admin') || document.body.classList.contains('role-manager');
+  }
+
+  function isAdminUser() {
+    if (typeof window.isDashboardAdmin === 'function') return window.isDashboardAdmin();
+    return document.body.classList.contains('role-admin');
+  }
+
   function closeAllMenus() {
     document.querySelectorAll('.fd-users-kebab-menu').forEach(function (m) {
       m.hidden = true;
@@ -75,8 +85,7 @@
   function ensureCreateUserButton() {
     var btn = document.getElementById('createUserBtn');
     if (!btn) return;
-    var isAdmin = document.body.classList.contains('role-admin');
-    btn.style.display = isAdmin ? '' : 'none';
+    btn.style.display = canManageUsers() ? '' : 'none';
     btn.classList.add('fd-btn', 'fd-btn--primary');
     btn.classList.remove('fd-btn-primary');
   }
@@ -334,7 +343,7 @@
   }
 
   function openTenantWizard() {
-    if (!document.body.classList.contains('role-admin')) return;
+    if (!isAdminUser()) return;
     var modal = ensureTenantWizardModal();
     modal.querySelector('#fdTenantWizardForm').reset();
     var slugEl = modal.querySelector('#fdTenantBrandSlug');
@@ -350,7 +359,7 @@
   function ensureTenantWizardButton() {
     var createUserBtn = document.getElementById('createUserBtn');
     if (!createUserBtn) return;
-    var isAdmin = document.body.classList.contains('role-admin');
+    var isAdmin = isAdminUser();
     var toolbar = createUserBtn.closest('.fd-users-toolbar') || createUserBtn.parentNode;
     if (!toolbar) return;
     var btn = document.getElementById('fdTenantWizardBtn');
@@ -399,6 +408,14 @@
 
   window.fdSyncUserBrandFieldVisibility = syncUserBrandFieldVisibility;
 
+  function syncUserRoleOptions() {
+    var roleEl = document.getElementById('userRole');
+    if (!roleEl) return;
+    var adminOption = roleEl.querySelector('option[value="admin"]');
+    if (adminOption) adminOption.hidden = !isAdminUser();
+    if (!isAdminUser() && roleEl.value === 'admin') roleEl.value = 'manager';
+  }
+
   function wireCreateUserForm() {
     if (document.body.dataset.fdUserFormBound === '1') return;
     document.body.dataset.fdUserFormBound = '1';
@@ -415,8 +432,12 @@
     }
 
     var roleEl = document.getElementById('userRole');
-    if (roleEl) roleEl.addEventListener('change', syncUserBrandFieldVisibility);
+    if (roleEl) roleEl.addEventListener('change', function () {
+      syncUserRoleOptions();
+      syncUserBrandFieldVisibility();
+    });
 
+    syncUserRoleOptions();
     syncUserBrandFieldVisibility();
     patchUserModalHooks();
   }
@@ -429,6 +450,7 @@
     if (typeof origOpen === 'function') {
       window.openCreateUserModal = function () {
         origOpen.apply(this, arguments);
+        syncUserRoleOptions();
         syncUserBrandFieldVisibility();
       };
     }
@@ -689,7 +711,7 @@
 
   async function fdLoadUsers() {
     if (!isFiloUsersApp()) return;
-    if (typeof window.isDashboardAdmin === 'function' && !window.isDashboardAdmin()) return;
+    if (!canManageUsers()) return;
     ensureDismissBound();
     ensureUsersChrome();
     ensureCreateUserButton();
