@@ -214,18 +214,19 @@
 
   function renderNoBrand(root) {
     setHomeState(document.getElementById('welcome'), 'no-brand');
+    var isAdmin = document.body.classList.contains('role-admin');
     root.innerHTML =
       '<header class="fd-page-header fd-home-page-header">' +
       '<div class="fd-page-header__copy">' +
       '<h1 class="fd-page-header__title">Inizio</h1>' +
-      '<p class="fd-page-header__lead">Seleziona un brand dall’header o creane uno nuovo per vedere KPI, setup e attività recenti.</p>' +
+      '<p class="fd-page-header__lead">Seleziona un brand dall’header' + (isAdmin ? ' o crea un nuovo cliente' : '') + ' per vedere KPI, setup e attività recenti.</p>' +
       '</div></header>' +
       '<div class="fd-empty-state fd-card">' +
       '<p class="fd-empty-state__title">Nessun brand selezionato</p>' +
-      '<p class="fd-empty-state__desc">Scegli un brand esistente o configura Identità Brand per iniziare.</p>' +
+      '<p class="fd-empty-state__desc">' + (isAdmin ? 'Crea un tenant separato con manager dedicato, oppure scegli un brand esistente.' : 'Scegli un brand esistente per continuare il setup.') + '</p>' +
       '<div class="fd-empty-state__actions">' +
       '<button type="button" class="btn" onclick="document.getElementById(\'brandSelector\').focus()">Seleziona brand</button>' +
-      '<button type="button" class="btn sec" data-fd-nav="brand-identity">Crea brand</button>' +
+      (isAdmin ? '<button type="button" class="btn sec" data-fd-action="tenant-wizard">Nuovo cliente</button>' : '') +
       '</div></div>';
     bindNavButtons(root);
   }
@@ -264,6 +265,41 @@
         }
       });
     });
+    container.querySelectorAll('[data-fd-action="setup-brand"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        openBrandSetupWizard();
+      });
+    });
+    container.querySelectorAll('[data-fd-action="tenant-wizard"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof window.fdOpenTenantWizard === 'function') {
+          window.fdOpenTenantWizard();
+          return;
+        }
+        if (typeof window.nav === 'function') window.nav('users');
+      });
+    });
+  }
+
+  function openBrandSetupWizard() {
+    if (typeof window.nav === 'function') window.nav('welcome');
+    setTimeout(function () {
+      var root = document.getElementById('fdHomeRoot');
+      var target = root ? root.querySelector('.fd-home-onboarding') : null;
+      if (!target) {
+        if (typeof fdLoadHome === 'function') fdLoadHome();
+        return;
+      }
+      target.classList.add('fd-home-onboarding--focus');
+      target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      setTimeout(function () {
+        target.classList.remove('fd-home-onboarding--focus');
+      }, 1100);
+    }, 80);
   }
 
   function onboardingSteps() {
@@ -325,9 +361,9 @@
       );
     }).join('');
     var compactClass = opts.compact ? ' fd-home-card--compact' : ' fd-home-card--primary';
-    var title = opts.compact ? 'Configurazione' : 'Setup guidato';
+    var title = opts.compact ? 'Setup brand' : 'Setup brand';
     var intro = opts.compact
-      ? 'Tutti i passaggi sono completati.'
+      ? 'Checklist completata. Puoi riaprire ogni area quando devi aggiornare il cliente.'
       : 'Completa questi passaggi per rendere il brand pienamente operativo.';
     return (
       '<div class="fd-card fd-home-card fd-home-onboarding' + compactClass + '">' +
@@ -371,6 +407,7 @@
       '<div class="fd-card fd-home-shortcuts">' +
       '<h2 class="fd-home-card__title">Azioni frequenti</h2>' +
       '<div class="fd-home-shortcuts__actions">' +
+      '<button type="button" class="btn sec" data-fd-action="setup-brand">Setup brand</button>' +
       '<button type="button" class="btn sec" data-fd-action="new-template">+ Nuovo template</button>' +
       '<button type="button" class="btn" data-fd-nav="push">Invia push</button>' +
       '<button type="button" class="btn sec" data-fd-action="import-employees">Importa dipendenti</button>' +
@@ -588,6 +625,7 @@
   }
 
   window.fdLoadHome = fdLoadHome;
+  window.fdOpenBrandSetupWizard = openBrandSetupWizard;
   window.isFiloOperationalHome = isFiloHomeApp;
   window.fdIsFiloOperationalHome = isFiloHomeApp;
 

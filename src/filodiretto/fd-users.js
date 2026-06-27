@@ -81,6 +81,263 @@
     btn.classList.remove('fd-btn-primary');
   }
 
+  function slugifyTenantName(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
+  }
+
+  function jsonHeaders() {
+    return Object.assign({}, authHeaders(), { 'Content-Type': 'application/json' });
+  }
+
+  async function postJson(path, body) {
+    var res = await fetch(getApiBase() + path, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(body || {})
+    });
+    var payload = {};
+    try { payload = await res.json(); } catch (_) {}
+    if (!res.ok) throw new Error(payload.error || payload.message || res.statusText || String(res.status));
+    return payload;
+  }
+
+  function buildHrStarterTemplate(brandId) {
+    return {
+      brand_id: brandId,
+      name: 'Pass dipendente',
+      pass_type: 'employee_pass',
+      style: {
+        backgroundColor: '#0B0817',
+        foregroundColor: '#FFFFFF',
+        labelColor: '#A78BFA'
+      },
+      fields: {
+        headerFields: [],
+        primaryFields: [{ key: 'name', label: 'NOME', value: '' }],
+        secondaryFields: [{ key: 'area', label: 'AREA', value: '' }],
+        auxiliaryFields: [{ key: 'coin', label: 'COIN', value: '0' }]
+      },
+      config: {
+        source: 'tenant_wizard',
+        product_line: 'hr'
+      }
+    };
+  }
+
+  function closeTenantWizard() {
+    var modal = document.getElementById('fdTenantWizardModal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  function setTenantWizardStatus(message, tone) {
+    var el = document.getElementById('fdTenantWizardStatus');
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+    el.className = 'fd-tenant-wizard__status' + (tone ? ' fd-tenant-wizard__status--' + tone : '');
+  }
+
+  function selectCreatedBrand(brand) {
+    if (!brand || !brand.id) return;
+    try { window.brandId = brand.id; } catch (_) {}
+
+    if (Array.isArray(window.brandsListCache)) {
+      var exists = window.brandsListCache.some(function (b) { return String(b.id) === String(brand.id); });
+      if (!exists) window.brandsListCache.push(brand);
+    }
+
+    var selector = document.getElementById('brandSelector');
+    if (selector) {
+      var option = Array.from(selector.options || []).find(function (o) {
+        return String(o.value) === String(brand.id);
+      });
+      if (!option) {
+        option = document.createElement('option');
+        option.value = brand.id;
+        option.textContent = brand.name || brand.slug || 'Nuovo brand';
+        selector.appendChild(option);
+      }
+      selector.value = brand.id;
+    }
+
+    if (typeof window.onBrandChange === 'function') {
+      window.onBrandChange();
+      return;
+    }
+    if (typeof window.nav === 'function') window.nav('welcome');
+    if (typeof window.fdLoadHome === 'function') window.fdLoadHome();
+  }
+
+  async function refreshBrandsAfterTenantCreate(brand) {
+    if (typeof window.loadBrands === 'function') {
+      try {
+        await window.loadBrands();
+      } catch (_) {}
+    }
+    selectCreatedBrand(brand);
+  }
+
+  async function submitTenantWizard() {
+    var form = document.getElementById('fdTenantWizardForm');
+    if (!form || form.dataset.busy === '1') return;
+    var btn = document.getElementById('fdTenantWizardSubmit');
+    var name = document.getElementById('fdTenantBrandName').value.trim();
+    var slug = document.getElementById('fdTenantBrandSlug').value.trim();
+    var managerName = document.getElementById('fdTenantManagerName').value.trim();
+    var managerEmail = document.getElementById('fdTenantManagerEmail').value.trim().toLowerCase();
+    var createTemplate = document.getElementById('fdTenantCreateTemplate').checked;
+
+    if (!name || !slug || !managerName || !managerEmail) {
+      setTenantWizardStatus('Compila azienda, slug, nome manager ed email.', 'error');
+      return;
+    }
+
+    form.dataset.busy = '1';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Creo cliente...';
+    }
+    setTenantWizardStatus('Creazione brand in corso...', 'info');
+
+    var brand = null;
+    try {
+      brand = await postJson('/brands', {
+        name: name,
+        slug: slug,
+        config: {
+          product_line: 'hr',
+          onboarding_created_at: new Date().toISOString()
+        }
+      });
+
+      setTenantWizardStatus('Brand creato. Creo il manager e invio la mail di invito...', 'info');
+      await postJson('/users', {
+        name: managerName,
+        email: managerEmail,
+        role: 'manager',
+        brand_id: brand.id
+      });
+
+      var templateWarning = '';
+      if (createTemplate) {
+        setTenantWizardStatus('Manager creato. Preparo il template HR base...', 'info');
+        try {
+          await postJson('/templates', buildHrStarterTemplate(brand.id));
+        } catch (templateErr) {
+          templateWarning = ' Template non creato: ' + (templateErr.message || 'errore sconosciuto') + '.';
+        }
+      }
+
+      await refreshBrandsAfterTenantCreate(brand);
+      setTenantWizardStatus('Cliente creato. Il manager riceverà la mail di attivazione.' + templateWarning, templateWarning ? 'warning' : 'success');
+      toast('Cliente creato: ' + (brand.name || name));
+      if (!templateWarning) setTimeout(closeTenantWizard, 700);
+      if (typeof fdLoadUsers === 'function') fdLoadUsers();
+    } catch (e) {
+      var prefix = brand && brand.id ? 'Brand creato, ma operazione successiva non completata: ' : '';
+      setTenantWizardStatus(prefix + (e.message || 'Errore creazione cliente'), 'error');
+    } finally {
+      form.dataset.busy = '0';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Crea cliente';
+      }
+    }
+  }
+
+  function ensureTenantWizardModal() {
+    var existing = document.getElementById('fdTenantWizardModal');
+    if (existing) return existing;
+
+    var modal = document.createElement('div');
+    modal.id = 'fdTenantWizardModal';
+    modal.className = 'modal fd-tenant-wizard';
+    modal.innerHTML =
+      '<div class="modal-content fd-card fd-tenant-wizard__panel">' +
+      '<button type="button" class="modal-close fd-tenant-wizard__close" aria-label="Chiudi">×</button>' +
+      '<h2>Nuovo cliente</h2>' +
+      '<p class="fd-tenant-wizard__lead">Crea un brand separato, il primo manager e il template HR base.</p>' +
+      '<form id="fdTenantWizardForm" class="fd-tenant-wizard__form">' +
+      '<div class="fd-tenant-wizard__grid">' +
+      '<div class="form-group"><label for="fdTenantBrandName">Azienda / brand</label><input id="fdTenantBrandName" type="text" autocomplete="organization" required placeholder="es. Rossi Group"></div>' +
+      '<div class="form-group"><label for="fdTenantBrandSlug">Slug pubblico</label><input id="fdTenantBrandSlug" type="text" required placeholder="rossi-group"></div>' +
+      '<div class="form-group"><label for="fdTenantManagerName">Nome manager</label><input id="fdTenantManagerName" type="text" autocomplete="name" required placeholder="Nome Cognome"></div>' +
+      '<div class="form-group"><label for="fdTenantManagerEmail">Email manager</label><input id="fdTenantManagerEmail" type="email" autocomplete="email" required placeholder="manager@azienda.it"></div>' +
+      '</div>' +
+      '<label class="fd-tenant-wizard__check"><input id="fdTenantCreateTemplate" type="checkbox" checked> Crea template HR base</label>' +
+      '<p id="fdTenantWizardStatus" class="fd-tenant-wizard__status" hidden></p>' +
+      '<div class="fd-tenant-wizard__actions">' +
+      '<button type="button" class="btn sec fd-btn fd-btn--ghost" id="fdTenantWizardCancel">Annulla</button>' +
+      '<button type="submit" class="btn fd-btn fd-btn--primary" id="fdTenantWizardSubmit">Crea cliente</button>' +
+      '</div>' +
+      '</form>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    var nameEl = modal.querySelector('#fdTenantBrandName');
+    var slugEl = modal.querySelector('#fdTenantBrandSlug');
+    if (nameEl && slugEl) {
+      nameEl.addEventListener('input', function () {
+        if (slugEl.dataset.touched === '1') return;
+        slugEl.value = slugifyTenantName(nameEl.value);
+      });
+      slugEl.addEventListener('input', function () {
+        slugEl.dataset.touched = '1';
+        slugEl.value = slugifyTenantName(slugEl.value);
+      });
+    }
+    modal.querySelector('#fdTenantWizardForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitTenantWizard();
+    });
+    modal.querySelector('#fdTenantWizardCancel').addEventListener('click', closeTenantWizard);
+    modal.querySelector('.fd-tenant-wizard__close').addEventListener('click', closeTenantWizard);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeTenantWizard();
+    });
+    return modal;
+  }
+
+  function openTenantWizard() {
+    if (!document.body.classList.contains('role-admin')) return;
+    var modal = ensureTenantWizardModal();
+    modal.querySelector('#fdTenantWizardForm').reset();
+    var slugEl = modal.querySelector('#fdTenantBrandSlug');
+    if (slugEl) slugEl.dataset.touched = '0';
+    setTenantWizardStatus('', '');
+    modal.classList.add('active');
+    setTimeout(function () {
+      var first = modal.querySelector('#fdTenantBrandName');
+      if (first) first.focus();
+    }, 30);
+  }
+
+  function ensureTenantWizardButton() {
+    var createUserBtn = document.getElementById('createUserBtn');
+    if (!createUserBtn) return;
+    var isAdmin = document.body.classList.contains('role-admin');
+    var toolbar = createUserBtn.closest('.fd-users-toolbar') || createUserBtn.parentNode;
+    if (!toolbar) return;
+    var btn = document.getElementById('fdTenantWizardBtn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'fdTenantWizardBtn';
+      btn.className = 'btn sec fd-btn fd-btn--ghost';
+      btn.textContent = 'Nuovo cliente';
+      btn.addEventListener('click', openTenantWizard);
+      toolbar.insertBefore(btn, createUserBtn);
+    }
+    btn.style.display = isAdmin ? '' : 'none';
+  }
+
   function getUserBrandGroup() {
     var brandSel = document.getElementById('userBrand');
     if (!brandSel) return null;
@@ -192,6 +449,7 @@
     }
     section.classList.add('users--fd-ds');
     ensureCreateUserButton();
+    ensureTenantWizardButton();
     wireCreateUserForm();
     ensureConfirmDialogCentering();
     enhanceUserModal();
@@ -407,6 +665,7 @@
     ensureDismissBound();
     ensureUsersChrome();
     ensureCreateUserButton();
+    ensureTenantWizardButton();
 
     var section = document.getElementById('users');
     if (section) section.classList.add('fd-users--loading');
@@ -498,6 +757,7 @@
   }
 
   window.fdLoadUsers = fdLoadUsers;
+  window.fdOpenTenantWizard = openTenantWizard;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {

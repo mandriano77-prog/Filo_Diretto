@@ -33,6 +33,10 @@ html[data-app='filodiretto'] #users.users--fd #createUserBtn {
   flex-shrink: 0;
 }
 
+html[data-app='filodiretto'] #users.users--fd #fdTenantWizardBtn {
+  flex-shrink: 0;
+}
+
 html[data-app='filodiretto'] #users.users--fd .fd-users-lead {
   color: var(--text2);
   font-size: 13px;
@@ -274,4 +278,99 @@ html[data-app='filodiretto'] #userModal .fd-users-modal {
 html[data-app='filodiretto'] #users.users--fd.fd-users--loading .fd-users-table-wrap {
   opacity: 0.72;
   pointer-events: none;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__panel {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__lead {
+  margin: -4px 0 18px;
+  color: var(--text2, #64748b);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__grid .form-group {
+  margin: 0;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  color: var(--text1, #0f172a);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent, #7c3aed);
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--fd-radius-sm, 6px);
+  border: 1px solid var(--fd-border, #e5e7eb);
+  background: var(--bg3, #f8fafc);
+  color: var(--text2, #64748b);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status[hidden] {
+  display: none;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status--info {
+  border-color: var(--fd-color-info-border, rgba(37, 99, 235, 0.35));
+  background: var(--fd-color-info-bg, #eff6ff);
+  color: var(--fd-color-info-text, #1d4ed8);
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status--error {
+  border-color: var(--fd-color-danger-border, rgba(220, 38, 38, 0.45));
+  background: var(--fd-color-danger-bg, #fef2f2);
+  color: var(--fd-color-danger, #dc2626);
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status--success {
+  border-color: var(--fd-color-success-border, rgba(16, 185, 129, 0.35));
+  background: var(--fd-color-success-bg, #ecfdf5);
+  color: #166534;
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__status--warning {
+  border-color: var(--fd-color-warning-border, rgba(245, 158, 11, 0.55));
+  background: var(--fd-color-warning-bg, #fffbeb);
+  color: var(--fd-color-warning-text, #a16207);
+}
+
+html[data-app='filodiretto'] .fd-tenant-wizard__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+@media (max-width: 720px) {
+  html[data-app='filodiretto'] #users.users--fd .fd-users-toolbar {
+    justify-content: flex-start;
+  }
+
+  html[data-app='filodiretto'] .fd-tenant-wizard__grid {
+    grid-template-columns: 1fr;
+  }
 }

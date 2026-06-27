@@ -160,6 +160,11 @@ html[data-app='filodiretto'] .fd-home-card--primary {
   box-shadow: var(--fd-shadow-sm, 0 1px 3px rgba(124, 58, 237, 0.08));
 }
 
+html[data-app='filodiretto'] .fd-home-onboarding--focus {
+  outline: 2px solid var(--accent, #7c3aed);
+  outline-offset: 3px;
+}
+
 html[data-app='filodiretto'] .fd-home-card--compact {
   opacity: 0.95;
 }

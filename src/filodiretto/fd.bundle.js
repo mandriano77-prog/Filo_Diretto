@@ -2653,18 +2653,19 @@
   }
   function renderNoBrand(root) {
     setHomeState(document.getElementById('welcome'), 'no-brand');
+    var isAdmin = document.body.classList.contains('role-admin');
     root.innerHTML =
       '<header class="fd-page-header fd-home-page-header">' +
       '<div class="fd-page-header__copy">' +
       '<h1 class="fd-page-header__title">Inizio</h1>' +
-      '<p class="fd-page-header__lead">Seleziona un brand dall’header o creane uno nuovo per vedere KPI, setup e attività recenti.</p>' +
+      '<p class="fd-page-header__lead">Seleziona un brand dall’header' + (isAdmin ? ' o crea un nuovo cliente' : '') + ' per vedere KPI, setup e attività recenti.</p>' +
       '</div></header>' +
       '<div class="fd-empty-state fd-card">' +
       '<p class="fd-empty-state__title">Nessun brand selezionato</p>' +
-      '<p class="fd-empty-state__desc">Scegli un brand esistente o configura Identità Brand per iniziare.</p>' +
+      '<p class="fd-empty-state__desc">' + (isAdmin ? 'Crea un tenant separato con manager dedicato, oppure scegli un brand esistente.' : 'Scegli un brand esistente per continuare il setup.') + '</p>' +
       '<div class="fd-empty-state__actions">' +
       '<button type="button" class="btn" onclick="document.getElementById(\'brandSelector\').focus()">Seleziona brand</button>' +
-      '<button type="button" class="btn sec" data-fd-nav="brand-identity">Crea brand</button>' +
+      (isAdmin ? '<button type="button" class="btn sec" data-fd-action="tenant-wizard">Nuovo cliente</button>' : '') +
       '</div></div>';
     bindNavButtons(root);
   }
@@ -2702,6 +2703,40 @@
         }
       });
     });
+    container.querySelectorAll('[data-fd-action="setup-brand"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        openBrandSetupWizard();
+      });
+    });
+    container.querySelectorAll('[data-fd-action="tenant-wizard"]').forEach(function (btn) {
+      if (btn.dataset.fdBound === '1') return;
+      btn.dataset.fdBound = '1';
+      btn.addEventListener('click', function () {
+        if (typeof window.fdOpenTenantWizard === 'function') {
+          window.fdOpenTenantWizard();
+          return;
+        }
+        if (typeof window.nav === 'function') window.nav('users');
+      });
+    });
+  }
+  function openBrandSetupWizard() {
+    if (typeof window.nav === 'function') window.nav('welcome');
+    setTimeout(function () {
+      var root = document.getElementById('fdHomeRoot');
+      var target = root ? root.querySelector('.fd-home-onboarding') : null;
+      if (!target) {
+        if (typeof fdLoadHome === 'function') fdLoadHome();
+        return;
+      }
+      target.classList.add('fd-home-onboarding--focus');
+      target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      setTimeout(function () {
+        target.classList.remove('fd-home-onboarding--focus');
+      }, 1100);
+    }, 80);
   }
   function onboardingSteps() {
     return [
@@ -2761,9 +2796,9 @@
       );
     }).join('');
     var compactClass = opts.compact ? ' fd-home-card--compact' : ' fd-home-card--primary';
-    var title = opts.compact ? 'Configurazione' : 'Setup guidato';
+    var title = opts.compact ? 'Setup brand' : 'Setup brand';
     var intro = opts.compact
-      ? 'Tutti i passaggi sono completati.'
+      ? 'Checklist completata. Puoi riaprire ogni area quando devi aggiornare il cliente.'
       : 'Completa questi passaggi per rendere il brand pienamente operativo.';
     return (
       '<div class="fd-card fd-home-card fd-home-onboarding' + compactClass + '">' +
@@ -2805,6 +2840,7 @@
       '<div class="fd-card fd-home-shortcuts">' +
       '<h2 class="fd-home-card__title">Azioni frequenti</h2>' +
       '<div class="fd-home-shortcuts__actions">' +
+      '<button type="button" class="btn sec" data-fd-action="setup-brand">Setup brand</button>' +
       '<button type="button" class="btn sec" data-fd-action="new-template">+ Nuovo template</button>' +
       '<button type="button" class="btn" data-fd-nav="push">Invia push</button>' +
       '<button type="button" class="btn sec" data-fd-action="import-employees">Importa dipendenti</button>' +
@@ -3004,6 +3040,7 @@
     return homeLoadInflight;
   }
   window.fdLoadHome = fdLoadHome;
+  window.fdOpenBrandSetupWizard = openBrandSetupWizard;
   window.isFiloOperationalHome = isFiloHomeApp;
   window.fdIsFiloOperationalHome = isFiloHomeApp;
   if (document.readyState === 'loading') {
@@ -3082,6 +3119,240 @@
     btn.style.display = isAdmin ? '' : 'none';
     btn.classList.add('fd-btn', 'fd-btn--primary');
     btn.classList.remove('fd-btn-primary');
+  }
+  function slugifyTenantName(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
+  }
+  function jsonHeaders() {
+    return Object.assign({}, authHeaders(), { 'Content-Type': 'application/json' });
+  }
+  async function postJson(path, body) {
+    var res = await fetch(getApiBase() + path, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify(body || {})
+    });
+    var payload = {};
+    try { payload = await res.json(); } catch (_) {}
+    if (!res.ok) throw new Error(payload.error || payload.message || res.statusText || String(res.status));
+    return payload;
+  }
+  function buildHrStarterTemplate(brandId) {
+    return {
+      brand_id: brandId,
+      name: 'Pass dipendente',
+      pass_type: 'employee_pass',
+      style: {
+        backgroundColor: '#0B0817',
+        foregroundColor: '#FFFFFF',
+        labelColor: '#A78BFA'
+      },
+      fields: {
+        headerFields: [],
+        primaryFields: [{ key: 'name', label: 'NOME', value: '' }],
+        secondaryFields: [{ key: 'area', label: 'AREA', value: '' }],
+        auxiliaryFields: [{ key: 'coin', label: 'COIN', value: '0' }]
+      },
+      config: {
+        source: 'tenant_wizard',
+        product_line: 'hr'
+      }
+    };
+  }
+  function closeTenantWizard() {
+    var modal = document.getElementById('fdTenantWizardModal');
+    if (modal) modal.classList.remove('active');
+  }
+  function setTenantWizardStatus(message, tone) {
+    var el = document.getElementById('fdTenantWizardStatus');
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+    el.className = 'fd-tenant-wizard__status' + (tone ? ' fd-tenant-wizard__status--' + tone : '');
+  }
+  function selectCreatedBrand(brand) {
+    if (!brand || !brand.id) return;
+    try { window.brandId = brand.id; } catch (_) {}
+    if (Array.isArray(window.brandsListCache)) {
+      var exists = window.brandsListCache.some(function (b) { return String(b.id) === String(brand.id); });
+      if (!exists) window.brandsListCache.push(brand);
+    }
+    var selector = document.getElementById('brandSelector');
+    if (selector) {
+      var option = Array.from(selector.options || []).find(function (o) {
+        return String(o.value) === String(brand.id);
+      });
+      if (!option) {
+        option = document.createElement('option');
+        option.value = brand.id;
+        option.textContent = brand.name || brand.slug || 'Nuovo brand';
+        selector.appendChild(option);
+      }
+      selector.value = brand.id;
+    }
+    if (typeof window.onBrandChange === 'function') {
+      window.onBrandChange();
+      return;
+    }
+    if (typeof window.nav === 'function') window.nav('welcome');
+    if (typeof window.fdLoadHome === 'function') window.fdLoadHome();
+  }
+  async function refreshBrandsAfterTenantCreate(brand) {
+    if (typeof window.loadBrands === 'function') {
+      try {
+        await window.loadBrands();
+      } catch (_) {}
+    }
+    selectCreatedBrand(brand);
+  }
+  async function submitTenantWizard() {
+    var form = document.getElementById('fdTenantWizardForm');
+    if (!form || form.dataset.busy === '1') return;
+    var btn = document.getElementById('fdTenantWizardSubmit');
+    var name = document.getElementById('fdTenantBrandName').value.trim();
+    var slug = document.getElementById('fdTenantBrandSlug').value.trim();
+    var managerName = document.getElementById('fdTenantManagerName').value.trim();
+    var managerEmail = document.getElementById('fdTenantManagerEmail').value.trim().toLowerCase();
+    var createTemplate = document.getElementById('fdTenantCreateTemplate').checked;
+    if (!name || !slug || !managerName || !managerEmail) {
+      setTenantWizardStatus('Compila azienda, slug, nome manager ed email.', 'error');
+      return;
+    }
+    form.dataset.busy = '1';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Creo cliente...';
+    }
+    setTenantWizardStatus('Creazione brand in corso...', 'info');
+    var brand = null;
+    try {
+      brand = await postJson('/brands', {
+        name: name,
+        slug: slug,
+        config: {
+          product_line: 'hr',
+          onboarding_created_at: new Date().toISOString()
+        }
+      });
+      setTenantWizardStatus('Brand creato. Creo il manager e invio la mail di invito...', 'info');
+      await postJson('/users', {
+        name: managerName,
+        email: managerEmail,
+        role: 'manager',
+        brand_id: brand.id
+      });
+      var templateWarning = '';
+      if (createTemplate) {
+        setTenantWizardStatus('Manager creato. Preparo il template HR base...', 'info');
+        try {
+          await postJson('/templates', buildHrStarterTemplate(brand.id));
+        } catch (templateErr) {
+          templateWarning = ' Template non creato: ' + (templateErr.message || 'errore sconosciuto') + '.';
+        }
+      }
+      await refreshBrandsAfterTenantCreate(brand);
+      setTenantWizardStatus('Cliente creato. Il manager riceverà la mail di attivazione.' + templateWarning, templateWarning ? 'warning' : 'success');
+      toast('Cliente creato: ' + (brand.name || name));
+      if (!templateWarning) setTimeout(closeTenantWizard, 700);
+      if (typeof fdLoadUsers === 'function') fdLoadUsers();
+    } catch (e) {
+      var prefix = brand && brand.id ? 'Brand creato, ma operazione successiva non completata: ' : '';
+      setTenantWizardStatus(prefix + (e.message || 'Errore creazione cliente'), 'error');
+    } finally {
+      form.dataset.busy = '0';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Crea cliente';
+      }
+    }
+  }
+  function ensureTenantWizardModal() {
+    var existing = document.getElementById('fdTenantWizardModal');
+    if (existing) return existing;
+    var modal = document.createElement('div');
+    modal.id = 'fdTenantWizardModal';
+    modal.className = 'modal fd-tenant-wizard';
+    modal.innerHTML =
+      '<div class="modal-content fd-card fd-tenant-wizard__panel">' +
+      '<button type="button" class="modal-close fd-tenant-wizard__close" aria-label="Chiudi">×</button>' +
+      '<h2>Nuovo cliente</h2>' +
+      '<p class="fd-tenant-wizard__lead">Crea un brand separato, il primo manager e il template HR base.</p>' +
+      '<form id="fdTenantWizardForm" class="fd-tenant-wizard__form">' +
+      '<div class="fd-tenant-wizard__grid">' +
+      '<div class="form-group"><label for="fdTenantBrandName">Azienda / brand</label><input id="fdTenantBrandName" type="text" autocomplete="organization" required placeholder="es. Rossi Group"></div>' +
+      '<div class="form-group"><label for="fdTenantBrandSlug">Slug pubblico</label><input id="fdTenantBrandSlug" type="text" required placeholder="rossi-group"></div>' +
+      '<div class="form-group"><label for="fdTenantManagerName">Nome manager</label><input id="fdTenantManagerName" type="text" autocomplete="name" required placeholder="Nome Cognome"></div>' +
+      '<div class="form-group"><label for="fdTenantManagerEmail">Email manager</label><input id="fdTenantManagerEmail" type="email" autocomplete="email" required placeholder="manager@azienda.it"></div>' +
+      '</div>' +
+      '<label class="fd-tenant-wizard__check"><input id="fdTenantCreateTemplate" type="checkbox" checked> Crea template HR base</label>' +
+      '<p id="fdTenantWizardStatus" class="fd-tenant-wizard__status" hidden></p>' +
+      '<div class="fd-tenant-wizard__actions">' +
+      '<button type="button" class="btn sec fd-btn fd-btn--ghost" id="fdTenantWizardCancel">Annulla</button>' +
+      '<button type="submit" class="btn fd-btn fd-btn--primary" id="fdTenantWizardSubmit">Crea cliente</button>' +
+      '</div>' +
+      '</form>' +
+      '</div>';
+    document.body.appendChild(modal);
+    var nameEl = modal.querySelector('#fdTenantBrandName');
+    var slugEl = modal.querySelector('#fdTenantBrandSlug');
+    if (nameEl && slugEl) {
+      nameEl.addEventListener('input', function () {
+        if (slugEl.dataset.touched === '1') return;
+        slugEl.value = slugifyTenantName(nameEl.value);
+      });
+      slugEl.addEventListener('input', function () {
+        slugEl.dataset.touched = '1';
+        slugEl.value = slugifyTenantName(slugEl.value);
+      });
+    }
+    modal.querySelector('#fdTenantWizardForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitTenantWizard();
+    });
+    modal.querySelector('#fdTenantWizardCancel').addEventListener('click', closeTenantWizard);
+    modal.querySelector('.fd-tenant-wizard__close').addEventListener('click', closeTenantWizard);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeTenantWizard();
+    });
+    return modal;
+  }
+  function openTenantWizard() {
+    if (!document.body.classList.contains('role-admin')) return;
+    var modal = ensureTenantWizardModal();
+    modal.querySelector('#fdTenantWizardForm').reset();
+    var slugEl = modal.querySelector('#fdTenantBrandSlug');
+    if (slugEl) slugEl.dataset.touched = '0';
+    setTenantWizardStatus('', '');
+    modal.classList.add('active');
+    setTimeout(function () {
+      var first = modal.querySelector('#fdTenantBrandName');
+      if (first) first.focus();
+    }, 30);
+  }
+  function ensureTenantWizardButton() {
+    var createUserBtn = document.getElementById('createUserBtn');
+    if (!createUserBtn) return;
+    var isAdmin = document.body.classList.contains('role-admin');
+    var toolbar = createUserBtn.closest('.fd-users-toolbar') || createUserBtn.parentNode;
+    if (!toolbar) return;
+    var btn = document.getElementById('fdTenantWizardBtn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'fdTenantWizardBtn';
+      btn.className = 'btn sec fd-btn fd-btn--ghost';
+      btn.textContent = 'Nuovo cliente';
+      btn.addEventListener('click', openTenantWizard);
+      toolbar.insertBefore(btn, createUserBtn);
+    }
+    btn.style.display = isAdmin ? '' : 'none';
   }
   function getUserBrandGroup() {
     var brandSel = document.getElementById('userBrand');
@@ -3180,6 +3451,7 @@
     }
     section.classList.add('users--fd-ds');
     ensureCreateUserButton();
+    ensureTenantWizardButton();
     wireCreateUserForm();
     ensureConfirmDialogCentering();
     enhanceUserModal();
@@ -3378,6 +3650,7 @@
     ensureDismissBound();
     ensureUsersChrome();
     ensureCreateUserButton();
+    ensureTenantWizardButton();
     var section = document.getElementById('users');
     if (section) section.classList.add('fd-users--loading');
     var tbody = document.querySelector('#usersTable tbody');
@@ -3460,6 +3733,7 @@
     };
   }
   window.fdLoadUsers = fdLoadUsers;
+  window.fdOpenTenantWizard = openTenantWizard;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       if (!isFiloUsersApp()) return;

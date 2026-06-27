@@ -64,6 +64,29 @@ test('Utenti brand id copy button', () => {
   assert.match(js, /data-copy-id/);
 });
 
+test('Utenti admin can create a separated HR tenant with first manager', () => {
+  const js = readFd('fd-users.js');
+  const css = readFd('fd-users.css');
+  assert.match(js, /fdOpenTenantWizard/);
+  assert.match(js, /fdTenantWizardBtn/);
+  assert.match(js, /postJson\('\/brands'/);
+  assert.match(js, /postJson\('\/templates'/);
+  assert.match(js, /postJson\('\/users'/);
+  assert.match(js, /role: 'manager'/);
+  assert.match(js, /brand_id: brand\.id/);
+  assert.match(css, /\.fd-tenant-wizard__panel/);
+});
+
+test('Home exposes brand setup checklist for managers and admins', () => {
+  const js = readFd('fd-home.js');
+  const css = readFd('fd-home.css');
+  assert.match(js, /fdOpenBrandSetupWizard/);
+  assert.match(js, /Setup brand/);
+  assert.match(js, /data-fd-action="setup-brand"/);
+  assert.match(js, /data-fd-action="tenant-wizard"/);
+  assert.match(css, /\.fd-home-onboarding--focus/);
+});
+
 test('Engagement Coin KPIs always show numeric values', () => {
   const js = readFd('fd-pga-engagement.js');
   assert.match(js, /formatKpiNumber/);
