@@ -562,18 +562,33 @@ router.get('/brands/by-slug/:slug/logo', async (req, res) => {
   try {
     const brand = await getBrandBySlug(req.params.slug);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
-    const { resolveBrandLogoRawBuffer } = require('../engine/brand-wallet-logo');
-    const resolved = await resolveBrandLogoRawBuffer(brand);
+    let template = null;
+    const passId = String(req.query.pass_id || '').trim();
+    const templateId = String(req.query.template_id || '').trim();
+    if (passId) {
+      const pass = await getPassInstance(passId);
+      if (pass && String(pass.brand_id) === String(brand.id) && pass.template_id) {
+        template = await getTemplate(pass.template_id);
+      }
+    } else if (templateId) {
+      const tpl = await getTemplate(templateId);
+      if (tpl && String(tpl.brand_id) === String(brand.id)) {
+        template = tpl;
+      }
+    }
+
+    const { resolveWalletLogoRawBuffer } = require('../engine/brand-wallet-logo');
+    const resolved = await resolveWalletLogoRawBuffer(brand, template);
     if (resolved?.buffer) {
       res.set('Content-Type', 'image/png');
-      res.set('Cache-Control', 'public, max-age=3600');
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
       return res.send(resolved.buffer);
     }
     const logoB64 = brand?.config?.logos?.['logo@2x'] || brand?.config?.logos?.logo;
     if (!logoB64) return res.status(404).json({ error: 'Nessun logo' });
     const buf = Buffer.from(logoB64, 'base64');
     res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'public, max-age=3600');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.send(buf);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

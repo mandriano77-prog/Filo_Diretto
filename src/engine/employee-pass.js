@@ -410,8 +410,9 @@ function walletImageUrls({ apiBase, brand, template, instance }) {
   const tplId = template?.id;
   const slug = brand?.slug;
   const urls = {};
+  const templateQuery = tplId ? `?template_id=${encodeURIComponent(tplId)}` : '';
   if (slug && brandHasLogoAsset(brand, template)) {
-    urls.logo = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/logo`;
+    urls.logo = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/logo${templateQuery}`;
   }
   if (slug && brandHasStripAsset(brand, template)) {
     urls.stripBrand = `${apiBase}/brands/by-slug/${encodeURIComponent(slug)}/strip`;

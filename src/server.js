@@ -400,9 +400,10 @@ async function renderThankYouForPass(res, passId) {
 
   const brandName = brand.name || 'Wallet';
   const passDownloadUrl = `/api/v1/passes/${passInstance.id}/download`;
+  const logoCacheBust = encodeURIComponent(String(passInstance.last_updated || passInstance.updated_at || Date.now()));
   const logoUrl = brand.slug
-    ? `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?t=${Date.now()}`
-    : `/api/v1/brands/${encodeURIComponent(String(brand.id))}/logo?t=${Date.now()}`;
+    ? `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?pass_id=${encodeURIComponent(passInstance.id)}&v=${logoCacheBust}`
+    : `/api/v1/brands/${encodeURIComponent(String(brand.id))}/logo?t=${logoCacheBust}`;
   const portalHref = await resolvePortalHref(passInstance.id, brand.id);
 
   return res.send(renderSaveThankYouPage({
