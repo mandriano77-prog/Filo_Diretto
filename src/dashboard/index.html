@@ -10314,8 +10314,10 @@ async function resendMemberActivation(memberId) {
 function walletStatusLabel(l) {
     const parts = [];
     if (l.device_id) parts.push('Apple');
-    if (l.google_wallet_saved) parts.push('Google');
-    if (l.samsung_wallet_saved) parts.push('Samsung');
+    if (passGoogleSaved(l)) parts.push('Google');
+    else if (l.google_wallet_object_id) parts.push('Google pending');
+    if (passSamsungSaved(l)) parts.push('Samsung');
+    else if (l.samsung_wallet_ref_id) parts.push('Samsung pending');
     if (!parts.length && l.pass_id) return 'Pass creato';
     return parts.length ? parts.join(' · ') : '—';
 }
@@ -11304,9 +11306,17 @@ function formatActivityLogDetails(ev) {
 
 function passInstallStatusBadge(p) {
     const googleSaved = passGoogleSaved(p);
+    const googlePending = passGooglePending(p);
     const samsungSaved = passSamsungSaved(p);
+    const samsungPending = passSamsungPending(p);
     const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
     if (!isInstalled) {
+        if (googlePending) {
+            return '<span class="badge inactive" title="Oggetto Google creato, in attesa di conferma salvataggio">Google pending</span>';
+        }
+        if (samsungPending) {
+            return '<span class="badge inactive" title="Oggetto Samsung creato, in attesa di conferma salvataggio">Samsung pending</span>';
+        }
         return '<span class="badge inactive" title="Solo generato, non salvato nel wallet">Non installato</span>';
     }
     const label = p.device_source === 'google' ? 'Google Wallet'

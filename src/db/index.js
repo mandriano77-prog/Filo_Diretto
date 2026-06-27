@@ -1682,8 +1682,13 @@ async function listEmployeesForBrand(brandId) {
       m.activation_reminder_count,
       pi.serial_number,
       pi.status AS pass_status,
+      pi.device_source,
+      pi.google_wallet_object_id,
       COALESCE(pi.google_wallet_saved, false) AS google_wallet_saved,
+      pi.google_installed_at,
+      pi.samsung_wallet_ref_id,
       COALESCE(pi.samsung_wallet_saved, false) AS samsung_wallet_saved,
+      pi.samsung_installed_at,
       (
         SELECT dr.device_library_id
         FROM device_registrations dr
