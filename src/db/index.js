@@ -1466,14 +1466,14 @@ async function markPassPushStatus(serialNumber, status) {
 
 async function markGoogleWalletUpdateStatus(serialNumber, status) {
   if (!serialNumber) return { updated: 0 };
-  const delivered = status === 'delivered';
+  const okStatus = status === 'delivered' || status === 'silent' || status === 'updated';
   const result = await pool.query(
     `UPDATE pass_instances
      SET google_last_update_at = NOW(),
          google_last_update_status = $1,
          google_update_count = COALESCE(google_update_count, 0) + CASE WHEN $2 THEN 1 ELSE 0 END
      WHERE serial_number = $3`,
-    [status || 'unknown', delivered, serialNumber]
+    [status || 'unknown', okStatus, serialNumber]
   );
   return { updated: result.rowCount || 0 };
 }

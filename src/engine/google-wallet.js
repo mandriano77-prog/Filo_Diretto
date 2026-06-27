@@ -859,7 +859,7 @@ async function addPassNotifyMessage(serialNumber, { title, message }, brand, opt
     const path = `/${objectPath}/${encodeURIComponent(targetId)}/addMessage`;
     const result = await walletApiPost(path, body);
     console.log(`[GoogleWallet] addMessage ${targetId} type=${body.message.messageType}`);
-    return result;
+    return { result, messageType: body.message.messageType, objectId: targetId };
   }
 
   async function tryNotify(targetId) {

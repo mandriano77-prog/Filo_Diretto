@@ -142,7 +142,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.match(passkit, /resolvePushAnnouncement/);
   assert.doesNotMatch(passkit, /compositeThumbnailOnStrip/);
   assert.doesNotMatch(passkit, /prepareThumbForStripOverlay/);
-  assert.match(passkit, /generateTransparentThumbnailBuffers/);
+  assert.match(passkit, /generateCoverThumbnailBuffers/);
   assert.match(passkit, /thumbnail@3x\.png/);
   assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
   assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);

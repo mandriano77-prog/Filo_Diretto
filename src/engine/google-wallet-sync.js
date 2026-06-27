@@ -45,10 +45,14 @@ async function syncGoogleWalletObjectsForPasses({
         const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details });
         const passObject = await googleWallet.buildPassObject(brand, template, passForGoogle, passForGoogle.customer_data || {});
         await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
+        let notifyResult = null;
         if (message) {
-          await googleWallet.updatePassMessage(pass.serial_number, message, brand, { title });
+          notifyResult = await googleWallet.updatePassMessage(pass.serial_number, message, brand, { title });
         }
-        await markGoogleWalletUpdateStatus(pass.serial_number, 'delivered');
+        const googleStatus = !message
+          ? 'updated'
+          : (notifyResult?.messageType === 'TEXT_AND_NOTIFY' ? 'delivered' : 'silent');
+        await markGoogleWalletUpdateStatus(pass.serial_number, googleStatus);
         outcomes[index] = { ok: true };
       } catch (err) {
         console.error('[GoogleWallet] Sync error for serial', pass.serial_number, err.message);

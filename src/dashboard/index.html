@@ -6250,7 +6250,8 @@ async function loadPasses(resetPage = false) {
                         }
                         if (p.google_update_count > 0) {
                             const gDate = p.google_last_update_at ? new Date(p.google_last_update_at).toLocaleDateString('it') : '';
-                            parts.push('<span style="color:var(--green);" title="Ultimo update Google accettato">&#10004;</span> <span style="font-size:10px;opacity:0.72;" title="' + esc(String(p.google_update_count)) + ' update/notifiche Google accettate">G ' + p.google_update_count + 'x' + (gDate ? ' · ' + gDate : '') + '</span>');
+                            const gStatus = p.google_last_update_status ? ' · ' + esc(p.google_last_update_status) : '';
+                            parts.push('<span style="color:var(--green);" title="Ultimo update Google accettato' + gStatus + '">&#10004;</span> <span style="font-size:10px;opacity:0.72;" title="' + esc(String(p.google_update_count)) + ' update/notifiche Google accettate' + gStatus + '">G ' + p.google_update_count + 'x' + (gDate ? ' · ' + gDate : '') + '</span>');
                         } else if (p.google_last_update_status) {
                             parts.push('<span style="color:#ff6b6b;" title="' + esc(p.google_last_update_status) + '">G err</span>');
                         }

@@ -971,14 +971,15 @@ function stripVisualCharsPerLine(maxTextWidth, fontSize) {
   return Math.max(8, Math.floor(maxTextWidth / Math.max(5, fontSize * 0.78)));
 }
 
-async function generateTransparentThumbnailBuffers() {
-  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+async function generateCoverThumbnailBuffers(backgroundColor) {
+  const bg = parseColor(backgroundColor || '#0D0B1A');
+  const background = { r: bg.r, g: bg.g, b: bg.b, alpha: 1 };
   const create = (size) => sharp({
     create: {
       width: size,
       height: size,
       channels: 4,
-      background: transparent,
+      background,
     },
   }).png().toBuffer();
   return {
@@ -1352,11 +1353,11 @@ async function createPkpass(template, instance, brand, options = {}) {
 
   const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
 
-  // Thumbnail — HR uses transparent files to overwrite any previously cached Apple thumbnail.
+  // Thumbnail — HR uses pass-background files to cover stale Apple thumbnails/cached badges.
   let thumbnailBuffers = null;
   if (hrBrand) {
-    thumbnailBuffers = await generateTransparentThumbnailBuffers();
-    console.log('✓ HR: transparent thumbnail override');
+    thumbnailBuffers = await generateCoverThumbnailBuffers(bgColor);
+    console.log('✓ HR: background thumbnail override');
   } else if (tplImages.thumbnail) {
     const rawThumb = Buffer.from(tplImages.thumbnail, 'base64');
     thumbnailBuffers = {
