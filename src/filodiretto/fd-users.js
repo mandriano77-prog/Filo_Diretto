@@ -144,6 +144,31 @@
     el.className = 'fd-tenant-wizard__status' + (tone ? ' fd-tenant-wizard__status--' + tone : '');
   }
 
+  function humanizeTenantWizardError(error, context) {
+    var msg = String((error && error.message) || error || '').trim();
+    var lower = msg.toLowerCase();
+    var brandName = context && context.brandName ? context.brandName : 'questo cliente';
+    var managerEmail = context && context.managerEmail ? context.managerEmail : 'questa email';
+
+    if (lower.includes('users_email_key') || lower.includes('duplicate') && lower.includes('email')) {
+      return 'Ho creato il brand, ma la mail ' + managerEmail + ' è già in uso. Usa una mail diversa oppure assegna l’utente esistente al brand ' + brandName + '.';
+    }
+
+    if (lower.includes('brands_slug_key') || lower.includes('duplicate') && lower.includes('slug')) {
+      return 'Esiste già un brand con questo slug. Se il brand è stato creato nel tentativo precedente, selezionalo dal menu in alto e crea solo il manager da Utenti.';
+    }
+
+    if (lower.includes('templates') || lower.includes('template')) {
+      return 'Cliente e manager creati, ma il template HR base non è stato creato. Puoi crearlo dopo dalla pagina Template Pass.';
+    }
+
+    if (lower.includes('network') || lower.includes('failed to fetch')) {
+      return 'Connessione interrotta durante la creazione. Controlla se il brand è comparso nel selettore prima di riprovare.';
+    }
+
+    return msg || 'Errore durante la creazione cliente. Controlla brand e utenti prima di riprovare.';
+  }
+
   function selectCreatedBrand(brand) {
     if (!brand || !brand.id) return;
     try { window.brandId = brand.id; } catch (_) {}
@@ -241,8 +266,11 @@
       if (!templateWarning) setTimeout(closeTenantWizard, 700);
       if (typeof fdLoadUsers === 'function') fdLoadUsers();
     } catch (e) {
-      var prefix = brand && brand.id ? 'Brand creato, ma operazione successiva non completata: ' : '';
-      setTenantWizardStatus(prefix + (e.message || 'Errore creazione cliente'), 'error');
+      setTenantWizardStatus(humanizeTenantWizardError(e, {
+        brandName: name,
+        managerEmail: managerEmail,
+        brandCreated: !!(brand && brand.id)
+      }), 'error');
     } finally {
       form.dataset.busy = '0';
       if (btn) {

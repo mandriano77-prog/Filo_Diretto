@@ -77,6 +77,15 @@ test('Utenti admin can create a separated HR tenant with first manager', () => {
   assert.match(css, /\.fd-tenant-wizard__panel/);
 });
 
+test('Utenti tenant wizard translates duplicate db errors into clear actions', () => {
+  const js = readFd('fd-users.js');
+  assert.match(js, /humanizeTenantWizardError/);
+  assert.match(js, /users_email_key/);
+  assert.match(js, /brands_slug_key/);
+  assert.match(js, /Ho creato il brand, ma la mail/);
+  assert.match(js, /selezionalo dal menu in alto/);
+});
+
 test('Home exposes brand setup checklist for managers and admins', () => {
   const js = readFd('fd-home.js');
   const css = readFd('fd-home.css');
