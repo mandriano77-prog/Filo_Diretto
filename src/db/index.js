@@ -182,6 +182,9 @@ CREATE TABLE IF NOT EXISTS pass_instances (
   auth_token TEXT NOT NULL,
   user_agent TEXT,
   referrer_url TEXT,
+  google_update_count INTEGER DEFAULT 0,
+  google_last_update_at TIMESTAMPTZ,
+  google_last_update_status TEXT,
   last_updated TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -535,6 +538,9 @@ async function getDb() {
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS last_push_at TIMESTAMPTZ`).catch(()=>{});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS last_push_status TEXT`).catch(()=>{});
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS push_count INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS google_update_count INTEGER DEFAULT 0`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS google_last_update_at TIMESTAMPTZ`).catch(()=>{});
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS google_last_update_status TEXT`).catch(()=>{});
 
     // push_log Ã¢ÂÂ columns added after initial schema
     await pool.query(`ALTER TABLE push_log ADD COLUMN IF NOT EXISTS campaign_id TEXT`).catch(()=>{});
@@ -1456,6 +1462,20 @@ async function markPassPushStatus(serialNumber, status) {
      WHERE serial_number = $2`,
     [status, serialNumber]
   );
+}
+
+async function markGoogleWalletUpdateStatus(serialNumber, status) {
+  if (!serialNumber) return { updated: 0 };
+  const delivered = status === 'delivered';
+  const result = await pool.query(
+    `UPDATE pass_instances
+     SET google_last_update_at = NOW(),
+         google_last_update_status = $1,
+         google_update_count = COALESCE(google_update_count, 0) + CASE WHEN $2 THEN 1 ELSE 0 END
+     WHERE serial_number = $3`,
+    [status || 'unknown', delivered, serialNumber]
+  );
+  return { updated: result.rowCount || 0 };
 }
 
 async function createPushJob({ brand_id, payload }) {
@@ -4382,6 +4402,7 @@ module.exports = {
   touchPassesForBrand,
   markPassesPushDelivered,
   markPassPushStatus,
+  markGoogleWalletUpdateStatus,
   createPushJob,
   getPushJob,
   claimPushJob,

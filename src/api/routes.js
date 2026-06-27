@@ -5085,8 +5085,9 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
     await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
     await updatePassInstance(instance.id, {
       google_wallet_object_id: passObject.id,
-      google_wallet_saved: false,
-      google_installed_at: null
+      ...(instance.google_wallet_object_id && instance.google_wallet_object_id !== passObject.id
+        ? { google_wallet_saved: false, google_installed_at: null }
+        : {})
     });
 
     const saveLink = googleWallet.generateSaveLink(brand, template, passObject);
@@ -5101,6 +5102,60 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
     res.json({ save_link: saveLink });
   } catch (err) {
     console.error('[GoogleWallet] Error:', err);
+    const mapped = googleWallet.formatGoogleWalletError(err);
+    res.status(mapped.status).json({ error: mapped.error, code: mapped.code });
+  }
+});
+
+/**
+ * POST /api/v1/google-wallet/pass/:id/refresh-status
+ * Verifica lato Google se l'object risulta associato ad almeno un utente (hasUsers).
+ */
+router.post('/google-wallet/pass/:id/refresh-status', async (req, res) => {
+  try {
+    if (!googleWallet.isConfigured()) {
+      return res.status(501).json({ error: 'Google Wallet not configured', code: 'not_configured' });
+    }
+
+    const instance = await getPassInstance(req.params.id);
+    if (!instance) return res.status(404).json({ error: 'Pass not found' });
+    if (!requireBrandId(req, res, instance.brand_id)) return;
+    if (!instance.google_wallet_object_id) {
+      return res.status(409).json({
+        error: 'Oggetto Google Wallet non ancora creato. Genera prima il link Google Wallet.',
+        code: 'missing_object'
+      });
+    }
+
+    const brand = await getBrand(instance.brand_id);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+
+    const object = await googleWallet.getPassObjectById(instance.google_wallet_object_id, brand);
+    const hasUsers = object?.hasUsers === true || object?.hasUsers === 'true';
+    let pass = instance;
+    if (hasUsers) {
+      pass = await updateGoogleWalletStatus(instance.google_wallet_object_id, true) || instance;
+      await updatePassDeviceId(pass.serial_number || instance.serial_number, instance.google_wallet_object_id, 'google');
+      await logEvent({
+        brand_id: instance.brand_id,
+        pass_id: instance.id,
+        event_type: 'google_wallet_installed_verified',
+        metadata: { object_id: instance.google_wallet_object_id, source: 'hasUsers' }
+      });
+    }
+
+    res.json({
+      success: true,
+      saved: hasUsers || pass.google_wallet_saved === true,
+      has_users: hasUsers,
+      object_id: instance.google_wallet_object_id,
+      installed_at: hasUsers ? (pass.google_installed_at || new Date().toISOString()) : (pass.google_installed_at || null),
+      message: hasUsers
+        ? 'Google Wallet conferma che il pass è stato salvato.'
+        : 'Oggetto Google trovato, ma Google non segnala ancora utenti associati.'
+    });
+  } catch (err) {
+    console.error('[GoogleWallet] refresh status error:', err);
     const mapped = googleWallet.formatGoogleWalletError(err);
     res.status(mapped.status).json({ error: mapped.error, code: mapped.code });
   }

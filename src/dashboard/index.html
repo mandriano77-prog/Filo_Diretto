@@ -3672,6 +3672,7 @@
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" class="btn small" id="passDetailDlBtn" title="Scarica pass Apple Wallet (.pkpass)">Apple · .pkpass</button>
             <button type="button" class="btn small sec" id="passDetailGwBtn" title="Apri &quot;Aggiungi a Google Wallet&quot;">Google Wallet</button>
+            <button type="button" class="btn small sec" id="passDetailGwVerifyBtn" title="Controlla se Google Wallet conferma il salvataggio">Verifica Google</button>
             <button type="button" class="btn small sec" id="passDetailSamsungBtn" title="Apri link Samsung Wallet (Data Fetch)">Samsung Wallet</button>
             <button type="button" class="btn small sec" onclick="closeModal('passDetailModal')">Chiudi</button>
         </div>
@@ -6135,7 +6136,7 @@ async function loadPasses(resetPage = false) {
         return !/(iphone|ipad|ipod|android)/i.test(ua);
     }).length;
     const reachableWallet = filteredPasses.filter(p => !!p.push_token || passGoogleSaved(p) || passGooglePending(p) || passSamsungSaved(p) || passSamsungPending(p)).length;
-    const pushSent = filteredPasses.filter(p => p.push_count > 0).length;
+    const pushSent = filteredPasses.filter(p => p.push_count > 0 || p.google_update_count > 0).length;
     const pageFrom = passes.length ? offset + 1 : 0;
     const pageTo = offset + passes.length;
     const totalLabel = passTotalCount != null ? String(passTotalCount) : '—';
@@ -6186,7 +6187,7 @@ async function loadPasses(resetPage = false) {
                 <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
                 <th title="Apple: campanella = APNs. Google: GW / GW°. Samsung: SW / SW° (ref salvato sul server Samsung).">Apple · Google · Samsung</th>
-                <th title="Storico notifiche inviate via Apple Push (APNs)">Push (APNs)</th>
+                <th title="Apple: APNs consegnate. Google: update/notifiche accettate da Google Wallet.">Push / update</th>
                 <th>Device ID</th>
                 <th>Stato</th>
                 <th style="text-align:right;">Azioni</th>
@@ -6240,11 +6241,21 @@ async function loadPasses(resetPage = false) {
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
                     <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
                     <td style="text-align:center;font-size:14px;">${walletReachHtml}</td>
-                    <td style="text-align:center;font-size:12px;">${p.push_count > 0 ? (() => {
+                    <td style="text-align:center;font-size:12px;">${(() => {
+                        const parts = [];
+                        if (p.push_count > 0) {
                         const statusIcon = p.last_push_status === 'delivered' ? '<span style="color:var(--green);" title="Ultima push APNs consegnata">&#10004;</span>' : '<span style="color:#ff6b6b;" title="' + esc(p.last_push_status || 'errore') + '">&#10006;</span>';
                         const pushDate = p.last_push_at ? new Date(p.last_push_at).toLocaleDateString('it') : '';
-                        return statusIcon + ' <span style="font-size:10px;opacity:0.6;" title="' + esc(String(p.push_count)) + ' push APNs inviate">' + p.push_count + 'x · ' + pushDate + '</span>';
-                    })() : '<span style="opacity:0.3;" title="Nessuna push APNs inviata">-</span>'}</td>
+                            parts.push(statusIcon + ' <span style="font-size:10px;opacity:0.72;" title="' + esc(String(p.push_count)) + ' push Apple APNs inviate">A ' + p.push_count + 'x' + (pushDate ? ' · ' + pushDate : '') + '</span>');
+                        }
+                        if (p.google_update_count > 0) {
+                            const gDate = p.google_last_update_at ? new Date(p.google_last_update_at).toLocaleDateString('it') : '';
+                            parts.push('<span style="color:var(--green);" title="Ultimo update Google accettato">&#10004;</span> <span style="font-size:10px;opacity:0.72;" title="' + esc(String(p.google_update_count)) + ' update/notifiche Google accettate">G ' + p.google_update_count + 'x' + (gDate ? ' · ' + gDate : '') + '</span>');
+                        } else if (p.google_last_update_status) {
+                            parts.push('<span style="color:#ff6b6b;" title="' + esc(p.google_last_update_status) + '">G err</span>');
+                        }
+                        return parts.length ? parts.join('<br>') : '<span style="opacity:0.3;" title="Nessuna push/update registrata">-</span>';
+                    })()}</td>
                     <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? ((useTextBadges && p.device_source) ? esc(String(p.device_source).toUpperCase()) + ' · ' : (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : p.device_source === 'samsung' ? 'S ' : '')) + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
                     <td style="text-align:right;">
@@ -6441,6 +6452,7 @@ async function viewPassDetail(id) {
             <p><strong>Google Wallet — salvato il</strong><br>${gwInstalledAtLbl}</p>
             <p><strong>Google Wallet — object ID</strong><br>${esc(p.google_wallet_object_id || '—')}</p>
             <p><strong>Google Wallet — stato link</strong><br>${esc(gwLinkStatus)}</p>
+            <p><strong>Google Wallet — update/notifiche</strong><br>${Number(p.google_update_count || 0)} · ultimo: ${p.google_last_update_at ? esc(new Date(p.google_last_update_at).toLocaleString('it-IT')) : '—'} (${esc(p.google_last_update_status || '—')})</p>
             <p><strong>Samsung Wallet — salvato</strong><br>${esc(samSavedLbl)}</p>
             <p><strong>Samsung Wallet — salvato il</strong><br>${samInstalledAtLbl}</p>
             <p><strong>Samsung Wallet — refId</strong><br><code style="font-size:10px;">${esc(p.samsung_wallet_ref_id || '—')}</code></p>
@@ -6454,6 +6466,7 @@ async function viewPassDetail(id) {
             <pre style="font-size:11px;overflow:auto;max-height:100px;background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--border);">${esc(utm)}</pre>`;
         document.getElementById('passDetailDlBtn').onclick = () => downloadPass(id);
         document.getElementById('passDetailGwBtn').onclick = () => openGoogleWalletSaveLink(id);
+        document.getElementById('passDetailGwVerifyBtn').onclick = () => verifyGoogleWalletStatus(id);
         document.getElementById('passDetailSamsungBtn').onclick = () => openSamsungWalletSaveLink(id);
         document.getElementById('passDetailModal').classList.add('active');
     } catch (err) {
@@ -6495,6 +6508,36 @@ async function openGoogleWalletSaveLink(passId) {
         }
     } catch (e) {
         toast('Errore Google Wallet: ' + (e.message || e));
+    }
+}
+
+async function verifyGoogleWalletStatus(passId) {
+    const btn = document.getElementById('passDetailGwVerifyBtn');
+    const original = btn ? btn.textContent : '';
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Verifico...';
+        }
+        const res = await fetch(`${API}/google-wallet/pass/${passId}/refresh-status`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            toast(data.error || 'Verifica Google Wallet non riuscita');
+            return;
+        }
+        toast(data.message || (data.saved ? 'Google Wallet salvato' : 'Google Wallet non ancora confermato'));
+        await loadPasses(false);
+        if (data.saved) closeModal('passDetailModal');
+    } catch (e) {
+        toast('Errore verifica Google: ' + (e.message || e));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = original || 'Verifica Google';
+        }
     }
 }
 

@@ -807,6 +807,13 @@ async function updatePassObject(serialNumber, updates, brand) {
   }
 }
 
+async function getPassObjectById(objectId, brand) {
+  if (!objectId) throw new Error('Google Wallet objectId required');
+  const passKind = resolvePassKind(brand);
+  const objectPath = passKind === 'loyalty' ? 'loyaltyObject' : 'genericObject';
+  return walletApiGet(`/${objectPath}/${encodeURIComponent(objectId)}`);
+}
+
 const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX } = require('./push-text-limits');
 
 function isGoogleNotifyQuotaError(err) {
@@ -1033,6 +1040,7 @@ module.exports = {
   generateSaveLinkLegacy,
   createPassObjectOnServer,
   updatePassObject,
+  getPassObjectById,
   buildGoogleNotifyMessagePayload,
   addPassNotifyMessage,
   updatePassMessage,
