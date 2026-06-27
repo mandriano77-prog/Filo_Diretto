@@ -3,7 +3,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const sharp = require('sharp');
-const { resolvePassIconBuffers, readIconPackFromConfig } = require('../src/engine/brand-wallet-logo');
+const {
+  resolvePassIconBuffers,
+  readIconPackFromConfig,
+  extractBrandPaletteFromImage,
+  applyAutoPaletteToConfig,
+} = require('../src/engine/brand-wallet-logo');
 
 async function tinyPng() {
   return sharp({
@@ -57,4 +62,24 @@ test('resolvePassIconBuffers prefers template wallet_icon over logo crop', async
   assert.equal(resolved.source, 'template_wallet_icon');
   assert.ok(resolved.iconBuffers?.icon?.length > 0);
   assert.equal(resolved.iconBuffers.icon.length, pack.icon.length);
+});
+
+test('extractBrandPaletteFromImage derives readable pass colors from logo', async () => {
+  const logoBuf = await sharp({
+    create: { width: 120, height: 80, channels: 4, background: { r: 17, g: 120, b: 220, alpha: 1 } },
+  }).png().toBuffer();
+  const palette = await extractBrandPaletteFromImage(logoBuf);
+  assert.match(palette.backgroundColor, /^#[0-9A-F]{6}$/);
+  assert.match(palette.foregroundColor, /^#[0-9A-F]{6}$/);
+  assert.match(palette.labelColor, /^#[0-9A-F]{6}$/);
+  assert.notEqual(palette.backgroundColor, '#0D0B1A');
+});
+
+test('applyAutoPaletteToConfig respects manual palette lock', async () => {
+  const logoBuf = await tinyPng();
+  const config = await applyAutoPaletteToConfig({
+    backgroundColor: '#123456',
+    wallet_palette: { locked: true }
+  }, logoBuf, 'logo');
+  assert.equal(config.backgroundColor, '#123456');
 });

@@ -173,6 +173,121 @@ async function buildPassLogoBuffersFromRaw(rawLogoBuffer) {
   return { logo, logo2x };
 }
 
+function clamp(n, min = 0, max = 255) {
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${clamp(r).toString(16).padStart(2, '0')}${clamp(g).toString(16).padStart(2, '0')}${clamp(b).toString(16).padStart(2, '0')}`.toUpperCase();
+}
+
+function mixRgb(a, b, amount) {
+  const t = Math.max(0, Math.min(1, amount));
+  return {
+    r: a.r + (b.r - a.r) * t,
+    g: a.g + (b.g - a.g) * t,
+    b: a.b + (b.b - a.b) * t
+  };
+}
+
+function relativeLuminance(rgb) {
+  const linear = [rgb.r, rgb.g, rgb.b].map((v) => {
+    const c = clamp(v) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  const light = Math.max(l1, l2);
+  const dark = Math.min(l1, l2);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function saturationScore(rgb) {
+  const max = Math.max(rgb.r, rgb.g, rgb.b);
+  const min = Math.min(rgb.r, rgb.g, rgb.b);
+  if (!max) return 0;
+  return (max - min) / max;
+}
+
+function paletteFromBrandColor(base) {
+  const black = { r: 6, g: 6, b: 12 };
+  const white = { r: 255, g: 255, b: 255 };
+  const bg = relativeLuminance(base) > 0.18
+    ? mixRgb(base, black, 0.68)
+    : mixRgb(base, black, 0.28);
+  const backgroundColor = rgbToHex(bg);
+  const foregroundColor = contrastRatio(bg, white) >= 4.5 ? '#FFFFFF' : '#111827';
+  const labelBase = saturationScore(base) < 0.18 ? mixRgb(base, { r: 139, g: 92, b: 246 }, 0.65) : base;
+  const labelOnBg = contrastRatio(labelBase, bg) >= 3
+    ? labelBase
+    : mixRgb(labelBase, foregroundColor === '#FFFFFF' ? white : black, 0.35);
+  return {
+    backgroundColor,
+    foregroundColor,
+    labelColor: rgbToHex(labelOnBg),
+    baseColor: rgbToHex(base)
+  };
+}
+
+async function extractBrandPaletteFromImage(rawBuffer) {
+  const { data, info } = await sharp(rawBuffer)
+    .resize(96, 96, { fit: 'inside', withoutEnlargement: true })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const buckets = new Map();
+  for (let i = 0; i < data.length; i += info.channels) {
+    const a = data[i + 3];
+    if (a < 64) continue;
+    const rgb = { r: data[i], g: data[i + 1], b: data[i + 2] };
+    const lum = relativeLuminance(rgb);
+    const sat = saturationScore(rgb);
+    if (lum > 0.94 || lum < 0.025) continue;
+    if (sat < 0.08) continue;
+    const key = `${Math.round(rgb.r / 24) * 24},${Math.round(rgb.g / 24) * 24},${Math.round(rgb.b / 24) * 24}`;
+    const prev = buckets.get(key) || { r: 0, g: 0, b: 0, n: 0, score: 0 };
+    prev.r += rgb.r;
+    prev.g += rgb.g;
+    prev.b += rgb.b;
+    prev.n += 1;
+    prev.score += sat * (1 - Math.abs(lum - 0.38));
+    buckets.set(key, prev);
+  }
+
+  let best = null;
+  for (const bucket of buckets.values()) {
+    if (!best || bucket.score > best.score) best = bucket;
+  }
+  if (!best || best.n < 3) return null;
+  return paletteFromBrandColor({ r: best.r / best.n, g: best.g / best.n, b: best.b / best.n });
+}
+
+async function applyAutoPaletteToConfig(config, rawBuffer, source) {
+  const next = { ...(config || {}) };
+  if (next.wallet_palette_mode === 'manual' || next.wallet_palette?.locked === true) return next;
+  const palette = await extractBrandPaletteFromImage(rawBuffer).catch((err) => {
+    console.warn('[wallet-palette] extraction failed:', err.message);
+    return null;
+  });
+  if (!palette) return next;
+  next.backgroundColor = palette.backgroundColor;
+  next.foregroundColor = palette.foregroundColor;
+  next.labelColor = palette.labelColor;
+  next.wallet_palette = {
+    ...(next.wallet_palette || {}),
+    mode: 'auto',
+    source,
+    baseColor: palette.baseColor,
+    updated_at: new Date().toISOString()
+  };
+  return next;
+}
+
 async function buildWalletLogoAndIconFromRaw(rawLogoBuffer, brand) {
   const logoBuffers = await buildPassLogoBuffersFromRaw(rawLogoBuffer);
   const dedicated = brand ? await resolveNotificationIconRawBuffer(brand) : null;
@@ -205,7 +320,7 @@ async function touchAndNotifyBrandPasses(brandId) {
 async function applyWalletIconBase64(brandId, iconBase64, { brand, touchPasses = true } = {}) {
   const imgBuffer = Buffer.from(iconBase64, 'base64');
   const iconPack = await buildNotificationIconFromRaw(imgBuffer);
-  const config = { ...(brand?.config || {}) };
+  const config = await applyAutoPaletteToConfig(brand?.config || {}, imgBuffer, 'wallet_icon');
   config.logos = {
     ...(config.logos || {}),
     icon: iconPack.icon.toString('base64'),
@@ -237,7 +352,7 @@ async function applyBrandLogoBase64(brandId, logoBase64, { brand, syncTemplates 
     iconPack = await buildNotificationIconFromRaw(imgBuffer);
   }
 
-  const config = { ...(brand?.config || {}) };
+  const config = await applyAutoPaletteToConfig(brand?.config || {}, imgBuffer, 'logo');
   config.logos = {
     ...(config.logos || {}),
     logo: logoBuffers.logo.toString('base64'),
@@ -254,7 +369,13 @@ async function applyBrandLogoBase64(brandId, logoBase64, { brand, syncTemplates 
       const prevStyle = tpl.style && typeof tpl.style === 'object' ? tpl.style : {};
       const prevImages = prevStyle.images && typeof prevStyle.images === 'object' ? prevStyle.images : {};
       await updateTemplate(tpl.id, {
-        style: { ...prevStyle, images: { ...prevImages, logo: logoBase64 } }
+        style: {
+          ...prevStyle,
+          backgroundColor: config.backgroundColor || prevStyle.backgroundColor,
+          foregroundColor: config.foregroundColor || prevStyle.foregroundColor,
+          labelColor: config.labelColor || prevStyle.labelColor,
+          images: { ...prevImages, logo: logoBase64 }
+        }
       });
       await touchPassesForTemplate(tpl.id);
     }
@@ -330,6 +451,8 @@ module.exports = {
   buildNotificationIconFromRaw,
   buildPassLogoBuffersFromRaw,
   buildWalletLogoAndIconFromRaw,
+  extractBrandPaletteFromImage,
+  applyAutoPaletteToConfig,
   applyBrandLogoBase64,
   touchAndNotifyBrandPasses,
   applyWalletIconBase64,
