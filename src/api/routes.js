@@ -3532,6 +3532,31 @@ router.post('/media', async (req, res) => {
     // Convert PDF to PNG if needed
     image_base64 = await pdfToPngIfNeeded(image_base64);
     const item = await createMedia({ brand_id, campaign_id: campaign_id || null, type, title, image_base64 });
+    if (['logo', 'wallet_icon', 'strip', 'background'].includes(String(type || ''))) {
+      try {
+        const brand = await getBrand(brand_id);
+        const cfg = { ...(brand?.config || {}) };
+        if (brand && cfg.brand_theme_mode !== 'manual' && cfg.brand_theme?.locked !== true) {
+          const { extractBrandPaletteFromImage } = require('../engine/brand-wallet-logo');
+          const palette = await extractBrandPaletteFromImage(Buffer.from(image_base64, 'base64'));
+          if (palette) {
+            cfg.brand_theme = {
+              ...(cfg.brand_theme || {}),
+              mode: 'auto',
+              source: String(type || 'media'),
+              media_id: item.id,
+              accent: palette.labelColor,
+              accentHover: palette.baseColor,
+              baseColor: palette.baseColor,
+              updated_at: new Date().toISOString()
+            };
+            await updateBrand(brand_id, { config: cfg });
+          }
+        }
+      } catch (themeErr) {
+        console.warn('[brand-theme] media palette extraction failed:', themeErr.message);
+      }
+    }
     res.json(item);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

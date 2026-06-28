@@ -285,6 +285,17 @@ async function applyAutoPaletteToConfig(config, rawBuffer, source) {
     baseColor: palette.baseColor,
     updated_at: new Date().toISOString()
   };
+  if (next.brand_theme_mode !== 'manual' && next.brand_theme?.locked !== true) {
+    next.brand_theme = {
+      ...(next.brand_theme || {}),
+      mode: 'auto',
+      source,
+      accent: palette.labelColor,
+      accentHover: palette.baseColor,
+      baseColor: palette.baseColor,
+      updated_at: new Date().toISOString()
+    };
+  }
   return next;
 }
 

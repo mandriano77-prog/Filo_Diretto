@@ -655,6 +655,20 @@ test('Google Wallet sync promotes hasUsers responses to confirmed install', () =
   assert.match(gwSync, /serverObject\?\.hasUsers/);
 });
 
+test('dashboard brand theme is derived from uploaded brand assets', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const routes = read('src/api/routes.js');
+  const walletLogo = read('src/engine/brand-wallet-logo.js');
+  assert.match(walletLogo, /next\.brand_theme = \{/);
+  assert.match(walletLogo, /accent:\s*palette\.labelColor/);
+  assert.match(routes, /extractBrandPaletteFromImage/);
+  assert.match(routes, /cfg\.brand_theme = \{/);
+  assert.match(dashboard, /function applyDashboardBrandTheme/);
+  assert.match(dashboard, /--fd-color-primary-500/);
+  assert.match(dashboard, /--accent-subtle/);
+  assert.match(dashboard, /applyBrandTheme\(\)/);
+});
+
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {
   const dispatch = read('src/engine/push-dispatch.js');
   assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);
