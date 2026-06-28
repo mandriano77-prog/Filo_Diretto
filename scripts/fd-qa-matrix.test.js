@@ -639,6 +639,15 @@ test('HR dashboard distinguishes Google object/update status from confirmed inst
   assert.doesNotMatch(dashboard, /Google pending<\/span>/);
 });
 
+test('HR wallet columns use simplified channel wording', () => {
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /if \(passGoogleSaved\(l\) \|\| passGoogleUpdateOk\(l\) \|\| l\.google_wallet_object_id\) parts\.push\('Google'\)/);
+  assert.doesNotMatch(dashboard, /parts\.push\('Google update OK'\)/);
+  assert.doesNotMatch(dashboard, /parts\.push\('Google object'\)/);
+  assert.doesNotMatch(dashboard, />Apple · Google · Samsung</);
+  assert.doesNotMatch(dashboard, /walletReachHtml/);
+});
+
 test('Google Wallet sync promotes hasUsers responses to confirmed install', () => {
   const gwSync = read('src/engine/google-wallet-sync.js');
   assert.match(gwSync, /updateGoogleWalletStatus/);

@@ -6188,7 +6188,6 @@ async function loadPasses(resetPage = false) {
                 <th title="Identificativo univoco del pass (clic per copiare)">Pass ID</th>
                 <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
-                <th title="Apple: APNs. Google: salvato, aggiornato o object creato. Samsung: ref salvato sul server Samsung.">Apple · Google · Samsung</th>
                 <th title="Apple: APNs consegnate. Google: update/notifiche accettate da Google Wallet.">Push / update</th>
                 <th title="Apple: device id APNs. Google: object id, perché Google Wallet non restituisce un device id equivalente.">Device / object ID</th>
                 <th>Stato</th>
@@ -6197,12 +6196,8 @@ async function loadPasses(resetPage = false) {
             <tbody>${filteredPasses.map(p => {
                 const rowSelected = getPassSelectedIds().has(p.id);
                 const googleSaved = passGoogleSaved(p);
-                const googlePending = passGooglePending(p);
-                const googleUpdateOk = passGoogleUpdateOk(p);
                 const samsungSaved = passSamsungSaved(p);
-                const samsungPending = passSamsungPending(p);
                 const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
-                const applePushOn = !!p.push_token;
                 const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
                 const useTextBadges = typeof isHrDashboard === 'function' && isHrDashboard();
                 const installCellInner = useTextBadges
@@ -6210,32 +6205,6 @@ async function loadPasses(resetPage = false) {
                     : (isInstalled
                         ? `<span title="Installato" style="color:var(--green);font-size:16px;line-height:1;">&#9745;</span><span style="font-size:11px;color:var(--text);">${installDateStr ? esc(installDateStr) : '<span style="opacity:0.5">—</span>'}</span>`
                         : `<span title="Non installato" style="opacity:0.35;font-size:16px;line-height:1;">&#9744;</span><span style="font-size:11px;opacity:0.45;">—</span>`);
-                let walletReachHtml = useTextBadges
-                    ? passReachStatusBadges(p)
-                    : (function () {
-                let html = '<span style="display:inline-flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">';
-                html += applePushOn
-                    ? '<span title="Push Apple: token registrato (APNs)" style="color:var(--green);font-size:15px;">&#128276;</span>'
-                    : '<span title="Push Apple: nessun token" style="opacity:0.28;font-size:15px;">&#128263;</span>';
-                if (googleSaved) {
-                    html += '<span title="Google Wallet salvato" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(0,212,170,0.15);">GW</span>';
-                } else if (googleUpdateOk) {
-                    html += '<span title="Google Wallet aggiornato: object ID valido, salvataggio non confermato da callback" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(0,212,170,0.15);">GW+</span>';
-                } else if (googlePending) {
-                    html += '<span title="Google object creato, in attesa callback/update" style="font-size:11px;font-weight:700;color:#fbbf24;padding:2px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.12);">GW°</span>';
-                } else {
-                    html += '<span title="Nessun Google Wallet" style="opacity:0.3;font-size:11px;">—</span>';
-                }
-                if (samsungSaved) {
-                    html += '<span title="Samsung Wallet salvato" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(20,40,160,0.15);">SW</span>';
-                } else if (samsungPending) {
-                    html += '<span title="Samsung Wallet in attesa" style="font-size:11px;font-weight:700;color:#fbbf24;padding:2px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.12);">SW°</span>';
-                } else {
-                    html += '<span title="Nessun Samsung Wallet" style="opacity:0.3;font-size:11px;">·</span>';
-                }
-                html += '</span>';
-                return html;
-                    })();
                 return `<tr data-pass-id="${esc(p.id)}">
                     <td class="pass-table__select-col bulk-select-col">
                         <input type="checkbox" class="pass-row-cb a2w-bulk-check" aria-label="Seleziona pass" data-pass-id="${esc(p.id)}" ${rowSelected ? 'checked' : ''} onchange="onPassRowCheckboxChange('${p.id}', this)">
@@ -6245,7 +6214,6 @@ async function loadPasses(resetPage = false) {
                     </td>
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
                     <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
-                    <td style="text-align:center;font-size:14px;">${walletReachHtml}</td>
                     <td style="text-align:center;font-size:12px;">${(() => {
                         const parts = [];
                         if (p.push_count > 0) {
@@ -10400,9 +10368,7 @@ async function resendMemberActivation(memberId) {
 function walletStatusLabel(l) {
     const parts = [];
     if (l.device_id) parts.push('Apple');
-    if (passGoogleSaved(l)) parts.push('Google');
-    else if (passGoogleUpdateOk(l)) parts.push('Google update OK');
-    else if (l.google_wallet_object_id) parts.push('Google object');
+    if (passGoogleSaved(l) || passGoogleUpdateOk(l) || l.google_wallet_object_id) parts.push('Google');
     if (passSamsungSaved(l)) parts.push('Samsung');
     else if (l.samsung_wallet_ref_id) parts.push('Samsung pending');
     if (!parts.length && l.pass_id) return 'Pass creato';
