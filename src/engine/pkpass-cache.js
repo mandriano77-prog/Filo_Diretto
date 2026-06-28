@@ -3,13 +3,14 @@ const { createPkpass } = require('./passkit');
 const cache = new Map();
 const MAX_ENTRIES = Math.max(50, parseInt(process.env.PKPASS_CACHE_MAX || '400', 10) || 400);
 const TTL_MS = Math.max(10000, parseInt(process.env.PKPASS_CACHE_TTL_MS || '120000', 10) || 120000);
+const PKPASS_RENDER_REV = 'hr-strip-image-only-v1';
 
 function cacheKey(passId, lastUpdated, walletIconRev = 0) {
   const ts = lastUpdated instanceof Date
     ? lastUpdated.getTime()
     : new Date(lastUpdated || 0).getTime();
   const rev = Number(walletIconRev) || 0;
-  return `${passId}:${ts}:i${rev}`;
+  return `${PKPASS_RENDER_REV}:${passId}:${ts}:i${rev}`;
 }
 
 function getCachedPkpass(passId, lastUpdated, walletIconRev = 0) {

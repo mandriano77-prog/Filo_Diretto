@@ -859,9 +859,8 @@ router.get('/passes/:id/wallet-strip', async (req, res) => {
     const template = await getTemplate(passInstance.template_id);
     if (!brand || !template) return res.status(404).json({ error: 'Dati incompleti' });
 
-    const { isHrPassBrand, loadHrStripBuffers, composePushTextOnStrip } = require('../engine/passkit');
+    const { isHrPassBrand, loadHrStripBuffers } = require('../engine/passkit');
     const { brandConfigForHrPass } = require('../engine/pass-push-state');
-    const { resolvePushAnnouncement } = require('../engine/employee-pass');
 
     const passBrand = isHrPassBrand(brand)
       ? { ...brand, config: brandConfigForHrPass(brand, passInstance) }
@@ -872,17 +871,12 @@ router.get('/passes/:id/wallet-strip', async (req, res) => {
       template,
       stripOverrideBase64: cfg.stripOverride || null
     });
-    let strip = stripBuffers.strip;
-    const pushAnn = resolvePushAnnouncement(cfg, passInstance);
-    if (pushAnn?.message) {
-      strip = await composePushTextOnStrip(strip, pushAnn, 375, 123);
-    }
 
     res.set({
       'Content-Type': 'image/png',
       'Cache-Control': 'public, max-age=120'
     });
-    res.send(strip);
+    res.send(stripBuffers.strip);
   } catch (err) {
     console.error('[wallet-strip] error:', err);
     res.status(500).json({ error: err.message });
@@ -2646,7 +2640,7 @@ router.post('/brands/:id/push/strip-preview', async (req, res) => {
     const brand = await getBrand(brandId);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
 
-    const { title, message, strip_base64, strip_media_id, format } = req.body || {};
+    const { strip_base64, strip_media_id, format } = req.body || {};
     let stripOverride = null;
     if (strip_media_id || strip_base64) {
       stripOverride = await resolvePushStripBase64({ brand_id: brandId, strip_media_id, strip_base64 });
@@ -2654,14 +2648,10 @@ router.post('/brands/:id/push/strip-preview', async (req, res) => {
 
     const templates = await listTemplates(brandId);
     const template = templates[0] || { style: { images: {} } };
-    const { loadHrStripBuffers, composePushTextOnStrip } = require('../engine/passkit');
+    const { loadHrStripBuffers } = require('../engine/passkit');
     const stripBuffers = await loadHrStripBuffers({ brand, template, stripOverrideBase64: stripOverride });
 
-    let preview = stripBuffers.strip;
-    const msg = String(message || '').trim();
-    if (msg) {
-      preview = await composePushTextOnStrip(preview, { title, message: msg }, 375, 123);
-    }
+    const preview = stripBuffers.strip;
 
     const acceptJson = format === 'json' || req.query.format === 'json';
     if (acceptJson) {

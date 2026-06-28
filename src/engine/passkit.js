@@ -1381,8 +1381,6 @@ async function createPkpass(template, instance, brand, options = {}) {
     stripBuffers = await generateStrip(brand.name, bgColor, fgColor);
   }
 
-  const pushStripCopy = hrBrand ? resolvePushAnnouncement(brandCfg, instance) : null;
-
   // Thumbnail — never include one for HR store cards: Apple renders it as a side badge.
   let thumbnailBuffers = null;
   if (hrBrand) {
@@ -1408,10 +1406,8 @@ async function createPkpass(template, instance, brand, options = {}) {
     console.log('✓ Using template-level background');
   }
 
-  if (pushStripCopy) {
-    stripBuffers.strip = await composePushTextOnStrip(stripBuffers.strip, pushStripCopy, 375, 123);
-    stripBuffers.strip2x = await composePushTextOnStrip(stripBuffers.strip2x, pushStripCopy, 750, 246);
-    console.log('✓ HR: push message composited on strip');
+  if (hrBrand && resolvePushAnnouncement(brandCfg, instance)?.message) {
+    console.log('✓ HR: strip text overlay disabled; using strip image as-is');
   }
 
   // Build file map
