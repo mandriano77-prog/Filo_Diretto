@@ -6262,7 +6262,6 @@ async function loadPasses(resetPage = false) {
                     <input type="checkbox" id="passSelectAll" class="a2w-bulk-check" aria-label="Seleziona tutti i pass" ${allOnPageSelected ? 'checked' : ''} onchange="onPassSelectAllChange(this)">
                 </th>
                 <th title="Identificativo univoco del pass (clic per copiare)">Pass ID</th>
-                <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
                 <th title="Apple: APNs consegnate. Google: update/notifiche accettate da Google Wallet.">Push / update</th>
                 <th title="Apple: device id APNs. Google: object id, perché Google Wallet non restituisce un device id equivalente.">Device / object ID</th>
@@ -6280,7 +6279,6 @@ async function loadPasses(resetPage = false) {
                     <td class="pass-table__id">
                         <button type="button" class="pass-id-copy" onclick="copyPassIdToClipboard('${esc(p.id)}')" title="${esc(p.id)}">${esc(formatPassIdShort(p.id))}</button>
                     </td>
-                    <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
                     <td style="white-space:nowrap;text-align:center;">${installCellInner}</td>
                     <td style="text-align:center;font-size:12px;">${(() => {
                         const parts = [];
@@ -6367,7 +6365,6 @@ function downloadPassesTableCsv() {
     const sep = ';';
     const headers = [
         'Pass ID',
-        'Pass creato (generazione server)',
         'Installato',
         'Data installazione',
         'Push Apple (token registrato)',
@@ -6396,10 +6393,8 @@ function downloadPassesTableCsv() {
         else if (passGoogleUpdateOk(p)) googleWalletCsv = 'Object ID valido + update accettati (salvataggio non confermato)';
         else if (p.google_wallet_object_id) googleWalletCsv = 'Oggetto + link (in attesa salvataggio)';
         const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : p.device_source === 'samsung' ? 'Samsung' : '';
-        const passCreato = p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : '';
         return [
             p.id || '',
-            passCreato,
             isInstalled ? 'Sì' : 'No',
             installDateStr,
             applePushOn ? 'Sì' : 'No',

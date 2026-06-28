@@ -245,10 +245,9 @@
       btn.classList.add('small', 'sec');
     });
 
-    var colsToggle = document.getElementById('fdPassesColsToggle');
-    if (colsToggle) {
-      colsToggle.className = 'btn sec small fd-passes-cols-toggle';
-    }
+    root.querySelectorAll('#fdPassesColsToggle').forEach(function (btn) {
+      btn.remove();
+    });
   }
 
   function enhancePassTable(scope) {
@@ -261,44 +260,18 @@
   }
 
   function ensureAdvancedColumnsToggle() {
-    var content = document.getElementById('passesContent');
-    if (!content || document.getElementById('fdPassesColsToggle')) return;
-    var actions =
-      content.querySelector('.fd-passes-toolbar__actions') ||
-      content.querySelector('#passSearchInput')?.closest('div');
-    if (!actions) return;
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'fdPassesColsToggle';
-    btn.className = 'btn sec small fd-passes-cols-toggle';
-    btn.textContent = 'Colonne avanzate';
-    btn.setAttribute('aria-pressed', 'false');
-    btn.addEventListener('click', function () {
-      var section = document.getElementById('passes');
-      if (!section) return;
-      var on = !section.classList.contains('passes--advanced-cols');
-      section.classList.toggle('passes--advanced-cols', on);
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-      btn.textContent = on ? 'Nascondi colonne avanzate' : 'Colonne avanzate';
+    var section = document.getElementById('passes');
+    if (section) section.classList.add('passes--advanced-cols');
+    document.querySelectorAll('#fdPassesColsToggle').forEach(function (btn) {
+      btn.remove();
     });
-    var csvBtn = actions.querySelector('[onclick*="downloadPassesTableCsv"]');
-    if (csvBtn) actions.insertBefore(btn, csvBtn);
-    else actions.appendChild(btn);
   }
 
   function markAdvancedColumns() {
     var table = document.querySelector('#passesContent .pass-table');
     if (!table) return;
-    var advancedIdx = [4, 5, 6];
-    var headCells = table.querySelectorAll('thead th');
-    advancedIdx.forEach(function (i) {
-      if (headCells[i]) headCells[i].classList.add('pass-col-advanced');
-    });
-    table.querySelectorAll('tbody tr').forEach(function (row) {
-      var cells = row.querySelectorAll('td');
-      advancedIdx.forEach(function (i) {
-        if (cells[i]) cells[i].classList.add('pass-col-advanced');
-      });
+    table.querySelectorAll('.pass-col-advanced').forEach(function (cell) {
+      cell.classList.remove('pass-col-advanced');
     });
   }
 

@@ -308,6 +308,20 @@ test('Filo passes localize status badges and copy icon', () => {
   assert.doesNotMatch(js, /fd-passes-stat-secondary/);
 });
 
+test('Pass table keeps all operational columns visible without created-date column', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const passesJs = readFd('fd-passes.js');
+  const passesCss = readFd('fd-passes.css');
+  assert.doesNotMatch(dashboard, /<th[^>]*>Pass creato<\/th>/);
+  assert.doesNotMatch(dashboard, /'Pass creato \(generazione server\)'/);
+  assert.doesNotMatch(dashboard, /const passCreato =/);
+  assert.match(passesJs, /section\.classList\.add\('passes--advanced-cols'\)/);
+  assert.match(passesJs, /querySelectorAll\('#fdPassesColsToggle'\)[\s\S]*btn\.remove\(\)/);
+  assert.doesNotMatch(passesJs, /btn\.textContent = on \? 'Nascondi colonne avanzate'/);
+  assert.match(passesCss, /#passes \.fd-passes-cols-toggle[\s\S]*display:\s*none/);
+  assert.match(passesCss, /#passes:not\(\.passes--advanced-cols\) \.pass-col-advanced[\s\S]*display:\s*revert/);
+});
+
 test('Filo passes row menu includes regenerate action', () => {
   const js = readFd('fd-passes.js');
   const css = readFd('fd-passes.css');

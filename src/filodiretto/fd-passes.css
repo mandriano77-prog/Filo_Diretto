@@ -161,11 +161,11 @@ html[data-app='filodiretto'] #passes .fd-passes-search {
 }
 
 html[data-app='filodiretto'] #passes .fd-passes-cols-toggle {
-  white-space: nowrap;
+  display: none;
 }
 
 html[data-app='filodiretto'] #passes:not(.passes--advanced-cols) .pass-col-advanced {
-  display: none;
+  display: revert;
 }
 
 html[data-app='filodiretto'] #passes .pass-table-wrap.fd-table-wrap {
@@ -346,4 +346,3 @@ html[data-app='filodiretto'] #passes .fd-passes-legend-panel__list li:last-child
 html[data-app='filodiretto'] #passes .pass-table-legend[hidden] {
   display: none !important;
 }
-
