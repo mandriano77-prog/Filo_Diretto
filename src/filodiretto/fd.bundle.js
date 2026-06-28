@@ -8854,6 +8854,12 @@
     if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
     return body;
   }
+  function setStripPreviewLoading(isLoading) {
+    var loading = document.querySelector('[data-fd-push-preview-strip-loading]');
+    if (loading) loading.hidden = true;
+    var strip = document.querySelector('.fd-wallet-pass__strip');
+    if (strip) strip.classList.toggle('is-updating', !!isLoading);
+  }
   async function fetchPassPreview() {
     var brandId = syncBrandIdForPush();
     var hint = document.querySelector('[data-fd-push-preview-strip-hint]');
@@ -8875,6 +8881,7 @@
           : 'Abilita «Aggiorna contenuto pass» per l\'anteprima strip e pass';
       }
       if (loading) loading.hidden = true;
+      setStripPreviewLoading(false);
       renderPassBackPreview();
       syncPreview();
       return;
@@ -8884,10 +8891,15 @@
         hint.hidden = false;
         hint.textContent = 'Seleziona un brand per l\'anteprima';
       }
+      if (img) {
+        img.hidden = true;
+        img.removeAttribute('src');
+      }
+      setStripPreviewLoading(false);
       return;
     }
     if (hint) hint.hidden = true;
-    if (loading) loading.hidden = false;
+    setStripPreviewLoading(true);
     var seq = ++stripPreviewSeq;
     try {
       var res = await fetch(
@@ -8912,9 +8924,14 @@
       if (img && data.strip_preview) {
         img.src = data.strip_preview;
         img.hidden = false;
+        if (hint) hint.hidden = true;
       } else if (img) {
         img.hidden = true;
         img.removeAttribute('src');
+        if (hint) {
+          hint.hidden = false;
+          hint.textContent = 'Nessuna strip disponibile per questo template';
+        }
       }
       applyPassPreviewData(data);
     } catch (_) {
@@ -8932,7 +8949,7 @@
         syncPreview();
       }
     } finally {
-      if (seq === stripPreviewSeq && loading) loading.hidden = true;
+      if (seq === stripPreviewSeq) setStripPreviewLoading(false);
     }
   }
   function syncPassPreview() {

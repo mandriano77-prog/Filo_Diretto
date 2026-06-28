@@ -606,6 +606,19 @@ test('Push immediate hides legacy title/message copy fields', () => {
   assert.doesNotMatch(fdPush, /<li><strong>Messaggio<\/strong>/);
 });
 
+test('Push live preview stays clear of form and never leaves visible loading text', () => {
+  const css = readFd('fd-push.css');
+  const js = readFd('fd-push.js');
+  const preview = read('src/engine/push-pass-preview.js');
+  assert.match(css, /--fd-push-preview-nudge-x:\s*28px/);
+  assert.match(css, /transform:\s*translateX\(var\(--fd-push-preview-nudge-x\)\)/);
+  assert.match(js, /function setStripPreviewLoading/);
+  assert.match(js, /loading\.hidden = true/);
+  assert.doesNotMatch(js, /loading\.hidden = false/);
+  assert.match(preview, /if \(updatePass\) \{/);
+  assert.doesNotMatch(preview, /updatePass && announcement\?\.message/);
+});
+
 test('Push send shows mailing-style progress counters', () => {
   const dashboard = read('src/dashboard/index.html');
   const dispatch = read('src/engine/push-dispatch.js');

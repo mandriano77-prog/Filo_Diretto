@@ -1,6 +1,7 @@
 html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 340px;
   --fd-push-preview-sticky-top: 24px;
+  --fd-push-preview-nudge-x: 28px;
 }
 
 html[data-app='filodiretto'] #push.push--fd-ds {
@@ -201,7 +202,9 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
     position: fixed;
     top: var(--fd-push-preview-sticky-top);
     right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
+    transform: translateX(var(--fd-push-preview-nudge-x));
     width: var(--fd-push-preview-width);
+    max-width: calc(100vw - var(--fd-push-preview-nudge-x) - 32px);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
@@ -212,7 +215,9 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
     position: fixed;
     top: var(--fd-push-preview-sticky-top);
     right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
+    transform: translateX(var(--fd-push-preview-nudge-x));
     width: var(--fd-push-preview-width);
+    max-width: calc(100vw - var(--fd-push-preview-nudge-x) - 32px);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;

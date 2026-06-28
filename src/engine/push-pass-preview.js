@@ -73,7 +73,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
     : '';
 
   let stripPreview = null;
-  if (updatePass && announcement?.message) {
+  if (updatePass) {
     let stripOverride = null;
     if (body.strip_base64) {
       stripOverride = body.strip_base64.replace(/^data:image\/\w+;base64,/, '');
