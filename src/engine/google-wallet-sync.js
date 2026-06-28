@@ -13,6 +13,7 @@ async function syncGoogleWalletObjectsForPasses({
   message,
   title,
   back_details,
+  passLink = null,
   concurrency = DEFAULT_CONCURRENCY,
 }) {
   if (!googleWallet.isConfigured()) {
@@ -42,7 +43,7 @@ async function syncGoogleWalletObjectsForPasses({
           outcomes[index] = { ok: false, error: 'missing_template' };
           continue;
         }
-        const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details });
+        const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details, passLink });
         const passObject = await googleWallet.buildPassObject(brand, template, passForGoogle, passForGoogle.customer_data || {});
         await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
         let notifyResult = null;
@@ -70,10 +71,19 @@ async function syncGoogleWalletObjectsForPasses({
   return { attempted, updated, errors, skipped: false };
 }
 
-function withCurrentPushDetails(pass, { title, message, back_details } = {}) {
+function withCurrentPushDetails(pass, { title, message, back_details, passLink } = {}) {
+  let nextPass = pass;
+  if (passLink?.url) {
+    nextPass = {
+      ...nextPass,
+      dynamic_link_label: passLink.label || 'AZIONE RICHIESTA',
+      dynamic_link_url: passLink.url,
+      dynamic_link_expires_at: passLink.expiresAt || null,
+    };
+  }
   const backDetails = String(back_details || '').trim();
-  if (!backDetails) return pass;
-  const current = parsePushAnnouncementRecord(pass?.push_announcement) || {};
+  if (!backDetails) return nextPass;
+  const current = parsePushAnnouncementRecord(nextPass?.push_announcement) || {};
   const next = {
     ...current,
     title: String(title || current.title || '').trim(),
@@ -81,8 +91,8 @@ function withCurrentPushDetails(pass, { title, message, back_details } = {}) {
     back_details: backDetails.slice(0, 500),
     ts: Number(current.ts) || Date.now(),
   };
-  if (!next.message) return pass;
-  return { ...pass, push_announcement: next };
+  if (!next.message) return nextPass;
+  return { ...nextPass, push_announcement: next };
 }
 
 module.exports = {

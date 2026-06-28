@@ -496,6 +496,40 @@ test('Google Wallet HR object includes current push back details', () => {
   assert.match(details.body, /Offerta valida/);
 });
 
+test('Google Wallet HR object includes dynamic push link in clickable links', () => {
+  const { buildEmployeePass, toGooglePass } = require('../src/engine/employee-pass');
+  const { withCurrentPushDetails } = require('../src/engine/google-wallet-sync');
+  const pass = withCurrentPushDetails(
+    {
+      id: 'pass-gw-link',
+      serial_number: 'SN-GW-LINK',
+      field_values: {},
+    },
+    {
+      title: 'PROMO',
+      message: 'Messaggio',
+      passLink: {
+        label: 'Apri offerta',
+        url: 'https://example.com/offerta',
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      },
+    }
+  );
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'Acme Corp', config: { product_line: 'hr' } },
+    template: { id: 't1', name: 'HR', style: {} },
+    instance: pass,
+    member: { first_name: 'Mario', last_name: 'Rossi', department: 'HR' },
+    brandConfig: { product_line: 'hr' },
+    apiBase: 'https://studio.example.com/api/v1',
+  });
+  const { objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
+  const link = objectPatch.linksModuleData.uris.find((u) => u.id === 'dynamic_push_link');
+  assert.ok(link);
+  assert.equal(link.description, 'Apri offerta');
+  assert.equal(link.uri, 'https://example.com/offerta');
+});
+
 test('Google Wallet HR wallet-strip route dependencies are exported', () => {
   const passkit = require('../src/engine/passkit');
   assert.equal(typeof passkit.isHrPassBrand, 'function');

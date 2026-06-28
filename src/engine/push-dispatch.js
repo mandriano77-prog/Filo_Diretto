@@ -176,6 +176,7 @@ async function executeWalletPush(body, ctx = {}) {
   const googleEligible = targetPasses.filter((p) => p.google_wallet_object_id);
   const samsungEligible = targetPasses.filter((p) => p.samsung_wallet_ref_id && p.samsung_wallet_saved);
   let overlayStrip = null;
+  let passLink = null;
 
   let devices = [];
   if (sendApple) {
@@ -240,7 +241,6 @@ async function executeWalletPush(body, ctx = {}) {
     delete config.pushAnnouncement;
     delete config.stripOverride;
 
-    let passLink = null;
     passLink = parsePassLinkFromPushBody(
       { include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_link_url, back_link_label },
       title
@@ -327,6 +327,7 @@ async function executeWalletPush(body, ctx = {}) {
       title,
       message,
       back_details,
+      passLink,
     });
   }
 
