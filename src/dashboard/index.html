@@ -1638,13 +1638,13 @@
                                 <option value="all">Tutti i canali</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label" for="pushTitle">Titolo</label>
                             <input type="text" id="pushTitle" maxlength="22" placeholder="es. Offerta weekend!" aria-describedby="pushTitleError pushTitleHint">
                             <p class="form-hint" id="pushTitleHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 22 caratteri — compare in maiuscolo sulla strip del pass.</p>
                             <p class="push-field-error" id="pushTitleError" role="alert"></p>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label" for="pushMessage">Messaggio</label>
                             <textarea id="pushMessage" rows="3" maxlength="66" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
                             <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 66 caratteri (3 righe sulla strip). Testo e colore si adattano all'immagine.</p>
@@ -1653,12 +1653,12 @@
                         <div class="form-group" style="margin-top:4px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                                 <input type="checkbox" id="pushUpdatePass" checked onchange="togglePushStripBlock()" style="width:auto;accent-color:var(--teal);">
-                                <span>Aggiorna contenuto pass (testo sulla strip; su iPhone il Wallet riceve un aggiornamento silenzioso, non un banner come le app)</span>
+                                <span>Aggiorna contenuto pass (strip temporanea e informazioni sul retro; su iPhone Wallet riceve un aggiornamento silenzioso, non un banner come le app)</span>
                             </label>
                         </div>
                         <div id="pushStripBlock" class="form-group" style="margin-top:8px;">
                             <label class="form-label">Strip per questa push (opzionale)</label>
-                            <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — scegli un'immagine diversa dalla strip permanente del brand. Senza selezione, resta l'immagine del template e si aggiorna solo il testo sovrapposto.</p>
+                            <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — scegli un'immagine diversa dalla strip permanente del brand. Senza selezione, resta l'immagine del template.</p>
                             <div id="pushStripPreview" class="dropzone" role="button" tabindex="0" title="Scegli una strip temporanea per questa push" onclick="pushPickStripFromMedia()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pushPickStripFromMedia();}">
                                 <span class="dropzone__placeholder">Trascina o clicca per scegliere una strip temporanea</span>
                             </div>
@@ -7792,6 +7792,16 @@ let pushHistoryCache = [];
 const PUSH_TITLE_MAX = 22;
 const PUSH_MESSAGE_MAX = 66;
 const PUSH_BACK_DETAILS_MAX = 500;
+const DEFAULT_PUSH_TITLE = 'INFO PASS';
+const DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli';
+
+function getImmediatePushTitle() {
+    return (document.getElementById('pushTitle')?.value || '').trim() || DEFAULT_PUSH_TITLE;
+}
+
+function getImmediatePushMessage() {
+    return (document.getElementById('pushMessage')?.value || '').trim() || DEFAULT_PUSH_MESSAGE;
+}
 
 function applyPushTextValidation(title, message, backDetails) {
     let invalid = false;
@@ -7923,8 +7933,8 @@ function setPushSendLoading(loading) {
 }
 
 function buildImmediatePushBody() {
-    const title = (document.getElementById('pushTitle')?.value || '').trim();
-    const message = (document.getElementById('pushMessage')?.value || '').trim();
+    const title = getImmediatePushTitle();
+    const message = getImmediatePushMessage();
     const campaignId = isLegacyCampaignsUiEnabled()
         ? (document.getElementById('pushCampaignTarget')?.value || null)
         : null;
@@ -7985,8 +7995,8 @@ function resetImmediatePushForm() {
 
 async function sendImmediatePush() {
     clearPushFieldErrors();
-    const title = (document.getElementById('pushTitle')?.value || '').trim();
-    const message = (document.getElementById('pushMessage')?.value || '').trim();
+    const title = getImmediatePushTitle();
+    const message = getImmediatePushMessage();
     const backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
     if (!brandId) {
         toast('Seleziona un brand');

@@ -5663,7 +5663,7 @@
     section.classList.add('templates--fd-layout');
     var headerWrap = section.querySelector(':scope > div');
     var title = section.querySelector('h1.page-title, h1.sec-title');
-    var createBtn = section.querySelector('[onclick*="openTemplateModal"]');
+    var createBtn = section.querySelector('[data-fd-template-create]');
     if (headerWrap && title && !headerWrap.classList.contains('fd-page-header')) {
       headerWrap.classList.add('fd-page-header', 'fd-tpl-header');
       headerWrap.style.display = '';
@@ -5685,14 +5685,24 @@
       title.classList.add('fd-page-header__title');
       var existingLead = copy.querySelector('.fd-page-header__lead, .fd-tpl-lead');
       if (existingLead) existingLead.classList.add('fd-page-header__lead');
+      var actions = headerWrap.querySelector('.fd-page-header__actions');
+      if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'fd-page-header__actions fd-tpl-header__actions';
+        headerWrap.appendChild(actions);
+      }
+      if (!createBtn) {
+        createBtn = document.createElement('button');
+        createBtn.type = 'button';
+        createBtn.textContent = '+ Nuovo Template';
+        createBtn.setAttribute('data-fd-template-create', '1');
+        createBtn.setAttribute('data-requires-write', 'templates');
+        createBtn.addEventListener('click', function () {
+          if (typeof window.openTemplateModal === 'function') window.openTemplateModal();
+        });
+        actions.appendChild(createBtn);
+      }
       if (createBtn) {
-        var actions = headerWrap.querySelector('.fd-page-header__actions');
-        if (!actions) {
-          actions = document.createElement('div');
-          actions.className = 'fd-page-header__actions fd-tpl-header__actions';
-          actions.appendChild(createBtn);
-          headerWrap.appendChild(actions);
-        }
         createBtn.classList.add('fd-btn', 'fd-btn--primary');
         createBtn.classList.remove('sec', 'small');
       }
@@ -5709,7 +5719,7 @@
   function setHeaderCreateButtonVisible(visible) {
     var section = document.getElementById('templates');
     if (!section) return;
-    var createBtn = section.querySelector('.fd-tpl-header__actions [onclick*="openTemplateModal"]');
+    var createBtn = section.querySelector('.fd-tpl-header__actions [data-fd-template-create]');
     if (!createBtn) return;
     createBtn.hidden = !visible;
     createBtn.setAttribute('aria-hidden', visible ? 'false' : 'true');
@@ -8593,6 +8603,8 @@
   var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
   var MESSAGE_MAX = 66; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
   var BACK_DETAILS_MAX = 500; // sync: src/engine/push-text-limits.js PUSH_BACK_DETAILS_MAX
+  var DEFAULT_PUSH_TITLE = 'INFO PASS';
+  var DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli';
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
   var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
@@ -8701,6 +8713,14 @@
     if (!message) return '';
     return title + ': ' + message;
   }
+  function getPushTitleValue() {
+    var raw = (document.getElementById('pushTitle')?.value || '').trim();
+    return raw || DEFAULT_PUSH_TITLE;
+  }
+  function getPushMessageValue() {
+    var raw = (document.getElementById('pushMessage')?.value || '').trim();
+    return raw || DEFAULT_PUSH_MESSAGE;
+  }
   function syncPreview() {
     var titleEl = document.getElementById('pushTitle');
     var messageEl = document.getElementById('pushMessage');
@@ -8709,7 +8729,7 @@
     var brand = getBrandLabel();
     var lockBody = passPreviewCache?.lock_screen?.body
       || buildLockScreenPreviewText(titleRaw, messageRaw)
-      || 'Inserisci titolo e messaggio';
+      || buildLockScreenPreviewText(DEFAULT_PUSH_TITLE, DEFAULT_PUSH_MESSAGE);
     document.querySelectorAll('[data-fd-push-preview-brand]').forEach(function (el) {
       var isLock = el.closest('.fd-push-preview__notif-banner');
       el.textContent = isLock ? truncateBrandName(brand, 18) : brand;
@@ -8823,8 +8843,8 @@
   function buildPassPreviewRequestBody() {
     var includeLink = document.getElementById('pushIncludePassLink')?.checked;
     var body = {
-      title: (document.getElementById('pushTitle')?.value || '').trim(),
-      message: (document.getElementById('pushMessage')?.value || '').trim(),
+      title: getPushTitleValue(),
+      message: getPushMessageValue(),
       update_pass: document.getElementById('pushUpdatePass')?.checked !== false,
       back_details: (document.getElementById('pushBackDetails')?.value || '').trim() || undefined,
       include_pass_link: !!includeLink,
@@ -9087,8 +9107,8 @@
   }
   function buildPushBody(extra) {
     extra = extra || {};
-    var title = document.getElementById('pushTitle').value;
-    var message = document.getElementById('pushMessage').value;
+    var title = getPushTitleValue();
+    var message = getPushMessageValue();
     var campaignId =
       typeof window.isLegacyCampaignsUiEnabled === 'function' && window.isLegacyCampaignsUiEnabled()
         ? document.getElementById('pushCampaignTarget')?.value || null
@@ -9183,8 +9203,8 @@
       if (typeof toast === 'function') toast('Seleziona un dispositivo di prova');
       return;
     }
-    var title = (document.getElementById('pushTitle')?.value || '').trim();
-    var message = (document.getElementById('pushMessage')?.value || '').trim();
+    var title = getPushTitleValue();
+    var message = getPushMessageValue();
     if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
     if (!title) {
       if (typeof window.setPushFieldError === 'function') {
@@ -9713,8 +9733,8 @@
   }
   async function openPushSendConfirm(trigger) {
     if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
-    var title = (document.getElementById('pushTitle')?.value || '').trim();
-    var message = (document.getElementById('pushMessage')?.value || '').trim();
+    var title = getPushTitleValue();
+    var message = getPushMessageValue();
     var invalid = false;
     if (!title) {
       if (typeof window.setPushFieldError === 'function') {
@@ -9765,9 +9785,7 @@
     var counts = result.counts;
     var html =
       '<li><strong>Canale</strong>' + esc(channelLabel(channel)) + '</li>' +
-      renderRecipientLines(counts, channel) +
-      '<li><strong>Titolo</strong>' + esc(title) + '</li>' +
-      '<li><strong>Messaggio</strong>' + esc(firstMessageLine(message)) + '</li>';
+      renderRecipientLines(counts, channel);
     var linkedLabel = selectedOptionLabel('pushLinkedContent');
     if (linkedLabel && document.getElementById('pushLinkedContent')?.value) {
       html += '<li><strong>Contenuto collegato</strong>' + esc(linkedLabel) + '</li>';

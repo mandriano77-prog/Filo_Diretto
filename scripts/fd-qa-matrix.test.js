@@ -594,6 +594,18 @@ test('Push history resend preserves the original strip image', () => {
   assert.match(dashboard, /if \(log\.strip_base64\) body\.strip_base64 = log\.strip_base64/);
 });
 
+test('Push immediate hides legacy title/message copy fields', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const fdPush = readFd('fd-push.js');
+  assert.match(dashboard, /fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;"/);
+  assert.match(fdPush, /DEFAULT_PUSH_TITLE = 'INFO PASS'/);
+  assert.match(fdPush, /DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli'/);
+  assert.match(fdPush, /function getPushTitleValue/);
+  assert.match(fdPush, /function getPushMessageValue/);
+  assert.doesNotMatch(fdPush, /<li><strong>Titolo<\/strong>/);
+  assert.doesNotMatch(fdPush, /<li><strong>Messaggio<\/strong>/);
+});
+
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {
   const dispatch = read('src/engine/push-dispatch.js');
   assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);
