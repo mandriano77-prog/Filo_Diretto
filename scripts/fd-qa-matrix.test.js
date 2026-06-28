@@ -623,6 +623,21 @@ test('Push send shows mailing-style progress counters', () => {
   assert.match(gwSync, /processed\+\+/);
 });
 
+test('HR dashboard distinguishes Google object/update status from confirmed install', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const routes = read('src/api/routes.js');
+  const db = read('src/db/index.js');
+  assert.match(routes, /google_wallet_object_id:\s*m\.google_wallet_object_id/);
+  assert.match(routes, /google_update_count:\s*m\.google_update_count/);
+  assert.match(db, /pi\.google_update_count/);
+  assert.match(dashboard, /function passGoogleUpdateOk/);
+  assert.match(dashboard, /Google update OK/);
+  assert.match(dashboard, /Google object/);
+  assert.match(dashboard, /Device \/ object ID/);
+  assert.match(dashboard, /GOOGLE ·/);
+  assert.doesNotMatch(dashboard, /Google pending<\/span>/);
+});
+
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {
   const dispatch = read('src/engine/push-dispatch.js');
   assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);

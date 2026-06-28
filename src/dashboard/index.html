@@ -5753,6 +5753,21 @@ function passGooglePending(p) {
     return !passGoogleSaved(p);
 }
 
+function passGoogleUpdateOk(p) {
+    if (!p || !p.google_wallet_object_id) return false;
+    const count = Number(p.google_update_count || 0);
+    if (count > 0) return true;
+    return ['delivered', 'silent', 'updated'].includes(String(p.google_last_update_status || '').toLowerCase());
+}
+
+function googleObjectShort(p) {
+    const id = p?.google_wallet_object_id || '';
+    if (!id) return '';
+    const normalized = String(id);
+    const tail = normalized.includes('.') ? normalized.split('.').pop() : normalized;
+    return tail.length > 12 ? tail.slice(0, 12) + '...' : tail;
+}
+
 function passSamsungSaved(p) {
     if (!p) return false;
     const s = p.samsung_wallet_saved;
@@ -6173,9 +6188,9 @@ async function loadPasses(resetPage = false) {
                 <th title="Identificativo univoco del pass (clic per copiare)">Pass ID</th>
                 <th title="Momento in cui il pass è stato generato sul server (non è l'aggiunta al Wallet)">Pass creato</th>
                 <th>Installato</th>
-                <th title="Apple: campanella = APNs. Google: GW / GW°. Samsung: SW / SW° (ref salvato sul server Samsung).">Apple · Google · Samsung</th>
+                <th title="Apple: APNs. Google: salvato, aggiornato o object creato. Samsung: ref salvato sul server Samsung.">Apple · Google · Samsung</th>
                 <th title="Apple: APNs consegnate. Google: update/notifiche accettate da Google Wallet.">Push / update</th>
-                <th>Device ID</th>
+                <th title="Apple: device id APNs. Google: object id, perché Google Wallet non restituisce un device id equivalente.">Device / object ID</th>
                 <th>Stato</th>
                 <th style="text-align:right;">Azioni</th>
             </tr></thead>
@@ -6183,6 +6198,7 @@ async function loadPasses(resetPage = false) {
                 const rowSelected = getPassSelectedIds().has(p.id);
                 const googleSaved = passGoogleSaved(p);
                 const googlePending = passGooglePending(p);
+                const googleUpdateOk = passGoogleUpdateOk(p);
                 const samsungSaved = passSamsungSaved(p);
                 const samsungPending = passSamsungPending(p);
                 const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
@@ -6203,8 +6219,10 @@ async function loadPasses(resetPage = false) {
                     : '<span title="Push Apple: nessun token" style="opacity:0.28;font-size:15px;">&#128263;</span>';
                 if (googleSaved) {
                     html += '<span title="Google Wallet salvato" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(0,212,170,0.15);">GW</span>';
+                } else if (googleUpdateOk) {
+                    html += '<span title="Google Wallet aggiornato: object ID valido, salvataggio non confermato da callback" style="font-size:11px;font-weight:700;color:var(--green);padding:2px 6px;border-radius:4px;background:rgba(0,212,170,0.15);">GW+</span>';
                 } else if (googlePending) {
-                    html += '<span title="Google Wallet in attesa" style="font-size:11px;font-weight:700;color:#fbbf24;padding:2px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.12);">GW°</span>';
+                    html += '<span title="Google object creato, in attesa callback/update" style="font-size:11px;font-weight:700;color:#fbbf24;padding:2px 6px;border-radius:4px;border:1px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.12);">GW°</span>';
                 } else {
                     html += '<span title="Nessun Google Wallet" style="opacity:0.3;font-size:11px;">—</span>';
                 }
@@ -6244,7 +6262,7 @@ async function loadPasses(resetPage = false) {
                         }
                         return parts.length ? parts.join('<br>') : '<span style="opacity:0.3;" title="Nessuna push/update registrata">-</span>';
                     })()}</td>
-                    <td style="font-family:monospace;font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id||'')}">${p.device_id ? ((useTextBadges && p.device_source) ? esc(String(p.device_source).toUpperCase()) + ' · ' : (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : p.device_source === 'samsung' ? 'S ' : '')) + esc(p.device_id).substring(0,12)+'...' : '<span style="opacity:0.3">-</span>'}</td>
+                    <td style="font-family:monospace;font-size:10px;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(p.device_id || p.google_wallet_object_id || '')}">${p.device_id ? ((useTextBadges && p.device_source) ? esc(String(p.device_source).toUpperCase()) + ' · ' : (p.device_source === 'apple' ? '&#127822; ' : p.device_source === 'google' ? '&#129302; ' : p.device_source === 'samsung' ? 'S ' : '')) + esc(p.device_id).substring(0,12)+'...' : (p.google_wallet_object_id ? 'GOOGLE · ' + esc(googleObjectShort(p)) : '<span style="opacity:0.3">-</span>')}</td>
                     <td><span class="badge ${p.status==='active'?'active':'inactive'}">${p.status}</span></td>
                     <td style="text-align:right;">
                         <div class="pass-row-actions">
@@ -6339,6 +6357,7 @@ function downloadPassesTableCsv() {
         }
         let googleWalletCsv = '';
         if (gSaved) googleWalletCsv = 'Salvato';
+        else if (passGoogleUpdateOk(p)) googleWalletCsv = 'Object ID valido + update accettati (salvataggio non confermato)';
         else if (p.google_wallet_object_id) googleWalletCsv = 'Oggetto + link (in attesa salvataggio)';
         const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : p.device_source === 'samsung' ? 'Samsung' : '';
         const passCreato = p.created_at ? new Date(p.created_at).toLocaleDateString('it-IT') : '';
@@ -6413,10 +6432,12 @@ async function viewPassDetail(id) {
         const fv = p.field_values && typeof p.field_values === 'object' ? JSON.stringify(p.field_values, null, 2) : String(p.field_values || '—');
         const utm = p.utm && typeof p.utm === 'object' ? JSON.stringify(p.utm, null, 2) : String(p.utm || '—');
         const gwOk = passGoogleSaved(p);
-        const gwSavedLbl = gwOk ? 'Sì — salvato in Google Wallet' : 'No';
+        const gwUpdateOk = passGoogleUpdateOk(p);
+        const gwSavedLbl = gwOk ? 'Sì — salvato in Google Wallet' : (gwUpdateOk ? 'Non confermato — object ID aggiornato correttamente' : 'No');
         const gwInstalledAtLbl = p.google_installed_at ? esc(new Date(p.google_installed_at).toLocaleString('it-IT')) : '—';
         let gwLinkStatus = '—';
         if (gwOk) gwLinkStatus = 'Salvato';
+        else if (gwUpdateOk) gwLinkStatus = 'Object ID valido — update/notifiche accettate da Google Wallet. Google non restituisce device ID come Apple.';
         else if (p.google_wallet_object_id) gwLinkStatus = 'Oggetto creato — usa il pulsante per aprire “Aggiungi a Google Wallet”';
         else gwLinkStatus = 'Usa il pulsante Google Wallet per creare l\'oggetto e ottenere il link';
         const samOk = passSamsungSaved(p);
@@ -10380,7 +10401,8 @@ function walletStatusLabel(l) {
     const parts = [];
     if (l.device_id) parts.push('Apple');
     if (passGoogleSaved(l)) parts.push('Google');
-    else if (l.google_wallet_object_id) parts.push('Google pending');
+    else if (passGoogleUpdateOk(l)) parts.push('Google update OK');
+    else if (l.google_wallet_object_id) parts.push('Google object');
     if (passSamsungSaved(l)) parts.push('Samsung');
     else if (l.samsung_wallet_ref_id) parts.push('Samsung pending');
     if (!parts.length && l.pass_id) return 'Pass creato';
@@ -11371,13 +11393,17 @@ function formatActivityLogDetails(ev) {
 
 function passInstallStatusBadge(p) {
     const googleSaved = passGoogleSaved(p);
+    const googleUpdateOk = passGoogleUpdateOk(p);
     const googlePending = passGooglePending(p);
     const samsungSaved = passSamsungSaved(p);
     const samsungPending = passSamsungPending(p);
     const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
     if (!isInstalled) {
+        if (googleUpdateOk) {
+            return '<span class="badge active" title="Google Wallet aggiornato: object ID valido e update accettati. Google non espone un device ID come Apple; il salvataggio resta confermabile solo da callback/status.">Google update OK</span>';
+        }
         if (googlePending) {
-            return '<span class="badge inactive" title="Oggetto Google creato, in attesa di conferma salvataggio">Google pending</span>';
+            return '<span class="badge inactive" title="Oggetto Google creato. In attesa di callback salvataggio o primo update accettato.">Google object</span>';
         }
         if (samsungPending) {
             return '<span class="badge inactive" title="Oggetto Samsung creato, in attesa di conferma salvataggio">Samsung pending</span>';
@@ -11395,15 +11421,17 @@ function passInstallStatusBadge(p) {
 function passReachStatusBadges(p) {
     const applePushOn = !!p.push_token;
     const googleSaved = passGoogleSaved(p);
+    const googleUpdateOk = passGoogleUpdateOk(p);
     const googlePending = passGooglePending(p);
     const samsungSaved = passSamsungSaved(p);
     const samsungPending = passSamsungPending(p);
     let html = '<span class="pass-wallet-badges">';
     html += applePushOn
         ? '<span class="badge active" title="Push Apple attiva">Push Apple</span>'
-        : '<span class="badge inactive" title="Nessun token push Apple">No push</span>';
+        : '<span class="badge inactive" title="Nessun token push Apple registrato">Apple no push</span>';
     if (googleSaved) html += '<span class="badge active" title="Google Wallet salvato">Google</span>';
-    else if (googlePending) html += '<span class="badge inactive" title="Google Wallet in attesa">Google pending</span>';
+    else if (googleUpdateOk) html += '<span class="badge active" title="Object ID Google valido: update/notifiche accettate da Google Wallet">Google update OK</span>';
+    else if (googlePending) html += '<span class="badge inactive" title="Oggetto Google creato, in attesa di callback o primo update">Google object</span>';
     if (samsungSaved) html += '<span class="badge active" title="Samsung Wallet salvato">Samsung</span>';
     else if (samsungPending) html += '<span class="badge inactive" title="Samsung Wallet in attesa">Samsung pending</span>';
     html += '</span>';
