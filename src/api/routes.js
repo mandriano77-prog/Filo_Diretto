@@ -5488,12 +5488,28 @@ const WAI_STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
 const WAI_STRIP_GENERATE_WIDTH = 1125;
 const WAI_STRIP_GENERATE_HEIGHT = 432;
 
-async function generateWaiStripBase64({ brand_id, prompt_en }) {
+function waiStripPromptRequestsText(...parts) {
+  const text = parts.map((p) => String(p || '')).join(' ');
+  if (!text.trim()) return false;
+  if (/\b(no text|senza testo|senza scritte|no words|without text)\b/i.test(text)) return false;
+  return /\b(testo|frase|scritta|scrivi|inserisci|parole|headline|copy|caption|text|phrase|wording|typography|written)\b/i.test(text);
+}
+
+function buildWaiStripGenerationPrompt({ prompt_en, source_prompt }) {
+  const base = String(prompt_en || '').trim();
+  const wantsText = waiStripPromptRequestsText(base, source_prompt);
+  const textRule = wantsText
+    ? 'include only the explicitly requested short phrase as clean legible typographic text inside the image, balanced composition, no watermarks, no logos, no UI elements, no badges, no stickers, no circles, no frames, no icons'
+    : 'no text, no watermarks, no logos, no UI elements, no badges, no stickers, no circles, no frames, no icons';
+  return `${base}, promotional banner, wide aspect ratio, clean panoramic background, ${textRule}`;
+}
+
+async function generateWaiStripBase64({ brand_id, prompt_en, source_prompt = '' }) {
   const brand = await getBrand(brand_id);
   if (!brand) throw new Error('Brand non trovato');
   const stylePrompt = brand.config?.aiStylePrompt || null;
   const imageUrl = await generateWithFal(
-    `${prompt_en}, promotional banner, wide aspect ratio, clean panoramic background, no text, no watermarks, no logos, no UI elements, no badges, no stickers, no circles, no frames, no icons`,
+    buildWaiStripGenerationPrompt({ prompt_en, source_prompt }),
     WAI_STRIP_GENERATE_WIDTH,
     WAI_STRIP_GENERATE_HEIGHT,
     WAI_STRIP_GENERATE_MODEL,
@@ -5518,25 +5534,26 @@ async function applyGeneratedStripToBrand(brand_id, stripBase64) {
   await updateBrand(brand_id, { config });
 }
 
-async function maybeGenerateAndApplyWaiStrip(payload) {
+async function maybeGenerateAndApplyWaiStrip(payload, opts = {}) {
   const stripPrompt = String(payload?.strip_prompt_en || '').trim();
   if (!stripPrompt) return null;
   const stripBase64 = await generateWaiStripBase64({
     brand_id: payload.brand_id,
-    prompt_en: stripPrompt
+    prompt_en: stripPrompt,
+    source_prompt: opts.sourcePrompt || payload.source_prompt || ''
   });
   await applyGeneratedStripToBrand(payload.brand_id, stripBase64);
   return stripBase64;
 }
 
-async function performImmediatePushForWai(payload) {
+async function performImmediatePushForWai(payload, opts = {}) {
   const brand = await getBrand(payload.brand_id);
   let stripBase64 = null;
   if (payload.strip_base64) {
     stripBase64 = payload.strip_base64;
     await applyGeneratedStripToBrand(payload.brand_id, stripBase64);
   } else if (payload.strip_prompt_en) {
-    stripBase64 = await maybeGenerateAndApplyWaiStrip(payload);
+    stripBase64 = await maybeGenerateAndApplyWaiStrip(payload, opts);
   }
   return executeWalletPush(payload, {
     hrDeploy: isHrBrand(brand, { headers: {} }),
@@ -5545,13 +5562,13 @@ async function performImmediatePushForWai(payload) {
 }
 
 const WAI_EXECUTORS = {
-  'push.schedule': async (payload) => {
+  'push.schedule': async (payload, opts = {}) => {
     const body = { ...payload };
     if (body.strip_base64) {
       await applyGeneratedStripToBrand(body.brand_id, body.strip_base64);
       delete body.strip_base64;
     } else if (body.strip_prompt_en) {
-      await maybeGenerateAndApplyWaiStrip(body);
+      await maybeGenerateAndApplyWaiStrip(body, opts);
       delete body.strip_prompt_en;
     }
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
@@ -5565,9 +5582,9 @@ const WAI_EXECUTORS = {
     const stripNote = hadStrip ? ' Strip del pass già aggiornata.' : '';
     return { message: `Push programmata: ${payload.title}.${stripNote}`, data: item, strip_updated: hadStrip };
   },
-  'push.send': async (payload) => {
+  'push.send': async (payload, opts = {}) => {
     const hadStrip = !!(payload.strip_base64 || payload.strip_prompt_en);
-    const data = await performImmediatePushForWai(payload);
+    const data = await performImmediatePushForWai(payload, opts);
     const stripNote = hadStrip ? ' Strip del pass aggiornata.' : '';
     return { message: `Push inviata: ${payload.title}.${stripNote}`, data, strip_updated: hadStrip };
   },
@@ -5710,11 +5727,19 @@ router.post('/wai/execute', async (req, res) => {
       enforceWaiStripGenerateRateLimit(payload.brand_id);
     }
 
-    const normalized = validateWaiResponse({ intent, type: 'create', payload, preview: { summary: '', details: {}, warnings: [] } }, payload.brand_id);
+    const sourcePrompt = String(req.body.prompt || '').trim();
+    const normalized = validateWaiResponse(
+      { intent, type: 'create', payload, preview: { summary: '', details: {}, warnings: [] } },
+      payload.brand_id,
+      sourcePrompt
+    );
+    if (sourcePrompt && normalized.payload && !normalized.payload.source_prompt) {
+      normalized.payload.source_prompt = sourcePrompt;
+    }
     const executor = WAI_EXECUTORS[intent];
     if (!executor) return res.status(400).json({ error: `Intent '${intent}' non eseguibile` });
 
-    const result = await executor(normalized.payload);
+    const result = await executor(normalized.payload, { sourcePrompt });
     await logWaiInteraction({
       brand_id: payload.brand_id,
       user_id: req.user?.id || null,

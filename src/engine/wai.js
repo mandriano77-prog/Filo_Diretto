@@ -13,7 +13,13 @@ const { getAnthropicApiKey } = require('./env-ai');
 const { pickWaiModel, formatModelLabel, getWaiModelFallbacks } = require('./ai-models');
 const { getProductBrandName, resolveBaseUrlFromEnv } = require('./base-url');
 const { resolvePushChannel } = require('./push-assistant');
-const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX, validatePushText } = require('./push-text-limits');
+const {
+  PUSH_TITLE_MAX,
+  PUSH_MESSAGE_MAX,
+  normalizePushBackDetails,
+  validatePushBackDetails,
+  validatePushText
+} = require('./push-text-limits');
 
 const EXECUTABLE_INTENTS = new Set([
   'push.schedule',
@@ -101,8 +107,10 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - schedule_time: HH:MM formato 24h, fuso Europa/Roma
 - days: array numeri 0-6 (0=dom) solo per weekly
 - date: YYYY-MM-DD solo per once
-- title: max 22 caratteri, incisivo, adatto a lock screen e strip
-- message: max 66 caratteri, completa il titolo, massimo 3 righe sulla strip
+- title: max 22 caratteri, incisivo, usato per notifica Wallet/changeMessage
+- message: max 66 caratteri, usato per notifica Wallet/changeMessage
+- back_details: max 500 caratteri, testo completo da mostrare sul retro del pass. Se il manager scrive condizioni, promo, istruzioni, descrizione estesa, regolamento o informazioni da leggere, mettile qui. NON lasciare vuoto se la richiesta contiene dettagli utili.
+- include_pass_link/pass_link_url/pass_link_label: usa questi campi se la richiesta contiene una URL o chiede un link cliccabile nel pass.
 - channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
@@ -111,6 +119,7 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 ### push.send
 - Come push.schedule ma senza scheduling. Esecuzione immediata.
 - title + message obbligatori. Se non specificati, genera e metti warning.
+- Per HR: la strip viene aggiornata come immagine. Non usare title/message come testo overlay sulla strip; usa back_details per le informazioni estese sul retro.
 - Se il manager chiede anche una nuova immagine strip del pass, NON usare strip.generate: resta su push.send o push.schedule e aggiungi strip_prompt_en (inglese Flux) nel payload.
 - update_pass deve restare true quando c'è una nuova strip, salvo diversa indicazione.
 
@@ -137,6 +146,7 @@ Quando il manager chiede SOLO di creare, generare o salvare l'immagine strip del
 Se chiede anche push/notifica, usa push.send o push.schedule con strip_prompt_en.
 Traduci la descrizione italiana in prompt_en in inglese per Flux 1.1 Pro.
 Regole prompt_en: scena fotografica panoramica, includi "wide panoramic composition, no text, no watermarks, no logos, no UI elements", includi "photorealistic commercial photography" o "editorial photography", 30-60 parole, non inventare prodotti non menzionati.
+Eccezione testo nella strip: se il manager chiede esplicitamente di inserire una frase/scritta/testo dentro l'immagine, includi quella frase nel prompt_en come testo tipografico leggibile. In quel caso NON scrivere "no text".
 Stili: commercial_photo (default), lifestyle, food, minimal, seasonal, abstract.
 Nel payload: prompt_en, style_prompt null, width 1125, height 432, model "fal-ai/flux-pro/v1.1".
 In preview.details includi description_it, prompt_en, style, dimensions "1125x432 (@3x Apple Wallet)".
@@ -379,6 +389,13 @@ function rehydratePushPayloadFromPreview(intent, payload, preview) {
   if (!payload.title && details.title) payload.title = String(details.title).trim();
   if (!payload.message && details.message) payload.message = String(details.message).trim();
   if (!payload.message && details.message_it) payload.message = String(details.message_it).trim();
+  if (!payload.back_details && details.back_details) payload.back_details = String(details.back_details).trim();
+  if (!payload.back_details && details.details) payload.back_details = String(details.details).trim();
+  if (payload.include_pass_link === undefined && details.include_pass_link !== undefined) {
+    payload.include_pass_link = details.include_pass_link === true || String(details.include_pass_link).toLowerCase() === 'true';
+  }
+  if (!payload.pass_link_url && details.pass_link_url) payload.pass_link_url = String(details.pass_link_url).trim();
+  if (!payload.pass_link_label && details.pass_link_label) payload.pass_link_label = String(details.pass_link_label).trim();
   if (!payload.strip_prompt_en && details.strip_prompt_en) {
     payload.strip_prompt_en = String(details.strip_prompt_en).trim();
   }
@@ -555,10 +572,12 @@ function coerceWaiProposal(prompt, raw) {
     ...payload,
     title,
     message,
+    back_details: normalizePushBackDetails(payload.back_details || details.back_details || ''),
     channel: ['apple', 'google', 'samsung', 'all'].includes(payload.channel) ? payload.channel : 'all',
     update_pass: payload.update_pass !== false,
     strip_prompt_en: promptEn
   };
+  if (!nextPayload.back_details) delete nextPayload.back_details;
 
   if (nextIntent === 'push.schedule') {
     nextPayload.schedule_type = ['once', 'daily', 'weekly'].includes(payload.schedule_type)
@@ -666,6 +685,27 @@ function validateWaiResponse(raw, brandId, userPrompt) {
     }
     const textErrors = validatePushText(payload.title, payload.message);
     if (textErrors.length) throw new Error(textErrors[0].message);
+    payload.back_details = normalizePushBackDetails(
+      payload.back_details || preview.details?.back_details || preview.details?.details || ''
+    );
+    if (payload.back_details) {
+      const backErrors = validatePushBackDetails(payload.back_details);
+      if (backErrors.length) throw new Error(backErrors[0].message);
+      preview.details = { ...preview.details, back_details: payload.back_details };
+    } else {
+      delete payload.back_details;
+    }
+    const linkUrl = String(payload.pass_link_url || preview.details?.pass_link_url || '').trim();
+    if (linkUrl) {
+      payload.include_pass_link = true;
+      payload.pass_link_url = linkUrl;
+      payload.pass_link_label = String(
+        payload.pass_link_label || preview.details?.pass_link_label || payload.title || 'Apri link'
+      ).trim().slice(0, 64);
+    } else if (payload.include_pass_link === true) {
+      preview.warnings.push('Link richiesto ma URL mancante: il link non verrà inserito nel pass.');
+      payload.include_pass_link = false;
+    }
     payload.channel = resolvePushChannel(
       payload.channel || preview.details?.channel,
       userPrompt || preview.summary || ''

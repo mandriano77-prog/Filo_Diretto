@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const rbac = require('../src/engine/rbac');
 const { getWaiModelFallbacks } = require('../src/engine/ai-models');
+const { validateWaiResponse } = require('../src/engine/wai');
 
 test('W.AI routes classify under push so sender is not blanket-blocked', () => {
   const ask = rbac.enforceApiPermission({ role: 'sender', brand_id: 'b1' }, 'POST', '/wai/ask');
@@ -48,6 +49,34 @@ test('W.AI push uses HR push limits and passes generated strip to wallet update'
   assert.doesNotMatch(wai, /slice\(0,\s*180\)/);
   assert.match(routes, /resolvedStripBase64:\s*stripBase64/);
   assert.match(routes, /no badges, no stickers, no circles/);
+});
+
+test('W.AI push preserves back details and pass link like manual push', () => {
+  const out = validateWaiResponse({
+    intent: 'push.send',
+    type: 'create',
+    payload: {
+      title: 'INFO PASS',
+      message: 'Apri il pass per i dettagli',
+      back_details: 'Promo valida fino a domenica. Mostra il pass in cassa.',
+      pass_link_url: 'https://example.com/promo',
+      pass_link_label: 'Apri promo'
+    },
+    preview: { summary: '', details: {}, warnings: [] }
+  }, 'brand-1', 'manda una push a tutti con dettagli retro e link');
+
+  assert.equal(out.payload.back_details, 'Promo valida fino a domenica. Mostra il pass in cassa.');
+  assert.equal(out.payload.include_pass_link, true);
+  assert.equal(out.payload.pass_link_url, 'https://example.com/promo');
+  assert.equal(out.payload.channel, 'all');
+});
+
+test('W.AI strip generation allows text only when the brief asks for it', () => {
+  const routes = fs.readFileSync(path.join(__dirname, '../src/api/routes.js'), 'utf8');
+  assert.match(routes, /function waiStripPromptRequestsText/);
+  assert.match(routes, /include only the explicitly requested short phrase/);
+  assert.match(routes, /no text, no watermarks/);
+  assert.match(routes, /source_prompt:\s*opts\.sourcePrompt/);
 });
 
 test('W.AI pass preview does not reserve HR thumbnail space', () => {
