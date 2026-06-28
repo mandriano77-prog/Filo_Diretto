@@ -1,5 +1,5 @@
 const googleWallet = require('./google-wallet');
-const { getTemplate, markGoogleWalletUpdateStatus } = require('../db');
+const { getTemplate, markGoogleWalletUpdateStatus, updateGoogleWalletStatus, updatePassDeviceId } = require('../db');
 const { parsePushAnnouncementRecord } = require('./pass-push-state');
 
 const DEFAULT_CONCURRENCY = Math.max(
@@ -64,7 +64,11 @@ async function syncGoogleWalletObjectsForPasses({
         }
         const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details, passLink });
         const passObject = await googleWallet.buildPassObject(brand, template, passForGoogle, passForGoogle.customer_data || {});
-        await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
+        const serverObject = await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
+        if (serverObject?.hasUsers === true || serverObject?.hasUsers === 'true') {
+          const savedPass = await updateGoogleWalletStatus(passObject.id, true);
+          await updatePassDeviceId(savedPass?.serial_number || pass.serial_number, passObject.id, 'google');
+        }
         let notifyResult = null;
         if (message) {
           notifyResult = await googleWallet.updatePassMessage(pass.serial_number, message, brand, { title });

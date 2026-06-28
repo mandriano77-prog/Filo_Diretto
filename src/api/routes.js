@@ -5129,14 +5129,25 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
     }
 
     const passObject = await googleWallet.buildPassObject(brand, template, instance, instance.customer_data);
-    await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
+    const serverObject = await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
     const clearMessages = await googleWallet.clearPassMessages(passObject.id, brand);
+    const hasUsers = serverObject?.hasUsers === true || serverObject?.hasUsers === 'true';
     await updatePassInstance(instance.id, {
       google_wallet_object_id: passObject.id,
       ...(instance.google_wallet_object_id && instance.google_wallet_object_id !== passObject.id
         ? { google_wallet_saved: false, google_installed_at: null }
         : {})
     });
+    if (hasUsers) {
+      const savedPass = await updateGoogleWalletStatus(passObject.id, true);
+      await updatePassDeviceId(savedPass?.serial_number || instance.serial_number, passObject.id, 'google');
+      await logEvent({
+        brand_id: instance.brand_id,
+        pass_id: instance.id,
+        event_type: 'google_wallet_installed_verified',
+        metadata: { object_id: passObject.id, source: 'link_generation_hasUsers' }
+      });
+    }
 
     const saveLink = googleWallet.generateSaveLink(brand, template, passObject);
 

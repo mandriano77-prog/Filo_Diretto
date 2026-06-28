@@ -629,6 +629,7 @@ test('HR dashboard distinguishes Google object/update status from confirmed inst
   const db = read('src/db/index.js');
   assert.match(routes, /google_wallet_object_id:\s*m\.google_wallet_object_id/);
   assert.match(routes, /google_update_count:\s*m\.google_update_count/);
+  assert.match(routes, /link_generation_hasUsers/);
   assert.match(db, /pi\.google_update_count/);
   assert.match(dashboard, /function passGoogleUpdateOk/);
   assert.match(dashboard, /Google update OK/);
@@ -636,6 +637,13 @@ test('HR dashboard distinguishes Google object/update status from confirmed inst
   assert.match(dashboard, /Device \/ object ID/);
   assert.match(dashboard, /GOOGLE ·/);
   assert.doesNotMatch(dashboard, /Google pending<\/span>/);
+});
+
+test('Google Wallet sync promotes hasUsers responses to confirmed install', () => {
+  const gwSync = read('src/engine/google-wallet-sync.js');
+  assert.match(gwSync, /updateGoogleWalletStatus/);
+  assert.match(gwSync, /updatePassDeviceId/);
+  assert.match(gwSync, /serverObject\?\.hasUsers/);
 });
 
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {
