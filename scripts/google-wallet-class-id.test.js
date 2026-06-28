@@ -91,6 +91,7 @@ test('pass route ensures class before object', () => {
   const fs = require('fs');
   const routes = fs.readFileSync(path.join(__dirname, '../src/api/routes.js'), 'utf8');
   assert.match(routes, /ensurePassReadyOnServer\(brand, template, passObject\)/);
+  assert.match(routes, /clearPassMessages\(passObject\.id, brand\)/);
   assert.match(routes, /syncGoogleWalletClassForTemplate/);
 });
 
@@ -134,6 +135,8 @@ test('buildGoogleNotifyMessagePayload uses TEXT_AND_NOTIFY and HR limits', () =>
 test('updatePassMessage uses addMessage not textModulesData patch', () => {
   const fs = require('fs');
   const source = fs.readFileSync(MOD, 'utf8');
+  assert.match(source, /async function clearPassMessages/);
+  assert.match(source, /messages:\s*\[\]/);
   assert.match(source, /addMessage/);
   assert.match(source, /TEXT_AND_NOTIFY/);
   assert.doesNotMatch(source, /latest_message/);

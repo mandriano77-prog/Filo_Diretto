@@ -121,17 +121,18 @@ test('HR push promo: strip overlay only — frozen template header and secondary
     coinBalance: 25
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.headerFields || []).length, 0);
-  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'push_notice');
+  assert.equal((apple.passStructure.headerFields || []).length, 1);
+  const alertField = (apple.passStructure.headerFields || [])[0];
   assert.ok(alertField);
   assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
   assert.match(alertField.changeMessage, /%@$/);
-  assert.equal(alertField.label, '\u200b');
-  assert.notEqual(alertField.value, '\u200b');
+  assert.equal(alertField.label, 'INFO');
+  assert.match(alertField.value, /^Per altre informazioni/);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
-  assert.equal(coinField.changeMessage, 'Hai %@ coin');
+  assert.equal(coinField.changeMessage, undefined);
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
     ['name', 'area', 'coin_balance']
@@ -143,7 +144,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.doesNotMatch(passkit, /compositeThumbnailOnStrip/);
   assert.doesNotMatch(passkit, /prepareThumbForStripOverlay/);
   assert.match(passkit, /generateCoverThumbnailBuffers/);
-  assert.match(passkit, /thumbnail@3x\.png/);
+  assert.doesNotMatch(passkit, /files\['thumbnail@3x\.png'\]/);
   assert.doesNotMatch(passkit, /Employee pass: thumbnail composita/);
   assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);
   assert.doesNotMatch(passkit, /stripGrad/);
@@ -245,7 +246,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: frozen template header — invisible auxiliary triggers Wallet alert', () => {
+test('HR push: visible header triggers Wallet alert without invisible auxiliary', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -257,19 +258,22 @@ test('HR push: frozen template header — invisible auxiliary triggers Wallet al
     member: { full_name: 'Test', department: 'HR' },
     brandConfig: {},
   });
-  assert.equal(ep.front.auxiliary.length, 1);
-  assert.equal(ep.front.auxiliary[0].key, 'push_notice');
+  assert.equal(ep.front.auxiliary.length, 0);
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);
-  assert.equal(coin.changeMessage, 'Hai %@ coin');
+  assert.equal(coin.changeMessage, undefined);
   assert.equal(coin.value, '0');
-  assert.equal(ep.headerHint, null);
+  assert.ok(ep.headerHint);
+  assert.equal(ep.headerHint.label, 'INFO');
+  assert.match(ep.headerHint.value, /^Per altre informazioni/);
+  assert.match(ep.headerHint.changeMessage, /2X1 OCCHIALI/);
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
-  assert.equal(appleCoin.changeMessage, 'Hai %@ coin');
-  assert.equal((apple.passStructure.headerFields || []).length, 0);
-  const appleAlert = apple.passStructure.auxiliaryFields[0];
+  assert.equal(appleCoin.changeMessage, undefined);
+  assert.equal((apple.passStructure.headerFields || []).length, 1);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  const appleAlert = apple.passStructure.headerFields[0];
   assert.match(appleAlert.changeMessage, /2X1 OCCHIALI/);
   assert.match(appleAlert.changeMessage, /%@$/);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
@@ -307,7 +311,7 @@ test('strip overlay: title truncates and message wraps with ellipsis', () => {
 
 test('strip preview API route registered', () => {
   assert.match(read('src/api/routes.js'), /\/brands\/:id\/push\/strip-preview/);
-  assert.match(read('src/api/routes.js'), /composePushTextOnStrip/);
+  assert.doesNotMatch(read('src/api/routes.js'), /composePushTextOnStrip\(strip/);
 });
 
 test('scheduled push: back_details stored and applied on execute', () => {

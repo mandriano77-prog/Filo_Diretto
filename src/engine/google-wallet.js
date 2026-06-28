@@ -807,6 +807,21 @@ async function updatePassObject(serialNumber, updates, brand) {
   }
 }
 
+async function clearPassMessages(objectId, brand) {
+  if (!objectId) return null;
+  const passKind = resolvePassKind(brand);
+  const objectPath = passKind === 'loyalty' ? 'loyaltyObject' : 'genericObject';
+  const objectUrl = `/${objectPath}/${encodeURIComponent(objectId)}`;
+  try {
+    const updated = await walletApiPatch(objectUrl, { messages: [] });
+    console.log(`[GoogleWallet] Cleared messages for ${objectId}`);
+    return { ok: true, objectId, updated };
+  } catch (err) {
+    console.warn(`[GoogleWallet] clear messages failed for ${objectId}: ${err.message}`);
+    return { ok: false, objectId, error: err.message };
+  }
+}
+
 async function getPassObjectById(objectId, brand) {
   if (!objectId) throw new Error('Google Wallet objectId required');
   const passKind = resolvePassKind(brand);
@@ -1040,6 +1055,7 @@ module.exports = {
   generateSaveLinkLegacy,
   createPassObjectOnServer,
   updatePassObject,
+  clearPassMessages,
   getPassObjectById,
   buildGoogleNotifyMessagePayload,
   addPassNotifyMessage,

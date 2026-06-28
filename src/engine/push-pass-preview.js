@@ -3,7 +3,6 @@
  */
 const {
   loadHrStripBuffers,
-  composePushTextOnStrip,
   normalizePushAnnouncementForStrip,
 } = require('./passkit');
 const {
@@ -84,9 +83,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
       template,
       stripOverrideBase64: stripOverride,
     });
-    let strip = stripBuffers.strip;
-    strip = await composePushTextOnStrip(strip, announcement, 375, 123);
-    stripPreview = toDataUrl(strip);
+    stripPreview = toDataUrl(stripBuffers.strip);
   }
 
   const [logoRaw, iconResolved] = await Promise.all([

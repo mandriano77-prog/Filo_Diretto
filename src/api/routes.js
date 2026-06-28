@@ -911,6 +911,37 @@ router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
     const resolvedLogo = await resolveWalletLogoRawBuffer(brand, template);
     const resolved = await resolveBrandLogoRawBuffer(brand);
     const passIcon = await resolvePassIconBuffers(brand, resolvedLogo);
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(pkpassBuffer);
+    const pkpassFiles = zip.getEntries().map((entry) => entry.entryName).sort();
+    let passJsonDebug = null;
+    const passJsonEntry = zip.getEntry('pass.json');
+    if (passJsonEntry) {
+      try {
+        const parsedPassJson = JSON.parse(passJsonEntry.getData().toString('utf8'));
+        const structure = parsedPassJson.storeCard || parsedPassJson.generic || parsedPassJson.eventTicket || parsedPassJson.coupon || {};
+        passJsonDebug = {
+          pass_type: parsedPassJson.storeCard ? 'storeCard'
+            : parsedPassJson.generic ? 'generic'
+              : parsedPassJson.eventTicket ? 'eventTicket'
+                : parsedPassJson.coupon ? 'coupon'
+                  : 'unknown',
+          backgroundColor: parsedPassJson.backgroundColor,
+          foregroundColor: parsedPassJson.foregroundColor,
+          labelColor: parsedPassJson.labelColor,
+          header_count: (structure.headerFields || []).length,
+          primary_count: (structure.primaryFields || []).length,
+          secondary_count: (structure.secondaryFields || []).length,
+          auxiliary_count: (structure.auxiliaryFields || []).length,
+          secondary_keys: (structure.secondaryFields || []).map((f) => f.key),
+          auxiliary_keys: (structure.auxiliaryFields || []).map((f) => f.key),
+          has_push_notice_auxiliary: (structure.auxiliaryFields || []).some((f) => f.key === 'push_notice'),
+          coin_has_change_message: (structure.secondaryFields || []).some((f) => f.key === 'coin_balance' && !!f.changeMessage)
+        };
+      } catch (parseErr) {
+        passJsonDebug = { error: parseErr.message };
+      }
+    }
     const walletIconMediaId = brand?.config?.brand_identity_assets?.wallet_icon || null;
     const cfg = brand?.config || {};
     res.json({
@@ -925,6 +956,9 @@ router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
       has_config_logos_icon: !!(cfg.logos?.icon),
       resolved_wallet_logo_source: resolvedLogo?.source || resolved?.source || null,
       pkpass_icon: icon,
+      pkpass_files: pkpassFiles,
+      has_thumbnail_files: pkpassFiles.some((file) => /^thumbnail(@\dx)?\.png$/.test(file)),
+      pass_json_debug: passJsonDebug,
       pkpass_bytes: pkpassBuffer.length,
       pass_type_identifier: process.env.PASS_TYPE_IDENTIFIER || 'pass.com.nudj',
       preview_url: '/api/v1/passes/' + passInstance.id + '/wallet-icon.png',
@@ -5088,6 +5122,7 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
 
     const passObject = await googleWallet.buildPassObject(brand, template, instance, instance.customer_data);
     await googleWallet.ensurePassReadyOnServer(brand, template, passObject);
+    const clearMessages = await googleWallet.clearPassMessages(passObject.id, brand);
     await updatePassInstance(instance.id, {
       google_wallet_object_id: passObject.id,
       ...(instance.google_wallet_object_id && instance.google_wallet_object_id !== passObject.id
@@ -5101,10 +5136,10 @@ router.get('/google-wallet/pass/:id', async (req, res) => {
       brand_id: instance.brand_id,
       pass_id: instance.id,
       event_type: 'google_wallet_link_generated',
-      metadata: {}
+      metadata: { messages_cleared: clearMessages?.ok === true, clear_messages_error: clearMessages?.error || null }
     });
 
-    res.json({ save_link: saveLink });
+    res.json({ save_link: saveLink, messages_cleared: clearMessages?.ok === true });
   } catch (err) {
     console.error('[GoogleWallet] Error:', err);
     const mapped = googleWallet.formatGoogleWalletError(err);
