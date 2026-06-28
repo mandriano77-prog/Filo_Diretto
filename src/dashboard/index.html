@@ -1650,12 +1650,6 @@
                             <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 66 caratteri (3 righe sulla strip). Testo e colore si adattano all'immagine.</p>
                             <p class="push-field-error" id="pushMessageError" role="alert"></p>
                         </div>
-                        <div class="form-group" style="margin-top:4px;">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                                <input type="checkbox" id="pushUpdatePass" checked onchange="togglePushStripBlock()" style="width:auto;accent-color:var(--teal);">
-                                <span>Aggiorna contenuto pass (strip temporanea e informazioni sul retro; su iPhone Wallet riceve un aggiornamento silenzioso, non un banner come le app)</span>
-                            </label>
-                        </div>
                         <div id="pushStripBlock" class="form-group" style="margin-top:8px;">
                             <label class="form-label">Strip per questa push (opzionale)</label>
                             <p style="font-size:11px;color:var(--text2);margin:0 0 10px;line-height:1.45;">Solo per questo invio — scegli un'immagine diversa dalla strip permanente del brand. Senza selezione, resta l'immagine del template.</p>
@@ -1667,13 +1661,7 @@
                                 <button type="button" class="btn small danger" id="pushStripClearBtn" onclick="pushClearStrip()" style="display:none;">Rimuovi strip</button>
                             </div>
                         </div>
-                        <div class="form-group" style="margin-top:8px;">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                                <input type="checkbox" id="pushIncludePassLink" onchange="togglePushPassLinkFields()" style="width:auto;accent-color:var(--accent);">
-                                <span>Includi link nel pass</span>
-                            </label>
-                        </div>
-                        <div id="pushPassLinkFields" style="display:none;margin-top:8px;">
+                        <div id="pushPassLinkFields" style="display:block;margin-top:8px;">
                             <div class="form-group">
                                 <label class="form-label">URL link (https://)</label>
                                 <input type="url" id="pushPassLinkUrl" placeholder="https://..." oninput="syncPushPassLinkLabel()">
@@ -1686,7 +1674,7 @@
                                 <label class="form-label">Scadenza link</label>
                                 <input type="datetime-local" id="pushPassLinkExpires">
                             </div>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Il link compare in cima al retro del pass (prima di HUB / SUPPORT / AREA PRIVATA) fino alla scadenza. Attiva la spunta e compila URL + etichetta.</p>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Se compili URL + etichetta, il link compare in cima al retro del pass (prima di HUB / SUPPORT / AREA PRIVATA) fino alla scadenza.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
                             <label class="form-label" for="pushBackDetails">Dettagli retro pass (opzionale)</label>
@@ -1795,12 +1783,6 @@
                                 <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" class="sched-day" value="6" style="width:auto;accent-color:var(--teal);"> Sab</label>
                                 <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" class="sched-day" value="0" style="width:auto;accent-color:var(--teal);"> Dom</label>
                             </div>
-                        </div>
-                        <div class="form-group" style="margin-top:4px;">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                                <input type="checkbox" id="schedUpdatePass" checked style="width:auto;accent-color:var(--teal);">
-                                <span>Aggiorna contenuto pass ad ogni invio</span>
-                            </label>
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="createScheduledPush()">&#128337; Programma Notifica</button>
                     </div>
@@ -6838,22 +6820,6 @@ async function loadHrTemplateBackFields(t) {
     updatePassPreview();
 }
 
-function togglePushPassLinkFields() {
-    const on = document.getElementById('pushIncludePassLink')?.checked;
-    const box = document.getElementById('pushPassLinkFields');
-    if (box) box.style.display = on ? 'block' : 'none';
-    if (on && !document.getElementById('pushPassLinkExpires')?.value) {
-        const el = document.getElementById('pushPassLinkExpires');
-        if (el) el.value = defaultPushLinkExpiryLocal();
-    }
-}
-
-function defaultPushLinkExpiryLocal() {
-    const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-}
-
 function syncPushPassLinkLabel() {
     const labelEl = document.getElementById('pushPassLinkLabel');
     const titleEl = document.getElementById('pushTitle');
@@ -7842,8 +7808,7 @@ let pushStripMediaId = null;
 
 function togglePushStripBlock() {
     const block = document.getElementById('pushStripBlock');
-    const on = document.getElementById('pushUpdatePass')?.checked;
-    if (block) block.style.display = on ? 'block' : 'none';
+    if (block) block.style.display = 'block';
 }
 
 function pushPickStripFromMedia() {
@@ -8089,7 +8054,7 @@ function buildImmediatePushBody() {
         : null;
     const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
     const channel = document.getElementById('pushChannel')?.value || 'apple';
-    const updatePass = document.getElementById('pushUpdatePass')?.checked;
+    const updatePass = true;
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
@@ -8097,9 +8062,10 @@ function buildImmediatePushBody() {
     if (iwId) body.instant_win_id = iwId;
     const gamId = document.getElementById('pushGamification')?.value;
     if (gamId) body.gamification_id = gamId;
-    if (document.getElementById('pushIncludePassLink')?.checked) {
+    const passLinkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+    if (passLinkUrl) {
         body.include_pass_link = true;
-        body.pass_link_url = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+        body.pass_link_url = passLinkUrl;
         body.pass_link_label = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
         const expLocal = document.getElementById('pushPassLinkExpires')?.value;
         if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
@@ -8124,9 +8090,6 @@ function resetImmediatePushForm() {
     if (titleEl) titleEl.value = '';
     if (messageEl) messageEl.value = '';
     clearPushFieldErrors();
-    const incl = document.getElementById('pushIncludePassLink');
-    if (incl) incl.checked = false;
-    togglePushPassLinkFields();
     ['pushPassLinkUrl', 'pushPassLinkLabel', 'pushPassLinkExpires'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -8192,7 +8155,7 @@ async function createScheduledPush() {
         ? (document.getElementById('schedCampaignTarget')?.value || null)
         : null;
     const audienceId = document.getElementById('schedAudienceTarget')?.value || null;
-    const updatePass = document.getElementById('schedUpdatePass').checked;
+    const updatePass = true;
     const channel = document.getElementById('schedChannel').value || 'apple';
     const schedType = document.getElementById('schedType').value;
     const time = document.getElementById('schedTime').value || '09:00';

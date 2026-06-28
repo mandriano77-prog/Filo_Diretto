@@ -633,6 +633,17 @@ test('Push immediate hides legacy title/message copy fields', () => {
   assert.doesNotMatch(fdPush, /<li><strong>Messaggio<\/strong>/);
 });
 
+test('Push pass link fields stay visible without an include checkbox', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const fdPush = readFd('fd-push.js');
+  const wai = read('src/engine/wai.js');
+  assert.doesNotMatch(dashboard, /id="pushIncludePassLink"/);
+  assert.doesNotMatch(fdPush, /pushIncludePassLink/);
+  assert.match(dashboard, /id="pushPassLinkFields" style="display:block/);
+  assert.match(fdPush, /var passLinkUrl = \(document\.getElementById\('pushPassLinkUrl'\)\?\.value \|\| ''\)\.trim\(\);[\s\S]*body\.include_pass_link = true/);
+  assert.match(wai, /extractFirstUrlFromText/);
+});
+
 test('Push live preview stays clear of form and never leaves visible loading text', () => {
   const css = readFd('fd-push.css');
   const js = readFd('fd-push.js');

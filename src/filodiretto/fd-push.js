@@ -164,10 +164,9 @@
 
   function buildPassBackPreviewRows() {
     var rows = [];
-    var includeLink = document.getElementById('pushIncludePassLink')?.checked;
     var linkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
     var linkLabel = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
-    if (includeLink && linkUrl) {
+    if (linkUrl) {
       rows.push({
         key: 'dynamic_push_link',
         label: linkLabel || 'Scopri di più',
@@ -269,14 +268,14 @@
   }
 
   function buildPassPreviewRequestBody() {
-    var includeLink = document.getElementById('pushIncludePassLink')?.checked;
+    var linkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
     var body = {
       title: getPushTitleValue(),
       message: getPushMessageValue(),
-      update_pass: document.getElementById('pushUpdatePass')?.checked !== false,
+      update_pass: true,
       back_details: (document.getElementById('pushBackDetails')?.value || '').trim() || undefined,
-      include_pass_link: !!includeLink,
-      pass_link_url: (document.getElementById('pushPassLinkUrl')?.value || '').trim() || undefined,
+      include_pass_link: !!linkUrl,
+      pass_link_url: linkUrl || undefined,
       pass_link_label: (document.getElementById('pushPassLinkLabel')?.value || '').trim() || undefined,
     };
     if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
@@ -296,10 +295,9 @@
     var img = document.querySelector('[data-fd-push-preview-strip]');
     var loading = document.querySelector('[data-fd-push-preview-strip-loading]');
     var body = buildPassPreviewRequestBody();
-    var updatePass = body.update_pass;
     var message = body.message;
 
-    if (!updatePass || !message) {
+    if (!message) {
       passPreviewCache = null;
       if (img) {
         img.hidden = true;
@@ -307,9 +305,7 @@
       }
       if (hint) {
         hint.hidden = false;
-        hint.textContent = updatePass
-          ? 'Inserisci un messaggio per vedere l\'anteprima completa'
-          : 'Abilita «Aggiorna contenuto pass» per l\'anteprima strip e pass';
+        hint.textContent = 'Inserisci un messaggio per vedere l\'anteprima completa';
       }
       if (loading) loading.hidden = true;
       setStripPreviewLoading(false);
@@ -394,7 +390,7 @@
 
   function wirePassPreviewListeners() {
     var ids = [
-      'pushTitle', 'pushMessage', 'pushUpdatePass', 'pushIncludePassLink',
+      'pushTitle', 'pushMessage',
       'pushPassLinkUrl', 'pushPassLinkLabel', 'pushBackDetails'
     ];
     ids.forEach(function (id) {
@@ -584,21 +580,20 @@
         : null;
     var audienceId = document.getElementById('pushAudienceTarget')?.value || null;
     var channel = document.getElementById('pushChannel').value || 'apple';
-    var updatePass = document.getElementById('pushUpdatePass').checked;
-
     var body = {
       brand_id: syncBrandIdForPush(),
       title: title,
       message: message,
-      update_pass: updatePass,
+      update_pass: true,
       channel: channel
     };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId) body.campaign_id = campaignId;
 
-    if (document.getElementById('pushIncludePassLink')?.checked) {
+    var passLinkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+    if (passLinkUrl) {
       body.include_pass_link = true;
-      body.pass_link_url = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
+      body.pass_link_url = passLinkUrl;
       body.pass_link_label = (document.getElementById('pushPassLinkLabel')?.value || '').trim();
       var expLocal = document.getElementById('pushPassLinkExpires')?.value;
       if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
@@ -1294,7 +1289,6 @@
 
     ensurePushConfirmModal();
     var channel = document.getElementById('pushChannel')?.value || 'apple';
-    var updatePass = document.getElementById('pushUpdatePass')?.checked;
     var summary = document.getElementById('fdPushConfirmSummary');
     var zeroBanner = document.getElementById('fdPushConfirmZero');
     var submitBtn = document.getElementById('fdPushConfirmSubmit');
@@ -1311,7 +1305,6 @@
     if (linkedLabel && document.getElementById('pushLinkedContent')?.value) {
       html += '<li><strong>Contenuto collegato</strong>' + esc(linkedLabel) + '</li>';
     }
-    html += '<li><strong>Aggiorna contenuto pass</strong>' + (updatePass ? 'Sì' : 'No') + '</li>';
     if (result.note) html += '<li><strong>Nota</strong>' + esc(result.note) + '</li>';
     if (summary) summary.innerHTML = html;
 

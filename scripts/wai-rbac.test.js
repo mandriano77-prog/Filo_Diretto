@@ -71,6 +71,23 @@ test('W.AI push preserves back details and pass link like manual push', () => {
   assert.equal(out.payload.channel, 'all');
 });
 
+test('W.AI push extracts pass link from prompt when model omits link fields', () => {
+  const out = validateWaiResponse({
+    intent: 'push.send',
+    type: 'create',
+    payload: {
+      title: 'INFO PASS',
+      message: 'Apri il pass per i dettagli',
+      back_details: 'Compila il questionario entro venerdì.'
+    },
+    preview: { summary: '', details: {}, warnings: [] }
+  }, 'brand-1', 'manda push a tutti con link https://example.com/questionario');
+
+  assert.equal(out.payload.include_pass_link, true);
+  assert.equal(out.payload.pass_link_url, 'https://example.com/questionario');
+  assert.equal(out.payload.pass_link_label, 'INFO PASS');
+});
+
 test('W.AI strip generation allows text only when the brief asks for it', () => {
   const routes = fs.readFileSync(path.join(__dirname, '../src/api/routes.js'), 'utf8');
   assert.match(routes, /function waiStripPromptRequestsText/);

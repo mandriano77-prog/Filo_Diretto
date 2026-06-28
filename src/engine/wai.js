@@ -110,7 +110,7 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - title: max 22 caratteri, incisivo, usato per notifica Wallet/changeMessage
 - message: max 66 caratteri, usato per notifica Wallet/changeMessage
 - back_details: max 500 caratteri, testo completo da mostrare sul retro del pass. Se il manager scrive condizioni, promo, istruzioni, descrizione estesa, regolamento o informazioni da leggere, mettile qui. NON lasciare vuoto se la richiesta contiene dettagli utili.
-- include_pass_link/pass_link_url/pass_link_label: usa questi campi se la richiesta contiene una URL o chiede un link cliccabile nel pass.
+- include_pass_link/pass_link_url/pass_link_label: campo fondamentale. Se la richiesta contiene una URL o chiede un link cliccabile nel pass, compila SEMPRE pass_link_url e pass_link_label; include_pass_link diventa true automaticamente.
 - channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
@@ -379,6 +379,13 @@ function normalizePayload(intent, payload, brandId) {
     next.brand_id = brandId;
   }
   return next;
+}
+
+function extractFirstUrlFromText(...parts) {
+  const text = parts.map((p) => String(p || '')).join(' ');
+  const match = text.match(/https?:\/\/[^\s"'<>]+/i);
+  if (!match) return '';
+  return match[0].replace(/[),.;!?]+$/g, '');
 }
 
 /** LLM sometimes puts push fields only in preview.details or mis-tags type as system. */
@@ -695,7 +702,12 @@ function validateWaiResponse(raw, brandId, userPrompt) {
     } else {
       delete payload.back_details;
     }
-    const linkUrl = String(payload.pass_link_url || preview.details?.pass_link_url || '').trim();
+    const linkUrl = String(
+      payload.pass_link_url
+      || preview.details?.pass_link_url
+      || extractFirstUrlFromText(userPrompt, payload.back_details, preview.summary)
+      || ''
+    ).trim();
     if (linkUrl) {
       payload.include_pass_link = true;
       payload.pass_link_url = linkUrl;
