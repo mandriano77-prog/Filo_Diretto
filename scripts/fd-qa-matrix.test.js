@@ -652,6 +652,15 @@ test('HR dashboard distinguishes Google object/update status from confirmed inst
   assert.doesNotMatch(dashboard, /Google pending<\/span>/);
 });
 
+test('HR pass table uses compact install check/cross icons', () => {
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /function passInstallStatusBadge/);
+  assert.match(dashboard, /fd-install-icon--ok/);
+  assert.match(dashboard, /fd-install-icon--ko/);
+  assert.match(dashboard, /passGoogleUpdateOk\(p\)/);
+  assert.doesNotMatch(dashboard, /return '<span class="badge inactive" title="Solo generato, non salvato nel wallet">Non installato<\/span>'/);
+});
+
 test('HR wallet columns use simplified channel wording', () => {
   const dashboard = read('src/dashboard/index.html');
   assert.match(dashboard, /if \(passGoogleSaved\(l\) \|\| passGoogleUpdateOk\(l\) \|\| l\.google_wallet_object_id\) parts\.push\('Google'\)/);

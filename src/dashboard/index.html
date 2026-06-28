@@ -6271,16 +6271,8 @@ async function loadPasses(resetPage = false) {
             </tr></thead>
             <tbody>${filteredPasses.map(p => {
                 const rowSelected = getPassSelectedIds().has(p.id);
-                const googleSaved = passGoogleSaved(p);
-                const samsungSaved = passSamsungSaved(p);
-                const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
-                const installDateStr = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
                 const useTextBadges = typeof isHrDashboard === 'function' && isHrDashboard();
-                const installCellInner = useTextBadges
-                    ? passInstallStatusBadge(p)
-                    : (isInstalled
-                        ? `<span title="Installato" style="color:var(--green);font-size:16px;line-height:1;">&#9745;</span><span style="font-size:11px;color:var(--text);">${installDateStr ? esc(installDateStr) : '<span style="opacity:0.5">—</span>'}</span>`
-                        : `<span title="Non installato" style="opacity:0.35;font-size:16px;line-height:1;">&#9744;</span><span style="font-size:11px;opacity:0.45;">—</span>`);
+                const installCellInner = passInstallStatusBadge(p);
                 return `<tr data-pass-id="${esc(p.id)}">
                     <td class="pass-table__select-col bulk-select-col">
                         <input type="checkbox" class="pass-row-cb a2w-bulk-check" aria-label="Seleziona pass" data-pass-id="${esc(p.id)}" ${rowSelected ? 'checked' : ''} onchange="onPassRowCheckboxChange('${p.id}', this)">
@@ -6289,7 +6281,7 @@ async function loadPasses(resetPage = false) {
                         <button type="button" class="pass-id-copy" onclick="copyPassIdToClipboard('${esc(p.id)}')" title="${esc(p.id)}">${esc(formatPassIdShort(p.id))}</button>
                     </td>
                     <td style="font-size:11px;">${new Date(p.created_at).toLocaleDateString('it')}</td>
-                    <td style="white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:8px;">${installCellInner}</span></td>
+                    <td style="white-space:nowrap;text-align:center;">${installCellInner}</td>
                     <td style="text-align:center;font-size:12px;">${(() => {
                         const parts = [];
                         if (p.push_count > 0) {
@@ -11436,28 +11428,18 @@ function formatActivityLogDetails(ev) {
 function passInstallStatusBadge(p) {
     const googleSaved = passGoogleSaved(p);
     const googleUpdateOk = passGoogleUpdateOk(p);
-    const googlePending = passGooglePending(p);
     const samsungSaved = passSamsungSaved(p);
-    const samsungPending = passSamsungPending(p);
-    const isInstalled = !!(p.device_id || googleSaved || samsungSaved);
-    if (!isInstalled) {
-        if (googleUpdateOk) {
-            return '<span class="badge active" title="Google Wallet aggiornato: object ID valido e update accettati. Google non espone un device ID come Apple; il salvataggio resta confermabile solo da callback/status.">Google update OK</span>';
-        }
-        if (googlePending) {
-            return '<span class="badge inactive" title="Oggetto Google creato. In attesa di callback salvataggio o primo update accettato.">Google object</span>';
-        }
-        if (samsungPending) {
-            return '<span class="badge inactive" title="Oggetto Samsung creato, in attesa di conferma salvataggio">Samsung pending</span>';
-        }
-        return '<span class="badge inactive" title="Solo generato, non salvato nel wallet">Non installato</span>';
-    }
+    const isInstalled = !!(p.device_id || googleSaved || googleUpdateOk || samsungSaved);
     const label = p.device_source === 'google' ? 'Google Wallet'
         : p.device_source === 'samsung' ? 'Samsung Wallet'
         : p.device_source === 'apple' ? 'Apple Wallet'
+        : googleUpdateOk ? 'Google Wallet aggiornato'
         : 'Installato';
     const date = p.install_date ? new Date(p.install_date).toLocaleDateString('it') : '';
-    return `<span class="badge active" title="${esc(label)}">${esc(label)}${date ? ' · ' + esc(date) : ''}</span>`;
+    const title = isInstalled ? `${label}${date ? ' · ' + date : ''}` : 'Non installato';
+    return isInstalled
+        ? `<span class="fd-install-icon fd-install-icon--ok" title="${esc(title)}" aria-label="${esc(title)}" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;color:var(--green);font-size:18px;font-weight:800;line-height:1;">&#10004;</span>`
+        : `<span class="fd-install-icon fd-install-icon--ko" title="${esc(title)}" aria-label="${esc(title)}" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;color:#dc2626;font-size:18px;font-weight:800;line-height:1;">&#10006;</span>`;
 }
 
 function passReachStatusBadges(p) {
