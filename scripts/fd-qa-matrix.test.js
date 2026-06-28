@@ -606,6 +606,23 @@ test('Push immediate hides legacy title/message copy fields', () => {
   assert.doesNotMatch(fdPush, /<li><strong>Messaggio<\/strong>/);
 });
 
+test('Push send shows mailing-style progress counters', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const dispatch = read('src/engine/push-dispatch.js');
+  const gwSync = read('src/engine/google-wallet-sync.js');
+  assert.match(dashboard, /id="pushProgressPanel"/);
+  assert.match(dashboard, /function setPushProgressPanel/);
+  assert.match(dashboard, /setPushProgressPanel\(job\)/);
+  assert.match(dashboard, /pushProgressApple/);
+  assert.match(dashboard, /pushProgressGoogle/);
+  assert.match(dashboard, /pushProgressSamsung/);
+  assert.match(dispatch, /phase:\s*'targets'/);
+  assert.match(dispatch, /phase:\s*'google'/);
+  assert.match(dispatch, /phase:\s*'apns'/);
+  assert.match(gwSync, /onProgress = null/);
+  assert.match(gwSync, /processed\+\+/);
+});
+
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {
   const dispatch = read('src/engine/push-dispatch.js');
   assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);

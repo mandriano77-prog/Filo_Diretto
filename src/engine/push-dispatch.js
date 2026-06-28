@@ -191,6 +191,16 @@ async function executeWalletPush(body, ctx = {}) {
   const googleEmpty = !sendGoogle || googleEligible.length === 0;
   const samsungEmpty = !sendSamsung || samsungEligible.length === 0 || !samsungWallet.isConfigured();
 
+  if (ctx.onProgress) {
+    await ctx.onProgress({
+      phase: 'targets',
+      target_passes: targetPasses.length,
+      apple_total: sendApple ? devices.length : 0,
+      google_total: sendGoogle ? googleEligible.length : 0,
+      samsung_total: sendSamsung ? samsungEligible.length : 0,
+    });
+  }
+
   if (appleEmpty && googleEmpty && samsungEmpty) {
     const allDevices = await pool.query('SELECT COUNT(*) as count FROM device_registrations');
     const allPasses = await pool.query('SELECT DISTINCT brand_id FROM pass_instances');
@@ -315,7 +325,12 @@ async function executeWalletPush(body, ctx = {}) {
   }
 
   if (ctx.onProgress) {
-    await ctx.onProgress({ phase: 'wallet_sync', total_apns: devices.length });
+    await ctx.onProgress({
+      phase: 'wallet_sync',
+      total_apns: devices.length,
+      google_total: sendGoogle ? googleEligible.length : 0,
+      samsung_total: sendSamsung ? samsungEligible.length : 0,
+    });
   }
 
   let googleSync = { attempted: 0, updated: 0, errors: 0, skipped: !sendGoogle };
@@ -328,6 +343,9 @@ async function executeWalletPush(body, ctx = {}) {
       message,
       back_details,
       passLink,
+      onProgress: ctx.onProgress
+        ? (progress) => ctx.onProgress({ phase: 'google', ...progress })
+        : null,
     });
   }
 
@@ -346,6 +364,14 @@ async function executeWalletPush(body, ctx = {}) {
     const applied = await applyApplePushResults(devices, batchResults, ctx);
     sentAppleCount = applied.sentAppleCount;
     pushResults = applied.pushResults;
+    if (ctx.onProgress) {
+      await ctx.onProgress({
+        phase: 'apns',
+        sent: sentAppleCount,
+        processed: devices.length,
+        total: devices.length,
+      });
+    }
   }
 
   const sentCombined = sentAppleCount + (googleSync.updated || 0) + (samsungSync.notified || 0);

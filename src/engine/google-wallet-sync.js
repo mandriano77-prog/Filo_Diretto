@@ -15,6 +15,7 @@ async function syncGoogleWalletObjectsForPasses({
   back_details,
   passLink = null,
   concurrency = DEFAULT_CONCURRENCY,
+  onProgress = null,
 }) {
   if (!googleWallet.isConfigured()) {
     return { attempted: 0, updated: 0, errors: 0, skipped: true };
@@ -30,7 +31,22 @@ async function syncGoogleWalletObjectsForPasses({
 
   const outcomes = new Array(eligible.length);
   let cursor = 0;
+  let processed = 0;
+  let updatedCount = 0;
+  let errorCount = 0;
   const workers = Math.max(1, Math.min(concurrency, eligible.length));
+
+  async function emitProgress() {
+    if (typeof onProgress !== 'function') return;
+    await onProgress({
+      attempted: eligible.length,
+      processed,
+      updated: updatedCount,
+      errors: errorCount,
+    });
+  }
+
+  await emitProgress();
 
   async function worker() {
     while (true) {
@@ -41,6 +57,9 @@ async function syncGoogleWalletObjectsForPasses({
         const template = await getTemplate(pass.template_id);
         if (!template) {
           outcomes[index] = { ok: false, error: 'missing_template' };
+          processed++;
+          errorCount++;
+          await emitProgress();
           continue;
         }
         const passForGoogle = withCurrentPushDetails(pass, { title, message, back_details, passLink });
@@ -55,10 +74,16 @@ async function syncGoogleWalletObjectsForPasses({
           : (notifyResult?.messageType === 'TEXT_AND_NOTIFY' ? 'delivered' : 'silent');
         await markGoogleWalletUpdateStatus(pass.serial_number, googleStatus);
         outcomes[index] = { ok: true };
+        processed++;
+        updatedCount++;
+        await emitProgress();
       } catch (err) {
         console.error('[GoogleWallet] Sync error for serial', pass.serial_number, err.message);
         await markGoogleWalletUpdateStatus(pass.serial_number, err.message || 'failed').catch(() => {});
         outcomes[index] = { ok: false, error: err.message };
+        processed++;
+        errorCount++;
+        await emitProgress();
       }
     }
   }
