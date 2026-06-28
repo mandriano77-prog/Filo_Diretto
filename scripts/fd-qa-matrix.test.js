@@ -284,6 +284,19 @@ test('Filo template delete uses direct button with confirm flow', () => {
   assert.doesNotMatch(js, /fd-tpl-card-menu__trigger/);
 });
 
+test('Template image edits mark modal dirty before save', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const dirty = readFd('fd-form-dirty.js');
+  assert.match(dirty, /window\.tplImageCache/);
+  assert.match(dashboard, /function syncTplImageDirtyGlobals/);
+  assert.match(dashboard, /window\.tplImageCache = tplImageCache/);
+  assert.match(dashboard, /window\.tplImageRemovals = tplImageRemovals/);
+  assert.match(dashboard, /window\.tplWalletIconMediaId = tplWalletIconMediaId/);
+  assert.match(dashboard, /clearTplImage\(imageType[\s\S]*notifyTplDirtyState\(\)/);
+  assert.match(dashboard, /tplPickFromMedia\(imageType\)[\s\S]*syncTplImageDirtyGlobals\(\)[\s\S]*notifyTplDirtyState\(\)/);
+  assert.doesNotMatch(dashboard, /if \(imageType === 'wallet_icon'\) \{\s*await persistHrWalletIcon\(\);/);
+});
+
 test('Filo passes localize status badges and copy icon', () => {
   const js = readFd('fd-passes.js');
   const css = readFd('fd-passes.css');

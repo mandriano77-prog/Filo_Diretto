@@ -6878,6 +6878,7 @@ async function openTemplateModal() {
     tplImageCache = {};
     tplImageRemovals = {};
     tplWalletIconMediaId = null;
+    syncTplImageDirtyGlobals();
     const wiPreview = document.getElementById('tplImgWalletIconPreview');
     if (wiPreview) { wiPreview.style.display = 'none'; wiPreview.removeAttribute('src'); }
     if (!isHrDashboard()) document.getElementById('tplType').value = 'storeCard';
@@ -6938,6 +6939,8 @@ async function editTemplate(id) {
     // Reset and load existing images
     tplImageCache = {};
     tplImageRemovals = {};
+    tplWalletIconMediaId = null;
+    syncTplImageDirtyGlobals();
     ['tplImgLogo','tplImgStrip','tplImgBg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const existingImages = t.style?.images || {};
     if (typeof a2wApplyTplStyleImages === 'function') {
@@ -7031,6 +7034,7 @@ async function saveTemplate() {
             await clearHrWalletIconIfRequested();
         }
         tplImageRemovals = {};
+        syncTplImageDirtyGlobals();
     }
     if (isHrDashboard() && brandId) {
         try {
@@ -7372,6 +7376,14 @@ function onPassTypeChange() {
 
 let tplImageCache = {}; // { logo: base64, strip: base64, ... }
 let tplImageRemovals = {}; // { thumbnail: true, ... } — persisted via DELETE on save
+let tplWalletIconMediaId = null;
+
+function syncTplImageDirtyGlobals() {
+    window.tplImageCache = tplImageCache;
+    window.tplImageRemovals = tplImageRemovals;
+    window.tplWalletIconMediaId = tplWalletIconMediaId;
+}
+syncTplImageDirtyGlobals();
 
 const TPL_IMAGE_INPUT_IDS = {
     logo: 'tplImgLogo',
@@ -7431,9 +7443,11 @@ function clearTplImage(imageType, opts = {}) {
         preview.removeAttribute('src');
     }
     if (imageType === 'wallet_icon') tplWalletIconMediaId = null;
+    syncTplImageDirtyGlobals();
     if (typeof a2wSyncTplUploadZone === 'function') a2wSyncTplUploadZone(imageType);
     updatePassPreview();
     updateTplImageRemoveButtons();
+    notifyTplDirtyState();
     if (!opts.skipToast && typeof toast === 'function') {
         toast((mediaTypeLabel(imageType) || imageType) + ' rimossa — salva il template per confermare');
     }
@@ -7473,9 +7487,9 @@ async function clearHrWalletIconIfRequested() {
         throw new Error('Rimozione icona notifiche fallita');
     } finally {
         delete tplImageRemovals.wallet_icon;
+        syncTplImageDirtyGlobals();
     }
 }
-let tplWalletIconMediaId = null;
 
 async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
     if (!brandId || !isHrDashboard()) return { ok: false, skipped: true };
@@ -7492,6 +7506,7 @@ async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
         }
         delete tplImageCache.wallet_icon;
         tplWalletIconMediaId = null;
+        syncTplImageDirtyGlobals();
         toast('Icona notifiche aggiornata — i pass ricevono l\'aggiornamento in Wallet');
         return { ok: true };
     }
@@ -7509,6 +7524,7 @@ async function persistHrWalletIcon({ reapplyExisting = false } = {}) {
                 return { ok: false };
             }
             tplWalletIconMediaId = null;
+            syncTplImageDirtyGlobals();
             toast('Icona notifiche sincronizzata sui pass');
             return { ok: true };
         } catch (e) {
@@ -7592,11 +7608,11 @@ function previewTplImage(input, imageType) {
         if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
         updatePassPreview();
         updateTplImageRemoveButtons();
-        notifyTplDirtyState();
         if (imageType === 'wallet_icon') {
             tplWalletIconMediaId = null;
-            persistHrWalletIcon().catch((e) => console.warn('[HR] wallet icon persist:', e));
         }
+        syncTplImageDirtyGlobals();
+        notifyTplDirtyState();
     };
     reader.readAsDataURL(file);
 }
@@ -12184,9 +12200,10 @@ async function tplPickFromMedia(imageType) {
         }
         updatePassPreview();
         updateTplImageRemoveButtons();
+        syncTplImageDirtyGlobals();
         notifyTplDirtyState();
         if (imageType === 'wallet_icon') {
-            await persistHrWalletIcon();
+            toast('Icona notifiche selezionata — salva il template per confermare');
             return;
         }
         toast(mediaTypeLabel(imageType) + ' dalla Media Library');
