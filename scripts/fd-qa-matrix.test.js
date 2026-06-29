@@ -648,13 +648,31 @@ test('Push live preview stays clear of form and never leaves visible loading tex
   const css = readFd('fd-push.css');
   const js = readFd('fd-push.js');
   const preview = read('src/engine/push-pass-preview.js');
-  assert.match(css, /--fd-push-preview-nudge-x:\s*28px/);
-  assert.match(css, /transform:\s*translateX\(var\(--fd-push-preview-nudge-x\)\)/);
+  assert.doesNotMatch(css, /--fd-push-preview-nudge-x/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*align-self:\s*stretch/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*sticky/);
+  assert.doesNotMatch(css, /transform:\s*translateX\(var\(--fd-push-preview-nudge-x\)\)/);
   assert.match(js, /function setStripPreviewLoading/);
   assert.match(js, /loading\.hidden = true/);
   assert.doesNotMatch(js, /loading\.hidden = false/);
   assert.match(preview, /if \(updatePass\) \{/);
   assert.doesNotMatch(preview, /updatePass && announcement\?\.message/);
+});
+
+test('Push audience filter lives near final targeting controls', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const linkedIdx = dashboard.indexOf('id="pushLinkedContent"');
+  const audienceIdx = dashboard.indexOf('id="pushAudienceTarget"');
+  const sendErrorIdx = dashboard.indexOf('id="pushSendError"');
+  assert.ok(linkedIdx > -1, 'push linked content control exists');
+  assert.ok(audienceIdx > linkedIdx, 'audience should be after linked content');
+  assert.ok(sendErrorIdx > audienceIdx, 'audience should remain before send feedback and CTA');
+});
+
+test('Push test device helper explains installed wallet source', () => {
+  const js = readFd('fd-push.js');
+  assert.match(js, /pass\/device da usare per i test/);
+  assert.match(js, /pass gia installati o salvati nel Wallet/);
 });
 
 test('Push send shows mailing-style progress counters', () => {

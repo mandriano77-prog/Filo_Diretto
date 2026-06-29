@@ -70,7 +70,8 @@ test('Push preview and unified channel segmented control', () => {
   assert.match(js, /channelsToApiValue/);
   assert.match(js, /sel\.setAttribute\('hidden'/);
   assert.match(css, /fd-push-channel-native/);
-  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*fixed/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*sticky/);
+  assert.doesNotMatch(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]{0,260}position:\s*fixed/);
   assert.match(css, /fd-push-preview-sticky-top/);
 });
 

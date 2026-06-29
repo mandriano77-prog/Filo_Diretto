@@ -1,7 +1,6 @@
 html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 340px;
   --fd-push-preview-sticky-top: 24px;
-  --fd-push-preview-nudge-x: 28px;
 }
 
 html[data-app='filodiretto'] #push.push--fd-ds {
@@ -171,7 +170,7 @@ html[data-app='filodiretto'] #pushPanel_immediate .fd-push-form-col .push-card {
 }
 
 html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
-  align-self: start;
+  align-self: stretch;
   min-width: 0;
 }
 
@@ -193,35 +192,31 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
 
 @media (min-width: 1024px) {
   html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
-    min-height: 1px;
+    min-height: 100%;
     overflow: visible;
     scrollbar-gutter: stable;
   }
 
   html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col .fd-push-preview {
-    position: fixed;
+    position: sticky;
     top: var(--fd-push-preview-sticky-top);
-    right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
-    transform: translateX(var(--fd-push-preview-nudge-x));
-    width: var(--fd-push-preview-width);
-    max-width: calc(100vw - var(--fd-push-preview-nudge-x) - 32px);
+    width: 100%;
+    max-width: var(--fd-push-preview-width);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
-    z-index: var(--fd-z-sticky, 100);
+    z-index: 2;
   }
 
   html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
-    position: fixed;
+    position: sticky;
     top: var(--fd-push-preview-sticky-top);
-    right: max(var(--fd-space-5, 24px), calc((100vw - var(--fd-layout-max-width, 1280px)) / 2));
-    transform: translateX(var(--fd-push-preview-nudge-x));
-    width: var(--fd-push-preview-width);
-    max-width: calc(100vw - var(--fd-push-preview-nudge-x) - 32px);
+    width: 100%;
+    max-width: var(--fd-push-preview-width);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
-    z-index: var(--fd-z-sticky, 100);
+    z-index: 2;
   }
 }
 

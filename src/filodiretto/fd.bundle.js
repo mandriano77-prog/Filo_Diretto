@@ -9402,7 +9402,7 @@
       '<div class="fd-wallet-pass__header-field" data-fd-push-preview-header hidden></div></div>' +
       '<div class="fd-wallet-pass__strip">' +
       '<img class="fd-wallet-pass__strip-img" data-fd-push-preview-strip alt="Strip pass" hidden>' +
-      '<div class="fd-push-preview__pass-strip-hint" data-fd-push-preview-strip-hint>Inserisci messaggio e abilita aggiornamento pass</div>' +
+      '<div class="fd-push-preview__pass-strip-hint" data-fd-push-preview-strip-hint>Anteprima strip del pass</div>' +
       '<div class="fd-push-preview__pass-strip-loading" data-fd-push-preview-strip-loading hidden>Caricamento…</div></div>' +
       '<div class="fd-wallet-pass__secondary" data-fd-push-preview-secondary>' +
       '<div class="fd-wallet-pass__field"><span class="fd-wallet-pass__field-label">NOME</span><span class="fd-wallet-pass__field-value">Mario Rossi</span></div>' +
@@ -9428,7 +9428,7 @@
     block.className = 'fd-push-test';
     block.innerHTML =
       '<label class="form-label" for="fdPushTestPass">Dispositivo di prova</label>' +
-      '<p class="form-hint" style="margin:0 0 8px">Invia solo al pass selezionato (utile prima della campagna massiva).</p>' +
+      '<p class="form-hint" style="margin:0 0 8px">Seleziona qui il pass/device da usare per i test. L&#39;elenco si popola dai pass gia installati o salvati nel Wallet.</p>' +
       '<div class="fd-push-test__row">' +
       '<select id="fdPushTestPass" aria-label="Pass di prova"></select>' +
       '<button type="button" class="fd-btn fd-btn--secondary" id="fdPushTestBtn">Invia di prova</button>' +

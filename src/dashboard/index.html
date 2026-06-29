@@ -1622,12 +1622,6 @@
                             <select id="pushCampaignTarget" aria-label="Campagna target">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
-                        </div>                        <div class="form-group">
-                            <label class="form-label" for="pushAudienceTarget">Audience (opzionale)</label>
-                            <select id="pushAudienceTarget" aria-label="Audience opzionale">
-                                <option value="">— Nessuna (usa campagna o tutti) —</option>
-                            </select>
-                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna. Crea segmenti in <strong>Audience</strong>.</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="pushChannel">Canale invio</label>
@@ -1695,6 +1689,13 @@
                                 <option value="">— Nessuno —</option>
                             </select>
                             <p style="font-size:11px;color:var(--text2);margin-top:4px;">Reward, Challenge o Convenzione: il link verrà inserito nel Link 1 del retro di ogni pass.</p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="pushAudienceTarget">Audience (opzionale)</label>
+                            <select id="pushAudienceTarget" aria-label="Audience opzionale">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
+                            </select>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna. Crea segmenti in <strong>Audience</strong>.</p>
                         </div>
                         <p class="push-send-error" id="pushSendError" role="alert" hidden></p>
                         <div id="pushProgressPanel" class="push-progress-panel" hidden aria-live="polite" style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:rgba(139,92,246,0.06);">
