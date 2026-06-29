@@ -75,24 +75,53 @@ async function loadHubContext(claims) {
   };
 }
 
+function normalizePublicThemeHex(value) {
+  const raw = String(value || '').trim();
+  const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return `#${h.toUpperCase()}`;
+}
+
+function publicBrandTheme(brand) {
+  const cfg = brand?.config || {};
+  const theme = cfg.brand_theme || {};
+  const accent = normalizePublicThemeHex(theme.accent || theme.baseColor || cfg.labelColor);
+  if (!accent) return null;
+  return {
+    accent,
+    accentHover: normalizePublicThemeHex(theme.accentHover || theme.baseColor) || accent,
+    textOnAccent: normalizePublicThemeHex(theme.textOnAccent) || '#FFFFFF'
+  };
+}
+
+function publicBrandLogoUrl(brand) {
+  const direct = normalizePublicImageUrl(brand?.logo_url || brand?.config?.logo_url);
+  if (direct) return direct;
+  return brand?.slug ? `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo` : null;
+}
+
 function publicBrand(brand) {
   return {
     id: brand.id,
     name: brand.name,
     slug: brand.slug,
-    logo_url: normalizePublicImageUrl(brand.logo_url || brand.config?.logo_url)
+    logo_url: publicBrandLogoUrl(brand),
+    brand_theme: publicBrandTheme(brand)
   };
 }
 
-function publicSettings(settings) {
+function publicSettings(settings, brand) {
   let categories = settings?.categories_enabled;
   if (typeof categories === 'string') {
     try { categories = JSON.parse(categories); } catch { categories = []; }
   }
   if (!Array.isArray(categories)) categories = [];
+  const theme = publicBrandTheme(brand);
   return {
-    logo_url: normalizePublicImageUrl(settings?.logo_url),
-    accent_color: settings?.accent_color || '#8B5CF6',
+    logo_url: normalizePublicImageUrl(settings?.logo_url) || publicBrandLogoUrl(brand),
+    accent_color: theme?.accent || settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,
     geofencing_enabled: settings?.geofencing_enabled !== false
@@ -287,7 +316,7 @@ function registerHubPwaRoutes(router) {
       res.json({
         profile: ctx.profile,
         brand: publicBrand(ctx.brand),
-        settings: publicSettings(ctx.settings),
+        settings: publicSettings(ctx.settings, ctx.brand),
         pga_settings: publicPgaSettings(pgaSettings),
         coin_balance: coinBalance,
         merchants: merchants.map(publicMerchant),

@@ -698,12 +698,22 @@ test('Push live preview stays clear of form and never leaves visible loading tex
   assert.doesNotMatch(css, /--fd-push-preview-nudge-x/);
   assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*align-self:\s*stretch/);
   assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*sticky/);
+  assert.match(css, /@media \(max-width: 1023px\)[\s\S]*#pushPanel_immediate \.fd-push-aside-col,[\s\S]*display:\s*none !important/);
   assert.doesNotMatch(css, /transform:\s*translateX\(var\(--fd-push-preview-nudge-x\)\)/);
   assert.match(js, /function setStripPreviewLoading/);
   assert.match(js, /loading\.hidden = true/);
   assert.doesNotMatch(js, /loading\.hidden = false/);
   assert.match(preview, /if \(updatePass\) \{/);
   assert.doesNotMatch(preview, /updatePass && announcement\?\.message/);
+});
+
+test('Push progress counters show Apple and Google only', () => {
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /pushProgressCounters" style="display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(dashboard, /id="pushProgressApple"/);
+  assert.match(dashboard, /id="pushProgressGoogle"/);
+  assert.doesNotMatch(dashboard, /id="pushProgressSamsung"/);
+  assert.doesNotMatch(dashboard, /document\.getElementById\('pushProgressSamsung'\)/);
 });
 
 test('Push audience filter lives near final targeting controls', () => {
@@ -747,7 +757,7 @@ test('Push send shows mailing-style progress counters', () => {
   assert.match(dashboard, /setPushProgressPanel\(job\)/);
   assert.match(dashboard, /pushProgressApple/);
   assert.match(dashboard, /pushProgressGoogle/);
-  assert.match(dashboard, /pushProgressSamsung/);
+  assert.doesNotMatch(dashboard, /pushProgressSamsung/);
   assert.match(dispatch, /phase:\s*'targets'/);
   assert.match(dispatch, /phase:\s*'google'/);
   assert.match(dispatch, /phase:\s*'apns'/);
@@ -808,6 +818,25 @@ test('dashboard brand theme is derived from uploaded brand assets', () => {
   assert.match(dashboard, /--fd-color-primary-500/);
   assert.match(dashboard, /--accent-subtle/);
   assert.match(dashboard, /applyBrandTheme\(\)/);
+});
+
+test('Public HR activation surfaces inherit brand theme and logo', () => {
+  const routes = read('src/api/routes.js');
+  const join = read('src/join/index.html');
+  const activate = read('src/activate/index.html');
+  const mailer = read('src/engine/mailer.js');
+  const hrActivation = read('src/engine/hr-activation.js');
+  const hubPwa = read('src/api/hub-pwa.js');
+  assert.match(routes, /function publicBrandTheme/);
+  assert.match(routes, /logo_url:\s*publicBrandLogoPath\(brand\)/);
+  assert.match(routes, /brand_theme:\s*publicBrandTheme\(brand\)/);
+  assert.match(join, /function applyBrandChrome/);
+  assert.match(activate, /function applyBrandChrome/);
+  assert.match(mailer, /function buildEmployeeWalletEmailHtml/);
+  assert.match(mailer, /brandLogoAttachment/);
+  assert.match(hrActivation, /activationEmailBrandContext/);
+  assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
+  assert.match(hubPwa, /logo_url:\s*normalizePublicImageUrl\(settings\?\.logo_url\) \|\| publicBrandLogoUrl\(brand\)/);
 });
 
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {

@@ -22,6 +22,25 @@ function joinUrl(slug) {
   return `${publicBaseUrl()}/join/${encodeURIComponent(slug)}`;
 }
 
+async function activationEmailBrandContext(brand) {
+  const context = { brandTheme: brand?.config?.brand_theme || null, brandLogo: null, brandLogoAttachment: null };
+  if (!brand) return context;
+  try {
+    const { resolveBrandLogoRawBuffer, buildInviteEmailLogoAttachment } = require('./brand-wallet-logo');
+    const resolved = await resolveBrandLogoRawBuffer(brand);
+    if (resolved?.buffer?.length) {
+      const attachment = await buildInviteEmailLogoAttachment(resolved.buffer);
+      if (attachment?.cid) {
+        context.brandLogoAttachment = attachment;
+        context.brandLogo = { cid: attachment.cid };
+      }
+    }
+  } catch (err) {
+    console.warn('[activation-email] brand logo context failed:', err.message);
+  }
+  return context;
+}
+
 function emailDomain(email) {
   const parts = String(email || '').trim().toLowerCase().split('@');
   return parts.length === 2 ? parts[1] : '';
@@ -209,6 +228,7 @@ async function confirmMemberActivation(db, token, { consents = {}, template_id, 
 async function distributeActivationEmails(db, brandId, memberIds, { template_id, resend: resendExisting = false } = {}) {
   const brand = await db.getBrand(brandId);
   if (!brand) throw new Error('Brand non trovato');
+  const emailBrand = await activationEmailBrandContext(brand);
 
   const summary = { sent: 0, skipped: 0, errors: [] };
 
@@ -239,7 +259,8 @@ async function distributeActivationEmails(db, brandId, memberIds, { template_id,
         firstName: member.first_name,
         brandName: brand.name,
         activateUrl: url,
-        dpoEmail: brand.dpo_email
+        dpoEmail: brand.dpo_email,
+        ...emailBrand
       });
       summary.sent++;
     } catch (err) {
@@ -319,12 +340,14 @@ async function publicJoinByEmail(db, {
   }
 
   const { url } = await issueMemberActivation(db, member, { source: 'public_qr' });
+  const emailBrand = await activationEmailBrandContext(brand);
   await sendActivationEmail({
     to: member.email,
     firstName: member.first_name,
     brandName: brand.name,
     activateUrl: url,
-    dpoEmail: brand.dpo_email
+    dpoEmail: brand.dpo_email,
+    ...emailBrand
   });
 
   await db.logEnrollmentAttempt({
@@ -343,7 +366,7 @@ async function publicJoinByEmail(db, {
 
 async function runActivationReminders(db) {
   const r = await db.pool.query(
-    `SELECT m.*, b.name AS brand_name, b.dpo_email
+    `SELECT m.*, b.name AS brand_name, b.dpo_email, b.config AS brand_config
      FROM members m
      JOIN brands b ON b.id = m.brand_id
      WHERE m.activation_status = 'invited'
@@ -359,11 +382,18 @@ async function runActivationReminders(db) {
   for (const member of r.rows) {
     try {
       const { url } = await issueMemberActivation(db, member, { source: member.activation_source || 'bulk_email' });
+      const emailBrand = await activationEmailBrandContext({
+        name: member.brand_name,
+        dpo_email: member.dpo_email,
+        config: member.brand_config
+      });
       await sendActivationReminderEmail({
         to: member.email,
         firstName: member.first_name,
         brandName: member.brand_name,
-        activateUrl: url
+        activateUrl: url,
+        dpoEmail: member.dpo_email,
+        ...emailBrand
       });
       await db.pool.query(
         `UPDATE members SET activation_reminder_count = COALESCE(activation_reminder_count, 0) + 1, updated_at = NOW() WHERE id = $1`,
@@ -380,6 +410,7 @@ async function runActivationReminders(db) {
 
 async function resendMemberActivationEmail(db, member, brand) {
   if (!member?.email) throw new Error('Email mancante');
+  const emailBrand = await activationEmailBrandContext(brand);
 
   const status = member.activation_status || 'candidate';
   if (status === 'activated') {
@@ -390,7 +421,8 @@ async function resendMemberActivationEmail(db, member, brand) {
       firstName: member.first_name,
       brandName: brand.name,
       accessUrl: url,
-      dpoEmail: brand.dpo_email
+      dpoEmail: brand.dpo_email,
+      ...emailBrand
     });
     return { url, kind: 'pass_access' };
   }
@@ -402,7 +434,8 @@ async function resendMemberActivationEmail(db, member, brand) {
     firstName: member.first_name,
     brandName: brand.name,
     activateUrl: url,
-    dpoEmail: brand.dpo_email
+    dpoEmail: brand.dpo_email,
+    ...emailBrand
   });
   return { url, kind: status === 'invited' ? 'reminder' : 'activation' };
 }

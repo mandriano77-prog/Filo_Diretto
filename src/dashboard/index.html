@@ -1815,10 +1815,9 @@
                             <div style="height:8px;background:rgba(15,23,42,0.08);border-radius:999px;overflow:hidden;">
                                 <div id="pushProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width .2s ease;"></div>
                             </div>
-                            <div id="pushProgressCounters" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;font-size:12px;color:var(--text2);">
+                            <div id="pushProgressCounters" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;font-size:12px;color:var(--text2);">
                                 <div><strong id="pushProgressApple" style="display:block;color:var(--text);">0/0</strong>Apple</div>
                                 <div><strong id="pushProgressGoogle" style="display:block;color:var(--text);">0/0</strong>Google</div>
-                                <div><strong id="pushProgressSamsung" style="display:block;color:var(--text);">0/0</strong>Samsung</div>
                             </div>
                         </div>
                         <button type="button" class="btn" id="pushSendBtn" style="width:100%;font-weight:700;margin-top:12px;" onclick="sendImmediatePush()">&#9889; Invia Notifica Ora</button>
@@ -8096,7 +8095,6 @@ function setPushProgressPanel(jobOrProgress, result) {
     const barEl = document.getElementById('pushProgressBar');
     const appleEl = document.getElementById('pushProgressApple');
     const googleEl = document.getElementById('pushProgressGoogle');
-    const samsungEl = document.getElementById('pushProgressSamsung');
 
     panel.hidden = false;
     const finalResult = result || jobOrProgress?.result || null;
@@ -8106,15 +8104,12 @@ function setPushProgressPanel(jobOrProgress, result) {
     const googleDone = progress.phase === 'google'
         ? (progress.processed || 0)
         : (finalResult?.google?.updated ?? 0);
-    const samsungTotal = progress.samsung_total ?? finalResult?.samsung?.attempted ?? 0;
-    const samsungDone = finalResult?.samsung?.notified ?? 0;
 
     if (appleEl) appleEl.textContent = `${appleDone}/${appleTotal}`;
     if (googleEl) googleEl.textContent = `${googleDone}/${googleTotal}`;
-    if (samsungEl) samsungEl.textContent = `${samsungDone}/${samsungTotal}`;
 
-    const total = appleTotal + googleTotal + samsungTotal;
-    const done = Math.min(total, appleDone + googleDone + samsungDone);
+    const total = appleTotal + googleTotal;
+    const done = Math.min(total, appleDone + googleDone);
     const pct = status === 'completed' ? 100 : (total > 0 ? Math.round((done / total) * 100) : 8);
     if (barEl) barEl.style.width = `${Math.max(0, Math.min(100, pct))}%`;
 
@@ -8141,7 +8136,7 @@ function resetPushProgressPanel() {
     const panel = document.getElementById('pushProgressPanel');
     if (!panel) return;
     panel.hidden = true;
-    ['pushProgressApple', 'pushProgressGoogle', 'pushProgressSamsung'].forEach((id) => {
+    ['pushProgressApple', 'pushProgressGoogle'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.textContent = '0/0';
     });

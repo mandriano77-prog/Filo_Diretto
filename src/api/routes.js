@@ -368,6 +368,32 @@ function buildPublicBrandLogoUrl(brand) {
   return `https://${host}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo`;
 }
 
+function normalizePublicThemeHex(value) {
+  const raw = String(value || '').trim();
+  const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return `#${h.toUpperCase()}`;
+}
+
+function publicBrandTheme(brand) {
+  const cfg = brand?.config || {};
+  const theme = cfg.brand_theme || {};
+  const accent = normalizePublicThemeHex(theme.accent || theme.baseColor || cfg.labelColor);
+  if (!accent) return null;
+  return {
+    accent,
+    accentHover: normalizePublicThemeHex(theme.accentHover || theme.baseColor) || accent,
+    textOnAccent: normalizePublicThemeHex(theme.textOnAccent) || '#FFFFFF'
+  };
+}
+
+function publicBrandLogoPath(brand) {
+  const slug = brand?.slug;
+  return slug ? `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/logo` : null;
+}
+
 async function resolveUserInviteBrandContext(user) {
   if (!user?.brand_id) return { brandName: null, brandLogo: null, brandLogoAttachment: null };
   const brand = await getBrand(user.brand_id);
@@ -1381,7 +1407,9 @@ router.get('/join/:slug/info', async (req, res) => {
     if (!brand) return res.status(404).json({ error: 'Programma non disponibile' });
     res.json({
       brand_name: brand.name,
-      slug: brand.public_qr_slug || brand.slug
+      slug: brand.public_qr_slug || brand.slug,
+      logo_url: publicBrandLogoPath(brand),
+      brand_theme: publicBrandTheme(brand)
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1424,7 +1452,9 @@ router.get('/activate/:token', async (req, res) => {
         email: member.email,
         employee_id: member.employee_id,
         brand_name: member.brand_name,
-        brand_slug: member.brand_slug
+        brand_slug: member.brand_slug,
+        logo_url: publicBrandLogoPath({ slug: member.brand_slug }),
+        brand_theme: publicBrandTheme({ config: member.brand_config })
       },
       templates: hrTemplates.map((t) => ({ id: t.id, name: t.name })),
       consent_types: ['birthday', 'welfare_geo', 'gamification', 'climate_survey', 'partner_offers'],

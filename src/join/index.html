@@ -7,6 +7,11 @@
   <title>Attiva il pass — Filodiretto</title>
   <link rel="stylesheet" href="/shared/theme.css">
   <style>
+    :root {
+      --brand-accent: #8B5CF6;
+      --brand-accent-hover: #7C3AED;
+      --brand-on-accent: #FFFFFF;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -32,8 +37,19 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #8B5CF6;
+      color: var(--brand-accent);
       margin-bottom: 8px;
+    }
+    .brand-mark {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      object-fit: contain;
+      padding: 6px;
+      display: none;
+      margin-bottom: 16px;
     }
     h1 { font-size: 22px; margin-bottom: 8px; }
     p { color: #475569; font-size: 15px; line-height: 1.55; margin-bottom: 20px; }
@@ -46,17 +62,23 @@
       font-size: 16px;
       margin-bottom: 16px;
     }
+    input[type=email]:focus {
+      outline: none;
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-accent) 18%, transparent);
+    }
     button {
       width: 100%;
       padding: 14px;
-      background: #8B5CF6;
-      color: #fff;
+      background: var(--brand-accent);
+      color: var(--brand-on-accent);
       border: none;
       border-radius: 8px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
     }
+    button:hover:not(:disabled) { background: var(--brand-accent-hover); }
     button:disabled { opacity: 0.6; cursor: wait; }
     .msg { margin-top: 16px; font-size: 14px; padding: 12px; border-radius: 8px; display: none; }
     .msg.ok { display: block; background: #ecfdf5; color: #047857; }
@@ -66,6 +88,7 @@
 </head>
 <body>
   <div class="card">
+    <img class="brand-mark" id="brandLogo" alt="">
     <div class="badge">Filodiretto</div>
     <h1 id="title">Attiva il tuo pass</h1>
     <p id="subtitle">Inserisci la tua email aziendale. Ti invieremo un link per attivare il pass dipendente.</p>
@@ -80,10 +103,33 @@
   <script>
     const slug = location.pathname.split('/').filter(Boolean).pop() || '';
     const API = '/api/v1';
+    function validHex(value) {
+      const raw = String(value || '').trim();
+      return /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw) ? (raw[0] === '#' ? raw : '#' + raw) : '';
+    }
+    function applyBrandChrome(data) {
+      const theme = data?.brand_theme || {};
+      const accent = validHex(theme.accent || theme.baseColor);
+      const hover = validHex(theme.accentHover || theme.baseColor);
+      const onAccent = validHex(theme.textOnAccent);
+      if (accent) {
+        document.documentElement.style.setProperty('--brand-accent', accent);
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', accent);
+      }
+      if (hover) document.documentElement.style.setProperty('--brand-accent-hover', hover);
+      if (onAccent) document.documentElement.style.setProperty('--brand-on-accent', onAccent);
+      const logo = document.getElementById('brandLogo');
+      if (logo && data?.logo_url) {
+        logo.onload = () => { logo.style.display = 'block'; };
+        logo.src = data.logo_url;
+        logo.alt = data.brand_name || 'Logo';
+      }
+    }
 
     fetch(`${API}/join/${encodeURIComponent(slug)}/info`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
+        applyBrandChrome(data);
         if (data?.brand_name) {
           document.getElementById('title').textContent = data.brand_name;
           document.title = data.brand_name + ' — Filodiretto';

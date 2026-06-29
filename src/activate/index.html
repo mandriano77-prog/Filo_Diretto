@@ -7,6 +7,11 @@
   <title>Attivazione pass — Filodiretto</title>
   <link rel="stylesheet" href="/shared/theme.css">
   <style>
+    :root {
+      --brand-accent: #8B5CF6;
+      --brand-accent-hover: #7C3AED;
+      --brand-on-accent: #FFFFFF;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -23,7 +28,18 @@
       padding: 28px 24px;
       margin-bottom: 16px;
     }
-    .badge { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8B5CF6; }
+    .brand-mark {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      object-fit: contain;
+      padding: 6px;
+      display: none;
+      margin-bottom: 16px;
+    }
+    .badge { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-accent); }
     h1 { font-size: 22px; margin: 8px 0 4px; }
     .meta { color: #64748b; font-size: 14px; margin-bottom: 20px; }
     h2 { font-size: 15px; margin: 20px 0 10px; }
@@ -46,8 +62,8 @@
     button.primary {
       width: 100%;
       padding: 14px;
-      background: #8B5CF6;
-      color: #fff;
+      background: var(--brand-accent);
+      color: var(--brand-on-accent);
       border: none;
       border-radius: 8px;
       font-size: 15px;
@@ -55,6 +71,7 @@
       cursor: pointer;
       margin-top: 16px;
     }
+    button.primary:hover:not(:disabled) { background: var(--brand-accent-hover); }
     button.primary:disabled { opacity: 0.45; cursor: not-allowed; }
     a.dl {
       display: block;
@@ -70,6 +87,12 @@
     .err { color: #b91c1c; background: #fef2f2; padding: 12px; border-radius: 8px; font-size: 14px; }
     .hidden { display: none; }
     select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 12px; }
+    select:focus,
+    input:focus {
+      outline: none;
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-accent) 18%, transparent);
+    }
   </style>
 </head>
 <body>
@@ -77,6 +100,7 @@
     <div id="loading" class="card"><p>Caricamento…</p></div>
     <div id="error" class="card hidden"><p class="err" id="errorText"></p></div>
     <div id="formCard" class="card hidden">
+      <img class="brand-mark" id="brandLogo" alt="">
       <div class="badge">Filodiretto</div>
       <h1 id="brandTitle">Attivazione pass</h1>
       <p class="meta" id="memberLine"></p>
@@ -119,6 +143,30 @@
 
     let state = null;
 
+    function validHex(value) {
+      const raw = String(value || '').trim();
+      return /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw) ? (raw[0] === '#' ? raw : '#' + raw) : '';
+    }
+
+    function applyBrandChrome(member) {
+      const theme = member?.brand_theme || {};
+      const accent = validHex(theme.accent || theme.baseColor);
+      const hover = validHex(theme.accentHover || theme.baseColor);
+      const onAccent = validHex(theme.textOnAccent);
+      if (accent) {
+        document.documentElement.style.setProperty('--brand-accent', accent);
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', accent);
+      }
+      if (hover) document.documentElement.style.setProperty('--brand-accent-hover', hover);
+      if (onAccent) document.documentElement.style.setProperty('--brand-on-accent', onAccent);
+      const logo = document.getElementById('brandLogo');
+      if (logo && member?.logo_url) {
+        logo.onload = () => { logo.style.display = 'block'; };
+        logo.src = member.logo_url;
+        logo.alt = member.brand_name || 'Logo';
+      }
+    }
+
     const privacyBox = document.getElementById('privacy-accepted');
     const submitBtn = document.getElementById('submit-activation');
 
@@ -142,6 +190,7 @@
         return;
       }
       state = data;
+      applyBrandChrome(data.member);
       if (data.already_activated) {
         if (data.thank_you_url) {
           window.location.replace(data.thank_you_url);

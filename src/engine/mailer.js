@@ -86,6 +86,76 @@ function buildInviteInlineLogoAttachment(brandLogoAttachment) {
   return att;
 }
 
+function normalizeEmailThemeHex(value) {
+  const raw = String(value || '').trim();
+  const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return `#${h.toUpperCase()}`;
+}
+
+function employeeEmailTheme(brandTheme) {
+  const accent = normalizeEmailThemeHex(brandTheme?.accent || brandTheme?.baseColor) || FD_INVITE_EMAIL.primary;
+  const accentHover = normalizeEmailThemeHex(brandTheme?.accentHover || brandTheme?.baseColor) || accent;
+  const textOnAccent = normalizeEmailThemeHex(brandTheme?.textOnAccent) || '#FFFFFF';
+  return { accent, accentHover, textOnAccent };
+}
+
+function buildEmployeeBrandMarkHtml(brandName, brandLogo, brandTheme) {
+  const safeName = escapeHtml(brandName || 'la tua azienda');
+  const initials = escapeHtml(brandInitialsFromName(brandName));
+  const theme = employeeEmailTheme(brandTheme);
+  const mark = brandLogo?.cid
+    ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:14px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;" />`
+    : `<span style="display:inline-block;width:56px;height:56px;border-radius:14px;background:${theme.accent};color:${theme.textOnAccent};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</span>`;
+  return `
+    <div style="display:flex;align-items:center;gap:14px;margin:0 0 22px;">
+      ${mark}
+      <div>
+        <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;">FiloDiretto.App</p>
+        <p style="color:#0f172a;font-size:17px;line-height:1.25;font-weight:700;margin:0;">${safeName}</p>
+      </div>
+    </div>`;
+}
+
+function buildEmployeeWalletEmailHtml({
+  firstName,
+  brandName,
+  ctaUrl,
+  ctaLabel,
+  title,
+  body,
+  footnote,
+  dpoEmail,
+  brandTheme,
+  brandLogo
+}) {
+  const name = escapeHtml(firstName || 'Collega');
+  const brand = escapeHtml(brandName || 'la tua azienda');
+  const support = escapeHtml(dpoEmail || getHrFromEmail());
+  const theme = employeeEmailTheme(brandTheme);
+  const safeUrl = escapeHtml(ctaUrl);
+  const safeFootnote = String(footnote || '').trim();
+  const supportLine = `${safeFootnote ? `${escapeHtml(safeFootnote)} ` : ''}Se hai bisogno di supporto, contatta ${support}.`;
+  return `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:560px;margin:0 auto;padding:32px 20px;">
+  <div style="background:#fff;border-radius:14px;padding:30px 24px;border:1px solid #e2e8f0;">
+    ${buildEmployeeBrandMarkHtml(brandName, brandLogo, brandTheme)}
+    <h1 style="color:#0f172a;font-size:22px;line-height:1.25;margin:0 0 16px;">${escapeHtml(title).replace(/\{brand\}/g, brand)}</h1>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Ciao <strong>${name}</strong>,</p>
+    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 24px;">${escapeHtml(body).replace(/\{brand\}/g, brand)}</p>
+    <p style="text-align:center;margin:0 0 24px;">
+      <a href="${safeUrl}" style="display:inline-block;background:${theme.accent};color:${theme.textOnAccent};font-weight:600;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;border:1px solid ${theme.accentHover};">${escapeHtml(ctaLabel)}</a>
+    </p>
+    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0;">${supportLine}</p>
+  </div>
+  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
+</div></body></html>`;
+}
+
 function buildInviteBrandBadgeHtml(brandName, logo) {
   if (!brandName) return '';
   const safeName = escapeHtml(brandName);
@@ -715,99 +785,90 @@ async function sendPasswordResetEmail({ to, name, resetUrl, productTitle }) {
 /**
  * HR employee pass activation invite (Filodiretto).
  */
-async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoEmail }) {
-  const name = firstName || 'Collega';
+async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoEmail, brandTheme, brandLogo, brandLogoAttachment }) {
   const brand = brandName || 'la tua azienda';
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
-  const support = dpoEmail || fromEmail;
-  const html = `
-<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
-  <div style="background:#fff;border-radius:12px;padding:32px 24px;border:1px solid #e2e8f0;">
-    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">FiloDiretto.App</p>
-    <h1 style="color:#0f172a;font-size:22px;margin:0 0 16px;">Attiva il tuo accesso in ${brand}</h1>
-    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Ciao <strong>${name}</strong>,</p>
-    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 24px;">
-      il tuo pass dipendente è pronto: attivalo per ricevere aggiornamenti aziendali in modo rapido e sicuro, direttamente sul telefono.
-    </p>
-    <p style="text-align:center;margin:0 0 24px;">
-      <a href="${activateUrl}" style="display:inline-block;background:#8B5CF6;color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Attiva ora →</a>
-    </p>
-    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0;">Il link è valido per 30 giorni. Se hai bisogno di supporto, contatta ${support}.</p>
-  </div>
-  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
-</div></body></html>`;
+  const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
+  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const html = buildEmployeeWalletEmailHtml({
+    firstName,
+    brandName: brand,
+    ctaUrl: activateUrl,
+    ctaLabel: 'Attiva ora →',
+    title: 'Attiva il tuo accesso in {brand}',
+    body: 'il tuo pass dipendente è pronto: attivalo per ricevere aggiornamenti aziendali in modo rapido e sicuro, direttamente sul telefono.',
+    footnote: 'Il link è valido per 30 giorni.',
+    dpoEmail: dpoEmail || fromEmail,
+    brandTheme,
+    brandLogo: logoForEmail
+  });
 
-  return sendViaResend({
+  const payload = {
     from: `${fromName} <${fromEmail}>`,
     to: [to],
     subject: `FiloDiretto.App | Attiva il tuo accesso ${brand}`,
     html
-  }, { logLabel: 'activation email' });
+  };
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  return sendViaResend(payload, { logLabel: 'activation email' });
 }
 
-async function sendActivationReminderEmail({ to, firstName, brandName, activateUrl, dpoEmail }) {
-  const name = firstName || 'Collega';
+async function sendActivationReminderEmail({ to, firstName, brandName, activateUrl, dpoEmail, brandTheme, brandLogo, brandLogoAttachment }) {
   const brand = brandName || 'la tua azienda';
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
-  const support = dpoEmail || fromEmail;
-  const html = `
-<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
-<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
-  <div style="background:#fff;border-radius:12px;padding:28px 24px;border:1px solid #e2e8f0;">
-    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">FiloDiretto.App</p>
-    <h1 style="color:#0f172a;font-size:20px;margin:0 0 12px;">Promemoria attivazione accesso ${brand}</h1>
-    <p style="color:#334155;font-size:15px;line-height:1.6;">Ciao ${name}, il tuo pass dipendente è ancora in attesa di attivazione. Completa il passaggio con il pulsante qui sotto.</p>
-    <p style="text-align:center;margin:24px 0;">
-      <a href="${activateUrl}" style="display:inline-block;background:#8B5CF6;color:#fff;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;">Attiva il pass →</a>
-    </p>
-    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0;">Il link è valido per 30 giorni. Se hai bisogno di supporto, contatta ${support}.</p>
-  </div>
-  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
-</div></body></html>`;
-  return sendViaResend({
+  const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
+  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const html = buildEmployeeWalletEmailHtml({
+    firstName,
+    brandName: brand,
+    ctaUrl: activateUrl,
+    ctaLabel: 'Attiva il pass →',
+    title: 'Promemoria attivazione accesso {brand}',
+    body: 'il tuo pass dipendente è ancora in attesa di attivazione. Completa il passaggio con il pulsante qui sotto.',
+    footnote: 'Il link è valido per 30 giorni.',
+    dpoEmail: dpoEmail || fromEmail,
+    brandTheme,
+    brandLogo: logoForEmail
+  });
+  const payload = {
     from: `${fromName} <${fromEmail}>`,
     to: [to],
     subject: `FiloDiretto.App | Promemoria attivazione accesso ${brand}`,
     html
-  }, { logLabel: 'activation reminder' });
+  };
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  return sendViaResend(payload, { logLabel: 'activation reminder' });
 }
 
-async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEmail }) {
-  const name = firstName || 'Collega';
+async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEmail, brandTheme, brandLogo, brandLogoAttachment }) {
   const brand = brandName || 'la tua azienda';
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
-  const support = dpoEmail || fromEmail;
-  const html = `
-<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:520px;margin:0 auto;padding:32px 20px;">
-  <div style="background:#fff;border-radius:12px;padding:32px 24px;border:1px solid #e2e8f0;">
-    <p style="color:#8B5CF6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;">FiloDiretto.App</p>
-    <h1 style="color:#0f172a;font-size:22px;margin:0 0 16px;">Accedi al tuo pass ${brand}</h1>
-    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Ciao <strong>${name}</strong>,</p>
-    <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 24px;">
-      usa il link qui sotto per scaricare di nuovo il pass o installarlo su un altro dispositivo.
-    </p>
-    <p style="text-align:center;margin:0 0 24px;">
-      <a href="${accessUrl}" style="display:inline-block;background:#8B5CF6;color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Apri il pass →</a>
-    </p>
-    <p style="color:#64748b;font-size:13px;line-height:1.5;margin:0;">Se hai bisogno di supporto, contatta ${support}.</p>
-  </div>
-  <p style="color:#94a3b8;font-size:12px;text-align:center;margin:16px 0 0;">Powered by FiloDiretto.App</p>
-</div></body></html>`;
+  const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
+  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const html = buildEmployeeWalletEmailHtml({
+    firstName,
+    brandName: brand,
+    ctaUrl: accessUrl,
+    ctaLabel: 'Apri il pass →',
+    title: 'Accedi al tuo pass {brand}',
+    body: 'usa il link qui sotto per scaricare di nuovo il pass o installarlo su un altro dispositivo.',
+    footnote: '',
+    dpoEmail: dpoEmail || fromEmail,
+    brandTheme,
+    brandLogo: logoForEmail
+  });
 
-  return sendViaResend({
+  const payload = {
     from: `${fromName} <${fromEmail}>`,
     to: [to],
     subject: `FiloDiretto.App | Accedi al tuo pass ${brand}`,
     html
-  }, { logLabel: 'pass access email' });
+  };
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  return sendViaResend(payload, { logLabel: 'pass access email' });
 }
 
 function formatPgaScheduledAt(value) {

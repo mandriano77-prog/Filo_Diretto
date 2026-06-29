@@ -808,8 +808,9 @@ html[data-app='filodiretto'] .fd-push-preview__pass-strip-hint[hidden] {
     grid-template-columns: 1fr;
   }
 
-  html[data-app='filodiretto'] .fd-push-preview {
-    position: static;
+  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col,
+  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-preview {
+    display: none !important;
   }
 }
 
