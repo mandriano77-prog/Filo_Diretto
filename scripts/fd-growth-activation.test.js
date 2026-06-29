@@ -70,9 +70,9 @@ test('Push preview and unified channel segmented control', () => {
   assert.match(js, /channelsToApiValue/);
   assert.match(js, /sel\.setAttribute\('hidden'/);
   assert.match(css, /fd-push-channel-native/);
-  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*fixed/);
-  assert.match(css, /--fd-push-preview-fixed-right/);
-  assert.match(css, /fd-push-preview-sticky-top/);
+  assert.match(css, /#pushPanel_immediate\.fd-push-panel--enhanced[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*display:\s*none !important/);
+  assert.doesNotMatch(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]{0,320}position:\s*fixed/);
 });
 
 test('index.html bundle cache references current Filo bundle tag', () => {

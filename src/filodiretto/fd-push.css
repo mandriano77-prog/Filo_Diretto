@@ -161,7 +161,7 @@ html[data-app='filodiretto'] #push .fd-push-intro {
 
 html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--fd-push-preview-width);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--fd-space-5);
   align-items: start;
 }
@@ -171,56 +171,21 @@ html[data-app='filodiretto'] #pushPanel_immediate .fd-push-form-col .push-card {
 }
 
 html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
-  align-self: stretch;
-  min-width: 0;
+  display: none !important;
 }
 
 html[data-app='filodiretto'] #pushPanel_immediate .fd-push-history-wrap {
   grid-column: 1 / -1;
 }
 
-/* CSS-only fallback: anteprima diretta figlia della griglia (pre-wrapper / legacy) */
+/* Preview hidden: the live pass preview is too intrusive in the send form. */
 html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: start;
+  display: none !important;
 }
 
 html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > .sec-title,
 html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pushHistory {
   grid-column: 1 / -1;
-}
-
-@media (min-width: 1024px) {
-  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col {
-    min-height: 100%;
-    overflow: visible;
-    scrollbar-gutter: stable;
-  }
-
-  html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col .fd-push-preview {
-    position: fixed;
-    top: var(--fd-push-preview-sticky-top);
-    right: var(--fd-push-preview-fixed-right);
-    width: 100%;
-    max-width: var(--fd-push-preview-width);
-    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
-    overflow: auto;
-    scrollbar-gutter: stable;
-    z-index: var(--fd-z-sticky, 100);
-  }
-
-  html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
-    position: fixed;
-    top: var(--fd-push-preview-sticky-top);
-    right: var(--fd-push-preview-fixed-right);
-    width: 100%;
-    max-width: var(--fd-push-preview-width);
-    max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
-    overflow: auto;
-    scrollbar-gutter: stable;
-    z-index: var(--fd-z-sticky, 100);
-  }
 }
 
 html[data-app='filodiretto'] .fd-push-preview {

@@ -696,10 +696,10 @@ test('Push live preview stays clear of form and never leaves visible loading tex
   const js = readFd('fd-push.js');
   const preview = read('src/engine/push-pass-preview.js');
   assert.doesNotMatch(css, /--fd-push-preview-nudge-x/);
-  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*align-self:\s*stretch/);
-  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]*position:\s*fixed/);
-  assert.match(css, /--fd-push-preview-fixed-right/);
-  assert.match(css, /@media \(max-width: 1023px\)[\s\S]*#pushPanel_immediate \.fd-push-aside-col,[\s\S]*display:\s*none !important/);
+  assert.match(css, /#pushPanel_immediate\.fd-push-panel--enhanced[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /#pushPanel_immediate \.fd-push-aside-col[\s\S]*display:\s*none !important/);
+  assert.match(css, /#pushPanel_immediate\.fd-push-panel--enhanced > aside\.fd-push-preview[\s\S]*display:\s*none !important/);
+  assert.doesNotMatch(css, /#pushPanel_immediate \.fd-push-aside-col \.fd-push-preview[\s\S]{0,320}position:\s*fixed/);
   assert.doesNotMatch(css, /transform:\s*translateX\(var\(--fd-push-preview-nudge-x\)\)/);
   assert.match(js, /function setStripPreviewLoading/);
   assert.match(js, /loading\.hidden = true/);
