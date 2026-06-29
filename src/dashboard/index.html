@@ -8471,8 +8471,9 @@ function renderGeoLocations() {
             ${addrBlock}
             ${coordsDetails}
             <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Messaggio lock screen (solo Apple Wallet, vicino al POI)</label>
+                <label class="form-label">Messaggio vicino al POI (testo Apple, posizione anche Google)</label>
                 <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
+                <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo sulla lock screen. Google riceve il POI come merchant location e gestisce la notifica Wallet con testo standard.</p>
             </div>
         </div>
         `;
@@ -8505,7 +8506,7 @@ async function saveGeofencing() {
         if (!Number.isFinite(la) || !Number.isFinite(lo)) {
             return alert(`POI #${i + 1}: cerca e seleziona un indirizzo dai risultati (oppure compila le coordinate nel blocco back-office).`);
         }
-        if (!loc.relevantText || !String(loc.relevantText).trim()) return alert(`POI #${i+1}: inserisci il messaggio lock screen`);
+        if (!loc.relevantText || !String(loc.relevantText).trim()) return alert(`POI #${i+1}: inserisci il messaggio vicino al POI`);
     }
     const maxDistance = parseInt(document.getElementById('geoMaxDistance').value) || 500;
     const channel = document.getElementById('geoChannel').value || 'apple';

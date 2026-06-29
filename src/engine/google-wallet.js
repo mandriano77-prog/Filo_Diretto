@@ -299,6 +299,27 @@ function createSaveJWT(classObject, passObject, brand) {
 
 // ── Pass Class (template) ─────────────────────────────────────────────
 
+function normalizeMerchantLocations(brandConfig) {
+  const raw = brandConfig?.locations;
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+
+  const locations = [];
+  const seen = new Set();
+  for (const loc of raw) {
+    if (locations.length >= 10) break;
+    const latitude = parseFloat(loc?.latitude);
+    const longitude = parseFloat(loc?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) continue;
+
+    const key = `${latitude.toFixed(5)}:${longitude.toFixed(5)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    locations.push({ latitude, longitude });
+  }
+  return locations;
+}
+
 /**
  * Build a pass class object.
  *
@@ -371,6 +392,11 @@ function buildPassClass(brand, template) {
     }
   }
 
+  const merchantLocations = normalizeMerchantLocations(brand.config || {});
+  if (merchantLocations.length) {
+    classObj.merchantLocations = merchantLocations;
+  }
+
   logWalletDebug('buildPassClass', {
     classId,
     passKind,
@@ -378,7 +404,8 @@ function buildPassClass(brand, template) {
     issuerName: classObj.issuerName,
     programName: classObj.programName || null,
     hasProgramLogo: !!classObj.programLogo,
-    hasLogo: !!classObj.logo
+    hasLogo: !!classObj.logo,
+    merchantLocationsCount: merchantLocations.length
   });
 
   return classObj;
@@ -1045,6 +1072,7 @@ module.exports = {
   sanitizeSlugForClassId,
   buildGenericClassId,
   buildLoyaltyClassId,
+  normalizeMerchantLocations,
   buildPassClass,
   createOrUpdatePassClass, // deprecated, kept for compatibility
   getClassRegistration,

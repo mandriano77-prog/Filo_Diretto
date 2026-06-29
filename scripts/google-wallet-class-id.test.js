@@ -115,6 +115,33 @@ test('HR brands force generic pass kind even when env is loyalty', () => {
   }
 });
 
+test('buildPassClass maps geofencing locations to Google merchantLocations', () => {
+  const { mod, restore } = loadGoogleWallet({
+    GOOGLE_WALLET_ISSUER_ID: '3388000000023116539',
+    GOOGLE_WALLET_PASS_KIND: 'generic'
+  });
+  try {
+    const brand = {
+      slug: 'nti',
+      name: 'Nuova Telefonia Italiana',
+      config: {
+        product_line: 'hr',
+        locations: [
+          { latitude: '45.4642', longitude: '9.19', relevantText: 'Promo' },
+          { latitude: '45.4642001', longitude: '9.1900001', relevantText: 'Duplicato' },
+          { latitude: 'bad', longitude: '9.19' },
+          { latitude: '91', longitude: '9.19' }
+        ]
+      }
+    };
+    const template = { id: 'tpl-geo', style: { backgroundColor: '#123456' } };
+    const cls = mod.buildPassClass(brand, template);
+    assert.deepEqual(cls.merchantLocations, [{ latitude: 45.4642, longitude: 9.19 }]);
+  } finally {
+    restore();
+  }
+});
+
 test('buildGoogleNotifyMessagePayload uses TEXT_AND_NOTIFY and HR limits', () => {
   const { mod, restore } = loadGoogleWallet({ GOOGLE_WALLET_ISSUER_ID: '1' });
   try {

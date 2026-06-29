@@ -436,6 +436,16 @@ test('Google Wallet HR pass resolves hub links like passkit', () => {
   assert.match(gw, /brandConfigForHrPass/);
 });
 
+test('Geofencing copy distinguishes Apple text from Google POI support', () => {
+  const dashboard = read('src/dashboard/index.html');
+  const gw = read('src/engine/google-wallet.js');
+  assert.match(dashboard, /testo Apple, posizione anche Google/);
+  assert.match(dashboard, /Google riceve il POI come merchant location/);
+  assert.doesNotMatch(dashboard, /Messaggio lock screen \(solo Apple Wallet/);
+  assert.match(gw, /merchantLocations/);
+  assert.match(gw, /normalizeMerchantLocations/);
+});
+
 test('Google Wallet HR toGooglePass uses brand name and generic layout fields', () => {
   process.env.GOOGLE_WALLET_PASS_KIND = 'loyalty';
   const { buildEmployeePass, toGooglePass } = require('../src/engine/employee-pass');
