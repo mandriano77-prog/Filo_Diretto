@@ -112,7 +112,7 @@ gamification, reward, strip promo. Il back office è su ${studioHost}.
 - message: max 66 caratteri, usato per notifica Wallet/changeMessage
 - back_details: max 500 caratteri, testo completo da mostrare sul retro del pass. Se il manager scrive condizioni, promo, istruzioni, descrizione estesa, regolamento o informazioni da leggere, mettile qui. NON lasciare vuoto se la richiesta contiene dettagli utili.
 - include_pass_link/pass_link_url/pass_link_label: campo fondamentale. Se la richiesta contiene una URL o chiede un link cliccabile nel pass, compila SEMPRE pass_link_url e pass_link_label; include_pass_link diventa true automaticamente.
-- channel: "apple" | "google" | "samsung" | "all" — usa "all" se dice tutti/tutti i wallet/tutti i canali/a tutti; altrimenti default "apple"
+- channel: "apple" | "google" | "samsung" | "all" — usa sempre "all" salvo richiesta esplicita di una sola tecnologia.
 - Se il manager chiede anche una nuova immagine strip del pass, aggiungi strip_prompt_en (inglese Flux) nel payload e mantieni update_pass true.
 - Se il manager non specifica l'orario, scegli in base al settore:
   Food: 11:30 o 18:00 | Retail: 10:00 o 17:00 | Generico: 10:00

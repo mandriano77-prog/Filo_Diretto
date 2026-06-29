@@ -75,6 +75,26 @@ test('W.AI push preserves back details and pass link like manual push', () => {
   assert.equal(out.payload.channel, 'all');
 });
 
+test('W.AI and wallet dispatcher default to all available wallet channels', () => {
+  const wai = fs.readFileSync(path.join(__dirname, '../src/engine/wai.js'), 'utf8');
+  const assistant = fs.readFileSync(path.join(__dirname, '../src/engine/push-assistant.js'), 'utf8');
+  const dispatch = fs.readFileSync(path.join(__dirname, '../src/engine/push-dispatch.js'), 'utf8');
+  assert.match(wai, /usa sempre "all" salvo richiesta esplicita/);
+  assert.match(assistant, /return 'all';/);
+  assert.match(dispatch, /channel = 'all'/);
+  assert.match(dispatch, /String\(channel \|\| 'all'\)/);
+  assert.match(dispatch, /return \[\.\.\.allowed\]/);
+});
+
+test('Apple HR pass uses promo back field as Wallet changeMessage source', () => {
+  const employeePass = fs.readFileSync(path.join(__dirname, '../src/engine/employee-pass.js'), 'utf8');
+  assert.match(employeePass, /key: 'push_back_details'/);
+  assert.match(employeePass, /kind: 'alert'/);
+  assert.match(employeePass, /changeMessage: buildPushChangeMessage\(pushAnn\)/);
+  assert.match(employeePass, /key: 'push_wallet_alert'/);
+  assert.match(employeePass, /value: String\(s\.body \|\| ''\)\.slice\(0, 500\)/);
+});
+
 test('W.AI push extracts pass link from prompt when model omits link fields', () => {
   const out = validateWaiResponse({
     intent: 'push.send',

@@ -337,10 +337,19 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
 
   if (pushAnn?.back_details) {
     sections.push({
-      kind: 'text',
+      kind: 'alert',
       key: 'push_back_details',
       label: pushBackDetailsLabel(pushAnn),
       body: pushAnn.back_details,
+      changeMessage: buildPushChangeMessage(pushAnn),
+    });
+  } else if (pushAnn?.message) {
+    sections.push({
+      kind: 'alert',
+      key: 'push_wallet_alert',
+      label: pushBackDetailsLabel(pushAnn),
+      body: pushAnn.message,
+      changeMessage: buildPushChangeMessage(pushAnn),
     });
   }
 
@@ -527,7 +536,7 @@ function sectionsToAppleBackFields(sections) {
       fields.push({
         key: s.key,
         label: String(s.label ?? ' ').slice(0, 64),
-        value: String(s.body || '').slice(0, 64),
+        value: String(s.body || '').slice(0, 500),
         changeMessage: String(s.changeMessage || '').slice(0, 178)
       });
       continue;

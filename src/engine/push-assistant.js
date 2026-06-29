@@ -79,9 +79,8 @@ Tipi di scheduling:
 - Se ci sono esempi recenti del brand, mantieni coerenza di stile.
 
 ### channel
-- "all" se il manager dice tutti, tutti i wallet, tutti i canali, a tutti, su tutti.
-- "apple" solo se esplicitamente richiesto o se non specifica alcun canale.
-- "google" o "samsung" solo se esplicitamente richiesti.
+- "all" di default: la piattaforma invia sempre a tutti i wallet disponibili.
+- "apple", "google" o "samsung" solo se il manager chiede esplicitamente una sola tecnologia.
 
 ### update_pass
 - true di default. Metti false solo se il manager dice esplicitamente di non aggiornare il pass.
@@ -202,7 +201,7 @@ function resolvePushChannel(channel, prompt) {
   const inferred = inferPushChannelFromPrompt(prompt);
   if (inferred) return inferred;
   if (VALID_CHANNELS.has(channel)) return channel;
-  return 'apple';
+  return 'all';
 }
 
 function heuristicPlan(prompt, brand) {

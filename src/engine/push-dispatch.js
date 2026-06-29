@@ -36,8 +36,8 @@ function pushChannelKeys() {
 
 function normalizePushChannelList(channel) {
   const allowed = pushChannelKeys();
-  const raw = String(channel || 'apple').trim().toLowerCase();
-  if (!raw) return ['apple'];
+  const raw = String(channel || 'all').trim().toLowerCase();
+  if (!raw) return [...allowed];
   if (raw === 'both') return ['apple', 'google'];
   if (raw === 'all') return [...allowed];
   if (raw.includes(',')) {
@@ -50,7 +50,7 @@ function normalizePushChannelList(channel) {
 function parseWalletPushFlags(channel) {
   const parts = normalizePushChannelList(channel);
   if (!parts || !parts.length) {
-    return { sendApple: true, sendGoogle: false, sendSamsung: false };
+    return { sendApple: true, sendGoogle: true, sendSamsung: true };
   }
   return {
     sendApple: parts.includes('apple'),
@@ -147,7 +147,7 @@ async function executeWalletPush(body, ctx = {}) {
     update_pass,
     instant_win_id,
     gamification_id,
-    channel = 'apple',
+    channel = 'all',
     back_link_label,
     back_link_url,
     include_pass_link,
