@@ -321,6 +321,10 @@ async function executeWalletPush(body, ctx = {}) {
         });
       }
       await touchPassesByIds(targetPasses.map((p) => p.id));
+      targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
+      if (test_pass_id) {
+        targetPasses = targetPasses.filter((p) => String(p.id) === String(test_pass_id));
+      }
     }
   }
 

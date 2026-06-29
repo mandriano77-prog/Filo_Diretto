@@ -815,3 +815,9 @@ test('push dispatch keeps overlayStrip in function scope for final logging', () 
   assert.match(dispatch, /let overlayStrip = null;[\s\S]*if \(update_pass !== false\)/);
   assert.doesNotMatch(dispatch, /if \(update_pass !== false\) \{[\s\S]{0,260}let overlayStrip/);
 });
+
+test('Google Wallet sync reloads passes after push strip overlay update', () => {
+  const dispatch = read('src/engine/push-dispatch.js');
+  assert.match(dispatch, /await updatePassPushOverlays\(targetPasses\.map\(\(p\) => p\.id\),/);
+  assert.match(dispatch, /await touchPassesByIds\(targetPasses\.map\(\(p\) => p\.id\)\);[\s\S]{0,180}targetPasses = await getTargetPassesForPush\(brand_id, pushTargetOpts\);/);
+});

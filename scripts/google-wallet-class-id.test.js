@@ -164,6 +164,7 @@ test('updatePassMessage uses addMessage not textModulesData patch', () => {
   const source = fs.readFileSync(MOD, 'utf8');
   assert.match(source, /async function clearPassMessages/);
   assert.match(source, /messages:\s*\[\]/);
+  assert.match(source, /await clearPassMessages\(targetId, brand\);[\s\S]{0,180}addMessage/);
   assert.match(source, /addMessage/);
   assert.match(source, /TEXT_AND_NOTIFY/);
   assert.doesNotMatch(source, /latest_message/);
