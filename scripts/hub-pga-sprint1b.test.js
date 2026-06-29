@@ -124,10 +124,9 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.equal((apple.passStructure.headerFields || []).length, 1);
   const alertField = (apple.passStructure.headerFields || [])[0];
   assert.ok(alertField);
-  assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
   assert.match(alertField.changeMessage, /%@$/);
   assert.equal(alertField.label, 'INFO');
-  assert.match(alertField.value, /^Per altre informazioni/);
+  assert.match(alertField.value, /^FRATELLI LA PIZZA: Dal lunedì/);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
@@ -149,6 +148,36 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.doesNotMatch(passkit, /rgba\(0,0,0,0\.62\)/);
   assert.doesNotMatch(passkit, /stripGrad/);
   assert.doesNotMatch(passkit, /lengthAdjust/);
+});
+
+test('HR push default copy uses back details for Apple alert and no INFO PASS back label', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const employeePass = buildEmployeePass({
+    brand: { id: 'b1', name: 'NTI', config: {} },
+    template: { name: 'HR' },
+    instance: {
+      serial_number: 'SN1',
+      field_values: {},
+      push_announcement: {
+        title: 'INFO PASS',
+        message: 'Apri il pass per i dettagli',
+        back_details: 'Lorem Ipsum tutti i brand aderenti, sconti fino al 50%',
+        ts: Date.now()
+      },
+    },
+    member: { first_name: 'Adriano', last_name: 'Coccia', department: 'Direzione' },
+    brandConfig: {},
+    apiBase: 'https://studio.example.com/api/v1',
+    coinBalance: 0
+  });
+  const apple = toApplePass(employeePass);
+  const alertField = (apple.passStructure.headerFields || [])[0];
+  assert.match(alertField.value, /^Lorem Ipsum tutti i brand aderenti/);
+  assert.equal(alertField.changeMessage, '%@');
+  const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
+  assert.ok(promoBack);
+  assert.equal(promoBack.label, ' ');
+  assert.doesNotMatch(promoBack.label, /INFO PASS/);
 });
 
 test('SUPPORT back: single mailto CTA (no DPO on pass)', () => {
@@ -265,8 +294,8 @@ test('HR push: visible header triggers Wallet alert without invisible auxiliary'
   assert.equal(coin.value, '0');
   assert.ok(ep.headerHint);
   assert.equal(ep.headerHint.label, 'INFO');
-  assert.match(ep.headerHint.value, /^Per altre informazioni/);
-  assert.match(ep.headerHint.changeMessage, /2X1 OCCHIALI/);
+  assert.match(ep.headerHint.value, /^2X1 OCCHIALI/);
+  assert.match(ep.headerHint.changeMessage, /%@$/);
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
@@ -274,7 +303,6 @@ test('HR push: visible header triggers Wallet alert without invisible auxiliary'
   assert.equal((apple.passStructure.headerFields || []).length, 1);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const appleAlert = apple.passStructure.headerFields[0];
-  assert.match(appleAlert.changeMessage, /2X1 OCCHIALI/);
   assert.match(appleAlert.changeMessage, /%@$/);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });

@@ -87,8 +87,9 @@ function resolveVariableLink(instance, template, brandConfig = {}) {
 }
 
 function pushBackDetailsLabel(pushAnn) {
+  if (isDefaultPushCopy(pushAnn)) return ' ';
   const title = String(pushAnn?.title || '').trim().toUpperCase();
-  return title ? title.slice(0, 40) : 'INFO PROMO';
+  return title ? title.slice(0, 40) : ' ';
 }
 
 function parseJsonArray(raw) {
@@ -153,15 +154,32 @@ function invisibleChangeToken(value) {
     .join('');
 }
 
+function isDefaultPushCopy(pushAnn) {
+  const title = String(pushAnn?.title || '').trim().toUpperCase();
+  const message = String(pushAnn?.message || '').trim().toLowerCase();
+  return title === 'INFO PASS' && message === 'apri il pass per i dettagli';
+}
+
+function buildPushAlertText(pushAnn) {
+  if (!pushAnn?.message && !pushAnn?.back_details) return '';
+  const details = String(pushAnn.back_details || '').trim();
+  if (details && isDefaultPushCopy(pushAnn)) return details.slice(0, 180);
+
+  const promoTitle = String(pushAnn.title || '').trim().toUpperCase().slice(0, PUSH_TITLE_MAX);
+  const body = String(pushAnn.message || details || '').trim().slice(0, PUSH_MESSAGE_MAX);
+  if (promoTitle && body) return `${promoTitle}: ${body}`.slice(0, 180);
+  return (body || details).slice(0, 180);
+}
+
 function buildPushChangeMessage(pushAnn) {
-  if (!pushAnn?.message) return null;
-  const promoTitle = String(pushAnn.title || 'NOVITÀ').trim().toUpperCase().slice(0, PUSH_TITLE_MAX) || 'NOVITÀ';
-  const alertText = (promoTitle ? `${promoTitle}: ` : '') + String(pushAnn.message).trim().slice(0, PUSH_MESSAGE_MAX);
-  return `${alertText.slice(0, 174)} %@`;
+  const alertText = buildPushAlertText(pushAnn);
+  if (!alertText) return null;
+  return '%@';
 }
 
 function attachPushAlertToHeader(headerHint, pushAnn) {
-  if (!pushAnn?.message) return headerHint || null;
+  const alertText = buildPushAlertText(pushAnn);
+  if (!alertText) return headerHint || null;
   const base = headerHint || {
     key: 'info_hint',
     label: 'INFO',
@@ -169,10 +187,9 @@ function attachPushAlertToHeader(headerHint, pushAnn) {
     textAlignment: 'PKTextAlignmentRight'
   };
   const pushTs = Number(pushAnn.ts || Date.now());
-  const visibleValue = String(base.value || 'Per altre informazioni').slice(0, 48);
   return {
     ...base,
-    value: `${visibleValue}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message}`)}`,
+    value: `${alertText.slice(0, 96)}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
     changeMessage: buildPushChangeMessage(pushAnn),
   };
 }
