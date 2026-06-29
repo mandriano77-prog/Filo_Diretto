@@ -1,6 +1,7 @@
 html[data-app='filodiretto'] #push.push--fd {
   --fd-push-preview-width: 340px;
   --fd-push-preview-sticky-top: 24px;
+  --fd-push-preview-fixed-right: max(24px, calc((100vw - min(var(--fd-layout-max-width, 1280px), 100vw)) / 2 + 24px));
 }
 
 html[data-app='filodiretto'] #push.push--fd-ds {
@@ -198,25 +199,27 @@ html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > #pus
   }
 
   html[data-app='filodiretto'] #pushPanel_immediate .fd-push-aside-col .fd-push-preview {
-    position: sticky;
+    position: fixed;
     top: var(--fd-push-preview-sticky-top);
+    right: var(--fd-push-preview-fixed-right);
     width: 100%;
     max-width: var(--fd-push-preview-width);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
-    z-index: 2;
+    z-index: var(--fd-z-sticky, 100);
   }
 
   html[data-app='filodiretto'] #pushPanel_immediate.fd-push-panel--enhanced > aside.fd-push-preview {
-    position: sticky;
+    position: fixed;
     top: var(--fd-push-preview-sticky-top);
+    right: var(--fd-push-preview-fixed-right);
     width: 100%;
     max-width: var(--fd-push-preview-width);
     max-height: calc(100vh - var(--fd-push-preview-sticky-top) - 24px);
     overflow: auto;
     scrollbar-gutter: stable;
-    z-index: 2;
+    z-index: var(--fd-z-sticky, 100);
   }
 }
 
