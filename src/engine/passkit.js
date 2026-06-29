@@ -22,6 +22,8 @@ const {
   buildPassLogoBuffersFromRaw
 } = require('./brand-wallet-logo');
 
+const APPLE_WALLET_UPDATE_HINT = "Apri l'aggiornamento";
+
 /**
  * Generate SVG path for a letter using geometric shapes (no font dependency).
  * Returns SVG elements string for the given letter, sized to fit within (w, h).
@@ -511,15 +513,13 @@ function generatePassJson(template, instance, brand, options = {}) {
   // IMPORTANT: only FRONT fields (header/primary/secondary/auxiliary) trigger lock screen
   // notifications. Back fields update silently. The value MUST change each push.
   if (brandConfig.pushAnnouncement && brandConfig.pushAnnouncement.message) {
-    const promoTitle = (brandConfig.pushAnnouncement.title || 'NOVITÀ').substring(0, 30).toUpperCase();
     const pushTs = brandConfig.pushAnnouncement.ts || Date.now();
     // Invisible zero-width spaces make value unique without visible artifacts
     const zwsp = '​'.repeat((pushTs % 10) + 1);
-    const promoText = brandConfig.pushAnnouncement.message.substring(0, 30);
     auxiliaryFields.push({
       key: 'announcement',
-      label: promoTitle,
-      value: promoText + zwsp,
+      label: 'INFO',
+      value: APPLE_WALLET_UPDATE_HINT + zwsp,
       changeMessage: '%@'
     });
   }

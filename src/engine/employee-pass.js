@@ -5,6 +5,7 @@
 
 /** Canonical pass type in DB / API / UI for HR employee passes. */
 const EMPLOYEE_PASS_TYPE = 'employee_pass';
+const APPLE_WALLET_UPDATE_HINT = "Apri l'aggiornamento";
 const { PUSH_TITLE_MAX, PUSH_MESSAGE_MAX } = require('./push-text-limits');
 /** Apple Wallet pass.json top-level key (implementation detail only). */
 const APPLE_EMPLOYEE_PASS_STRUCTURE = 'storeCard';
@@ -89,6 +90,7 @@ function resolveVariableLink(instance, template, brandConfig = {}) {
 function pushBackDetailsLabel(pushAnn) {
   if (isDefaultPushCopy(pushAnn)) return ' ';
   const title = String(pushAnn?.title || '').trim().toUpperCase();
+  if (title === 'INFO PASS') return ' ';
   return title ? title.slice(0, 40) : ' ';
 }
 
@@ -189,7 +191,7 @@ function attachPushAlertToHeader(headerHint, pushAnn) {
   const pushTs = Number(pushAnn.ts || Date.now());
   return {
     ...base,
-    value: `${alertText.slice(0, 96)}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
+    value: `${APPLE_WALLET_UPDATE_HINT}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
     changeMessage: buildPushChangeMessage(pushAnn),
   };
 }

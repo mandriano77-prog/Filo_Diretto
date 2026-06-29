@@ -126,7 +126,7 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.ok(alertField);
   assert.match(alertField.changeMessage, /%@$/);
   assert.equal(alertField.label, 'INFO');
-  assert.match(alertField.value, /^FRATELLI LA PIZZA: Dal lunedì/);
+  assert.match(alertField.value, /^Apri l'aggiornamento/);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
@@ -172,7 +172,7 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
   });
   const apple = toApplePass(employeePass);
   const alertField = (apple.passStructure.headerFields || [])[0];
-  assert.match(alertField.value, /^Lorem Ipsum tutti i brand aderenti/);
+  assert.match(alertField.value, /^Apri l'aggiornamento/);
   assert.equal(alertField.changeMessage, '%@');
   const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
   assert.ok(promoBack);
@@ -294,7 +294,7 @@ test('HR push: visible header triggers Wallet alert without invisible auxiliary'
   assert.equal(coin.value, '0');
   assert.ok(ep.headerHint);
   assert.equal(ep.headerHint.label, 'INFO');
-  assert.match(ep.headerHint.value, /^2X1 OCCHIALI/);
+  assert.match(ep.headerHint.value, /^Apri l'aggiornamento/);
   assert.match(ep.headerHint.changeMessage, /%@$/);
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
