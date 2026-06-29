@@ -675,6 +675,22 @@ test('Push test device helper explains installed wallet source', () => {
   assert.match(js, /pass gia installati o salvati nel Wallet/);
 });
 
+test('Passes can be marked as push test devices', () => {
+  const db = read('src/db/index.js');
+  const dashboard = read('src/dashboard/index.html');
+  const passesJs = readFd('fd-passes.js');
+  const pushJs = readFd('fd-push.js');
+  assert.match(db, /pass_instances ADD COLUMN IF NOT EXISTS is_test_device BOOLEAN DEFAULT FALSE/);
+  assert.match(db, /updates\.push\(`is_test_device = \$\$\{p\}`\)/);
+  assert.match(dashboard, /data-pass-test-device="\$\{isTestDevice \? '1' : '0'\}"/);
+  assert.match(dashboard, /pass-test-badge/);
+  assert.match(dashboard, /'Device di prova'/);
+  assert.match(passesJs, /data-action="toggle-test"/);
+  assert.match(passesJs, /JSON\.stringify\(\{ is_test_device: !!enabled \}\)/);
+  assert.match(pushJs, /TEST ·/);
+  assert.match(pushJs, /window\.refreshTestPassOptions = loadTestPasses/);
+});
+
 test('Push send shows mailing-style progress counters', () => {
   const dashboard = read('src/dashboard/index.html');
   const dispatch = read('src/engine/push-dispatch.js');

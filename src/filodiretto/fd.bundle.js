@@ -6199,6 +6199,49 @@
     if (!res.ok) throw new Error((data && data.error) || res.statusText || 'Errore rigenerazione');
     return data;
   }
+  async function callSetPassTestDeviceApi(passId, enabled) {
+    var api = typeof window.API !== 'undefined' ? window.API : '/api/v1';
+    var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+    var res = await fetch(api + '/passes/' + encodeURIComponent(passId), {
+      method: 'PUT',
+      headers: Object.assign({}, headers, {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify({ is_test_device: !!enabled })
+    });
+    var data = {};
+    try {
+      data = await res.json();
+    } catch (_) {}
+    if (!res.ok) throw new Error((data && data.error) || res.statusText || 'Errore aggiornamento');
+    return data;
+  }
+  async function setPassTestDevice(passId, enabled, menuBtn) {
+    var btn = menuBtn || null;
+    var origText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.textContent = enabled ? 'Imposto…' : 'Rimuovo…';
+    }
+    try {
+      await callSetPassTestDeviceApi(passId, enabled);
+      fdPassToast(enabled ? 'Pass impostato come device di prova' : 'Pass rimosso dai device di prova');
+      if (typeof window.loadPasses === 'function') await window.loadPasses(false);
+      if (typeof window.refreshTestPassOptions === 'function') window.refreshTestPassOptions();
+      return true;
+    } catch (err) {
+      fdPassToast('Errore: ' + (err && err.message ? err.message : err));
+      return false;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.textContent = origText;
+      }
+    }
+  }
   function regenerateSuccessMessage(data) {
     var msg = 'Pass rigenerato';
     if (data && data.apns_sent > 0) msg += ' — notifica inviata (' + data.apns_sent + ')';
@@ -6377,6 +6420,8 @@
       var viewBtn = wrap.querySelector('.pass-action-btn--view');
       var delBtn = wrap.querySelector('.pass-action-btn--danger');
       if (!viewBtn || !delBtn) return;
+      var row = wrap.closest('tr');
+      var isTestDevice = row && row.dataset.passTestDevice === '1';
       var passId =
         viewBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
         delBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
@@ -6391,6 +6436,9 @@
         menuId +
         '" role="menu" hidden>' +
         '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="view">Dettaglio pass</button>' +
+        '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="toggle-test" data-rbac-write="passes">' +
+        (isTestDevice ? 'Rimuovi da test' : 'Imposta come test') +
+        '</button>' +
         '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="regenerate" data-rbac-write="passes">Rigenera pass</button>' +
         '<hr class="fd-pass-row-menu__sep" role="separator">' +
         '<button type="button" class="fd-pass-row-menu__item fd-pass-row-menu__item--danger" role="menuitem" data-action="delete" data-rbac-write="passes">Elimina pass</button>' +
@@ -6410,6 +6458,11 @@
         var regenBtn = e.currentTarget;
         closeAllPassRowMenus();
         regeneratePassInstance(passId, regenBtn);
+      });
+      wrap.querySelector('[data-action="toggle-test"]').addEventListener('click', function (e) {
+        var testBtn = e.currentTarget;
+        closeAllPassRowMenus();
+        setPassTestDevice(passId, !isTestDevice, testBtn);
       });
       wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
         closeAllPassRowMenus();
@@ -9153,6 +9206,12 @@
           p.samsung_wallet_ref_id
         );
       });
+      withPush.sort(function (a, b) {
+        var aTest = a.is_test_device === true || a.is_test_device === 'true' || a.is_test_device === 't' || a.is_test_device === 1 || a.is_test_device === '1';
+        var bTest = b.is_test_device === true || b.is_test_device === 'true' || b.is_test_device === 't' || b.is_test_device === 1 || b.is_test_device === '1';
+        if (aTest !== bTest) return bTest ? 1 : -1;
+        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+      });
       sel.innerHTML = '<option value="">— Seleziona pass di prova —</option>';
       if (!withPush.length) {
         sel.innerHTML = '<option value="">— Nessun pass con Wallet installato —</option>';
@@ -9161,7 +9220,18 @@
       withPush.forEach(function (p) {
         var opt = document.createElement('option');
         opt.value = p.id;
-        var label = (p.member_name || p.holder_name || p.email || p.serial_number || p.id).toString();
+        var fields = p.field_values || {};
+        if (typeof fields === 'string') {
+          try {
+            fields = JSON.parse(fields);
+          } catch (_) {
+            fields = {};
+          }
+        }
+        var fullName = [fields.nome || fields.first_name, fields.cognome || fields.last_name].filter(Boolean).join(' ');
+        var label = (p.member_name || p.holder_name || fullName || p.email || fields.email || p.serial_number || p.id).toString();
+        var isTest = p.is_test_device === true || p.is_test_device === 'true' || p.is_test_device === 't' || p.is_test_device === 1 || p.is_test_device === '1';
+        if (isTest) label = 'TEST · ' + label;
         if (p.push_token || p.device_source === 'apple') label += ' · iPhone';
         else if (p.google_wallet_saved || p.device_source === 'google') label += ' · Google';
         else if (p.samsung_wallet_saved || p.samsung_wallet_ref_id || p.device_source === 'samsung') label += ' · Samsung';
@@ -9169,7 +9239,12 @@
         sel.appendChild(opt);
       });
       var saved = localStorage.getItem(TEST_PASS_KEY);
-      if (saved && withPush.some(function (p) {
+      var marked = withPush.find(function (p) {
+        return p.is_test_device === true || p.is_test_device === 'true' || p.is_test_device === 't' || p.is_test_device === 1 || p.is_test_device === '1';
+      });
+      if (marked) {
+        sel.value = marked.id;
+      } else if (saved && withPush.some(function (p) {
         return String(p.id) === String(saved);
       })) {
         sel.value = saved;
@@ -9179,6 +9254,7 @@
       sel.innerHTML = '<option value="">— Lista pass non disponibile —</option>';
     }
   }
+  window.refreshTestPassOptions = loadTestPasses;
   async function sendTestPush() {
     if (!syncBrandIdForPush()) {
       if (typeof toast === 'function') toast('Seleziona un brand');

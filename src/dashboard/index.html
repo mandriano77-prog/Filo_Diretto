@@ -5806,6 +5806,10 @@ function passGoogleSaved(p) {
     if (p.device_source === 'google') return true;
     return false;
 }
+function passIsTestDevice(p) {
+    const v = p?.is_test_device;
+    return v === true || v === 'true' || v === 't' || v === 1 || v === '1';
+}
 /** Oggetto GW creato ma salvataggio non confermato (o callback Google non ancora arrivato). */
 function passGooglePending(p) {
     if (!p || !p.google_wallet_object_id) return false;
@@ -6255,12 +6259,14 @@ async function loadPasses(resetPage = false) {
                 const rowSelected = getPassSelectedIds().has(p.id);
                 const useTextBadges = typeof isHrDashboard === 'function' && isHrDashboard();
                 const installCellInner = passInstallStatusBadge(p);
-                return `<tr data-pass-id="${esc(p.id)}">
+                const isTestDevice = passIsTestDevice(p);
+                return `<tr data-pass-id="${esc(p.id)}" data-pass-test-device="${isTestDevice ? '1' : '0'}">
                     <td class="pass-table__select-col bulk-select-col">
                         <input type="checkbox" class="pass-row-cb a2w-bulk-check" aria-label="Seleziona pass" data-pass-id="${esc(p.id)}" ${rowSelected ? 'checked' : ''} onchange="onPassRowCheckboxChange('${p.id}', this)">
                     </td>
                     <td class="pass-table__id">
                         <button type="button" class="pass-id-copy" onclick="copyPassIdToClipboard('${esc(p.id)}')" title="${esc(p.id)}">${esc(formatPassIdShort(p.id))}</button>
+                        ${isTestDevice ? '<span class="pass-test-badge" title="Dispositivo di prova">TEST</span>' : ''}
                     </td>
                     <td style="white-space:nowrap;text-align:center;">${installCellInner}</td>
                     <td style="text-align:center;font-size:12px;">${(() => {
@@ -6348,6 +6354,7 @@ function downloadPassesTableCsv() {
     const sep = ';';
     const headers = [
         'Pass ID',
+        'Device di prova',
         'Installato',
         'Data installazione',
         'Push Apple (token registrato)',
@@ -6378,6 +6385,7 @@ function downloadPassesTableCsv() {
         const src = p.device_source === 'apple' ? 'Apple' : p.device_source === 'google' ? 'Google' : p.device_source === 'samsung' ? 'Samsung' : '';
         return [
             p.id || '',
+            passIsTestDevice(p) ? 'Sì' : 'No',
             isInstalled ? 'Sì' : 'No',
             installDateStr,
             applePushOn ? 'Sì' : 'No',

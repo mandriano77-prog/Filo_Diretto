@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS pass_instances (
   google_update_count INTEGER DEFAULT 0,
   google_last_update_at TIMESTAMPTZ,
   google_last_update_status TEXT,
+  is_test_device BOOLEAN DEFAULT FALSE,
   last_updated TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -690,6 +691,8 @@ async function getDb() {
     // Unified device tracking
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS device_id TEXT`);
     await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS device_source TEXT`);
+    await pool.query(`ALTER TABLE pass_instances ADD COLUMN IF NOT EXISTS is_test_device BOOLEAN DEFAULT FALSE`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_passes_brand_test_device ON pass_instances(brand_id, is_test_device) WHERE is_test_device = TRUE`);
 
     // Wallet callback telemetry + idempotency
     await pool.query(`CREATE TABLE IF NOT EXISTS wallet_callback_events (
@@ -1399,6 +1402,7 @@ async function updatePassInstance(id, data) {
   if (data.samsung_wallet_cc2 !== undefined) { p++; updates.push(`samsung_wallet_cc2 = $${p}`); values.push(data.samsung_wallet_cc2); }
   if (data.device_id !== undefined) { p++; updates.push(`device_id = $${p}`); values.push(data.device_id); }
   if (data.device_source !== undefined) { p++; updates.push(`device_source = $${p}`); values.push(data.device_source); }
+  if (data.is_test_device !== undefined) { p++; updates.push(`is_test_device = $${p}`); values.push(!!data.is_test_device); }
   if (data.member_id !== undefined) { p++; updates.push(`member_id = $${p}`); values.push(data.member_id); }
   if (data.activated_at !== undefined) { p++; updates.push(`activated_at = $${p}`); values.push(data.activated_at); }
   if (data.dynamic_link_label !== undefined) { p++; updates.push(`dynamic_link_label = $${p}`); values.push(data.dynamic_link_label); }

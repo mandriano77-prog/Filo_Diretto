@@ -337,6 +337,51 @@
     return data;
   }
 
+  async function callSetPassTestDeviceApi(passId, enabled) {
+    var api = typeof window.API !== 'undefined' ? window.API : '/api/v1';
+    var headers = typeof window.getAuthHeaders === 'function' ? window.getAuthHeaders() : {};
+    var res = await fetch(api + '/passes/' + encodeURIComponent(passId), {
+      method: 'PUT',
+      headers: Object.assign({}, headers, {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify({ is_test_device: !!enabled })
+    });
+    var data = {};
+    try {
+      data = await res.json();
+    } catch (_) {}
+    if (!res.ok) throw new Error((data && data.error) || res.statusText || 'Errore aggiornamento');
+    return data;
+  }
+
+  async function setPassTestDevice(passId, enabled, menuBtn) {
+    var btn = menuBtn || null;
+    var origText = btn ? btn.textContent : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.textContent = enabled ? 'Imposto…' : 'Rimuovo…';
+    }
+    try {
+      await callSetPassTestDeviceApi(passId, enabled);
+      fdPassToast(enabled ? 'Pass impostato come device di prova' : 'Pass rimosso dai device di prova');
+      if (typeof window.loadPasses === 'function') await window.loadPasses(false);
+      if (typeof window.refreshTestPassOptions === 'function') window.refreshTestPassOptions();
+      return true;
+    } catch (err) {
+      fdPassToast('Errore: ' + (err && err.message ? err.message : err));
+      return false;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.textContent = origText;
+      }
+    }
+  }
+
   function regenerateSuccessMessage(data) {
     var msg = 'Pass rigenerato';
     if (data && data.apns_sent > 0) msg += ' — notifica inviata (' + data.apns_sent + ')';
@@ -532,6 +577,8 @@
       var viewBtn = wrap.querySelector('.pass-action-btn--view');
       var delBtn = wrap.querySelector('.pass-action-btn--danger');
       if (!viewBtn || !delBtn) return;
+      var row = wrap.closest('tr');
+      var isTestDevice = row && row.dataset.passTestDevice === '1';
       var passId =
         viewBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
         delBtn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] ||
@@ -546,6 +593,9 @@
         menuId +
         '" role="menu" hidden>' +
         '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="view">Dettaglio pass</button>' +
+        '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="toggle-test" data-rbac-write="passes">' +
+        (isTestDevice ? 'Rimuovi da test' : 'Imposta come test') +
+        '</button>' +
         '<button type="button" class="fd-pass-row-menu__item" role="menuitem" data-action="regenerate" data-rbac-write="passes">Rigenera pass</button>' +
         '<hr class="fd-pass-row-menu__sep" role="separator">' +
         '<button type="button" class="fd-pass-row-menu__item fd-pass-row-menu__item--danger" role="menuitem" data-action="delete" data-rbac-write="passes">Elimina pass</button>' +
@@ -565,6 +615,11 @@
         var regenBtn = e.currentTarget;
         closeAllPassRowMenus();
         regeneratePassInstance(passId, regenBtn);
+      });
+      wrap.querySelector('[data-action="toggle-test"]').addEventListener('click', function (e) {
+        var testBtn = e.currentTarget;
+        closeAllPassRowMenus();
+        setPassTestDevice(passId, !isTestDevice, testBtn);
       });
       wrap.querySelector('[data-action="delete"]').addEventListener('click', function () {
         closeAllPassRowMenus();

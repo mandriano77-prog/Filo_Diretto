@@ -637,6 +637,12 @@
           p.samsung_wallet_ref_id
         );
       });
+      withPush.sort(function (a, b) {
+        var aTest = a.is_test_device === true || a.is_test_device === 'true' || a.is_test_device === 't' || a.is_test_device === 1 || a.is_test_device === '1';
+        var bTest = b.is_test_device === true || b.is_test_device === 'true' || b.is_test_device === 't' || b.is_test_device === 1 || b.is_test_device === '1';
+        if (aTest !== bTest) return bTest ? 1 : -1;
+        return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+      });
       sel.innerHTML = '<option value="">— Seleziona pass di prova —</option>';
       if (!withPush.length) {
         sel.innerHTML = '<option value="">— Nessun pass con Wallet installato —</option>';
@@ -645,7 +651,18 @@
       withPush.forEach(function (p) {
         var opt = document.createElement('option');
         opt.value = p.id;
-        var label = (p.member_name || p.holder_name || p.email || p.serial_number || p.id).toString();
+        var fields = p.field_values || {};
+        if (typeof fields === 'string') {
+          try {
+            fields = JSON.parse(fields);
+          } catch (_) {
+            fields = {};
+          }
+        }
+        var fullName = [fields.nome || fields.first_name, fields.cognome || fields.last_name].filter(Boolean).join(' ');
+        var label = (p.member_name || p.holder_name || fullName || p.email || fields.email || p.serial_number || p.id).toString();
+        var isTest = p.is_test_device === true || p.is_test_device === 'true' || p.is_test_device === 't' || p.is_test_device === 1 || p.is_test_device === '1';
+        if (isTest) label = 'TEST · ' + label;
         if (p.push_token || p.device_source === 'apple') label += ' · iPhone';
         else if (p.google_wallet_saved || p.device_source === 'google') label += ' · Google';
         else if (p.samsung_wallet_saved || p.samsung_wallet_ref_id || p.device_source === 'samsung') label += ' · Samsung';
@@ -653,7 +670,12 @@
         sel.appendChild(opt);
       });
       var saved = localStorage.getItem(TEST_PASS_KEY);
-      if (saved && withPush.some(function (p) {
+      var marked = withPush.find(function (p) {
+        return p.is_test_device === true || p.is_test_device === 'true' || p.is_test_device === 't' || p.is_test_device === 1 || p.is_test_device === '1';
+      });
+      if (marked) {
+        sel.value = marked.id;
+      } else if (saved && withPush.some(function (p) {
         return String(p.id) === String(saved);
       })) {
         sel.value = saved;
@@ -663,6 +685,8 @@
       sel.innerHTML = '<option value="">— Lista pass non disponibile —</option>';
     }
   }
+
+  window.refreshTestPassOptions = loadTestPasses;
 
   async function sendTestPush() {
     if (!syncBrandIdForPush()) {
