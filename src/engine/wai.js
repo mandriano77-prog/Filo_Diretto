@@ -34,6 +34,7 @@ const STRIP_GENERATE_MODEL = 'fal-ai/flux-pro/v1.1';
 const STRIP_GENERATE_WIDTH = 1125;
 const STRIP_GENERATE_HEIGHT = 432;
 const DISALLOWED_STRIP_PROMPT = /\b(nsfw|nude|naked|porn|xxx|erotic)\b/i;
+const WAI_MAX_TOKENS = Math.max(1024, Math.min(4096, Number(process.env.WAI_MAX_TOKENS || 2048)));
 
 function buildWaiSystemPrompt() {
   const brand = getProductBrandName();
@@ -224,7 +225,7 @@ function isRetryableWaiModelError(message, status) {
   return /not[_\s-]?found|invalid[_\s-]?model|model.*(?:not|unavailable|does not exist)/i.test(text);
 }
 
-async function callWaiOnce(systemPrompt, userMessage, model, apiKey) {
+async function callWaiOnce(systemPrompt, userMessage, model, apiKey, maxTokens = WAI_MAX_TOKENS) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -234,7 +235,7 @@ async function callWaiOnce(systemPrompt, userMessage, model, apiKey) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }]
     })
@@ -253,7 +254,7 @@ async function callWaiOnce(systemPrompt, userMessage, model, apiKey) {
   return text;
 }
 
-async function callWai(systemPrompt, userMessage, model) {
+async function callWai(systemPrompt, userMessage, model, opts = {}) {
   const apiKey = getAnthropicApiKey();
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY non disponibile nel processo Node. Impostala nelle variabili del servizio (Railway) e ridistribuisci.');
@@ -265,7 +266,7 @@ async function callWai(systemPrompt, userMessage, model) {
     const candidate = candidates[i];
     try {
       if (i > 0) console.warn(`[wai] retry with model ${candidate}`);
-      return await callWaiOnce(systemPrompt, userMessage, candidate, apiKey);
+      return await callWaiOnce(systemPrompt, userMessage, candidate, apiKey, opts.maxTokens || WAI_MAX_TOKENS);
     } catch (err) {
       lastError = err;
       const hasNext = i < candidates.length - 1;
@@ -274,6 +275,42 @@ async function callWai(systemPrompt, userMessage, model) {
     }
   }
   throw lastError || new Error('Chiamata W.AI fallita');
+}
+
+function isLikelyJsonParseError(err) {
+  return err instanceof SyntaxError
+    || /JSON|valid JSON|property value|Unexpected token|Unexpected end|unterminated/i.test(String(err?.message || ''));
+}
+
+function buildWaiJsonRepairSystemPrompt() {
+  return `Sei un validatore JSON.
+Ricevi una risposta W.AI che doveva essere JSON valido ma contiene errori di sintassi.
+Restituisci SOLO JSON valido, senza markdown e senza spiegazioni.
+Non cambiare intent, payload, preview o answer se non per correggere la sintassi.
+Se mancano virgole, virgolette o parentesi, correggile conservando il contenuto.`;
+}
+
+async function extractWaiJsonWithRepair(text, model) {
+  try {
+    return extractJSON(text);
+  } catch (err) {
+    if (!isLikelyJsonParseError(err)) throw err;
+    console.warn('[wai] invalid JSON response, attempting repair:', err.message);
+    const repairText = await callWai(
+      buildWaiJsonRepairSystemPrompt(),
+      `Correggi questa risposta in JSON valido:\n\n${String(text || '').slice(0, 12000)}`,
+      model,
+      { maxTokens: WAI_MAX_TOKENS }
+    );
+    try {
+      return extractJSON(repairText);
+    } catch (repairErr) {
+      console.error('[wai] JSON repair failed:', repairErr.message);
+      const friendly = new Error('W.AI ha generato una risposta JSON non valida. Ho provato a correggerla automaticamente ma non è riuscito: riprova con un prompt più breve o più diretto.');
+      friendly.cause = repairErr;
+      throw friendly;
+    }
+  }
 }
 
 function sanitizeStripPrompt(text) {
@@ -826,7 +863,8 @@ async function askWai({ brandId, prompt, followup = '', previousProposal = null 
     buildUserMessage(trimmed, context, refinement),
     modelChoice.model
   );
-  const parsed = coerceWaiProposal(routingPrompt, coerceAudiencePlatformQuery(routingPrompt, extractJSON(text)));
+  const parsedJson = await extractWaiJsonWithRepair(text, modelChoice.model);
+  const parsed = coerceWaiProposal(routingPrompt, coerceAudiencePlatformQuery(routingPrompt, parsedJson));
   const proposal = validateWaiResponse(parsed, brandId, routingPrompt);
   return {
     ...proposal,
@@ -845,5 +883,6 @@ module.exports = {
   callWai,
   askWai,
   coerceWaiProposal,
+  extractWaiJsonWithRepair,
   validateWaiResponse
 };

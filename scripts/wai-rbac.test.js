@@ -45,6 +45,10 @@ test('W.AI push uses HR push limits and passes generated strip to wallet update'
   const routes = fs.readFileSync(path.join(__dirname, '../src/api/routes.js'), 'utf8');
   assert.match(wai, /PUSH_TITLE_MAX/);
   assert.match(wai, /PUSH_MESSAGE_MAX/);
+  assert.match(wai, /WAI_MAX_TOKENS/);
+  assert.match(wai, /extractWaiJsonWithRepair/);
+  assert.match(wai, /invalid JSON response, attempting repair/);
+  assert.match(wai, /W\.AI ha generato una risposta JSON non valida/);
   assert.doesNotMatch(wai, /slice\(0,\s*60\)/);
   assert.doesNotMatch(wai, /slice\(0,\s*180\)/);
   assert.match(routes, /resolvedStripBase64:\s*stripBase64/);
