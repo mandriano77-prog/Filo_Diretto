@@ -399,13 +399,32 @@ test('Filo checkbox and radio use native 16px sizing not full-width inputs', () 
   assert.match(components, /label:has\(> input\[type='checkbox'\]/);
 });
 
-test('Push channel multi-select maps pairs to comma-separated API values', () => {
+test('Push hides wallet channel selection and defaults sends to every wallet channel', () => {
+  const dashboard = read('src/dashboard/index.html');
   const js = readFd('fd-push.js');
-  assert.match(js, /return active\.join\(',',?\)/);
-  assert.doesNotMatch(js, /value: 'all', label: 'Tutti i canali'/);
+  assert.match(dashboard, /id="pushChannelGroup" hidden aria-hidden="true"/);
+  assert.match(dashboard, /id="schedChannelGroup" hidden aria-hidden="true"/);
+  assert.match(dashboard, /id="geoChannelGroup" hidden aria-hidden="true"/);
+  assert.match(dashboard, /const channel = 'all';/);
+  assert.match(js, /function walletChannelSelectionHidden\(\)/);
+  assert.match(js, /if \(walletChannelSelectionHidden\(\)\) return 'all';/);
+  assert.match(js, /var channel = 'all';/);
   const routes = read('src/api/routes.js');
   assert.match(routes, /normalizePushChannelList/);
+  assert.match(routes, /channel = 'all'/);
   assert.match(routes, /apple,google/);
+});
+
+test('Geofencing POIs render as compact list with quota counter and map preview', () => {
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /const GEO_MAX_POI = 10/);
+  assert.match(dashboard, /id="geoPoiCounter"/);
+  assert.match(dashboard, /id="geoAddPoiBtn"/);
+  assert.match(dashboard, /class="geo-poi-item"/);
+  assert.match(dashboard, /class="geo-poi-summary"/);
+  assert.match(dashboard, /openstreetmap\.org\/export\/embed\.html/);
+  assert.match(dashboard, /Raggio \$\{radius\} m/);
+  assert.match(dashboard, /te ne mancano/);
 });
 
 test('Challenge hides table head when gamEmptyHost is visible', () => {

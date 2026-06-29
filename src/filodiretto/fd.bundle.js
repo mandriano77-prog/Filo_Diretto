@@ -9005,15 +9005,19 @@
   }
   var channelSelection = {
     apple: true,
-    google: false,
-    samsung: false
+    google: true,
+    samsung: true
   };
+  function walletChannelSelectionHidden() {
+    return true;
+  }
   function isAllChannelsSelected() {
     return channelKeys().every(function (k) {
       return channelSelection[k];
     });
   }
   function channelsToApiValue() {
+    if (walletChannelSelectionHidden()) return 'all';
     var active = channelKeys().filter(function (k) {
       return channelSelection[k];
     });
@@ -9023,7 +9027,13 @@
     return active.join(',');
   }
   function setChannelSelectionFromValue(value) {
-    var raw = String(value || 'apple').trim().toLowerCase();
+    if (walletChannelSelectionHidden()) {
+      channelKeys().forEach(function (k) {
+        channelSelection[k] = true;
+      });
+      return;
+    }
+    var raw = String(value || 'all').trim().toLowerCase();
     if (raw === 'all') {
       channelKeys().forEach(function (k) {
         channelSelection[k] = true;
@@ -9050,6 +9060,15 @@
     var sel = document.getElementById('pushChannel');
     var apiValue = channelsToApiValue();
     if (sel) sel.value = apiValue;
+    if (walletChannelSelectionHidden()) {
+      var group = sel ? sel.closest('.form-group') : null;
+      if (group) {
+        group.hidden = true;
+        group.setAttribute('aria-hidden', 'true');
+        group.style.display = 'none';
+      }
+      return;
+    }
     var allOn = isAllChannelsSelected();
     document.querySelectorAll('.fd-push-channel-seg__btn').forEach(function (btn) {
       var ch = btn.getAttribute('data-channel');
@@ -9090,7 +9109,7 @@
     syncChannelUi();
   }
   function setChannelValue(value) {
-    setChannelSelectionFromValue(value || 'apple');
+    setChannelSelectionFromValue(value || 'all');
     syncChannelUi();
   }
   function parsePushLinkedContent(raw) {
@@ -9153,7 +9172,7 @@
         ? document.getElementById('pushCampaignTarget')?.value || null
         : null;
     var audienceId = document.getElementById('pushAudienceTarget')?.value || null;
-    var channel = document.getElementById('pushChannel').value || 'apple';
+    var channel = 'all';
     var body = {
       brand_id: syncBrandIdForPush(),
       title: title,
@@ -9393,6 +9412,14 @@
     sel.tabIndex = -1;
     var group = sel.closest('.form-group');
     if (!group) return;
+    if (walletChannelSelectionHidden()) {
+      sel.value = 'all';
+      group.hidden = true;
+      group.setAttribute('aria-hidden', 'true');
+      group.style.display = 'none';
+      syncChannelUi();
+      return;
+    }
     var label = group.querySelector('.form-label[for="pushChannel"]');
     if (label) label.setAttribute('for', 'fdPushChannelSeg');
     var seg = document.createElement('div');
@@ -9420,7 +9447,7 @@
     help.className = 'fd-push-channel-help';
     group.appendChild(seg);
     group.appendChild(help);
-    setChannelValue(sel.value || 'apple');
+    setChannelValue(sel.value || 'all');
   }
   function setPreviewTab(tab) {
     activePreviewTab = tab || 'notify';
@@ -9690,7 +9717,7 @@
     return !!(p.samsung_wallet_ref_id && passSamsungSavedLocal(p)) || passSamsungPendingLocal(p);
   }
   function parseSelectedChannels(channel) {
-    var raw = String(channel || 'apple').trim().toLowerCase();
+    var raw = String(channel || 'all').trim().toLowerCase();
     if (raw === 'all') return channelKeys().slice();
     if (raw.indexOf(',') !== -1) {
       return raw.split(',').map(function (s) { return s.trim(); }).filter(function (k) {
@@ -9764,7 +9791,7 @@
     return opt ? opt.textContent.trim() : sel.value;
   }
   function channelLabel(value) {
-    var raw = String(value || 'apple').trim().toLowerCase();
+    var raw = String(value || 'all').trim().toLowerCase();
     if (raw === 'all') return 'Tutti i canali';
     if (raw.indexOf(',') !== -1) {
       return raw.split(',').map(function (part) {
@@ -9836,7 +9863,7 @@
     }
     if (invalid) return;
     ensurePushConfirmModal();
-    var channel = document.getElementById('pushChannel')?.value || 'apple';
+    var channel = 'all';
     var summary = document.getElementById('fdPushConfirmSummary');
     var zeroBanner = document.getElementById('fdPushConfirmZero');
     var submitBtn = document.getElementById('fdPushConfirmSubmit');
@@ -9844,9 +9871,7 @@
     openFdModal('fdPushConfirmModal', trigger || document.getElementById('pushSendBtn'));
     var result = await fetchRecipientCounts(channel);
     var counts = result.counts;
-    var html =
-      '<li><strong>Canale</strong>' + esc(channelLabel(channel)) + '</li>' +
-      renderRecipientLines(counts, channel);
+    var html = renderRecipientLines(counts, channel);
     var linkedLabel = selectedOptionLabel('pushLinkedContent');
     if (linkedLabel && document.getElementById('pushLinkedContent')?.value) {
       html += '<li><strong>Contenuto collegato</strong>' + esc(linkedLabel) + '</li>';

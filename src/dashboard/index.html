@@ -719,6 +719,115 @@
         }
         .geo-suggest-btn:last-child { border-bottom: none; }
         .geo-suggest-btn:hover { background: var(--bg-hover); }
+        .geo-poi-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+        .geo-poi-counter {
+            font-size: var(--text-xs);
+            color: var(--text2);
+            margin: 4px 0 0;
+        }
+        .geo-poi-item {
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,.03);
+            margin-bottom: var(--space-2);
+            overflow: hidden;
+        }
+        .geo-poi-summary {
+            list-style: none;
+            cursor: pointer;
+            padding: var(--space-3);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: var(--space-3);
+            align-items: center;
+        }
+        .geo-poi-summary::-webkit-details-marker { display: none; }
+        .geo-poi-summary-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-weight: 700;
+            color: var(--text1);
+            min-width: 0;
+        }
+        .geo-poi-summary-main {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .geo-poi-summary-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            font-size: var(--text-xs);
+            color: var(--text2);
+            margin-top: 4px;
+        }
+        .geo-poi-chip {
+            display: inline-flex;
+            align-items: center;
+            border-radius: var(--radius-pill);
+            padding: 2px 8px;
+            background: var(--bg-hover);
+            color: var(--text2);
+            font-size: var(--text-xs);
+            font-weight: 600;
+        }
+        .geo-poi-chip--ok {
+            background: rgba(16,185,129,0.12);
+            color: var(--green);
+        }
+        .geo-poi-body {
+            border-top: 1px solid var(--border-default);
+            padding: var(--space-4);
+        }
+        .geo-map-preview {
+            position: relative;
+            height: 180px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--bg-hover);
+            margin: var(--space-3) 0;
+        }
+        .geo-map-preview iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+        .geo-map-radius-ring {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 96px;
+            height: 96px;
+            border-radius: 999px;
+            border: 2px solid rgba(124,58,237,0.65);
+            background: rgba(124,58,237,0.10);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .geo-map-badge {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            background: rgba(15,23,42,0.78);
+            color: #fff;
+            border-radius: var(--radius-pill);
+            padding: 4px 9px;
+            font-size: var(--text-xs);
+            font-weight: 600;
+            pointer-events: none;
+        }
 
         .color-input-wrap { display: flex; gap: var(--space-2); align-items: center; }
         .color-input-wrap input[type="color"] { width: 40px; height: 34px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); cursor: pointer; padding: 0; min-height: auto; }
@@ -1596,7 +1705,7 @@
             <!-- PUSH NOTIFICATIONS -->
             <div id="push" class="section">
                 <h1 class="sec-title page-title">Push &amp; Notifiche</h1>
-                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. Nella push diretta puoi scegliere il canale: <strong>Apple (APNs)</strong>, <strong>Google Wallet</strong> o entrambi.</p>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Gestisci le 3 modalità di notifica: push diretta, programmata nel tempo, e prossimità geofencing. L'invio usa automaticamente tutti i wallet disponibili; puoi restringere i destinatari con audience o campagne.</p>
 
                 <!-- Sub-tab navigation -->
                 <div class="tabs-bar" role="tablist" aria-label="Modalità push">
@@ -1623,13 +1732,13 @@
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="pushChannelGroup" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label" for="pushChannel">Canale invio</label>
                             <select id="pushChannel" aria-label="Canale invio">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
                                 <option value="samsung">Samsung Wallet</option>
-                                <option value="all">Tutti i canali</option>
+                                <option value="all" selected>Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
@@ -1728,11 +1837,6 @@
                             <select id="schedCampaignTarget">
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
-                        </div>                        <div class="form-group">
-                            <label class="form-label">Audience (opzionale)</label>
-                            <select id="schedAudienceTarget">
-                                <option value="">— Nessuna (usa campagna o tutti) —</option>
-                            </select>
                         </div>
                         <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Titolo</label>
@@ -1781,13 +1885,13 @@
                                 <option value="weekly">Ogni settimana</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" id="schedChannelGroup" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Canale invio</label>
                             <select id="schedChannel">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
                                 <option value="samsung">Samsung Wallet</option>
-                                <option value="all">Tutti i canali</option>
+                                <option value="all" selected>Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1811,6 +1915,13 @@
                                 <label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" class="sched-day" value="0" style="width:auto;accent-color:var(--teal);"> Dom</label>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Audience (opzionale)</label>
+                            <select id="schedAudienceTarget">
+                                <option value="">— Nessuna (usa campagna o tutti) —</option>
+                            </select>
+                            <p style="font-size:11px;color:var(--text2);margin-top:4px;">Se selezionata, ha priorità sulla campagna.</p>
+                        </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="createScheduledPush()">&#128337; Programma Notifica</button>
                     </div>
                     <div class="sec-title" style="margin-top:24px;">Notifiche Programmate Attive</div>
@@ -1820,9 +1931,12 @@
                 <!-- TAB 3: Geofencing -->
                 <div id="pushPanel_geofencing" class="push-panel" style="display:none;">
                     <div class="push-card" style="margin-top:0;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                            <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
-                            <button class="btn small" onclick="addGeoLocation()">+ Aggiungi POI</button>
+                        <div class="geo-poi-toolbar">
+                            <div>
+                                <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
+                                <p class="geo-poi-counter" id="geoPoiCounter">0/10 POI configurati · te ne mancano 10</p>
+                            </div>
+                            <button class="btn small" id="geoAddPoiBtn" onclick="addGeoLocation()">+ Aggiungi POI</button>
                         </div>
                         <div id="geoLocationsList"></div>
                         <div id="geoEmptyMsg" style="padding:20px;text-align:center;color:var(--text2);font-size:13px;border:1px dashed var(--border);border-radius:8px;">
@@ -1831,13 +1945,13 @@
                     </div>
 
                     <div class="push-card" style="margin-top:16px;">
-                        <div class="form-group">
+                        <div class="form-group" id="geoChannelGroup" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Canale aggiornamento</label>
                             <select id="geoChannel" style="max-width:280px;">
                                 <option value="apple">Apple Wallet (APNs)</option>
                                 <option value="google">Google Wallet</option>
                                 <option value="samsung">Samsung Wallet</option>
-                                <option value="all">Tutti i canali</option>
+                                <option value="all" selected>Tutti i canali</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -8117,7 +8231,7 @@ function buildImmediatePushBody() {
         ? (document.getElementById('pushCampaignTarget')?.value || null)
         : null;
     const audienceId = document.getElementById('pushAudienceTarget')?.value || null;
-    const channel = document.getElementById('pushChannel')?.value || 'apple';
+    const channel = 'all';
     const updatePass = true;
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel };
     if (audienceId) body.audience_id = audienceId;
@@ -8220,7 +8334,7 @@ async function createScheduledPush() {
         : null;
     const audienceId = document.getElementById('schedAudienceTarget')?.value || null;
     const updatePass = true;
-    const channel = document.getElementById('schedChannel').value || 'apple';
+    const channel = 'all';
     const schedType = document.getElementById('schedType').value;
     const time = document.getElementById('schedTime').value || '09:00';
 
@@ -8276,7 +8390,7 @@ async function loadScheduledPush() {
     if (!list.length) { el.innerHTML = renderEmptyState({ title: 'Nessuna notifica programmata', description: 'Programma push ricorrenti o una tantum.', icon: 'inbox' }); return; }
     el.innerHTML = list.map(s => {
         const typeLabel = s.schedule_type === 'once' ? 'Una tantum' : s.schedule_type === 'daily' ? 'Giornaliera' : 'Settimanale';
-        const channelLabel = pushChannelDisplayLabel(s.channel || 'apple');
+        const channelLabel = pushChannelDisplayLabel(s.channel || 'all');
         return `
         <div class="card">
             <div class="card-row">
@@ -8316,7 +8430,9 @@ async function geoNomThrottle() {
     geoNomGlobalLastFetch = Date.now();
 }
 
+const GEO_MAX_POI = 10;
 let geoLocations = [];
+let geoOpenIndex = null;
 let geoSearchTimers = {};
 let geoSearchResultsForIdx = {};
 
@@ -8327,18 +8443,55 @@ function geoHasValidCoords(loc) {
 }
 
 function addGeoLocation() {
-    if (geoLocations.length >= 10) return alert('Massimo 10 locations per pass (limite Apple)');
+    if (geoLocations.length >= GEO_MAX_POI) return alert(`Massimo ${GEO_MAX_POI} POI per pass (limite Apple Wallet)`);
     geoLocations.push({ name: '', latitude: '', longitude: '', radius: 500, relevantText: '', address: '' });
+    geoOpenIndex = geoLocations.length - 1;
     renderGeoLocations();
 }
 
 function removeGeoLocation(idx) {
     geoLocations.splice(idx, 1);
+    geoOpenIndex = geoLocations.length ? Math.min(idx, geoLocations.length - 1) : null;
     renderGeoLocations();
 }
 
 function updateGeoField(idx, field, value) {
     geoLocations[idx][field] = value;
+}
+
+function onGeoPoiToggle(idx, isOpen) {
+    if (isOpen) geoOpenIndex = idx;
+    else if (geoOpenIndex === idx) geoOpenIndex = null;
+}
+
+function updateGeoPoiCounter() {
+    const counter = document.getElementById('geoPoiCounter');
+    const addBtn = document.getElementById('geoAddPoiBtn');
+    const remaining = Math.max(0, GEO_MAX_POI - geoLocations.length);
+    if (counter) {
+        counter.textContent = `${geoLocations.length}/${GEO_MAX_POI} POI configurati · te ne mancano ${remaining}`;
+    }
+    if (addBtn) {
+        addBtn.disabled = remaining <= 0;
+        addBtn.textContent = remaining <= 0 ? 'Limite POI raggiunto' : '+ Aggiungi POI';
+    }
+}
+
+function geoMapEmbedUrl(loc) {
+    const la = parseFloat(loc.latitude);
+    const lo = parseFloat(loc.longitude);
+    const radius = Math.max(50, parseInt(loc.radius, 10) || 500);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return '';
+    const delta = Math.max(0.002, (radius / 111320) * 3);
+    const bbox = `${lo - delta},${la - delta},${lo + delta},${la + delta}`;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${la},${lo}`)}`;
+}
+
+function geoMapOpenUrl(loc) {
+    const la = parseFloat(loc.latitude);
+    const lo = parseFloat(loc.longitude);
+    if (!Number.isFinite(la) || !Number.isFinite(lo)) return '';
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(la)}&mlon=${encodeURIComponent(lo)}#map=18/${encodeURIComponent(la)}/${encodeURIComponent(lo)}`;
 }
 
 function clearGeoAddress(i) {
@@ -8472,6 +8625,7 @@ async function enrichGeoAddressesFromCoords() {
 function renderGeoLocations() {
     const container = document.getElementById('geoLocationsList');
     const empty = document.getElementById('geoEmptyMsg');
+    updateGeoPoiCounter();
     if (!geoLocations.length) {
         container.innerHTML = '';
         empty.style.display = 'block';
@@ -8482,6 +8636,25 @@ function renderGeoLocations() {
     container.innerHTML = geoLocations.map((loc, i) => {
         const hasCoords = geoHasValidCoords(loc);
         const hasLabel = loc.address && String(loc.address).trim();
+        const radius = Math.max(50, parseInt(loc.radius, 10) || 500);
+        const title = String(loc.name || '').trim() || `POI #${i + 1}`;
+        const summaryText = hasLabel ? String(loc.address).trim() : 'Indirizzo da selezionare';
+        const statusChip = hasCoords
+            ? '<span class="geo-poi-chip geo-poi-chip--ok">Posizione OK</span>'
+            : '<span class="geo-poi-chip">Da completare</span>';
+        const isOpen = geoOpenIndex === i || !hasCoords;
+        const mapUrl = geoMapEmbedUrl(loc);
+        const mapOpenUrl = geoMapOpenUrl(loc);
+        const mapBlock = hasCoords && mapUrl ? `
+            <div class="geo-map-preview" aria-label="Mappa POI ${esc(title)}">
+                <iframe src="${mapUrl}" loading="lazy" title="Mappa POI ${esc(title)}"></iframe>
+                <span class="geo-map-radius-ring" aria-hidden="true"></span>
+                <span class="geo-map-badge">Raggio ${radius} m</span>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin:-6px 0 10px;">
+                <a href="${mapOpenUrl}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;">Apri mappa</a>
+            </div>
+        ` : '';
         const addrBlock = hasCoords && hasLabel ? `
             <div style="padding:10px 12px;border-radius:8px;background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);margin-bottom:10px;">
                 <div style="font-size:11px;color:var(--text2);">Indirizzo (OpenStreetMap)</div>
@@ -8505,11 +8678,12 @@ function renderGeoLocations() {
         const radiusField = `
             <div class="form-group" style="width:120px;margin-bottom:12px;">
                 <label class="form-label">Raggio (m)</label>
-                <input type="number" value="${loc.radius || 500}" min="50" max="5000" onchange="updateGeoField(${i},'radius',this.value)">
+                <input type="number" value="${radius}" min="50" max="5000" onchange="updateGeoField(${i},'radius',this.value);renderGeoLocations();">
             </div>
         `;
         const coordsDetails = hasCoords ? `
             ${radiusField}
+            ${mapBlock}
             <details style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;background:rgba(255,255,255,.02);">
                 <summary style="cursor:pointer;font-size:12px;color:var(--text2);">Coordinate (back-office) — lat/lon usati dal pass</summary>
                 <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
@@ -8528,23 +8702,37 @@ function renderGeoLocations() {
             <div style="margin-bottom:12px;">${radiusField}</div>
         `;
         return `
-        <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;background:rgba(255,255,255,.03);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <span style="font-weight:700;font-size:13px;color:var(--teal);">POI #${i + 1}</span>
-                <button class="btn small danger" onclick="removeGeoLocation(${i})" style="padding:4px 10px;font-size:11px;">Rimuovi</button>
+        <details class="geo-poi-item" ${isOpen ? 'open' : ''} ontoggle="onGeoPoiToggle(${i}, this.open)">
+            <summary class="geo-poi-summary">
+                <div style="min-width:0;">
+                    <div class="geo-poi-summary-title">
+                        <span>POI #${i + 1}</span>
+                        <span class="geo-poi-summary-main">${esc(title)}</span>
+                    </div>
+                    <div class="geo-poi-summary-meta">
+                        <span class="geo-poi-summary-main">${esc(summaryText)}</span>
+                        <span>${radius} m</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+                    ${statusChip}
+                    <button type="button" class="btn small danger" onclick="event.preventDefault();event.stopPropagation();removeGeoLocation(${i});" style="padding:4px 10px;font-size:11px;">Rimuovi</button>
+                </div>
+            </summary>
+            <div class="geo-poi-body">
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label class="form-label">Nome interno (opzionale)</label>
+                    <input type="text" value="${esc(loc.name)}" onchange="updateGeoField(${i},'name',this.value);renderGeoLocations();" placeholder="es. Sede centro">
+                </div>
+                ${addrBlock}
+                ${coordsDetails}
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Messaggio vicino al POI (testo Apple, posizione anche Google)</label>
+                    <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
+                    <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo sulla lock screen. Google riceve il POI come merchant location e gestisce la notifica Wallet con testo standard.</p>
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom:10px;">
-                <label class="form-label">Nome interno (opzionale)</label>
-                <input type="text" value="${esc(loc.name)}" onchange="updateGeoField(${i},'name',this.value)" placeholder="es. Sede centro">
-            </div>
-            ${addrBlock}
-            ${coordsDetails}
-            <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label">Messaggio vicino al POI (testo Apple, posizione anche Google)</label>
-                <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
-                <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo sulla lock screen. Google riceve il POI come merchant location e gestisce la notifica Wallet con testo standard.</p>
-            </div>
-        </div>
+        </details>
         `;
     }).join('');
 }
@@ -8559,7 +8747,8 @@ async function loadGeofencing() {
             address: loc.address || ''
         }));
         document.getElementById('geoMaxDistance').value = data.maxDistance || 500;
-        document.getElementById('geoChannel').value = data.channel || 'apple';
+        const geoChannelEl = document.getElementById('geoChannel');
+        if (geoChannelEl) geoChannelEl.value = 'all';
         renderGeoLocations();
         enrichGeoAddressesFromCoords();
     } catch (e) { console.error('Load geofencing error:', e); }
@@ -8578,7 +8767,7 @@ async function saveGeofencing() {
         if (!loc.relevantText || !String(loc.relevantText).trim()) return alert(`POI #${i+1}: inserisci il messaggio vicino al POI`);
     }
     const maxDistance = parseInt(document.getElementById('geoMaxDistance').value) || 500;
-    const channel = document.getElementById('geoChannel').value || 'apple';
+    const channel = 'all';
     const statusEl = document.getElementById('geoSaveStatus');
     const btn = document.getElementById('geoSaveBtn');
     btn.disabled = true;
@@ -8718,7 +8907,7 @@ async function loadPushHistory() {
                 <input type="checkbox" class="push-row-cb a2w-bulk-check" aria-label="Seleziona notifica" data-push-id="${esc(pid)}" ${rowSelected ? 'checked' : ''} onchange="onPushRowCheckboxChange('${esc(pid)}', this)">
             </td>
             <td style="font-size:12px;">${new Date(l.sent_at||l.created_at).toLocaleString('it')}</td>
-            <td>${pushChannelDisplayLabel(l.channel || 'apple')}</td>
+            <td>${pushChannelDisplayLabel(l.channel || 'all')}</td>
             <td>${esc(l.title)}</td>
             <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(l.message || '')}">${esc(l.message)}</td>
             <td>${l.sent_count||0}</td>
@@ -8751,7 +8940,7 @@ async function resendPushFromHistory(pushId) {
             brand_id: brandId,
             title: log.title,
             message: log.message,
-            channel: log.channel || 'apple',
+            channel: log.channel || 'all',
             update_pass: true
         };
         if (log.campaign_id) body.campaign_id = log.campaign_id;

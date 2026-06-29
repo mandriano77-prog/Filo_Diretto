@@ -223,8 +223,8 @@ const PUSH_CHANNELS = [
 ];
 
 function normalizePushChannelList(channel) {
-  const raw = String(channel || 'apple').trim().toLowerCase();
-  if (!raw) return ['apple'];
+  const raw = String(channel || 'all').trim().toLowerCase();
+  if (!raw) return [...PUSH_CHANNEL_KEYS];
   if (raw === 'both') return ['apple', 'google'];
   if (raw === 'all') return [...PUSH_CHANNEL_KEYS];
   if (raw.includes(',')) {
@@ -2733,7 +2733,7 @@ router.post('/push/send', async (req, res) => {
   try {
     const {
       brand_id, title, message, campaign_id, audience_id, update_pass, field_values,
-      instant_win_id, gamification_id, channel = 'apple',
+      instant_win_id, gamification_id, channel = 'all',
       back_link_label, back_link_url,
       include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
       strip_media_id, strip_base64,
@@ -3025,7 +3025,7 @@ router.get('/brands/:id/geofencing', async (req, res) => {
     res.json({
       locations,
       maxDistance: brand.config?.maxDistance || 500,
-      channel: brand.config?.geofencing_channel || 'apple'
+      channel: brand.config?.geofencing_channel || 'all'
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3033,7 +3033,7 @@ router.get('/brands/:id/geofencing', async (req, res) => {
 router.put('/brands/:id/geofencing', async (req, res) => {
   try {
     if (!requireOwnedBrandPk(req, res, req.params.id)) return;
-    const { locations, maxDistance, channel = 'apple' } = req.body;
+    const { locations, maxDistance, channel = 'all' } = req.body;
     if (!assertPushChannel(channel)) {
       return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all o combinazioni apple,google)' });
     }
