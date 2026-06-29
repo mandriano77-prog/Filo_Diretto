@@ -317,7 +317,8 @@ test('strip preview API route registered', () => {
 test('scheduled push: back_details stored and applied on execute', () => {
   assert.match(read('src/db/index.js'), /scheduled_push ADD COLUMN IF NOT EXISTS back_details/);
   assert.match(read('src/db/index.js'), /back_details/);
-  assert.match(read('src/engine/scheduler.js'), /attachBackDetailsToAnnouncement/);
+  assert.match(read('src/engine/scheduler.js'), /executeWalletPush\(schedule/);
+  assert.match(read('src/engine/push-dispatch.js'), /attachBackDetailsToAnnouncement/);
   assert.match(read('src/api/routes.js'), /validatePushBackDetails\(req\.body\.back_details\)/);
   assert.match(read('src/dashboard/index.html'), /schedBackDetails/);
 });

@@ -604,7 +604,7 @@
 
     applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
 
-    if (updatePass && window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
+    if (window.pushStripMediaId) body.strip_media_id = window.pushStripMediaId;
     if (extra.test_pass_id) body.test_pass_id = extra.test_pass_id;
     return body;
   }
@@ -1575,7 +1575,13 @@
     root.querySelectorAll('[onclick*="pushPickStripFromMedia"]').forEach(function (btn) {
       btn.classList.add('sec', 'small');
     });
+    root.querySelectorAll('[onclick*="schedPickStripFromMedia"]').forEach(function (btn) {
+      btn.classList.add('sec', 'small');
+    });
     root.querySelectorAll('#pushStripClearBtn').forEach(function (btn) {
+      btn.classList.add('fd-btn-ghost', 'small', 'fd-push-strip-clear');
+    });
+    root.querySelectorAll('#schedStripClearBtn').forEach(function (btn) {
       btn.classList.add('fd-btn-ghost', 'small', 'fd-push-strip-clear');
     });
 

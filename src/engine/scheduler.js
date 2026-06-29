@@ -8,21 +8,10 @@ const {
   getDueScheduledPush,
   updateScheduledPush,
   getBrand,
-  updateBrand,
-  touchPassesByIds,
-  unregisterDevice,
-  logPush,
   logEvent,
-  updatePassDynamicLinks,
-  markPassesPushDelivered,
-  markPassPushStatus,
 } = require('../db');
-const { sendPushBatch, shouldPruneApnsRegistration, closeApnsSession } = require('./apns');
-const { getTargetPassesForPush, getAppleDevicesForAudience } = require('./audiences');
-const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
-const googleWallet = require('./google-wallet');
-const samsungWallet = require('./samsung-wallet');
-const { attachBackDetailsToAnnouncement } = require('./push-text-limits');
+const { closeApnsSession } = require('./apns');
+const { executeWalletPush } = require('./push-dispatch');
 
 /**
  * First `next_run_at` when saving a scheduled push from the dashboard.
@@ -113,45 +102,8 @@ function calculateNextRun(schedule) {
   return null;
 }
 
-async function applyScheduledApplePushResults(devices, batchResults) {
-  const deliveredSerials = [];
-  let sentCount = 0;
-
-  for (let i = 0; i < devices.length; i++) {
-    const device = devices[i];
-    const result = batchResults[i] || { success: false, reason: 'missing_result' };
-    if (result.success) {
-      sentCount++;
-      if (device.serial_number) deliveredSerials.push(device.serial_number);
-    } else if (shouldPruneApnsRegistration(result) && device.device_library_id && device.serial_number) {
-      try {
-        await unregisterDevice(device.device_library_id, device.serial_number);
-      } catch (cleanupErr) {
-        console.warn('[scheduler] failed cleanup invalid registration:', cleanupErr.message);
-      }
-      if (device.serial_number) await markPassPushStatus(device.serial_number, result.reason || 'failed');
-    } else if (device.serial_number) {
-      await markPassPushStatus(device.serial_number, result.reason || 'failed');
-    }
-  }
-
-  if (deliveredSerials.length) {
-    await markPassesPushDelivered(deliveredSerials);
-  }
-
-  return sentCount;
-}
-
 async function executeScheduledPush(schedule, baseUrl) {
-  const {
-    brand_id, title, message, target, update_pass, channel = 'apple', campaign_id, audience_id,
-    include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_details,
-  } = schedule;
-  const pushTargetOpts = { campaign_id, audience_id };
-  const legacyBoth = channel === 'both';
-  const sendApple = channel === 'apple' || legacyBoth || channel === 'all';
-  const sendGoogle = channel === 'google' || legacyBoth || channel === 'all';
-  const sendSamsung = channel === 'samsung' || channel === 'all';
+  const { brand_id, title } = schedule;
 
   console.log(`⏰ Executing scheduled push: "${title}" for brand ${brand_id}`);
 
@@ -161,103 +113,24 @@ async function executeScheduledPush(schedule, baseUrl) {
     return;
   }
 
-  let passesUpdated = 0;
-  const targetPasses = await getTargetPassesForPush(brand_id, pushTargetOpts);
+  const result = await executeWalletPush(schedule, {
+    hrDeploy: true,
+    resolvedStripBase64: schedule.strip_base64 || null,
+  });
+  closeApnsSession();
 
-  if (update_pass) {
-    const { syncWalletLogoFromBrandIdentity, syncWalletIconFromBrandIdentity } = require('./brand-wallet-logo');
-    const { normalizePushAnnouncementForStrip } = require('./passkit');
-    const { updatePassPushOverlays } = require('../db');
-    const hrDeploy = true;
-    try {
-      await syncWalletLogoFromBrandIdentity(brand_id, brand, {
-        syncTemplates: hrDeploy || brand?.config?.product_line === 'hr',
-      });
-      await syncWalletIconFromBrandIdentity(brand_id, brand, { touchPasses: false });
-    } catch (syncErr) {
-      console.warn('[Scheduler] wallet logo sync skipped:', syncErr.message);
-    }
-
-    const updatedConfig = { ...(brand.config || {}) };
-    delete updatedConfig.pushAnnouncement;
-    delete updatedConfig.stripOverride;
-    await updateBrand(brand_id, { config: updatedConfig });
-
-    const announcement = attachBackDetailsToAnnouncement(
-      normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
-        || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() },
-      back_details
-    );
-
-    if (targetPasses.length) {
-      await updatePassPushOverlays(targetPasses.map((p) => p.id), { announcement, stripBase64: null });
-    }
-
-    if (include_pass_link && pass_link_url) {
-      const defaultExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      await updatePassDynamicLinks(targetPasses.map((p) => p.id), {
-        label: pass_link_label || title.slice(0, 40),
-        url: pass_link_url,
-        expiresAt: pass_link_expires_at || defaultExpiry,
-      });
-    }
-
-    const touched = await touchPassesByIds(targetPasses.map((p) => p.id));
-    passesUpdated = touched.touched || 0;
-  }
-
-  if (update_pass && sendGoogle && googleWallet.isConfigured()) {
-    try {
-      const syncedBrand = await getBrand(brand_id);
-      const googleSync = await syncGoogleWalletObjectsForPasses({
-        brand: syncedBrand,
-        passes: targetPasses,
-        title,
-        message,
-        back_details,
-      });
-      console.log('[GoogleWallet] Scheduled sync', googleSync);
-    } catch (e) {
-      console.error('[GoogleWallet] Scheduled sync error:', e.message);
-    }
-  }
-
-  let samsungNotify = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
-  if (update_pass && sendSamsung && samsungWallet.isConfigured()) {
-    try {
-      samsungNotify = await samsungWallet.notifySavedPassesUpdates(targetPasses);
-      console.log('[SamsungWallet] Scheduled notify', samsungNotify);
-    } catch (e) {
-      console.error('[SamsungWallet] Scheduled notify error:', e.message);
-    }
-  }
-
-  let devices = [];
-  let sentCount = 0;
-  if (sendApple) {
-    devices = await getAppleDevicesForAudience(brand_id, pushTargetOpts);
-    if (devices.length) {
-      const batchResults = await sendPushBatch(devices.map((d) => d.push_token));
-      sentCount = await applyScheduledApplePushResults(devices, batchResults);
-    }
-    closeApnsSession();
-  }
-
-  await logPush({ brand_id, title, message, target: target || 'all', sent_count: sentCount, channel });
   await logEvent({
     brand_id,
     event_type: 'scheduled_push_sent',
     metadata: {
       title,
-      channel,
-      sent_count: sentCount,
-      samsung_notify: samsungNotify,
-      passes_updated: passesUpdated,
+      channel: schedule.channel,
+      result,
       schedule_id: schedule.id,
     },
   });
 
-  console.log(`✓ Scheduled push sent: ${sentCount}/${devices.length} devices, ${passesUpdated} passes touched`);
+  console.log(`✓ Scheduled push sent: ${result.sent || 0} wallet updates`);
 }
 
 async function schedulerTick(baseUrl) {

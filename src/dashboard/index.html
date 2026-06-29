@@ -1734,13 +1734,39 @@
                                 <option value="">— Nessuna (usa campagna o tutti) —</option>
                             </select>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Titolo</label>
                             <input type="text" id="schedTitle" placeholder="es. Reminder settimanale">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Messaggio</label>
                             <textarea id="schedMessage" rows="3" placeholder="es. Non perderti le novità di questa settimana!" style="resize:vertical;"></textarea>
+                        </div>
+                        <div id="schedStripBlock" class="form-group" style="margin-top:8px;">
+                            <label class="form-label">Strip per questa push (opzionale)</label>
+                            <p style="font-size:11px;color:var(--text2);margin:0 0 8px;">Solo per gli invii programmati — stessa logica della push immediata.</p>
+                            <div id="schedStripPreview" class="dropzone" role="button" tabindex="0" title="Scegli una strip temporanea per questa push programmata" onclick="schedPickStripFromMedia()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();schedPickStripFromMedia();}">
+                                <span class="dropzone__placeholder">Trascina o clicca per scegliere una strip temporanea</span>
+                            </div>
+                            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" class="btn small" onclick="schedPickStripFromMedia()">Scegli da Media Library</button>
+                                <button type="button" class="btn small danger" id="schedStripClearBtn" onclick="schedClearStrip()" style="display:none;">Rimuovi strip</button>
+                            </div>
+                        </div>
+                        <div id="schedPassLinkFields" style="display:block;margin-top:8px;">
+                            <div class="form-group">
+                                <label class="form-label" for="schedPassLinkUrl">URL link (https://)</label>
+                                <input type="url" id="schedPassLinkUrl" placeholder="https://...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="schedPassLinkLabel">Label del link (max 64)</label>
+                                <input type="text" id="schedPassLinkLabel" maxlength="64" placeholder="es. Compila il questionario">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="schedPassLinkExpires">Scadenza link</label>
+                                <input type="datetime-local" id="schedPassLinkExpires">
+                            </div>
+                            <p class="form-hint" style="margin:4px 0 10px;font-size:11px;color:var(--text2);">Se compili URL + etichetta, il link compare sul retro del pass come nella push immediata.</p>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="schedBackDetails">Dettagli retro pass (opzionale)</label>
@@ -7814,6 +7840,7 @@ async function loadPushAudienceSelect() {
 
 // --- TAB 1: Push Immediata ---
 let pushStripMediaId = null;
+let schedStripMediaId = null;
 
 function togglePushStripBlock() {
     const block = document.getElementById('pushStripBlock');
@@ -7824,6 +7851,7 @@ function pushPickStripFromMedia() {
     if (!brandId) return toast('Seleziona un brand');
     openMediaPicker((mediaId, imageUrl) => {
         pushStripMediaId = mediaId;
+        window.pushStripMediaId = mediaId;
         const prev = document.getElementById('pushStripPreview');
         if (prev) {
             prev.innerHTML = `<img src="${imageUrl}" alt="Strip push" style="width:100%;height:100%;object-fit:cover;">`;
@@ -7836,11 +7864,38 @@ function pushPickStripFromMedia() {
 
 function pushClearStrip() {
     pushStripMediaId = null;
+    window.pushStripMediaId = null;
     const prev = document.getElementById('pushStripPreview');
     if (prev) {
         prev.innerHTML = '<span class="dropzone__placeholder">Trascina o clicca per scegliere una strip temporanea</span>';
     }
     const clr = document.getElementById('pushStripClearBtn');
+    if (clr) clr.style.display = 'none';
+}
+
+function schedPickStripFromMedia() {
+    if (!brandId) return toast('Seleziona un brand');
+    openMediaPicker((mediaId, imageUrl) => {
+        schedStripMediaId = mediaId;
+        window.schedStripMediaId = mediaId;
+        const prev = document.getElementById('schedStripPreview');
+        if (prev) {
+            prev.innerHTML = `<img src="${imageUrl}" alt="Strip push programmata" style="width:100%;height:100%;object-fit:cover;">`;
+        }
+        const clr = document.getElementById('schedStripClearBtn');
+        if (clr) clr.style.display = '';
+        toast('Strip selezionata per la push programmata');
+    }, 'strip');
+}
+
+function schedClearStrip() {
+    schedStripMediaId = null;
+    window.schedStripMediaId = null;
+    const prev = document.getElementById('schedStripPreview');
+    if (prev) {
+        prev.innerHTML = '<span class="dropzone__placeholder">Trascina o clicca per scegliere una strip temporanea</span>';
+    }
+    const clr = document.getElementById('schedStripClearBtn');
     if (clr) clr.style.display = 'none';
 }
 
@@ -8158,8 +8213,8 @@ function toggleSchedOptions() {
 }
 
 async function createScheduledPush() {
-    const title = document.getElementById('schedTitle').value;
-    const message = document.getElementById('schedMessage').value;
+    const title = (document.getElementById('schedTitle')?.value || '').trim() || DEFAULT_PUSH_TITLE;
+    const message = (document.getElementById('schedMessage')?.value || '').trim() || DEFAULT_PUSH_MESSAGE;
     const campaignId = isLegacyCampaignsUiEnabled()
         ? (document.getElementById('schedCampaignTarget')?.value || null)
         : null;
@@ -8169,8 +8224,8 @@ async function createScheduledPush() {
     const schedType = document.getElementById('schedType').value;
     const time = document.getElementById('schedTime').value || '09:00';
 
-    if (!title || !message) return alert('Compila titolo e messaggio');
     if (!brandId) return alert('Seleziona un brand');
+    if (!applyPushTextValidation(title, message, (document.getElementById('schedBackDetails')?.value || '').trim())) return;
 
     const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
     if (audienceId) body.audience_id = audienceId;
@@ -8188,6 +8243,15 @@ async function createScheduledPush() {
         return alert(`Dettagli retro max ${PUSH_BACK_DETAILS_MAX} caratteri`);
     }
     if (backDetails) body.back_details = backDetails;
+    const passLinkUrl = (document.getElementById('schedPassLinkUrl')?.value || '').trim();
+    if (passLinkUrl) {
+        body.include_pass_link = true;
+        body.pass_link_url = passLinkUrl;
+        body.pass_link_label = (document.getElementById('schedPassLinkLabel')?.value || '').trim();
+        const expLocal = document.getElementById('schedPassLinkExpires')?.value;
+        if (expLocal) body.pass_link_expires_at = new Date(expLocal).toISOString();
+    }
+    if (updatePass && schedStripMediaId) body.strip_media_id = schedStripMediaId;
     const res = await fetch(`${API}/push/scheduled`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { alert(data.error || 'Errore pianificazione'); return; }
@@ -8196,6 +8260,11 @@ async function createScheduledPush() {
     document.getElementById('schedMessage').value = '';
     const schedBackDetailsEl = document.getElementById('schedBackDetails');
     if (schedBackDetailsEl) schedBackDetailsEl.value = '';
+    ['schedPassLinkUrl', 'schedPassLinkLabel', 'schedPassLinkExpires'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    schedClearStrip();
     loadScheduledPush();
 }
 
@@ -8214,7 +8283,7 @@ async function loadScheduledPush() {
                 <div class="card-info">
                     <div class="card-title">${esc(s.title)}</div>
                     <div class="card-desc">${esc(s.message)}</div>
-                    <div class="card-meta">${typeLabel} &middot; ${channelLabel} &middot; ${s.schedule_time || ''}${s.next_run_at ? ` · pross.: ${esc(new Date(s.next_run_at).toLocaleString('it-IT'))}` : ''}${s.back_details ? ' · <span style="color:var(--teal);">dettagli retro</span>' : ''}${s.active ? '' : '<span style="color:var(--orange);"> (in pausa)</span>'}</div>
+                    <div class="card-meta">${typeLabel} &middot; ${channelLabel} &middot; ${s.schedule_time || ''}${s.next_run_at ? ` · pross.: ${esc(new Date(s.next_run_at).toLocaleString('it-IT'))}` : ''}${s.back_details ? ' · <span style="color:var(--teal);">dettagli retro</span>' : ''}${s.pass_link_url ? ' · <span style="color:var(--teal);">link retro</span>' : ''}${s.strip_base64 ? ' · <span style="color:var(--teal);">strip</span>' : ''}${s.active ? '' : '<span style="color:var(--orange);"> (in pausa)</span>'}</div>
                 </div>
                 <div class="card-actions">
                     <button class="btn small sec" onclick="toggleScheduled('${s.id}',${!s.active})">${s.active?'Pausa':'Attiva'}</button>

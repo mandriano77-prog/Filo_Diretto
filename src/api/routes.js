@@ -2863,6 +2863,14 @@ router.post('/push/scheduled', async (req, res) => {
     if (req.body.channel && !assertPushChannel(req.body.channel)) {
       return res.status(400).json({ error: 'channel non valido (apple|google|samsung|all o combinazioni apple,google)' });
     }
+    const textErrors = validatePushText(req.body.title, req.body.message);
+    if (textErrors.length) {
+      return res.status(400).json({
+        error: textErrors[0].message,
+        field: textErrors[0].field,
+        limits: { title_max: PUSH_TITLE_MAX, message_max: PUSH_MESSAGE_MAX },
+      });
+    }
     const backDetailsErrors = validatePushBackDetails(req.body.back_details);
     if (backDetailsErrors.length) {
       return res.status(400).json({
@@ -2872,6 +2880,22 @@ router.post('/push/scheduled', async (req, res) => {
     }
     const body = { ...req.body };
     body.back_details = normalizePushBackDetails(body.back_details);
+    if (body.pass_link_url) {
+      parsePassLinkFromPushBody(body, body.title);
+      body.include_pass_link = true;
+    }
+    if (body.update_pass !== false && (body.strip_media_id || body.strip_base64)) {
+      try {
+        body.strip_base64 = await resolvePushStripBase64({
+          brand_id: body.brand_id,
+          strip_media_id: body.strip_media_id,
+          strip_base64: body.strip_base64,
+        });
+      } catch (stripErr) {
+        return res.status(400).json({ error: stripErr.message });
+      }
+    }
+    delete body.strip_media_id;
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {
       body.schedule_days = body.days.map((x) => String(x)).join(',');
     }
@@ -5565,10 +5589,13 @@ const WAI_EXECUTORS = {
   'push.schedule': async (payload, opts = {}) => {
     const body = { ...payload };
     if (body.strip_base64) {
-      await applyGeneratedStripToBrand(body.brand_id, body.strip_base64);
-      delete body.strip_base64;
+      body.strip_base64 = String(body.strip_base64);
     } else if (body.strip_prompt_en) {
-      await maybeGenerateAndApplyWaiStrip(body, opts);
+      body.strip_base64 = await generateWaiStripBase64({
+        brand_id: body.brand_id,
+        prompt_en: body.strip_prompt_en,
+        source_prompt: opts.sourcePrompt || body.source_prompt || ''
+      });
       delete body.strip_prompt_en;
     }
     if (Array.isArray(body.days) && body.days.length && (!body.schedule_days || String(body.schedule_days).trim() === '')) {

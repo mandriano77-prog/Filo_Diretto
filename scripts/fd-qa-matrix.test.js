@@ -631,6 +631,24 @@ test('Push history resend preserves the original strip image', () => {
   assert.match(dashboard, /if \(log\.strip_base64\) body\.strip_base64 = log\.strip_base64/);
 });
 
+test('Scheduled push uses the same wallet dispatch surface as immediate push', () => {
+  const scheduler = read('src/engine/scheduler.js');
+  const db = read('src/db/index.js');
+  const routes = read('src/api/routes.js');
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(scheduler, /executeWalletPush\(schedule/);
+  assert.match(scheduler, /resolvedStripBase64:\s*schedule\.strip_base64 \|\| null/);
+  assert.match(db, /scheduled_push ADD COLUMN IF NOT EXISTS strip_base64 TEXT/);
+  assert.match(db, /INSERT INTO scheduled_push[\s\S]*strip_base64/);
+  assert.match(routes, /router\.post\('\/push\/scheduled'[\s\S]*resolvePushStripBase64/);
+  assert.match(routes, /router\.post\('\/push\/scheduled'[\s\S]*validatePushText/);
+  assert.match(dashboard, /id="schedStripPreview"/);
+  assert.match(dashboard, /id="schedPassLinkUrl"/);
+  assert.match(dashboard, /body\.strip_media_id = schedStripMediaId/);
+  assert.match(dashboard, /DEFAULT_PUSH_TITLE/);
+  assert.match(dashboard, /DEFAULT_PUSH_MESSAGE/);
+});
+
 test('Push immediate hides legacy title/message copy fields', () => {
   const dashboard = read('src/dashboard/index.html');
   const fdPush = readFd('fd-push.js');
