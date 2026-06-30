@@ -420,6 +420,9 @@ test('Geofencing POIs render as compact list with quota counter and map preview'
   assert.match(dashboard, /const GEO_MAX_POI = 10/);
   assert.match(dashboard, /id="geoPoiCounter"/);
   assert.match(dashboard, /id="geoAddPoiBtn"/);
+  assert.match(dashboard, /id="geoSaveBtnTop"/);
+  assert.match(dashboard, /Dopo aver aggiunto o modificato un POI premi/);
+  assert.match(dashboard, /Apple non mostra un banner immediato/);
   assert.match(dashboard, /class="geo-poi-item"/);
   assert.match(dashboard, /class="geo-poi-summary"/);
   assert.match(dashboard, /openstreetmap\.org\/export\/embed\.html/);
@@ -460,6 +463,7 @@ test('Geofencing copy distinguishes Apple text from Google POI support', () => {
   const gw = read('src/engine/google-wallet.js');
   assert.match(dashboard, /testo Apple, posizione anche Google/);
   assert.match(dashboard, /Google riceve il POI come merchant location/);
+  assert.match(dashboard, /Apple update: \$\{data\.pushes_sent \|\| 0\} device/);
   assert.doesNotMatch(dashboard, /Messaggio lock screen \(solo Apple Wallet/);
   assert.match(gw, /merchantLocations/);
   assert.match(gw, /normalizeMerchantLocations/);

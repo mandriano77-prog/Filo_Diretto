@@ -1935,7 +1935,13 @@
                                 <span style="font-weight:700;font-size:14px;color:var(--text1);">Punti di interesse</span>
                                 <p class="geo-poi-counter" id="geoPoiCounter">0/10 POI configurati · te ne mancano 10</p>
                             </div>
-                            <button class="btn small" id="geoAddPoiBtn" onclick="addGeoLocation()">+ Aggiungi POI</button>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                                <button class="btn small" id="geoSaveBtnTop" onclick="saveGeofencing()">Salva e aggiorna pass</button>
+                                <button class="btn small sec" id="geoAddPoiBtn" onclick="addGeoLocation()">+ Aggiungi POI</button>
+                            </div>
+                        </div>
+                        <div style="margin:10px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle);font-size:12px;line-height:1.45;color:var(--text2);">
+                            Dopo aver aggiunto o modificato un POI premi <strong>Salva e aggiorna pass</strong>. Apple non mostra un banner immediato: aggiorna il pass e lo propone sulla lock screen quando il telefono entra nella zona del POI. Per testare, salva, apri una volta il pass aggiornato e poi entra/esci dall'area.
                         </div>
                         <div id="geoLocationsList"></div>
                         <div id="geoEmptyMsg" style="padding:20px;text-align:center;color:var(--text2);font-size:13px;border:1px dashed var(--border);border-radius:8px;">
@@ -8765,7 +8771,9 @@ async function saveGeofencing() {
     const channel = 'all';
     const statusEl = document.getElementById('geoSaveStatus');
     const btn = document.getElementById('geoSaveBtn');
-    btn.disabled = true;
+    const topBtn = document.getElementById('geoSaveBtnTop');
+    if (btn) btn.disabled = true;
+    if (topBtn) topBtn.disabled = true;
     statusEl.textContent = 'Salvataggio e aggiornamento pass in corso...';
     statusEl.style.color = 'var(--teal)';
     try {
@@ -8778,7 +8786,7 @@ async function saveGeofencing() {
         if (data.error) throw new Error(data.error);
         const gwUpdated = data.google?.updated || 0;
         const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
-        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple: ${data.pushes_sent || 0} push · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
+        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple update: ${data.pushes_sent || 0} device · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato.');
         await loadGeofencing();
@@ -8786,7 +8794,8 @@ async function saveGeofencing() {
         statusEl.textContent = 'Errore: ' + e.message;
         statusEl.style.color = 'var(--red)';
     }
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
+    if (topBtn) topBtn.disabled = false;
 }
 
 // --- Storico ---
