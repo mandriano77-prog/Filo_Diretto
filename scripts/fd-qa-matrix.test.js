@@ -849,10 +849,41 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   assert.match(join, /function applyBrandChrome/);
   assert.match(activate, /function applyBrandChrome/);
   assert.match(mailer, /function buildEmployeeWalletEmailHtml/);
-  assert.match(mailer, /brandLogoAttachment/);
+  assert.match(mailer, /brandLogo\?\.url/);
+  assert.match(hrActivation, /function publicBrandLogoUrl/);
+  assert.match(hrActivation, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/logo\?v=/);
+  assert.doesNotMatch(hrActivation, /buildInviteEmailLogoAttachment/);
+  assert.match(routes, /function buildPublicBrandLogoUrl/);
+  assert.match(routes, /const logoUrl = buildPublicBrandLogoUrl\(brand\)/);
+  assert.match(routes, /brandLogo:\s*logoUrl \? \{ url: logoUrl \} : null/);
   assert.match(hrActivation, /activationEmailBrandContext/);
   assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
-  assert.match(hubPwa, /logo_url:\s*normalizePublicImageUrl\(settings\?\.logo_url\) \|\| publicBrandLogoUrl\(brand\)/);
+  assert.match(hubPwa, /logo_url:\s*publicBrandLogoUrl\(brand\)/);
+  assert.match(hubPwa, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/logo\?v=/);
+});
+
+test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () => {
+  const hubApp = read('src/hub/app.js');
+  const hubCss = read('src/hub/hub.css');
+  const hubSw = read('src/hub/sw.js');
+  assert.match(hubApp, />DEAL<\/a>/);
+  assert.match(hubApp, />PGA<\/a>/);
+  assert.match(hubApp, />COIN<\/a>/);
+  assert.match(hubApp, /hub-title'\)\.textContent = 'PGA'/);
+  assert.match(hubApp, /hub-title'\)\.textContent = 'COIN'/);
+  assert.doesNotMatch(hubApp, /PGA Marketplace/);
+  assert.doesNotMatch(hubApp, />PROFILO<\/a>/);
+  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*transparent;/);
+  assert.match(hubSw, /filodiretto-hub-v3/);
+});
+
+test('Employee portal hides legacy level field from personal profile', () => {
+  const portalApi = read('src/api/portal-routes.js');
+  const portalJs = read('src/portal/portal.js');
+  assert.doesNotMatch(portalJs, /label:\s*'Livello'/);
+  assert.doesNotMatch(portalJs, /fv\('livello', 'level'/);
+  assert.doesNotMatch(portalApi, /'livello'/);
+  assert.doesNotMatch(portalApi, /'level'/);
 });
 
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {

@@ -106,7 +106,9 @@ function buildEmployeeBrandMarkHtml(brandName, brandLogo, brandTheme) {
   const safeName = escapeHtml(brandName || 'la tua azienda');
   const initials = escapeHtml(brandInitialsFromName(brandName));
   const theme = employeeEmailTheme(brandTheme);
-  const mark = brandLogo?.cid
+  const mark = brandLogo?.url
+    ? `<img src="${escapeHtml(brandLogo.url)}" alt="${safeName}" width="112" height="56" style="display:block;width:112px;height:56px;border-radius:10px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;" />`
+    : brandLogo?.cid
     ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:14px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;" />`
     : `<span style="display:inline-block;width:56px;height:56px;border-radius:14px;background:${theme.accent};color:${theme.textOnAccent};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</span>`;
   return `
@@ -160,7 +162,9 @@ function buildInviteBrandBadgeHtml(brandName, logo) {
   if (!brandName) return '';
   const safeName = escapeHtml(brandName);
   const initials = escapeHtml(brandInitialsFromName(brandName));
-  const logoCell = logo?.cid
+  const logoCell = logo?.url
+    ? `<img src="${escapeHtml(logo.url)}" alt="${safeName}" width="128" height="64" style="display:block;width:128px;height:64px;border:0;outline:none;text-decoration:none;border-radius:10px;object-fit:contain;background-color:${FD_INVITE_EMAIL.card};" />`
+    : logo?.cid
     ? `<img src="cid:${escapeHtml(logo.cid)}" alt="${safeName}" width="56" height="56" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;border-radius:12px;object-fit:contain;background-color:${FD_INVITE_EMAIL.card};" />`
     : `<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" width="56" height="56" style="width:56px;height:56px;border-radius:28px;background-color:${FD_INVITE_EMAIL.primary};color:#FFFFFF;font-family:${FD_INVITE_EMAIL.fontStack};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</td></tr></table>`;
 
@@ -518,7 +522,7 @@ async function sendUserInviteEmail({ to, name, role, brandName, brandLogo, brand
   const product = dashboardEmailProductTitle(productTitle);
   const { fromEmail, fromName } = inviteEmailFromIdentity();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForBadge = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : null;
+  const logoForBadge = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
   const html = buildUserInviteEmailHtml({
     productTitle: product,
     userName: name,
@@ -546,7 +550,7 @@ async function sendUserInviteEmail({ to, name, role, brandName, brandLogo, brand
     html,
     text,
   };
-  if (inlineLogoAttachment) {
+  if (inlineLogoAttachment && !brandLogo?.url) {
     payload.attachments = [inlineLogoAttachment];
   }
 
@@ -790,7 +794,7 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -810,7 +814,7 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
     subject: `FiloDiretto.App | Attiva il tuo accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation email' });
 }
 
@@ -819,7 +823,7 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -838,7 +842,7 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
     subject: `FiloDiretto.App | Promemoria attivazione accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation reminder' });
 }
 
@@ -847,7 +851,7 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo;
+  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -867,7 +871,7 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
     subject: `FiloDiretto.App | Accedi al tuo pass ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'pass access email' });
 }
 

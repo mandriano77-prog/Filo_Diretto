@@ -78,12 +78,13 @@ input {
 }
 
 .hub-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 74px;
+  height: 42px;
+  border-radius: 8px;
   object-fit: contain;
-  background: #fff;
-  padding: 4px;
+  background: transparent;
+  padding: 0;
+  flex: 0 0 auto;
 }
 
 .hub-title {

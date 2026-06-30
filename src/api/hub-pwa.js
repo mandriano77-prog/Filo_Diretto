@@ -97,9 +97,14 @@ function publicBrandTheme(brand) {
 }
 
 function publicBrandLogoUrl(brand) {
-  const direct = normalizePublicImageUrl(brand?.logo_url || brand?.config?.logo_url);
-  if (direct) return direct;
-  return brand?.slug ? `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo` : null;
+  if (!brand?.slug) return null;
+  const cfg = brand?.config || {};
+  const version = [
+    cfg.brand_identity_assets?.logo,
+    cfg.wallet_icon_rev,
+    brand.updated_at
+  ].filter(Boolean).join('-') || 'current';
+  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
 }
 
 function publicBrand(brand) {
@@ -120,7 +125,7 @@ function publicSettings(settings, brand) {
   if (!Array.isArray(categories)) categories = [];
   const theme = publicBrandTheme(brand);
   return {
-    logo_url: normalizePublicImageUrl(settings?.logo_url) || publicBrandLogoUrl(brand),
+    logo_url: publicBrandLogoUrl(brand),
     accent_color: theme?.accent || settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,

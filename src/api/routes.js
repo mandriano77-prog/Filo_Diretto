@@ -365,7 +365,13 @@ function buildPublicBrandLogoUrl(brand) {
   const raw = String(process.env.CUSTOM_DOMAIN || process.env.BASE_URL || '').trim();
   if (!raw) return null;
   const host = raw.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  return `https://${host}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo`;
+  const cfg = brand?.config || {};
+  const version = [
+    cfg.brand_identity_assets?.logo,
+    cfg.wallet_icon_rev,
+    brand.updated_at
+  ].filter(Boolean).join('-') || 'current';
+  return `https://${host}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
 }
 
 function normalizePublicThemeHex(value) {
@@ -398,17 +404,12 @@ async function resolveUserInviteBrandContext(user) {
   if (!user?.brand_id) return { brandName: null, brandLogo: null, brandLogoAttachment: null };
   const brand = await getBrand(user.brand_id);
   if (!brand) return { brandName: null, brandLogo: null, brandLogoAttachment: null };
-
-  const { resolveBrandLogoRawBuffer, buildInviteEmailLogoAttachment } = require('../engine/brand-wallet-logo');
-  const resolved = await resolveBrandLogoRawBuffer(brand);
-  const brandLogoAttachment = resolved?.buffer?.length
-    ? await buildInviteEmailLogoAttachment(resolved.buffer)
-    : null;
+  const logoUrl = buildPublicBrandLogoUrl(brand);
 
   return {
     brandName: brand.name || null,
-    brandLogo: brandLogoAttachment ? { cid: brandLogoAttachment.cid } : null,
-    brandLogoAttachment,
+    brandLogo: logoUrl ? { url: logoUrl } : null,
+    brandLogoAttachment: null,
   };
 }
 

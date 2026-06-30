@@ -50,8 +50,6 @@ const PORTAL_EDITABLE_FIELDS = new Set([
   'department',
   'sede',
   'location',
-  'livello',
-  'level',
   'badge_id',
   'ruolo',
   'role'

@@ -22,22 +22,22 @@ function joinUrl(slug) {
   return `${publicBaseUrl()}/join/${encodeURIComponent(slug)}`;
 }
 
+function publicBrandLogoUrl(brand) {
+  if (!brand?.slug) return null;
+  const cfg = brand?.config || {};
+  const version = [
+    cfg.brand_identity_assets?.logo,
+    cfg.wallet_icon_rev,
+    brand.updated_at
+  ].filter(Boolean).join('-') || 'current';
+  return `${publicBaseUrl()}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
+}
+
 async function activationEmailBrandContext(brand) {
   const context = { brandTheme: brand?.config?.brand_theme || null, brandLogo: null, brandLogoAttachment: null };
   if (!brand) return context;
-  try {
-    const { resolveBrandLogoRawBuffer, buildInviteEmailLogoAttachment } = require('./brand-wallet-logo');
-    const resolved = await resolveBrandLogoRawBuffer(brand);
-    if (resolved?.buffer?.length) {
-      const attachment = await buildInviteEmailLogoAttachment(resolved.buffer);
-      if (attachment?.cid) {
-        context.brandLogoAttachment = attachment;
-        context.brandLogo = { cid: attachment.cid };
-      }
-    }
-  } catch (err) {
-    console.warn('[activation-email] brand logo context failed:', err.message);
-  }
+  const logoUrl = publicBrandLogoUrl(brand);
+  if (logoUrl) context.brandLogo = { url: logoUrl };
   return context;
 }
 
@@ -366,7 +366,7 @@ async function publicJoinByEmail(db, {
 
 async function runActivationReminders(db) {
   const r = await db.pool.query(
-    `SELECT m.*, b.name AS brand_name, b.dpo_email, b.config AS brand_config
+    `SELECT m.*, b.name AS brand_name, b.slug AS brand_slug, b.dpo_email, b.config AS brand_config
      FROM members m
      JOIN brands b ON b.id = m.brand_id
      WHERE m.activation_status = 'invited'
@@ -384,6 +384,7 @@ async function runActivationReminders(db) {
       const { url } = await issueMemberActivation(db, member, { source: member.activation_source || 'bulk_email' });
       const emailBrand = await activationEmailBrandContext({
         name: member.brand_name,
+        slug: member.brand_slug,
         dpo_email: member.dpo_email,
         config: member.brand_config
       });
@@ -445,6 +446,7 @@ module.exports = {
   publicBaseUrl,
   activationUrl,
   joinUrl,
+  publicBrandLogoUrl,
   issueMemberActivation,
   getMemberForActivationToken,
   findBrandForPublicJoin,

@@ -159,6 +159,10 @@
     const logoUrl = state.settings?.logo_url || state.brand?.logo_url;
     if (logoEl && logoUrl) {
       logoEl.src = logoUrl;
+      logoEl.onerror = () => {
+        logoEl.removeAttribute('src');
+        logoEl.classList.add('hidden');
+      };
       logoEl.classList.remove('hidden');
     } else if (logoEl) {
       logoEl.classList.add('hidden');
@@ -204,9 +208,9 @@
     }
     bar.classList.remove('hidden');
     bar.innerHTML = `
-      <a href="#" class="hub-tab${active === 'conv' ? ' active' : ''}" data-tab="conv">CONVENZIONI</a>
+      <a href="#" class="hub-tab${active === 'conv' ? ' active' : ''}" data-tab="conv">DEAL</a>
       <a href="#" class="hub-tab${active === 'pga' ? ' active' : ''}" data-tab="pga">PGA</a>
-      <a href="#" class="hub-tab${active === 'me' ? ' active' : ''}" data-tab="me">PROFILO</a>
+      <a href="#" class="hub-tab${active === 'me' ? ' active' : ''}" data-tab="me">COIN</a>
     `;
     bar.querySelectorAll('[data-tab]').forEach((link) => {
       link.addEventListener('click', (e) => {
@@ -492,13 +496,13 @@
 
   function renderLoading() {
     $('#hub-back')?.classList.add('hidden');
-    $('#hub-title').textContent = 'Convenzioni';
+    $('#hub-title').textContent = 'DEAL';
     $('#hub-main').innerHTML = '<div class="hub-loading"><div class="hub-spinner"></div><div>Caricamento…</div></div>';
   }
 
   function renderList() {
     $('#hub-back')?.classList.add('hidden');
-    $('#hub-title').textContent = 'Convenzioni';
+    $('#hub-title').textContent = 'DEAL';
 
     const enabled = Array.isArray(state.settings?.categories_enabled)
       ? state.settings.categories_enabled
@@ -696,7 +700,7 @@
 
   function renderPga() {
     $('#hub-back')?.classList.add('hidden');
-    $('#hub-title').textContent = 'PGA Marketplace';
+    $('#hub-title').textContent = 'PGA';
 
     if (!pgaEnabled()) {
       $('#hub-main').innerHTML = '<div class="hub-empty">PGA non attivo per la tua azienda.</div>';
@@ -838,7 +842,7 @@
 
   async function renderMe() {
     $('#hub-back')?.classList.add('hidden');
-    $('#hub-title').textContent = 'Profilo';
+    $('#hub-title').textContent = 'COIN';
     $('#hub-main').innerHTML = '<div class="hub-loading"><div class="hub-spinner"></div><div>Caricamento…</div></div>';
 
     if (!pgaEnabled()) {

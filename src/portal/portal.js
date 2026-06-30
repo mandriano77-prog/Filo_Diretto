@@ -212,11 +212,10 @@
   function renderHeader() {
     const name = profile.display_name || 'Dipendente';
     const dept = fv('reparto', 'department');
-    const level = fv('livello', 'level', 'ruolo', 'role');
     $('#brand-name').textContent = profile.brand?.name || 'Filodiretto';
     $('#user-avatar').textContent = initials(name);
     $('#user-display-name').textContent = name;
-    $('#user-subtitle').textContent = [dept, level].filter(Boolean).join(' · ') || '—';
+    $('#user-subtitle').textContent = dept || '—';
 
     const hours = jwtHoursLeft(portalToken);
     $('#session-info').textContent =
@@ -226,19 +225,17 @@
   function renderCard() {
     const name = profile.display_name || '—';
     const dept = fv('reparto', 'department');
-    const level = fv('livello', 'level', 'ruolo', 'role');
     const sede = fv('sede', 'location');
     const badge = fv('badge_id', 'matricola') || '—';
 
     $('#pass-brand').textContent = profile.brand?.name || '—';
     $('#pass-name').textContent = name;
-    $('#pass-role').textContent = [dept, level, sede].filter(Boolean).join(' · ') || '—';
+    $('#pass-role').textContent = [dept, sede].filter(Boolean).join(' · ') || '—';
     $('#pass-badge').textContent = badge ? (String(badge).startsWith('#') ? badge : '#' + badge) : '—';
 
     const tiles = [
       { label: 'Sede', value: sede || '—' },
       { label: 'Reparto', value: dept || '—' },
-      ...(level ? [{ label: 'Livello', value: level }] : []),
       { label: 'Pass attivo da', value: formatDate(profile.install_date) }
     ];
 
@@ -372,7 +369,6 @@
       },
       { label: 'Reparto', value: fv('reparto', 'department') },
       { label: 'Sede', value: fv('sede', 'location') },
-      { label: 'Livello', value: fv('livello', 'level', 'ruolo', 'role') },
       {
         label: 'Data di assunzione',
         value: fv('data_assunzione', 'hire_date') || formatDate(profile.install_date)
