@@ -462,36 +462,12 @@ function generatePassJson(template, instance, brand, options = {}) {
     }
   }
 
-  // Pass face (auxiliary): optional override, else mirror first POI lock-screen message so the tessera updates without a second form.
+  // Geofence proximity text belongs to pass.json locations[].relevantText.
+  // Do not mirror it onto the visible front fields: location relevance and pass copy
+  // must stay independent, otherwise POI copy changes the HR layout.
   const GEO_AUX_KEY = 'geo_inzone_promo';
-  let geoFaceMsg = String(brandConfig.geofencingFaceMessage || '').trim();
-  if (!geoFaceMsg && brandConfig.locations && Array.isArray(brandConfig.locations)) {
-    for (const loc of brandConfig.locations) {
-      const t = String(loc.relevantText || '').trim();
-      if (t) {
-        geoFaceMsg = t.slice(0, 120);
-        break;
-      }
-    }
-  }
-  let geoFaceLbl = String(brandConfig.geofencingFaceLabel || '').trim();
-  if (!geoFaceLbl && brandConfig.locations && Array.isArray(brandConfig.locations)) {
-    const firstWithText = brandConfig.locations.find((l) => String(l.relevantText || '').trim());
-    if (firstWithText && String(firstWithText.name || '').trim()) {
-      geoFaceLbl = String(firstWithText.name).trim().toUpperCase().slice(0, 16);
-    }
-  }
-  if (!geoFaceLbl) geoFaceLbl = 'MESSAGGIO';
-  geoFaceLbl = geoFaceLbl.toUpperCase().slice(0, 16) || 'MESSAGGIO';
-  if (geoFaceMsg) {
-    const field = { key: GEO_AUX_KEY, label: geoFaceLbl, value: geoFaceMsg.slice(0, 120) };
-    const existingIdx = auxiliaryFields.findIndex((f) => f.key === GEO_AUX_KEY);
-    if (existingIdx >= 0) auxiliaryFields.splice(existingIdx, 1);
-    auxiliaryFields.unshift(field);
-  } else {
-    const stale = auxiliaryFields.findIndex((f) => f.key === GEO_AUX_KEY);
-    if (stale >= 0) auxiliaryFields.splice(stale, 1);
-  }
+  const staleGeoField = auxiliaryFields.findIndex((f) => f.key === GEO_AUX_KEY);
+  if (staleGeoField >= 0) auxiliaryFields.splice(staleGeoField, 1);
 
   // Optional brand-level header hint when template has none configured
   if (!hasTemplateHeader) {

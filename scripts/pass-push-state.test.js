@@ -88,4 +88,12 @@ test('Apple HR pass includes geofencing locations and maxDistance', () => {
     relevantText: 'Sei vicino alla sede'
   });
   assert.equal(passJson.maxDistance, 50);
+  const structure = passJson.storeCard || passJson.generic;
+  const frontFields = [
+    ...(structure.headerFields || []),
+    ...(structure.primaryFields || []),
+    ...(structure.secondaryFields || []),
+    ...(structure.auxiliaryFields || [])
+  ];
+  assert.equal(frontFields.some((field) => field.key === 'geo_inzone_promo'), false);
 });

@@ -962,7 +962,13 @@ router.get('/passes/:id/wallet-icon-debug', async (req, res) => {
           secondary_keys: (structure.secondaryFields || []).map((f) => f.key),
           auxiliary_keys: (structure.auxiliaryFields || []).map((f) => f.key),
           has_push_notice_auxiliary: (structure.auxiliaryFields || []).some((f) => f.key === 'push_notice'),
-          coin_has_change_message: (structure.secondaryFields || []).some((f) => f.key === 'coin_balance' && !!f.changeMessage)
+          coin_has_change_message: (structure.secondaryFields || []).some((f) => f.key === 'coin_balance' && !!f.changeMessage),
+          webServiceURL: parsedPassJson.webServiceURL || null,
+          has_authentication_token: !!parsedPassJson.authenticationToken,
+          locations_count: Array.isArray(parsedPassJson.locations) ? parsedPassJson.locations.length : 0,
+          locations: Array.isArray(parsedPassJson.locations) ? parsedPassJson.locations : [],
+          maxDistance: parsedPassJson.maxDistance || null,
+          relevantDate: parsedPassJson.relevantDate || null
         };
       } catch (parseErr) {
         passJsonDebug = { error: parseErr.message };
