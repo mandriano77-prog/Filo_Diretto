@@ -1941,7 +1941,7 @@
                             </div>
                         </div>
                         <div style="margin:10px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle);font-size:12px;line-height:1.45;color:var(--text2);">
-                            Dopo aver aggiunto o modificato un POI premi <strong>Salva e aggiorna pass</strong>. Apple non mostra un banner immediato: aggiorna il pass e lo propone sulla lock screen quando il telefono entra nella zona del POI. Per testare, salva, apri una volta il pass aggiornato e poi entra/esci dall'area.
+                            Dopo aver aggiunto o modificato un POI premi <strong>Salva e aggiorna pass</strong>. Apple aggiorna il pass via APNs e usa il testo quando propone il pass vicino al POI; Google aggiorna le merchant location e invia anche il messaggio Wallet ai pass salvati.
                         </div>
                         <div id="geoLocationsList"></div>
                         <div id="geoEmptyMsg" style="padding:20px;text-align:center;color:var(--text2);font-size:13px;border:1px dashed var(--border);border-radius:8px;">
@@ -8728,9 +8728,9 @@ function renderGeoLocations() {
                 ${addrBlock}
                 ${coordsDetails}
                 <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">Messaggio vicino al POI (testo Apple, posizione anche Google)</label>
+                    <label class="form-label">Messaggio vicino al POI</label>
                     <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
-                    <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo quando propone il pass vicino al POI. Google riceve il POI come merchant location; Wallet decide quando mostrarlo.</p>
+                    <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo vicino al POI. Google lo usa come messaggio Wallet e riceve anche il punto come merchant location.</p>
                 </div>
             </div>
         </details>
@@ -8785,6 +8785,7 @@ async function saveGeofencing() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const gwUpdated = data.google?.updated || 0;
+        const gwAttempted = data.google?.attempted || 0;
         const apple = data.apple || {};
         const appleDevices = apple.devices || 0;
         const appleSent = apple.updates_sent || data.pushes_sent || 0;
@@ -8795,7 +8796,10 @@ async function saveGeofencing() {
             ? '<br><strong>Nota:</strong> nessun device Apple registrato per questo brand. Il pass va installato/aperto almeno una volta prima di poter ricevere aggiornamenti.'
             : '';
         const appleErrorText = appleErrors > 0 ? `, ${appleErrors} errori` : '';
-        statusEl.innerHTML = `Salvato: ${geoLocations.length} POI configurati. Apple: ${passesTouched}/${passCount} pass aggiornati, ${appleSent}/${appleDevices} device notificati${appleErrorText}. Google: ${gwUpdated} oggetti aggiornati.${appleWarning}`;
+        const googleText = gwAttempted
+            ? `Google: ${gwUpdated}/${gwAttempted} oggetti aggiornati/notificati.`
+            : 'Google: nessun oggetto Wallet salvato da aggiornare.';
+        statusEl.innerHTML = `Salvato: ${geoLocations.length} POI configurati. Apple: ${passesTouched}/${passCount} pass aggiornati, ${appleSent}/${appleDevices} device notificati${appleErrorText}. ${googleText}${appleWarning}`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato.');
         await loadGeofencing();

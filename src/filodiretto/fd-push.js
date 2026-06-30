@@ -9,6 +9,7 @@
   var BACK_DETAILS_MAX = 500; // sync: src/engine/push-text-limits.js PUSH_BACK_DETAILS_MAX
   var DEFAULT_PUSH_TITLE = 'INFO PASS';
   var DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli';
+  var APPLE_WALLET_UPDATE_HINT = "Apri l'aggiornamento";
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
   var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
@@ -127,10 +128,8 @@
   }
 
   function buildLockScreenPreviewText(titleRaw, messageRaw) {
-    var title = String(titleRaw || '').trim().toUpperCase().slice(0, 22) || 'NOVITÀ';
-    var message = String(messageRaw || '').trim().slice(0, MESSAGE_MAX);
-    if (!message) return '';
-    return title + ': ' + message;
+    if (String(messageRaw || '').trim() || String(titleRaw || '').trim()) return APPLE_WALLET_UPDATE_HINT;
+    return '';
   }
 
   function getPushTitleValue() {
@@ -941,7 +940,7 @@
       '<span class="fd-push-preview__notif-now">adesso</span></div>' +
       '<div class="fd-push-preview__notif-body" data-fd-push-preview-lock-body>Titolo: messaggio…</div>' +
       '</div></div></div>' +
-      '<p class="fd-push-preview__note">Su iPhone Wallet mostra brand + testo promo (changeMessage), non il messaggio generico.</p>' +
+      '<p class="fd-push-preview__note">Su iPhone Wallet l&apos;aggiornamento usa una frase fissa corta; il testo completo resta sul retro del pass.</p>' +
       '</div>' +
       '<div class="fd-push-preview__panel" data-preview-panel="front" role="tabpanel" hidden>' +
       '<div class="fd-wallet-pass" data-fd-push-preview-pass-card>' +

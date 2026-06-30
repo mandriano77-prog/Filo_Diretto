@@ -422,7 +422,7 @@ test('Geofencing POIs render as compact list with quota counter and map preview'
   assert.match(dashboard, /id="geoAddPoiBtn"/);
   assert.match(dashboard, /id="geoSaveBtnTop"/);
   assert.match(dashboard, /Dopo aver aggiunto o modificato un POI premi/);
-  assert.match(dashboard, /Apple non mostra un banner immediato/);
+  assert.match(dashboard, /Google aggiorna le merchant location e invia anche il messaggio Wallet/);
   assert.match(dashboard, /class="geo-poi-item"/);
   assert.match(dashboard, /class="geo-poi-summary"/);
   assert.match(dashboard, /openstreetmap\.org\/export\/embed\.html/);
@@ -461,8 +461,8 @@ test('Google Wallet HR pass resolves hub links like passkit', () => {
 test('Geofencing copy distinguishes Apple text from Google POI support', () => {
   const dashboard = read('src/dashboard/index.html');
   const gw = read('src/engine/google-wallet.js');
-  assert.match(dashboard, /testo Apple, posizione anche Google/);
-  assert.match(dashboard, /Google riceve il POI come merchant location; Wallet decide quando mostrarlo/);
+  assert.match(dashboard, /Messaggio vicino al POI/);
+  assert.match(dashboard, /Google lo usa come messaggio Wallet e riceve anche il punto come merchant location/);
   assert.match(dashboard, /Apple: \$\{passesTouched\}\/\$\{passCount\} pass aggiornati/);
   assert.match(dashboard, /nessun device Apple registrato/);
   assert.doesNotMatch(dashboard, /Messaggio lock screen \(solo Apple Wallet/);
@@ -470,12 +470,14 @@ test('Geofencing copy distinguishes Apple text from Google POI support', () => {
   assert.match(gw, /normalizeMerchantLocations/);
 });
 
-test('Geofencing saves POIs without sending an immediate Google addMessage notification', () => {
+test('Geofencing saves POIs and restores Google Wallet notify message', () => {
   const routes = read('src/api/routes.js');
   const geofencePut = routes.match(/router\.put\('\/brands\/:id\/geofencing'[\s\S]*?router\.get\('\/analytics/)[0];
   assert.match(geofencePut, /syncGoogleWalletObjectsForPasses\(\{/);
-  assert.doesNotMatch(geofencePut, /message:\s*\(config\.locations/);
-  assert.doesNotMatch(geofencePut, /Aggiornamento geolocalizzazione/);
+  assert.match(geofencePut, /const geoMessage = \(config\.locations && config\.locations\[0\] && config\.locations\[0\]\.relevantText\)/);
+  assert.match(geofencePut, /title:\s*'VICINO A TE'/);
+  assert.match(geofencePut, /message:\s*geoMessage/);
+  assert.match(geofencePut, /Aggiornamento geolocalizzazione/);
 });
 
 test('Google Wallet HR toGooglePass uses brand name and generic layout fields', () => {

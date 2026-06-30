@@ -3059,16 +3059,18 @@ router.get('/brands/:id/geofencing', async (req, res) => {
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const locations = brand.config?.locations || [];
     const [passRows, appleDevices] = await Promise.all([
-      pool.query('SELECT id FROM pass_instances WHERE brand_id = $1', [req.params.id]),
+      pool.query('SELECT id, google_wallet_object_id FROM pass_instances WHERE brand_id = $1', [req.params.id]),
       getDevicesForBrand(req.params.id)
     ]);
+    const googleObjects = passRows.rows.filter((p) => !!p.google_wallet_object_id).length;
     res.json({
       locations,
       maxDistance: brand.config?.maxDistance || 500,
       channel: brand.config?.geofencing_channel || 'all',
       diagnostics: {
         passes: passRows.rowCount || 0,
-        apple_devices: appleDevices.length
+        apple_devices: appleDevices.length,
+        google_objects: googleObjects
       }
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -3146,9 +3148,13 @@ router.put('/brands/:id/geofencing', async (req, res) => {
     let samsungSync = { attempted: 0, notified: 0, skipped: !sendSamsung || !samsungWallet.isConfigured() };
     const passRows = await pool.query('SELECT * FROM pass_instances WHERE brand_id = $1', [req.params.id]);
     if (sendGoogle) {
+      const geoMessage = (config.locations && config.locations[0] && config.locations[0].relevantText)
+        || 'Aggiornamento geolocalizzazione';
       googleSync = await syncGoogleWalletObjectsForPasses({
         brand: await getBrand(req.params.id),
-        passes: passRows.rows
+        passes: passRows.rows,
+        title: 'VICINO A TE',
+        message: geoMessage
       });
     }
     if (sendSamsung && samsungWallet.isConfigured()) {

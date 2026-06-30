@@ -19,6 +19,8 @@ const PREVIEW_MEMBER = {
   department: 'Engineering',
 };
 
+const APPLE_WALLET_UPDATE_HINT = "Apri l'aggiornamento";
+
 function toDataUrl(buffer, mime = 'image/png') {
   if (!buffer?.length) return null;
   return `data:${mime};base64,${Buffer.from(buffer).toString('base64')}`;
@@ -68,9 +70,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
   });
 
   const headerField = employeePass.headerHint || null;
-  const lockScreenBody = updatePass && announcement
-    ? `${String(announcement.title || 'NOVITÀ').toUpperCase()}: ${String(announcement.message || '').trim()}`
-    : '';
+  const lockScreenBody = updatePass && announcement ? APPLE_WALLET_UPDATE_HINT : '';
 
   let stripPreview = null;
   if (updatePass) {
