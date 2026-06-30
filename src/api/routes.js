@@ -3142,8 +3142,7 @@ router.put('/brands/:id/geofencing', async (req, res) => {
     if (sendGoogle) {
       googleSync = await syncGoogleWalletObjectsForPasses({
         brand: await getBrand(req.params.id),
-        passes: passRows.rows,
-        message: (config.locations && config.locations[0] && config.locations[0].relevantText) || 'Aggiornamento geolocalizzazione'
+        passes: passRows.rows
       });
     }
     if (sendSamsung && samsungWallet.isConfigured()) {

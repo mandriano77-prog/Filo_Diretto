@@ -462,12 +462,20 @@ test('Geofencing copy distinguishes Apple text from Google POI support', () => {
   const dashboard = read('src/dashboard/index.html');
   const gw = read('src/engine/google-wallet.js');
   assert.match(dashboard, /testo Apple, posizione anche Google/);
-  assert.match(dashboard, /Google riceve il POI come merchant location/);
+  assert.match(dashboard, /Google riceve il POI come merchant location; Wallet decide quando mostrarlo/);
   assert.match(dashboard, /Apple: \$\{passesTouched\}\/\$\{passCount\} pass aggiornati/);
   assert.match(dashboard, /nessun device Apple registrato/);
   assert.doesNotMatch(dashboard, /Messaggio lock screen \(solo Apple Wallet/);
   assert.match(gw, /merchantLocations/);
   assert.match(gw, /normalizeMerchantLocations/);
+});
+
+test('Geofencing saves POIs without sending an immediate Google addMessage notification', () => {
+  const routes = read('src/api/routes.js');
+  const geofencePut = routes.match(/router\.put\('\/brands\/:id\/geofencing'[\s\S]*?router\.get\('\/analytics/)[0];
+  assert.match(geofencePut, /syncGoogleWalletObjectsForPasses\(\{/);
+  assert.doesNotMatch(geofencePut, /message:\s*\(config\.locations/);
+  assert.doesNotMatch(geofencePut, /Aggiornamento geolocalizzazione/);
 });
 
 test('Google Wallet HR toGooglePass uses brand name and generic layout fields', () => {

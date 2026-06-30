@@ -8730,7 +8730,7 @@ function renderGeoLocations() {
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Messaggio vicino al POI (testo Apple, posizione anche Google)</label>
                     <input type="text" value="${esc(loc.relevantText)}" onchange="updateGeoField(${i},'relevantText',this.value)" placeholder="es. Sei vicino! Scopri la promo">
-                    <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo sulla lock screen. Google riceve il POI come merchant location e gestisce la notifica Wallet con testo standard.</p>
+                    <p style="font-size:11px;color:var(--text2);margin:6px 0 0;">Apple usa questo testo quando propone il pass vicino al POI. Google riceve il POI come merchant location; Wallet decide quando mostrarlo.</p>
                 </div>
             </div>
         </details>
