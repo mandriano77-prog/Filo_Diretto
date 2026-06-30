@@ -1964,7 +1964,7 @@
                             <input type="number" id="geoMaxDistance" value="500" min="100" max="5000" step="100" style="width:120px;">
                         </div>
                         <button class="btn" style="width:100%;font-weight:700;margin-top:12px;" onclick="saveGeofencing()" id="geoSaveBtn">&#128205; Salva e Aggiorna Pass</button>
-                        <p id="geoSaveStatus" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:center;"></p>
+                        <p id="geoSaveStatus" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:left;line-height:1.45;"></p>
                     </div>
                 </div>
 
@@ -8785,8 +8785,17 @@ async function saveGeofencing() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const gwUpdated = data.google?.updated || 0;
-        const swN = data.samsung?.attempted != null ? `${data.samsung.attempted} tent.` : '—';
-        statusEl.textContent = `Salvato! ${geoLocations.length} POI configurati. Apple update: ${data.pushes_sent || 0} device · Google: ${gwUpdated} sync · Samsung notify: ${swN}`;
+        const apple = data.apple || {};
+        const appleDevices = apple.devices || 0;
+        const appleSent = apple.updates_sent || data.pushes_sent || 0;
+        const appleErrors = apple.update_errors || 0;
+        const passesTouched = apple.passes_touched || data.passes_touched || 0;
+        const passCount = data.pass_count || passesTouched;
+        const appleWarning = appleDevices === 0
+            ? '<br><strong>Nota:</strong> nessun device Apple registrato per questo brand. Il pass va installato/aperto almeno una volta prima di poter ricevere aggiornamenti.'
+            : '';
+        const appleErrorText = appleErrors > 0 ? `, ${appleErrors} errori` : '';
+        statusEl.innerHTML = `Salvato: ${geoLocations.length} POI configurati. Apple: ${passesTouched}/${passCount} pass aggiornati, ${appleSent}/${appleDevices} device notificati${appleErrorText}. Google: ${gwUpdated} oggetti aggiornati.${appleWarning}`;
         statusEl.style.color = 'var(--green)';
         toast('Geofencing salvato.');
         await loadGeofencing();

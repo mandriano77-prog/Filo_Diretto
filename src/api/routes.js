@@ -3052,10 +3052,18 @@ router.get('/brands/:id/geofencing', async (req, res) => {
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const locations = brand.config?.locations || [];
+    const [passRows, appleDevices] = await Promise.all([
+      pool.query('SELECT id FROM pass_instances WHERE brand_id = $1', [req.params.id]),
+      getDevicesForBrand(req.params.id)
+    ]);
     res.json({
       locations,
       maxDistance: brand.config?.maxDistance || 500,
-      channel: brand.config?.geofencing_channel || 'all'
+      channel: brand.config?.geofencing_channel || 'all',
+      diagnostics: {
+        passes: passRows.rowCount || 0,
+        apple_devices: appleDevices.length
+      }
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3071,15 +3079,38 @@ router.put('/brands/:id/geofencing', async (req, res) => {
     const brand = await getBrand(req.params.id);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const config = brand.config || {};
-    config.locations = (locations || []).map(loc => ({
-      latitude: parseFloat(loc.latitude),
-      longitude: parseFloat(loc.longitude),
-      relevantText: loc.relevantText || '',
-      name: loc.name || '',
-      radius: parseInt(loc.radius) || 500,
-      address: typeof loc.address === 'string' ? loc.address.slice(0, 500) : ''
-    }));
-    if (maxDistance) config.maxDistance = parseInt(maxDistance);
+    const nextLocations = (locations || []).slice(0, 10).map((loc, idx) => {
+      const invalidPoi = (message) => Object.assign(new Error(message), { statusCode: 400 });
+      const latitude = parseFloat(loc.latitude);
+      const longitude = parseFloat(loc.longitude);
+      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+        throw invalidPoi(`POI #${idx + 1}: latitudine non valida`);
+      }
+      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        throw invalidPoi(`POI #${idx + 1}: longitudine non valida`);
+      }
+      return {
+        latitude,
+        longitude,
+        relevantText: loc.relevantText || '',
+        name: loc.name || '',
+        radius: parseInt(loc.radius) || 500,
+        address: typeof loc.address === 'string' ? loc.address.slice(0, 500) : ''
+      };
+    });
+    config.locations = nextLocations;
+    if (locations && locations.length > 10) {
+      config.locations_truncated = true;
+    } else {
+      delete config.locations_truncated;
+    }
+    if (maxDistance) {
+      const parsedMaxDistance = parseInt(maxDistance, 10);
+      if (!Number.isFinite(parsedMaxDistance) || parsedMaxDistance < 1) {
+        throw Object.assign(new Error('Distanza massima non valida'), { statusCode: 400 });
+      }
+      config.maxDistance = parsedMaxDistance;
+    }
     config.geofencing_channel = channel;
     delete config.geofencingFaceMessage;
     delete config.geofencingFaceLabel;
@@ -3090,14 +3121,18 @@ router.put('/brands/:id/geofencing', async (req, res) => {
     const passes = await pool.query(
       'SELECT id FROM pass_instances WHERE brand_id = $1', [req.params.id]
     );
-    await touchPassesByIds(passes.rows.map((p) => p.id));
+    const passTouch = await touchPassesByIds(passes.rows.map((p) => p.id));
 
     let pushCount = 0;
+    let pushErrors = 0;
+    let appleDeviceCount = 0;
     if (sendApple) {
       const devices = await getDevicesForBrand(req.params.id);
+      appleDeviceCount = devices.length;
       if (devices.length) {
         const batch = await sendPushBatch(devices.map((d) => d.push_token));
         pushCount = batch.filter((r) => r.success).length;
+        pushErrors = batch.length - pushCount;
       }
     }
 
@@ -3115,8 +3150,24 @@ router.put('/brands/:id/geofencing', async (req, res) => {
       samsungSync = await notifySamsungSavedPasses(passRows.rows);
     }
 
-    res.json({ success: true, channel, locations: config.locations, pushes_sent: pushCount, google: googleSync, samsung: samsungSync });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({
+      success: true,
+      channel,
+      locations: config.locations,
+      maxDistance: config.maxDistance,
+      pass_count: passes.rowCount || 0,
+      passes_touched: passTouch.touched || 0,
+      pushes_sent: pushCount,
+      apple: {
+        devices: appleDeviceCount,
+        updates_sent: pushCount,
+        update_errors: pushErrors,
+        passes_touched: passTouch.touched || 0
+      },
+      google: googleSync,
+      samsung: samsungSync
+    });
+  } catch (err) { res.status(err.statusCode || 500).json({ error: err.message }); }
 });
 
 // ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Analytics ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ

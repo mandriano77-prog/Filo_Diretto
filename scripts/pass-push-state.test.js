@@ -7,6 +7,7 @@ const {
   resolveHrPassPushState,
   brandConfigForHrPass,
 } = require('../src/engine/pass-push-state');
+const { generatePassJson } = require('../src/engine/passkit');
 
 test('fresh pass instance ignores brand pushAnnouncement', () => {
   const brand = {
@@ -47,4 +48,44 @@ test('parsePushAnnouncementRecord preserves back_details', () => {
     ts: 1,
   });
   assert.equal(ann.back_details, 'Valido fino al 31/12');
+});
+
+test('Apple HR pass includes geofencing locations and maxDistance', () => {
+  const passJson = generatePassJson(
+    { id: 'tpl1', name: 'HR', fields: {}, style: {} },
+    { id: 'pass1', serial_number: 'SN-GEO-1', field_values: {} },
+    {
+      id: 'brand1',
+      name: 'Acme HR',
+      slug: 'acme',
+      config: {
+        product_line: 'hr',
+        locations: [
+          {
+            latitude: '45.4764',
+            longitude: '9.1432',
+            relevantText: 'Sei vicino alla sede',
+            radius: '50'
+          }
+        ],
+        maxDistance: 50
+      }
+    },
+    {
+      baseUrl: 'https://studio.example.test',
+      member: {
+        first_name: 'Mario',
+        last_name: 'Rossi',
+        department: 'Engineering'
+      }
+    }
+  );
+
+  assert.equal(passJson.locations.length, 1);
+  assert.deepEqual(passJson.locations[0], {
+    latitude: 45.4764,
+    longitude: 9.1432,
+    relevantText: 'Sei vicino alla sede'
+  });
+  assert.equal(passJson.maxDistance, 50);
 });

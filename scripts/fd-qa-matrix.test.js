@@ -463,7 +463,8 @@ test('Geofencing copy distinguishes Apple text from Google POI support', () => {
   const gw = read('src/engine/google-wallet.js');
   assert.match(dashboard, /testo Apple, posizione anche Google/);
   assert.match(dashboard, /Google riceve il POI come merchant location/);
-  assert.match(dashboard, /Apple update: \$\{data\.pushes_sent \|\| 0\} device/);
+  assert.match(dashboard, /Apple: \$\{passesTouched\}\/\$\{passCount\} pass aggiornati/);
+  assert.match(dashboard, /nessun device Apple registrato/);
   assert.doesNotMatch(dashboard, /Messaggio lock screen \(solo Apple Wallet/);
   assert.match(gw, /merchantLocations/);
   assert.match(gw, /normalizeMerchantLocations/);
