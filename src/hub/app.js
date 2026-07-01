@@ -17,7 +17,7 @@
     purpose: 'Purpose'
   };
 
-  const STORAGE_KEY = 'hub_bootstrap_v2';
+  const STORAGE_KEY = 'hub_bootstrap_v3';
   const TOKEN_KEY = 'hub_token';
   const GEO_CONSENT_KEY = 'hub_geo_consent_v1';
 
@@ -156,7 +156,7 @@
     if (meta) meta.setAttribute('content', accent);
 
     const logoEl = $('#hub-logo');
-    const logoUrl = state.settings?.logo_url || state.brand?.logo_url;
+    const logoUrl = state.brand?.logo_url;
     if (logoEl && logoUrl) {
       logoEl.src = logoUrl;
       logoEl.onerror = () => {
@@ -169,9 +169,9 @@
     }
 
     const subtitle = $('#hub-subtitle');
-    if (subtitle && state.brand?.name) {
-      subtitle.textContent = state.brand.name;
-      subtitle.classList.remove('hidden');
+    if (subtitle) {
+      subtitle.textContent = '';
+      subtitle.classList.add('hidden');
     }
     updateCoinWidget();
   }

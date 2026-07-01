@@ -55,6 +55,26 @@ function publicBrandMarkVersion(brand) {
   ].filter(Boolean).join('-') || 'current';
 }
 
+/** Cache-bust key for pass-scoped wide logo (template + brand identity). */
+function publicPassLogoVersion(brand, pass) {
+  const cfg = brand?.config || {};
+  return [
+    pass?.template_id,
+    pass?.updated_at,
+    cfg.brand_identity_assets?.logo,
+    brand?.updated_at
+  ].filter(Boolean).join('-') || 'current';
+}
+
+/** Wide logo.png as shown on the employee pass (template-aware). */
+function publicPassLogoUrl(brand, pass) {
+  if (!brand?.slug) return null;
+  const q = new URLSearchParams();
+  if (pass?.id) q.set('pass_id', String(pass.id));
+  q.set('v', publicPassLogoVersion(brand, pass));
+  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?${q.toString()}`;
+}
+
 /** PNG inline attachment for dashboard invite emails (Resend CID). */
 async function buildInviteEmailLogoAttachment(rawBuffer) {
   if (!rawBuffer?.length) return null;
@@ -493,6 +513,8 @@ module.exports = {
   resolveBrandLogoRawBuffer,
   resolveBrandMarkRawBuffer,
   publicBrandMarkVersion,
+  publicPassLogoVersion,
+  publicPassLogoUrl,
   buildInviteEmailLogoAttachment,
   buildEmployeeEmailLogoAttachment,
   INVITE_EMAIL_LOGO_CID,

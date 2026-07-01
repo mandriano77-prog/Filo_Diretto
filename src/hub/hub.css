@@ -78,9 +78,9 @@ input {
 }
 
 .hub-logo {
-  width: 42px;
+  width: 74px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: 8px;
   object-fit: contain;
   background: #fff;
   padding: 4px;

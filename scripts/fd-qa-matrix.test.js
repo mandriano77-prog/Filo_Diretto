@@ -845,6 +845,7 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   const mailer = read('src/engine/mailer.js');
   const hrActivation = read('src/engine/hr-activation.js');
   const hubPwa = read('src/api/hub-pwa.js');
+  const brandWalletLogo = read('src/engine/brand-wallet-logo.js');
   assert.match(themeModule, /function publicBrandTheme/);
   assert.match(themeModule, /cfg\.brand_theme/);
   assert.match(routes, /publicBrandTheme/);
@@ -869,8 +870,10 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   assert.match(hrActivation, /activationEmailBrandContext/);
   assert.match(hubPwa, /public-brand-theme/);
   assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
-  assert.match(hubPwa, /logo_url:\s*publicBrandLogoUrl\(brand\)/);
-  assert.match(hubPwa, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/mark\?v=/);
+  assert.match(hubPwa, /publicPassLogoUrl/);
+  assert.match(hubPwa, /logo_url:\s*publicPassLogoUrl\(brand, pass\)/);
+  assert.match(brandWalletLogo, /function publicPassLogoUrl/);
+  assert.match(brandWalletLogo, /\/logo\?/);
 });
 
 test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () => {
@@ -884,8 +887,9 @@ test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () =
   assert.match(hubApp, /hub-title'\)\.textContent = 'COIN'/);
   assert.doesNotMatch(hubApp, /PGA Marketplace/);
   assert.doesNotMatch(hubApp, />PROFILO<\/a>/);
-  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*42px;[\s\S]*background:\s*#fff;/);
-  assert.match(hubSw, /filodiretto-hub-v4/);
+  assert.doesNotMatch(hubApp, /subtitle\.textContent = state\.brand\.name/);
+  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*#fff;/);
+  assert.match(hubSw, /filodiretto-hub-v5/);
 });
 
 test('Employee portal hides legacy level field from personal profile', () => {

@@ -76,24 +76,19 @@ async function loadHubContext(claims) {
 }
 
 const { publicBrandTheme } = require('../engine/public-brand-theme');
+const { publicPassLogoUrl } = require('../engine/brand-wallet-logo');
 
-function publicBrandLogoUrl(brand) {
-  if (!brand?.slug) return null;
-  const version = publicBrandMarkVersion(brand);
-  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?v=${encodeURIComponent(version)}`;
-}
-
-function publicBrand(brand) {
+function publicBrand(brand, pass) {
   return {
     id: brand.id,
     name: brand.name,
     slug: brand.slug,
-    logo_url: publicBrandLogoUrl(brand),
+    logo_url: publicPassLogoUrl(brand, pass),
     brand_theme: publicBrandTheme(brand)
   };
 }
 
-function publicSettings(settings, brand) {
+function publicSettings(settings, brand, pass) {
   let categories = settings?.categories_enabled;
   if (typeof categories === 'string') {
     try { categories = JSON.parse(categories); } catch { categories = []; }
@@ -101,7 +96,7 @@ function publicSettings(settings, brand) {
   if (!Array.isArray(categories)) categories = [];
   const theme = publicBrandTheme(brand);
   return {
-    logo_url: publicBrandLogoUrl(brand),
+    logo_url: publicPassLogoUrl(brand, pass),
     accent_color: theme?.accent || settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,
@@ -296,8 +291,8 @@ function registerHubPwaRoutes(router) {
       }
       res.json({
         profile: ctx.profile,
-        brand: publicBrand(ctx.brand),
-        settings: publicSettings(ctx.settings, ctx.brand),
+        brand: publicBrand(ctx.brand, ctx.pass),
+        settings: publicSettings(ctx.settings, ctx.brand, ctx.pass),
         pga_settings: publicPgaSettings(pgaSettings),
         coin_balance: coinBalance,
         merchants: merchants.map(publicMerchant),
