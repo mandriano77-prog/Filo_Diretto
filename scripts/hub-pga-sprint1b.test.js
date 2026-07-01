@@ -101,11 +101,12 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   const annPayload = {
     title: 'Fratelli La Pizza',
     message: 'Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
+    screen_alert: 'FRATELLI LA PIZZA: Dal lunedì al venerdì, con il pass hai lo sconto del 20%',
     ts: Date.now()
   };
   const ann = resolvePushAnnouncement({}, { push_announcement: annPayload });
   assert.ok(ann);
-  assert.match(ann.message, /lunedì/);
+  assert.match(ann.screen_alert, /FRATELLI LA PIZZA/);
 
   const employeePass = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', config: {} },
@@ -122,12 +123,15 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   });
   const apple = toApplePass(employeePass);
   assert.equal((apple.passStructure.headerFields || []).length, 0);
+  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'screen_alert');
+  assert.ok(alertField);
+  assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
+  assert.equal(alertField.label, ' ');
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
-  assert.match(coinField.changeMessage, /FRATELLI LA PIZZA/);
-  assert.equal(coinField.label, 'COIN');
-  assert.match(String(coinField.value).replace(/[\u200b\u200c\u200d\u2060]/g, ''), /^25$/);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.equal(coinField.value, '25');
+  assert.equal(coinField.changeMessage, 'Hai %@ coin');
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
   assert.deepEqual(
     (apple.passStructure.secondaryFields || []).map((f) => f.key),
     ['name', 'area', 'coin_balance']
@@ -157,6 +161,7 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
       push_announcement: {
         title: 'INFO PASS',
         message: 'Apri il pass per i dettagli',
+        screen_alert: 'Lorem Ipsum tutti i brand aderenti, sconti fino al 50%',
         back_details: 'Lorem Ipsum tutti i brand aderenti, sconti fino al 50%',
         ts: Date.now()
       },
@@ -168,10 +173,9 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
   });
   const apple = toApplePass(employeePass);
   assert.equal((apple.passStructure.headerFields || []).length, 0);
-  const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
-  assert.ok(coinField);
-  assert.match(coinField.changeMessage, /Lorem Ipsum/);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'screen_alert');
+  assert.ok(alertField);
+  assert.match(alertField.changeMessage, /Lorem Ipsum/);
   const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
   assert.ok(promoBack);
   assert.equal(promoBack.label, ' ');
@@ -273,7 +277,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: lock-screen alert on header field, no auxiliary column', () => {
+test('HR push: lock-screen alert on dedicated screen_alert auxiliary field', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -295,18 +299,23 @@ test('HR push: lock-screen alert on header field, no auxiliary column', () => {
     member: { full_name: 'Test', department: 'HR' },
     brandConfig: {},
   });
-  assert.equal(ep.front.auxiliary.length, 0);
-  assert.ok(ep.headerHint);
-  assert.match(ep.headerHint.changeMessage, /2X1 OCCHIALI/);
-  assert.match(ep.headerHint.value, /^Per altre informazioni/);
+  assert.equal(ep.front.auxiliary.length, 1);
+  const alert = ep.front.auxiliary[0];
+  assert.equal(alert.key, 'screen_alert');
+  assert.equal(alert.label, ' ');
+  assert.match(alert.changeMessage, /2X1 OCCHIALI/);
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);
   assert.equal(coin.changeMessage, 'Hai %@ coin');
+  assert.ok(ep.headerHint);
+  assert.equal(ep.headerHint.changeMessage, undefined);
   const apple = toApplePass(ep);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
-  assert.equal((apple.passStructure.headerFields || []).length, 1);
-  const appleHeader = apple.passStructure.headerFields[0];
-  assert.match(appleHeader.changeMessage, /2X1 OCCHIALI/);
+  const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
+  assert.equal(appleCoin.changeMessage, 'Hai %@ coin');
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
+  const appleAlert = apple.passStructure.auxiliaryFields[0];
+  assert.equal(appleAlert.key, 'screen_alert');
+  assert.match(appleAlert.changeMessage, /2X1 OCCHIALI/);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
 

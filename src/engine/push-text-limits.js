@@ -14,7 +14,12 @@ const PUSH_SCREEN_ALERT_MAX = 178;
 
 function validatePushScreenAlert(screenAlert) {
   const s = String(screenAlert ?? '').trim();
-  if (!s) return [];
+  if (!s) {
+    return [{
+      field: 'pushScreenAlert',
+      message: 'Inserisci il testo della notifica Wallet (lock screen)',
+    }];
+  }
   if (s.length > PUSH_SCREEN_ALERT_MAX) {
     return [{
       field: 'pushScreenAlert',

@@ -2793,7 +2793,7 @@ router.post('/push/send', async (req, res) => {
       });
     }
     const screenErrors = validatePushScreenAlert(screen_alert);
-    if (screenErrors.length) {
+    if (update_pass !== false && screenErrors.length) {
       return res.status(400).json({
         error: screenErrors[0].message,
         field: screenErrors[0].field,

@@ -38,6 +38,8 @@ function buildPreviewAnnouncement(body) {
 }
 
 function resolveWalletAlertChangeMessage(employeePass) {
+  const screenAux = (employeePass.front?.auxiliary || []).find((f) => f.key === 'screen_alert');
+  if (screenAux?.changeMessage) return String(screenAux.changeMessage);
   const header = employeePass.headerHint;
   if (header?.changeMessage) return String(header.changeMessage);
   const coin = (employeePass.front?.secondary || []).find((f) => f.key === 'coin_balance');

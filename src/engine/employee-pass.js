@@ -184,16 +184,21 @@ function buildPushChangeMessage(pushAnn) {
   return alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
 }
 
-/** Stamp lock-screen alert on an existing front field without adding a 4th column. */
-function applyPushWalletAlertField(field, pushAnn) {
-  if (!field || !pushAnn) return field;
-  const alertText = buildPushAlertText(pushAnn);
-  if (!alertText) return field;
+/** Dedicated Wallet lock-screen field — requires explicit screen_alert text from dashboard. */
+function buildPushScreenAlertAuxField(pushAnn) {
+  const text = String(pushAnn?.screen_alert || pushAnn?.screenAlert || '').trim();
+  if (!text) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
-  const visible = String(field.value ?? '').replace(/[\u200b\u200c\u200d\u2060]/g, '');
-  field.value = visible + invisibleChangeToken(pushTs);
-  field.changeMessage = alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
-  return field;
+  // iOS needs a real value change; keep the pass face minimal (bullet cycles) while
+  // changeMessage carries the full ad-hoc notification copy the user typed.
+  const markers = ['·', '•', '●'];
+  const marker = markers[pushTs % markers.length];
+  return {
+    key: 'screen_alert',
+    label: ' ',
+    value: marker + invisibleChangeToken(pushTs),
+    changeMessage: text.slice(0, PUSH_SCREEN_ALERT_MAX),
+  };
 }
 
 /** @deprecated HR passes no longer add a visible auxiliary column for push alerts. */
@@ -500,9 +505,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const tplImages = template?.style?.images || {};
 
   // Front layout: strip promo + secondary NOME/AREA/COIN frozen.
-  // Apple Wallet alert rides on header hint or COIN — never a 4th auxiliary column.
+  // Apple Wallet lock-screen copy: dedicated auxiliary (screen_alert) when user compiles it.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
-  let headerHint = resolvePassHeaderHint(template, cfg);
+  const headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -512,16 +517,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   }
   secondary.push(buildCoinFieldValue(coinBalance));
 
-  if (pushAnn) {
-    if (headerHint) {
-      headerHint = applyPushWalletAlertField({ ...headerHint }, pushAnn);
-    } else {
-      const coinField = secondary.find((f) => f.key === 'coin_balance');
-      if (coinField) applyPushWalletAlertField(coinField, pushAnn);
-    }
-  }
-
   const auxiliary = [];
+  const screenAux = buildPushScreenAlertAuxField(pushAnn);
+  if (screenAux) auxiliary.push(screenAux);
 
   const backSections = buildBackSections({
     brand,
@@ -672,7 +670,7 @@ function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}
     });
   });
   (employeePass.front.auxiliary || []).forEach((f, i) => {
-    if (f.key === 'push_notice' || f.key === 'announcement') return;
+    if (f.key === 'push_notice' || f.key === 'announcement' || f.key === 'screen_alert') return;
     modules.push({
       id: `front_aux_${i}`,
       header: f.label,
@@ -855,7 +853,8 @@ module.exports = {
   resolveMemberProfile,
   resolveVariableLink,
   resolvePushAnnouncement,
-  applyPushWalletAlertField,
+  applyPushWalletAlertField: buildPushScreenAlertAuxField,
+  buildPushScreenAlertAuxField,
   buildPushHeaderField,
   buildPushWalletAlertField,
   escapeHtml

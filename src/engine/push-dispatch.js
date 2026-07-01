@@ -240,13 +240,15 @@ async function executeWalletPush(body, ctx = {}) {
     }
 
     const config = { ...(brand.config || {}) };
+    const screenText = String(screen_alert || '').trim();
+    if (ctx.hrDeploy && update_pass !== false && !screenText) {
+      throw new Error('screen_alert richiesto per la notifica Wallet');
+    }
     const announcement = attachBackDetailsToAnnouncement(
       {
         ...(normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
           || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() }),
-        ...(String(screen_alert || '').trim()
-          ? { screen_alert: String(screen_alert).trim().slice(0, 178) }
-          : {}),
+        ...(screenText ? { screen_alert: screenText.slice(0, 178) } : {}),
       },
       back_details
     );

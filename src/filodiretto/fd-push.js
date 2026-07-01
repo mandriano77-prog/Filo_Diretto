@@ -615,7 +615,7 @@
       channel: channel
     };
     var screenAlert = getPushScreenAlertValue();
-    if (screenAlert) body.screen_alert = screenAlert;
+    body.screen_alert = screenAlert;
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId) body.campaign_id = campaignId;
 
@@ -730,6 +730,19 @@
     var title = getPushTitleValue();
     var message = getPushMessageValue();
     if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
+    var screenAlert = getPushScreenAlertValue();
+    if (!screenAlert) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushScreenAlert', 'Inserisci il testo della notifica Wallet (lock screen)');
+      } else if (typeof alert === 'function') alert('Compila la notifica lock screen');
+      return;
+    }
+    if (screenAlert.length > SCREEN_ALERT_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushScreenAlert', 'Notifica lock screen max ' + SCREEN_ALERT_MAX + ' caratteri');
+      }
+      return;
+    }
     if (!title) {
       if (typeof window.setPushFieldError === 'function') {
         window.setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
@@ -1311,6 +1324,18 @@
     var title = getPushTitleValue();
     var message = getPushMessageValue();
     var invalid = false;
+    var screenAlert = getPushScreenAlertValue();
+    if (!screenAlert) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushScreenAlert', 'Inserisci il testo della notifica Wallet (lock screen)');
+      }
+      invalid = true;
+    } else if (screenAlert.length > SCREEN_ALERT_MAX) {
+      if (typeof window.setPushFieldError === 'function') {
+        window.setPushFieldError('pushScreenAlert', 'Notifica lock screen max ' + SCREEN_ALERT_MAX + ' caratteri');
+      }
+      invalid = true;
+    }
     if (!title) {
       if (typeof window.setPushFieldError === 'function') {
         window.setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');

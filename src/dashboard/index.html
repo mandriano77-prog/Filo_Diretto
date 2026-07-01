@@ -1746,7 +1746,7 @@
                             <div class="form-group">
                                 <label class="form-label" for="pushScreenAlert">Testo notifica Wallet</label>
                                 <input type="text" id="pushScreenAlert" maxlength="178" placeholder="es. SALDI ESTIVI: -50% su tutto il catalogo" aria-describedby="pushScreenAlertHint pushScreenAlertError">
-                                <p class="form-hint" id="pushScreenAlertHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 178 caratteri — compare nella notifica iPhone quando il pass si aggiorna. Se vuoto, usa titolo + messaggio strip.</p>
+                                <p class="form-hint" id="pushScreenAlertHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Obbligatorio · max 178 caratteri — è il testo esatto della notifica iPhone (lock screen), indipendente da strip e retro.</p>
                                 <p class="push-field-error" id="pushScreenAlertError" role="alert"></p>
                             </div>
                         </div>
@@ -8041,10 +8041,18 @@ function getImmediatePushScreenAlert() {
     return (document.getElementById('pushScreenAlert')?.value || '').trim();
 }
 
-function applyPushTextValidation(title, message, backDetails) {
+function applyPushTextValidation(title, message, backDetails, screenAlert) {
     let invalid = false;
+    const screen = String(screenAlert ?? getImmediatePushScreenAlert()).trim();
+    if (!screen) {
+        setPushFieldError('pushScreenAlert', 'Inserisci il testo della notifica Wallet (lock screen)');
+        invalid = true;
+    } else if (screen.length > 178) {
+        setPushFieldError('pushScreenAlert', 'Notifica lock screen max 178 caratteri');
+        invalid = true;
+    }
     if (!title) {
-        setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
+        setPushFieldError('pushTitle', 'Inserisci il titolo per la strip');
         invalid = true;
     } else if (title.length > PUSH_TITLE_MAX) {
         setPushFieldError('pushTitle', `Titolo max ${PUSH_TITLE_MAX} caratteri (leggibilità strip)`);
@@ -8260,7 +8268,10 @@ function buildImmediatePushBody() {
     const backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
     if (backDetails) body.back_details = backDetails;
     const screenAlert = getImmediatePushScreenAlert();
-    if (screenAlert) body.screen_alert = screenAlert;
+    if (!screenAlert) {
+        throw new Error('screen_alert richiesto'); // guarded by applyPushTextValidation
+    }
+    body.screen_alert = screenAlert;
     applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
     if (!isHrDashboard()) {
         const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();
@@ -8303,7 +8314,7 @@ async function sendImmediatePush() {
         toast('Seleziona un brand');
         return;
     }
-    if (!applyPushTextValidation(title, message, backDetails)) return;
+    if (!applyPushTextValidation(title, message, backDetails, getImmediatePushScreenAlert())) return;
 
     const body = buildImmediatePushBody();
     resetPushProgressPanel();
