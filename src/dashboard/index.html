@@ -8982,10 +8982,14 @@ async function resendPushFromHistory(pushId) {
     });
     if (!ok) return;
     try {
+        // Voci storiche precedenti al campo obbligatorio: deriva la notifica da titolo+messaggio.
+        const screenAlert = String(log.screen_alert || '').trim()
+            || [String(log.title || '').trim(), String(log.message || '').trim()].filter(Boolean).join(': ');
         const body = {
             brand_id: brandId,
             title: log.title,
             message: log.message,
+            screen_alert: screenAlert.slice(0, 178),
             channel: log.channel || 'all',
             update_pass: true
         };

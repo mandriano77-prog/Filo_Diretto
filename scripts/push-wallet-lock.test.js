@@ -127,6 +127,18 @@ test('LOCK: scheduled_push persiste screen_alert e lo scheduler ha il fallback',
   assert.match(scheduler, /schedule\.screen_alert/);
 });
 
+// ── 4b. Storico push: screen_alert salvato e reinvio con fallback ──
+
+test('LOCK: push_log persiste screen_alert e il reinvio ha il fallback', () => {
+  const db = read('src/db/index.js');
+  assert.match(db, /push_log ADD COLUMN IF NOT EXISTS screen_alert/);
+  assert.match(db, /INSERT INTO push_log[\s\S]{0,200}screen_alert/);
+  assert.match(read('src/engine/push-dispatch.js'), /logPush\(\{[\s\S]{0,200}screen_alert: screenTextInput/);
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /resendPushFromHistory[\s\S]{0,900}log\.screen_alert/);
+  assert.match(dashboard, /resendPushFromHistory[\s\S]{0,1200}screen_alert: screenAlert\.slice\(0, 178\)/);
+});
+
 // ── 5. W.AI deriva screen_alert (mai push bloccate dall'assistente) ──
 
 test('LOCK: W.AI deriva screen_alert da titolo e messaggio', () => {
