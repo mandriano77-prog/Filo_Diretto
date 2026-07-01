@@ -138,7 +138,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
       body: lockScreenBody.slice(0, 178),
     },
     header: headerField
-      ? { label: headerField.label, value: String(headerField.value || '').replace(/\u200b/g, '') }
+      ? { label: headerField.label, value: String(headerField.value || '').replace(/[\u200b\u200c\u200d\u2060]/g, '') }
       : null,
     secondary,
     back,

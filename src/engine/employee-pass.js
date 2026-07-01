@@ -176,7 +176,7 @@ function buildPushAlertText(pushAnn) {
 function buildPushChangeMessage(pushAnn) {
   const alertText = buildPushAlertText(pushAnn);
   if (!alertText) return null;
-  return '%@';
+  return APPLE_WALLET_UPDATE_HINT;
 }
 
 function attachPushAlertToHeader(headerHint, pushAnn) {
@@ -189,9 +189,10 @@ function attachPushAlertToHeader(headerHint, pushAnn) {
     textAlignment: 'PKTextAlignmentRight'
   };
   const pushTs = Number(pushAnn.ts || Date.now());
+  const visibleValue = String(base.value || 'Per altre informazioni').slice(0, 64);
   return {
     ...base,
-    value: `${APPLE_WALLET_UPDATE_HINT}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
+    value: `${visibleValue}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
     changeMessage: buildPushChangeMessage(pushAnn),
   };
 }

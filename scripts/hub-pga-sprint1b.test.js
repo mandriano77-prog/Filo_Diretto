@@ -124,9 +124,9 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   assert.equal((apple.passStructure.headerFields || []).length, 1);
   const alertField = (apple.passStructure.headerFields || [])[0];
   assert.ok(alertField);
-  assert.match(alertField.changeMessage, /%@$/);
+  assert.equal(alertField.changeMessage, "Apri l'aggiornamento");
   assert.equal(alertField.label, 'INFO');
-  assert.match(alertField.value, /^Apri l'aggiornamento/);
+  assert.match(alertField.value, /^Per altre informazioni/);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
@@ -172,8 +172,8 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
   });
   const apple = toApplePass(employeePass);
   const alertField = (apple.passStructure.headerFields || [])[0];
-  assert.match(alertField.value, /^Apri l'aggiornamento/);
-  assert.equal(alertField.changeMessage, '%@');
+  assert.match(alertField.value, /^Per altre informazioni/);
+  assert.equal(alertField.changeMessage, "Apri l'aggiornamento");
   const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
   assert.ok(promoBack);
   assert.equal(promoBack.label, ' ');
@@ -275,11 +275,16 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: visible header triggers Wallet alert without invisible auxiliary', () => {
+test('HR push: template header stays visible while triggering Wallet alert', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
-    template: { style: {} },
+    template: {
+      style: {},
+      fields: {
+        headerFields: [{ key: 'info_hint', label: 'CLICCA SUI', value: 'Per altre informazioni' }]
+      }
+    },
     instance: {
       serial_number: 'SN1',
       push_announcement: { title: '2x1 OCCHIALI', message: 'Solo questa settimana', ts: 1710000000001 },
@@ -293,9 +298,9 @@ test('HR push: visible header triggers Wallet alert without invisible auxiliary'
   assert.equal(coin.changeMessage, undefined);
   assert.equal(coin.value, '0');
   assert.ok(ep.headerHint);
-  assert.equal(ep.headerHint.label, 'INFO');
-  assert.match(ep.headerHint.value, /^Apri l'aggiornamento/);
-  assert.match(ep.headerHint.changeMessage, /%@$/);
+  assert.equal(ep.headerHint.label, 'CLICCA SUI');
+  assert.match(ep.headerHint.value, /^Per altre informazioni/);
+  assert.equal(ep.headerHint.changeMessage, "Apri l'aggiornamento");
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
@@ -303,7 +308,7 @@ test('HR push: visible header triggers Wallet alert without invisible auxiliary'
   assert.equal((apple.passStructure.headerFields || []).length, 1);
   assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
   const appleAlert = apple.passStructure.headerFields[0];
-  assert.match(appleAlert.changeMessage, /%@$/);
+  assert.equal(appleAlert.changeMessage, "Apri l'aggiornamento");
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
 
