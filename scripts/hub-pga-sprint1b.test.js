@@ -122,12 +122,15 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   });
   const apple = toApplePass(employeePass);
   assert.equal((apple.passStructure.headerFields || []).length, 1);
-  const alertField = (apple.passStructure.headerFields || [])[0];
+  const headerField = (apple.passStructure.headerFields || [])[0];
+  assert.ok(headerField);
+  assert.equal(headerField.changeMessage, undefined);
+  assert.equal(headerField.label, 'INFO');
+  assert.match(headerField.value, /^Per altre informazioni/);
+  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'announcement');
   assert.ok(alertField);
   assert.equal(alertField.changeMessage, "Apri l'aggiornamento");
-  assert.equal(alertField.label, 'INFO');
-  assert.match(alertField.value, /^Per altre informazioni/);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.match(alertField.value, /^Apri l'aggiornamento/);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
@@ -171,8 +174,11 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
     coinBalance: 0
   });
   const apple = toApplePass(employeePass);
-  const alertField = (apple.passStructure.headerFields || [])[0];
-  assert.match(alertField.value, /^Per altre informazioni/);
+  const headerField = (apple.passStructure.headerFields || [])[0];
+  assert.match(headerField.value, /^Per altre informazioni/);
+  assert.equal(headerField.changeMessage, undefined);
+  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'announcement');
+  assert.ok(alertField);
   assert.equal(alertField.changeMessage, "Apri l'aggiornamento");
   const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
   assert.ok(promoBack);
@@ -275,7 +281,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: template header stays visible while triggering Wallet alert', () => {
+test('HR push: auxiliary field triggers Wallet alert while template header stays visible', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -292,7 +298,11 @@ test('HR push: template header stays visible while triggering Wallet alert', () 
     member: { full_name: 'Test', department: 'HR' },
     brandConfig: {},
   });
-  assert.equal(ep.front.auxiliary.length, 0);
+  assert.equal(ep.front.auxiliary.length, 1);
+  const alert = ep.front.auxiliary[0];
+  assert.equal(alert.key, 'announcement');
+  assert.match(alert.value, /^Apri l'aggiornamento/);
+  assert.equal(alert.changeMessage, "Apri l'aggiornamento");
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);
   assert.equal(coin.changeMessage, undefined);
@@ -300,14 +310,15 @@ test('HR push: template header stays visible while triggering Wallet alert', () 
   assert.ok(ep.headerHint);
   assert.equal(ep.headerHint.label, 'CLICCA SUI');
   assert.match(ep.headerHint.value, /^Per altre informazioni/);
-  assert.equal(ep.headerHint.changeMessage, "Apri l'aggiornamento");
+  assert.equal(ep.headerHint.changeMessage, undefined);
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const apple = toApplePass(ep);
   const appleCoin = apple.passStructure.secondaryFields.find((f) => f.key === 'coin_balance');
   assert.equal(appleCoin.changeMessage, undefined);
   assert.equal((apple.passStructure.headerFields || []).length, 1);
-  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
-  const appleAlert = apple.passStructure.headerFields[0];
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 1);
+  const appleAlert = apple.passStructure.auxiliaryFields[0];
+  assert.equal(appleAlert.key, 'announcement');
   assert.equal(appleAlert.changeMessage, "Apri l'aggiornamento");
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });

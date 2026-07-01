@@ -180,30 +180,35 @@ function buildPushChangeMessage(pushAnn) {
 }
 
 function attachPushAlertToHeader(headerHint, pushAnn) {
-  const alertText = buildPushAlertText(pushAnn);
-  if (!alertText) return headerHint || null;
-  const base = headerHint || {
+  if (headerHint) return headerHint;
+  if (!buildPushAlertText(pushAnn)) return null;
+  return {
     key: 'info_hint',
     label: 'INFO',
     value: 'Per altre informazioni',
     textAlignment: 'PKTextAlignmentRight'
   };
+}
+
+function buildPushAnnouncementAuxField(pushAnn) {
+  const alertText = buildPushAlertText(pushAnn);
+  if (!alertText) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
-  const visibleValue = String(base.value || 'Per altre informazioni').slice(0, 64);
   return {
-    ...base,
-    value: `${visibleValue}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
+    key: 'announcement',
+    label: 'INFO',
+    value: `${APPLE_WALLET_UPDATE_HINT}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
     changeMessage: buildPushChangeMessage(pushAnn),
   };
 }
 
 /**
- * Deprecated: the Wallet alert now rides on the visible header field.
- * Keeping the export for old tests/importers, but it no longer creates an
- * invisible front field that Wallet may highlight as an empty yellow ring.
+ * Deprecated name kept for old tests/importers. The Wallet alert rides on a
+ * short, non-empty auxiliary field because header/back changes are not a
+ * reliable source for Apple Wallet lock-screen update copy.
  */
 function buildPushHeaderField(pushAnn) {
-  return attachPushAlertToHeader(null, pushAnn);
+  return buildPushAnnouncementAuxField(pushAnn);
 }
 
 /** @deprecated use buildPushHeaderField */
@@ -495,7 +500,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template, instance });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip promo + secondary NOME/AREA/COIN frozen; Wallet alert rides on the visible header.
+  // Front layout: strip promo + secondary NOME/AREA/COIN frozen.
+  // Apple Wallet alert rides on a short non-empty auxiliary field; back fields update silently.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
   const headerHint = attachPushAlertToHeader(resolvePassHeaderHint(template, cfg), pushAnn);
   const secondary = [];
@@ -508,6 +514,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
+  const pushAux = buildPushAnnouncementAuxField(pushAnn);
+  if (pushAux) auxiliary.push(pushAux);
 
   const backSections = buildBackSections({
     brand,
