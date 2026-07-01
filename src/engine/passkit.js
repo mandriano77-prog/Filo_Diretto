@@ -688,12 +688,8 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.locations = normalizedLocs;
   }
 
-  // Push update — surface pass on lock screen near send time (Wallet silent APN + relevantDate).
-  if (useHrBack && brandConfig.pushAnnouncement?.ts) {
-    passJson.relevantDate = new Date(Number(brandConfig.pushAnnouncement.ts)).toISOString();
-  }
-
-  // Relevant date — triggers lock screen notification at this time
+  // Push update — lock-screen copy comes from auxiliary `announcement` changeMessage only.
+  // relevantDate here triggers Apple's generic "store card modified" notification in Italian.
   if (brandConfig.relevantDate) {
     passJson.relevantDate = brandConfig.relevantDate;
   }

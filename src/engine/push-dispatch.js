@@ -228,10 +228,12 @@ async function executeWalletPush(body, ctx = {}) {
     const hrDeploy = Boolean(ctx.hrDeploy);
 
     try {
-      await syncWalletLogoFromBrandIdentity(brand_id, brand, { syncTemplates: hrDeploy });
-      brand = await getBrand(brand_id);
-      await syncWalletIconFromBrandIdentity(brand_id, brand, { touchPasses: false });
-      brand = await getBrand(brand_id);
+      if (!hrDeploy) {
+        await syncWalletLogoFromBrandIdentity(brand_id, brand, { syncTemplates: false });
+        brand = await getBrand(brand_id);
+        await syncWalletIconFromBrandIdentity(brand_id, brand, { touchPasses: false });
+        brand = await getBrand(brand_id);
+      }
     } catch (syncErr) {
       console.warn('[PUSH] wallet logo sync skipped:', syncErr.message);
     }

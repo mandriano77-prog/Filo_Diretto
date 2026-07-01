@@ -125,7 +125,8 @@ test('HR push promo: strip overlay only — frozen template header and secondary
   const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'announcement');
   assert.ok(alertField);
   assert.match(alertField.changeMessage, /FRATELLI LA PIZZA/);
-  assert.equal(alertField.label, '\u200b');
+  assert.equal(alertField.label, ' ');
+  assert.match(String(alertField.value), /^\d+$/);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
   assert.equal(coinField.value, '25');
@@ -294,7 +295,8 @@ test('HR push: auxiliary field triggers Wallet alert while template header stays
   assert.equal(ep.front.auxiliary.length, 1);
   const alert = ep.front.auxiliary[0];
   assert.equal(alert.key, 'announcement');
-  assert.equal(alert.label, '\u200b');
+  assert.equal(alert.label, ' ');
+  assert.match(String(alert.value), /^\d+$/);
   assert.match(alert.changeMessage, /2X1 OCCHIALI/);
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);

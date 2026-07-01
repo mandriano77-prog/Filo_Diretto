@@ -184,11 +184,13 @@ function buildPushAnnouncementAuxField(pushAnn) {
   const alertText = buildPushAlertText(pushAnn);
   if (!alertText) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
+  // iOS needs a real, changing ASCII value on a front field — zero-width-only tokens
+  // often yield the generic "store card modified" notification when strip/images also change.
   return {
     key: 'announcement',
-    label: '\u200b',
-    value: invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`),
-    changeMessage: buildPushChangeMessage(pushAnn),
+    label: ' ',
+    value: String(pushTs),
+    changeMessage: alertText.slice(0, 178),
   };
 }
 
@@ -356,7 +358,6 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       key: 'push_back_details',
       label: pushBackDetailsLabel(pushAnn),
       body: pushAnn.back_details,
-      changeMessage: buildPushChangeMessage(pushAnn),
     });
   } else if (pushAnn?.message) {
     sections.push({
@@ -364,7 +365,6 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       key: 'push_wallet_alert',
       label: pushBackDetailsLabel(pushAnn),
       body: pushAnn.message,
-      changeMessage: buildPushChangeMessage(pushAnn),
     });
   }
 
