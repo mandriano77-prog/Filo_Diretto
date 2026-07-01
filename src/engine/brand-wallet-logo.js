@@ -36,6 +36,24 @@ async function resolveBrandLogoRawBuffer(brand) {
 }
 
 const INVITE_EMAIL_LOGO_CID = 'brand-invite-logo';
+const EMPLOYEE_EMAIL_LOGO_CID = 'brand-employee-logo';
+
+/** Square brand mark for Hub, activation, and HR emails — wallet_icon first, then wide logo. */
+async function resolveBrandMarkRawBuffer(brand) {
+  const fromIcon = await resolveNotificationIconRawBuffer(brand);
+  if (fromIcon?.buffer) return fromIcon;
+  return resolveBrandLogoRawBuffer(brand);
+}
+
+function publicBrandMarkVersion(brand) {
+  const cfg = brand?.config || {};
+  return [
+    cfg.brand_identity_assets?.wallet_icon,
+    cfg.brand_identity_assets?.logo,
+    cfg.wallet_icon_rev,
+    brand?.updated_at
+  ].filter(Boolean).join('-') || 'current';
+}
 
 /** PNG inline attachment for dashboard invite emails (Resend CID). */
 async function buildInviteEmailLogoAttachment(rawBuffer) {
@@ -53,6 +71,26 @@ async function buildInviteEmailLogoAttachment(rawBuffer) {
     };
   } catch (err) {
     console.warn('[invite-email] logo normalize failed:', err.message);
+    return null;
+  }
+}
+
+/** PNG inline attachment for HR employee activation emails (Resend CID). */
+async function buildEmployeeEmailLogoAttachment(rawBuffer) {
+  if (!rawBuffer?.length) return null;
+  try {
+    const png = await sharp(rawBuffer)
+      .png()
+      .resize(120, 120, { fit: 'inside', withoutEnlargement: false })
+      .toBuffer();
+    return {
+      cid: EMPLOYEE_EMAIL_LOGO_CID,
+      filename: 'brand-mark.png',
+      content_type: 'image/png',
+      content: png.toString('base64'),
+    };
+  } catch (err) {
+    console.warn('[employee-email] brand mark normalize failed:', err.message);
     return null;
   }
 }
@@ -453,8 +491,12 @@ async function inspectPkpassIcon(pkpassBuffer) {
 
 module.exports = {
   resolveBrandLogoRawBuffer,
+  resolveBrandMarkRawBuffer,
+  publicBrandMarkVersion,
   buildInviteEmailLogoAttachment,
+  buildEmployeeEmailLogoAttachment,
   INVITE_EMAIL_LOGO_CID,
+  EMPLOYEE_EMAIL_LOGO_CID,
   resolveNotificationIconRawBuffer,
   resolveWalletLogoRawBuffer,
   resolvePassIconBuffers,

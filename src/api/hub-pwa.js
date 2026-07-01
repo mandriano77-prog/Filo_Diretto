@@ -75,36 +75,12 @@ async function loadHubContext(claims) {
   };
 }
 
-function normalizePublicThemeHex(value) {
-  const raw = String(value || '').trim();
-  const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (!m) return null;
-  let h = m[1];
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-  return `#${h.toUpperCase()}`;
-}
-
-function publicBrandTheme(brand) {
-  const cfg = brand?.config || {};
-  const theme = cfg.brand_theme || {};
-  const accent = normalizePublicThemeHex(theme.accent || theme.baseColor || cfg.labelColor);
-  if (!accent) return null;
-  return {
-    accent,
-    accentHover: normalizePublicThemeHex(theme.accentHover || theme.baseColor) || accent,
-    textOnAccent: normalizePublicThemeHex(theme.textOnAccent) || '#FFFFFF'
-  };
-}
+const { publicBrandTheme } = require('../engine/public-brand-theme');
 
 function publicBrandLogoUrl(brand) {
   if (!brand?.slug) return null;
-  const cfg = brand?.config || {};
-  const version = [
-    cfg.brand_identity_assets?.logo,
-    cfg.wallet_icon_rev,
-    brand.updated_at
-  ].filter(Boolean).join('-') || 'current';
-  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
+  const version = publicBrandMarkVersion(brand);
+  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?v=${encodeURIComponent(version)}`;
 }
 
 function publicBrand(brand) {

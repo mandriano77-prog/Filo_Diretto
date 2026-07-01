@@ -180,15 +180,30 @@
                 return `<strong>${esc(label)}:</strong> ${safe}`;
             }
 
+            function validHex(value) {
+                const raw = String(value || '').trim();
+                return /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw) ? (raw[0] === '#' ? raw : '#' + raw) : '';
+            }
+
             function applyBrandAccent(brand) {
+                const apiTheme = brand?.brand_theme;
                 const cfg = brand && brand.config && typeof brand.config === 'object' ? brand.config : {};
+                const theme = apiTheme && typeof apiTheme === 'object' ? apiTheme : (cfg.brand_theme || {});
                 const hub = cfg.hub_settings && typeof cfg.hub_settings === 'object' ? cfg.hub_settings : {};
                 const identity = cfg.brand_identity && typeof cfg.brand_identity === 'object' ? cfg.brand_identity : {};
-                const accent = String(
-                    hub.accent_color || identity.primaryColor || cfg.primaryColor || '#8B5CF6'
-                ).trim();
+                const accent = validHex(
+                    theme.accent || theme.baseColor || cfg.labelColor
+                    || hub.accent_color || identity.primaryColor || cfg.primaryColor
+                );
+                const hover = validHex(theme.accentHover || theme.baseColor || theme.accent || accent);
                 if (!accent) return;
-                document.documentElement.style.setProperty('--privacy-accent', accent);
+                const root = document.documentElement.style;
+                root.setProperty('--privacy-accent', accent);
+                root.setProperty('--brand', accent);
+                if (hover) {
+                    root.setProperty('--privacy-accent-dark', hover);
+                    root.setProperty('--brand-dark', hover);
+                }
                 const meta = document.querySelector('meta[name="theme-color"]');
                 if (meta) meta.setAttribute('content', accent);
             }

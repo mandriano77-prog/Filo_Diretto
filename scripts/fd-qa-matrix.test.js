@@ -838,28 +838,39 @@ test('dashboard brand theme is derived from uploaded brand assets', () => {
 
 test('Public HR activation surfaces inherit brand theme and logo', () => {
   const routes = read('src/api/routes.js');
+  const themeModule = read('src/engine/public-brand-theme.js');
   const join = read('src/join/index.html');
   const activate = read('src/activate/index.html');
+  const privacy = read('src/privacy/index.html');
   const mailer = read('src/engine/mailer.js');
   const hrActivation = read('src/engine/hr-activation.js');
   const hubPwa = read('src/api/hub-pwa.js');
-  assert.match(routes, /function publicBrandTheme/);
+  assert.match(themeModule, /function publicBrandTheme/);
+  assert.match(themeModule, /cfg\.brand_theme/);
+  assert.match(routes, /publicBrandTheme/);
   assert.match(routes, /logo_url:\s*publicBrandLogoPath\(brand\)/);
+  assert.match(routes, /\/brands\/by-slug\/:slug\/mark/);
+  assert.match(routes, /resolveBrandMarkRawBuffer/);
   assert.match(routes, /brand_theme:\s*publicBrandTheme\(brand\)/);
   assert.match(join, /function applyBrandChrome/);
+  assert.match(join, /setProperty\('--brand', accent\)/);
   assert.match(activate, /function applyBrandChrome/);
+  assert.match(activate, /setProperty\('--brand', accent\)/);
+  assert.match(privacy, /cfg\.brand_theme/);
   assert.match(mailer, /function buildEmployeeWalletEmailHtml/);
-  assert.match(mailer, /brandLogo\?\.url/);
+  assert.match(mailer, /brandLogo\?\.cid/);
+  assert.match(mailer, /width:112px;height:112px/);
   assert.match(hrActivation, /function publicBrandLogoUrl/);
-  assert.match(hrActivation, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/logo\?v=/);
-  assert.doesNotMatch(hrActivation, /buildInviteEmailLogoAttachment/);
+  assert.match(hrActivation, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/mark\?v=/);
+  assert.match(hrActivation, /buildEmployeeEmailLogoAttachment/);
   assert.match(routes, /function buildPublicBrandLogoUrl/);
   assert.match(routes, /const logoUrl = buildPublicBrandLogoUrl\(brand\)/);
   assert.match(routes, /brandLogo:\s*logoUrl \? \{ url: logoUrl \} : null/);
   assert.match(hrActivation, /activationEmailBrandContext/);
+  assert.match(hubPwa, /public-brand-theme/);
   assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
   assert.match(hubPwa, /logo_url:\s*publicBrandLogoUrl\(brand\)/);
-  assert.match(hubPwa, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/logo\?v=/);
+  assert.match(hubPwa, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/mark\?v=/);
 });
 
 test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () => {
@@ -873,8 +884,8 @@ test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () =
   assert.match(hubApp, /hub-title'\)\.textContent = 'COIN'/);
   assert.doesNotMatch(hubApp, /PGA Marketplace/);
   assert.doesNotMatch(hubApp, />PROFILO<\/a>/);
-  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*transparent;/);
-  assert.match(hubSw, /filodiretto-hub-v3/);
+  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*42px;[\s\S]*background:\s*#fff;/);
+  assert.match(hubSw, /filodiretto-hub-v4/);
 });
 
 test('Employee portal hides legacy level field from personal profile', () => {

@@ -2896,7 +2896,6 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label class="form-label" for="manualHireDate">Data assunzione</label><input type="date" id="manualHireDate"></div>
-                            <div class="form-group"><label class="form-label" for="manualManagerEmail">Email manager</label><input type="email" id="manualManagerEmail" placeholder="manager@azienda.it"></div>
                         </div>
                         <div class="import-wizard__options" style="margin-top:8px;">
                             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
@@ -11096,19 +11095,18 @@ function exportLeadsCSV() {
     toast('CSV esportato!');
 }
 
-const IMPORT_CSV_TEMPLATE_HEADER = 'matricola,nome,cognome,email,reparto,sede,data_assunzione,manager_email';
-const IMPORT_CSV_TEMPLATE_SAMPLE = '4721,Mario,Rossi,mario.rossi@acme.it,Engineering,Milano,2024-03-12,laura.b@acme.it';
+const IMPORT_CSV_TEMPLATE_HEADER = 'matricola,nome,cognome,email,reparto,sede,data_assunzione';
+const IMPORT_CSV_TEMPLATE_SAMPLE = '4721,Mario,Rossi,mario.rossi@acme.it,Engineering,Milano,2024-03-12';
 
 const IMPORT_FIELD_LABELS = {
     first_name: 'Nome', last_name: 'Cognome', full_name: 'Nome completo', email: 'Email',
     employee_id: 'Matricola', department: 'Reparto', office_location: 'Sede',
-    hire_date: 'Data assunzione', manager_name: 'Manager', manager_email: 'Email manager', phone: 'Telefono'
+    hire_date: 'Data assunzione', phone: 'Telefono'
 };
 
 const IMPORT_FIELD_GROUPS = [
     { title: 'Anagrafica', fields: ['first_name', 'last_name', 'full_name', 'email', 'phone'] },
-    { title: 'Dati aziendali', fields: ['employee_id', 'department', 'office_location', 'hire_date'] },
-    { title: 'Manager', fields: ['manager_name', 'manager_email'] }
+    { title: 'Dati aziendali', fields: ['employee_id', 'department', 'office_location', 'hire_date'] }
 ];
 
 function refreshImportWizardStepper() {

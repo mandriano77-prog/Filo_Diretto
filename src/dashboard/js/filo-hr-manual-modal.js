@@ -37,8 +37,7 @@
 
   var COMBO_FIELDS = [
     { inputId: 'manualDepartment', listId: 'filoManualDeptList', key: 'departments' },
-    { inputId: 'manualOffice', listId: 'filoManualOfficeList', key: 'sites' },
-    { inputId: 'manualManagerEmail', listId: 'filoManualManagerList', key: 'manager_emails' }
+    { inputId: 'manualOffice', listId: 'filoManualOfficeList', key: 'sites' }
   ];
 
   var state = {
@@ -130,8 +129,7 @@
       email: (el('manualEmail') && el('manualEmail').value || '').trim().toLowerCase(),
       department: (el('manualDepartment') && el('manualDepartment').value || '').trim(),
       office_location: (el('manualOffice') && el('manualOffice').value || '').trim(),
-      hire_date: el('manualHireDate') ? el('manualHireDate').value : '',
-      manager_email: (el('manualManagerEmail') && el('manualManagerEmail').value || '').trim()
+      hire_date: el('manualHireDate') ? el('manualHireDate').value : ''
     };
   }
 
@@ -149,7 +147,7 @@
   }
 
   function clearForm() {
-    ['manualEmployeeId', 'manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate', 'manualManagerEmail'].forEach(function (id) {
+    ['manualEmployeeId', 'manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate'].forEach(function (id) {
       var node = el(id);
       if (node) node.value = '';
     });
@@ -449,7 +447,6 @@
     if (el('manualDepartment')) el('manualDepartment').value = emp.department || '';
     if (el('manualOffice')) el('manualOffice').value = emp.office_location || '';
     if (el('manualHireDate')) el('manualHireDate').value = emp.hire_date || '';
-    if (el('manualManagerEmail')) el('manualManagerEmail').value = emp.manager_email || '';
     syncActivationCheckbox();
   }
 
@@ -485,7 +482,7 @@
 
   function isFormDirty() {
     var emp = readForm();
-    return !!(emp.employee_id || emp.email || emp.first_name || emp.last_name || emp.department || emp.office_location || emp.hire_date || emp.manager_email);
+    return !!(emp.employee_id || emp.email || emp.first_name || emp.last_name || emp.department || emp.office_location || emp.hire_date);
   }
 
   function hasUnsavedChanges() {
@@ -692,7 +689,7 @@
     var createPasses = el('manualCreatePasses');
     if (createPasses) createPasses.addEventListener('change', togglePassOptions);
 
-    ['manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate', 'manualManagerEmail'].forEach(function (id) {
+    ['manualEmail', 'manualFirstName', 'manualLastName', 'manualDepartment', 'manualOffice', 'manualHireDate'].forEach(function (id) {
       var node = el(id);
       if (!node) return;
       var onInput = function () { markDirtyFromInput(); syncActivationCheckbox(); };

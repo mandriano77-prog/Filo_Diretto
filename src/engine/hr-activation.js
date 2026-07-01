@@ -7,7 +7,11 @@ const {
   sendActivationReminderEmail,
   sendPassAccessEmail
 } = require('./mailer');
-const { employeesToFieldValues } = require('./member-import');
+const {
+  resolveBrandMarkRawBuffer,
+  buildEmployeeEmailLogoAttachment,
+  publicBrandMarkVersion
+} = require('./brand-wallet-logo');
 const { upsertPassConsent, PORTAL_CONSENT_TYPES } = require('../db/portal');
 
 function publicBaseUrl() {
@@ -24,18 +28,25 @@ function joinUrl(slug) {
 
 function publicBrandLogoUrl(brand) {
   if (!brand?.slug) return null;
-  const cfg = brand?.config || {};
-  const version = [
-    cfg.brand_identity_assets?.logo,
-    cfg.wallet_icon_rev,
-    brand.updated_at
-  ].filter(Boolean).join('-') || 'current';
-  return `${publicBaseUrl()}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
+  const version = publicBrandMarkVersion(brand);
+  return `${publicBaseUrl()}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?v=${encodeURIComponent(version)}`;
 }
 
 async function activationEmailBrandContext(brand) {
   const context = { brandTheme: brand?.config?.brand_theme || null, brandLogo: null, brandLogoAttachment: null };
   if (!brand) return context;
+  try {
+    const resolved = await resolveBrandMarkRawBuffer(brand);
+    if (resolved?.buffer) {
+      const attachment = await buildEmployeeEmailLogoAttachment(resolved.buffer);
+      if (attachment) {
+        context.brandLogoAttachment = attachment;
+        return context;
+      }
+    }
+  } catch (err) {
+    console.warn('[activation-email] brand mark resolve failed:', err.message);
+  }
   const logoUrl = publicBrandLogoUrl(brand);
   if (logoUrl) context.brandLogo = { url: logoUrl };
   return context;

@@ -67,6 +67,8 @@
       border-color: var(--brand-accent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-accent) 18%, transparent);
     }
+    a { color: var(--brand-accent); }
+    a:hover { color: var(--brand-accent-hover); }
     button {
       width: 100%;
       padding: 14px;
@@ -110,14 +112,19 @@
     function applyBrandChrome(data) {
       const theme = data?.brand_theme || {};
       const accent = validHex(theme.accent || theme.baseColor);
-      const hover = validHex(theme.accentHover || theme.baseColor);
+      const hover = validHex(theme.accentHover || theme.baseColor || theme.accent);
       const onAccent = validHex(theme.textOnAccent);
+      const root = document.documentElement.style;
       if (accent) {
-        document.documentElement.style.setProperty('--brand-accent', accent);
+        root.setProperty('--brand-accent', accent);
+        root.setProperty('--brand', accent);
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', accent);
       }
-      if (hover) document.documentElement.style.setProperty('--brand-accent-hover', hover);
-      if (onAccent) document.documentElement.style.setProperty('--brand-on-accent', onAccent);
+      if (hover) {
+        root.setProperty('--brand-accent-hover', hover);
+        root.setProperty('--brand-dark', hover);
+      }
+      if (onAccent) root.setProperty('--brand-on-accent', onAccent);
       const logo = document.getElementById('brandLogo');
       if (logo && data?.logo_url) {
         logo.onload = () => { logo.style.display = 'block'; };

@@ -106,10 +106,11 @@ function buildEmployeeBrandMarkHtml(brandName, brandLogo, brandTheme) {
   const safeName = escapeHtml(brandName || 'la tua azienda');
   const initials = escapeHtml(brandInitialsFromName(brandName));
   const theme = employeeEmailTheme(brandTheme);
-  const mark = brandLogo?.url
-    ? `<img src="${escapeHtml(brandLogo.url)}" alt="${safeName}" width="112" height="56" style="display:block;width:112px;height:56px;border-radius:10px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;" />`
-    : brandLogo?.cid
-    ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:14px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;" />`
+  const imgStyle = 'display:block;width:112px;height:112px;border-radius:14px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;';
+  const mark = brandLogo?.cid
+    ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="112" height="112" style="${imgStyle}" />`
+    : brandLogo?.url
+    ? `<img src="${escapeHtml(brandLogo.url)}" alt="${safeName}" width="112" height="112" style="${imgStyle}" />`
     : `<span style="display:inline-block;width:56px;height:56px;border-radius:14px;background:${theme.accent};color:${theme.textOnAccent};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</span>`;
   return `
     <div style="display:flex;align-items:center;gap:14px;margin:0 0 22px;">
@@ -794,7 +795,9 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
+  const logoForEmail = inlineLogoAttachment
+    ? { cid: inlineLogoAttachment.content_id }
+    : (brandLogo?.url ? brandLogo : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -814,7 +817,7 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
     subject: `FiloDiretto.App | Attiva il tuo accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation email' });
 }
 
@@ -823,7 +826,9 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
+  const logoForEmail = inlineLogoAttachment
+    ? { cid: inlineLogoAttachment.content_id }
+    : (brandLogo?.url ? brandLogo : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -842,7 +847,7 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
     subject: `FiloDiretto.App | Promemoria attivazione accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation reminder' });
 }
 
@@ -851,7 +856,9 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = brandLogo?.url ? brandLogo : (inlineLogoAttachment ? { cid: inlineLogoAttachment.content_id } : brandLogo);
+  const logoForEmail = inlineLogoAttachment
+    ? { cid: inlineLogoAttachment.content_id }
+    : (brandLogo?.url ? brandLogo : brandLogo);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -871,7 +878,7 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
     subject: `FiloDiretto.App | Accedi al tuo pass ${brand}`,
     html
   };
-  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'pass access email' });
 }
 

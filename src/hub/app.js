@@ -17,7 +17,7 @@
     purpose: 'Purpose'
   };
 
-  const STORAGE_KEY = 'hub_bootstrap_v1';
+  const STORAGE_KEY = 'hub_bootstrap_v2';
   const TOKEN_KEY = 'hub_token';
   const GEO_CONSENT_KEY = 'hub_geo_consent_v1';
 

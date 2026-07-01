@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'filodiretto-hub-v3';
+const CACHE_NAME = 'filodiretto-hub-v4';
 const SHELL_ASSETS = ['./', './index.html', './app.js', './hub.css', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {

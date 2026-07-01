@@ -15,13 +15,11 @@ const IMPORT_FIELDS = [
   { key: 'department', label: 'Reparto', required: false },
   { key: 'office_location', label: 'Sede', required: false },
   { key: 'hire_date', label: 'Data assunzione', required: false },
-  { key: 'manager_name', label: 'Manager', required: false },
-  { key: 'manager_email', label: 'Email manager', required: false },
   { key: 'phone', label: 'Telefono', required: false }
 ];
 
 const CSV_TEMPLATE_HEADER =
-  'matricola,nome,cognome,email,reparto,sede,data_assunzione,manager_email';
+  'matricola,nome,cognome,email,reparto,sede,data_assunzione';
 
 const FIELD_ALIASES = {
   first_name: ['nome', 'name', 'first name', 'first_name', 'prenome', 'nominativo', 'dipendente'],

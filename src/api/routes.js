@@ -365,39 +365,19 @@ function buildPublicBrandLogoUrl(brand) {
   const raw = String(process.env.CUSTOM_DOMAIN || process.env.BASE_URL || '').trim();
   if (!raw) return null;
   const host = raw.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const cfg = brand?.config || {};
-  const version = [
-    cfg.brand_identity_assets?.logo,
-    cfg.wallet_icon_rev,
-    brand.updated_at
-  ].filter(Boolean).join('-') || 'current';
-  return `https://${host}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?v=${encodeURIComponent(version)}`;
+  const { publicBrandMarkVersion } = require('../engine/brand-wallet-logo');
+  const version = publicBrandMarkVersion(brand);
+  return `https://${host}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?v=${encodeURIComponent(version)}`;
 }
 
-function normalizePublicThemeHex(value) {
-  const raw = String(value || '').trim();
-  const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (!m) return null;
-  let h = m[1];
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-  return `#${h.toUpperCase()}`;
-}
-
-function publicBrandTheme(brand) {
-  const cfg = brand?.config || {};
-  const theme = cfg.brand_theme || {};
-  const accent = normalizePublicThemeHex(theme.accent || theme.baseColor || cfg.labelColor);
-  if (!accent) return null;
-  return {
-    accent,
-    accentHover: normalizePublicThemeHex(theme.accentHover || theme.baseColor) || accent,
-    textOnAccent: normalizePublicThemeHex(theme.textOnAccent) || '#FFFFFF'
-  };
-}
+const { publicBrandTheme } = require('../engine/public-brand-theme');
 
 function publicBrandLogoPath(brand) {
   const slug = brand?.slug;
-  return slug ? `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/logo` : null;
+  if (!slug) return null;
+  const { publicBrandMarkVersion } = require('../engine/brand-wallet-logo');
+  const version = publicBrandMarkVersion(brand);
+  return `/api/v1/brands/by-slug/${encodeURIComponent(slug)}/mark?v=${encodeURIComponent(version)}`;
 }
 
 async function resolveUserInviteBrandContext(user) {
@@ -577,6 +557,7 @@ router.get('/brands/by-slug/:slug', async (req, res) => {
     res.json({
       ...brand,
       config: safeConfig,
+      brand_theme: publicBrandTheme(brand),
       wallet: { google: googleWallet.isConfigured(), samsung: samsungWallet.isConfigured() }
     });
   } catch (err) {
@@ -617,6 +598,24 @@ router.get('/brands/by-slug/:slug/logo', async (req, res) => {
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.send(buf);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/brands/by-slug/:slug/mark', async (req, res) => {
+  try {
+    const brand = await getBrandBySlug(req.params.slug);
+    if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
+    const sharp = require('sharp');
+    const { resolveBrandMarkRawBuffer } = require('../engine/brand-wallet-logo');
+    const resolved = await resolveBrandMarkRawBuffer(brand);
+    if (!resolved?.buffer) return res.status(404).json({ error: 'Nessun logo' });
+    const png = await sharp(resolved.buffer)
+      .png()
+      .resize(256, 256, { fit: 'inside', withoutEnlargement: false })
+      .toBuffer();
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.send(png);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1460,7 +1459,10 @@ router.get('/activate/:token', async (req, res) => {
         employee_id: member.employee_id,
         brand_name: member.brand_name,
         brand_slug: member.brand_slug,
-        logo_url: publicBrandLogoPath({ slug: member.brand_slug }),
+        logo_url: publicBrandLogoPath({
+          slug: member.brand_slug,
+          config: member.brand_config
+        }),
         brand_theme: publicBrandTheme({ config: member.brand_config })
       },
       templates: hrTemplates.map((t) => ({ id: t.id, name: t.name })),

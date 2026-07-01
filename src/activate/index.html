@@ -29,8 +29,8 @@
       margin-bottom: 16px;
     }
     .brand-mark {
-      width: 64px;
-      height: 64px;
+      width: 112px;
+      height: 112px;
       border-radius: 16px;
       border: 1px solid #e2e8f0;
       background: #fff;
@@ -93,6 +93,8 @@
       border-color: var(--brand-accent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-accent) 18%, transparent);
     }
+    a { color: var(--brand-accent); }
+    a:hover { color: var(--brand-accent-hover); }
   </style>
 </head>
 <body>
@@ -151,14 +153,19 @@
     function applyBrandChrome(member) {
       const theme = member?.brand_theme || {};
       const accent = validHex(theme.accent || theme.baseColor);
-      const hover = validHex(theme.accentHover || theme.baseColor);
+      const hover = validHex(theme.accentHover || theme.baseColor || theme.accent);
       const onAccent = validHex(theme.textOnAccent);
+      const root = document.documentElement.style;
       if (accent) {
-        document.documentElement.style.setProperty('--brand-accent', accent);
+        root.setProperty('--brand-accent', accent);
+        root.setProperty('--brand', accent);
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', accent);
       }
-      if (hover) document.documentElement.style.setProperty('--brand-accent-hover', hover);
-      if (onAccent) document.documentElement.style.setProperty('--brand-on-accent', onAccent);
+      if (hover) {
+        root.setProperty('--brand-accent-hover', hover);
+        root.setProperty('--brand-dark', hover);
+      }
+      if (onAccent) root.setProperty('--brand-on-accent', onAccent);
       const logo = document.getElementById('brandLogo');
       if (logo && member?.logo_url) {
         logo.onload = () => { logo.style.display = 'block'; };
@@ -203,7 +210,15 @@
       document.getElementById('formCard').classList.remove('hidden');
       document.getElementById('brandTitle').textContent = data.member.brand_name || 'Attivazione pass';
       const privacyLink = document.getElementById('privacy-policy-link');
-      if (privacyLink && data.privacy_url) privacyLink.href = data.privacy_url;
+      if (privacyLink && data.privacy_url) {
+        let privacyUrl = data.privacy_url;
+        const brandSlug = data.member?.brand_slug;
+        if (brandSlug && /privacy-policy(?:\?|$)/.test(privacyUrl)) {
+          const sep = privacyUrl.includes('?') ? '&' : '?';
+          privacyUrl += sep + 'brand=' + encodeURIComponent(brandSlug);
+        }
+        privacyLink.href = privacyUrl;
+      }
       const name = [data.member.first_name, data.member.last_name].filter(Boolean).join(' ');
       document.getElementById('memberLine').textContent =
         (name ? name + ' · ' : '') + (data.member.email || '') +
