@@ -143,7 +143,8 @@ function buildCoinFieldValue(coinBalance) {
   return {
     key: 'coin_balance',
     label: 'COIN',
-    value: String(coinValue)
+    value: String(coinValue),
+    changeMessage: 'Hai %@ coin',
   };
 }
 
@@ -176,18 +177,7 @@ function buildPushAlertText(pushAnn) {
 function buildPushChangeMessage(pushAnn) {
   const alertText = buildPushAlertText(pushAnn);
   if (!alertText) return null;
-  return APPLE_WALLET_UPDATE_HINT;
-}
-
-function attachPushAlertToHeader(headerHint, pushAnn) {
-  if (headerHint) return headerHint;
-  if (!buildPushAlertText(pushAnn)) return null;
-  return {
-    key: 'info_hint',
-    label: 'INFO',
-    value: 'Per altre informazioni',
-    textAlignment: 'PKTextAlignmentRight'
-  };
+  return alertText.slice(0, 178);
 }
 
 function buildPushAnnouncementAuxField(pushAnn) {
@@ -196,8 +186,8 @@ function buildPushAnnouncementAuxField(pushAnn) {
   const pushTs = Number(pushAnn.ts || Date.now());
   return {
     key: 'announcement',
-    label: 'INFO',
-    value: `${APPLE_WALLET_UPDATE_HINT}${invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`)}`,
+    label: '\u200b',
+    value: invisibleChangeToken(`${pushTs}:${pushAnn.title || ''}:${pushAnn.message || ''}:${pushAnn.back_details || ''}`),
     changeMessage: buildPushChangeMessage(pushAnn),
   };
 }
@@ -503,7 +493,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   // Front layout: strip promo + secondary NOME/AREA/COIN frozen.
   // Apple Wallet alert rides on a short non-empty auxiliary field; back fields update silently.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
-  const headerHint = attachPushAlertToHeader(resolvePassHeaderHint(template, cfg), pushAnn);
+  const headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -666,7 +656,7 @@ function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}
     });
   });
   (employeePass.front.auxiliary || []).forEach((f, i) => {
-    if (f.key === 'push_notice') return;
+    if (f.key === 'push_notice' || f.key === 'announcement') return;
     modules.push({
       id: `front_aux_${i}`,
       header: f.label,

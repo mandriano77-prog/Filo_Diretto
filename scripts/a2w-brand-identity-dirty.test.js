@@ -82,7 +82,7 @@ test('media library layout: tab singolo bucket e crop editor intatto', () => {
   assert.match(chromeCss, /\.a2w-media-buckets-grid--tabs > \.a2w-media-bucket\.is-active/);
   assert.match(shellJs, /function a2wEnsureMediaTabs/);
   assert.match(shellJs, /window\.getA2wActiveMediaTabType/);
-  ['logo', 'wallet_icon', 'strip', 'thumbnail', 'background'].forEach((type) => {
+  ['logo', 'wallet_icon', 'strip', 'background'].forEach((type) => {
     assert.match(indexHtml, new RegExp(`${type}:\\s*\\{[^}]+w:\\s*\\d+`));
   });
 });

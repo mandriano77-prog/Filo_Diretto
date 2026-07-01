@@ -30,7 +30,7 @@ test('index.html template editor supports removing pass images', () => {
   const html = read('src/dashboard/index.html');
   assert.match(html, /function clearTplImage/);
   assert.match(html, /persistTemplateImageRemovals/);
-  assert.match(html, /tplImgRemove_thumbnail/);
+  assert.match(html, /tplImgRemove_strip/);
   assert.match(html, /images\/\$\{imgType\}/);
   assert.doesNotMatch(html, /tplStripPromoSelect/);
   assert.match(html, /saveTemplateFromBtn/);

@@ -10,10 +10,10 @@ const indexHtml = fs.readFileSync(path.join(root, 'src/dashboard/index.html'), '
 const controller = fs.readFileSync(path.join(root, 'src/dashboard/js/a2w-setup-checklist.js'), 'utf8');
 const component = fs.readFileSync(path.join(root, 'src/dashboard/js/components/ui/setup-checklist.js'), 'utf8');
 
-test('welcome espone mount setup checklist A2W', () => {
+test('welcome espone mount setup checklist HR (root senza script A2W legacy)', () => {
   assert.match(indexHtml, /id="a2wSetupChecklistRoot"/);
-  assert.match(indexHtml, /a2w-setup-checklist\.js/);
   assert.match(indexHtml, /shouldKeepWelcomeAsHome/);
+  assert.doesNotMatch(indexHtml, /a2w-setup-checklist\.js/);
 });
 
 test('setup checklist definisce i 4 step richiesti', () => {

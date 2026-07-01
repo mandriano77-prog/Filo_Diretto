@@ -61,9 +61,9 @@ test('buildPublicLandingUrl uses env base + slug', () => {
   });
 });
 
-test('getProductBrandName defaults to FiloDiretto (HR-only repo)', () => {
+test('getProductBrandName defaults to Filo Diretto (HR-only repo)', () => {
   withEnv({}, () => {
     const { getProductBrandName } = loadBaseUrl();
-    assert.equal(getProductBrandName(), 'FiloDiretto');
+    assert.equal(getProductBrandName(), 'Filo Diretto');
   });
 });

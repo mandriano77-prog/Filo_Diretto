@@ -18,8 +18,9 @@ const modalBlock = modalEnd > modalStart
   : indexHtml.slice(modalStart, modalStart + 20000);
 
 test('STEP 4–5: template modal wired with sticky layout and front/back toggle', () => {
-  assert.match(indexHtml, /a2w-template-modal\.css/);
-  assert.match(indexHtml, /a2w-template-editor\.js/);
+  const fdTemplates = fs.readFileSync(path.join(root, 'src/filodiretto/fd-templates.js'), 'utf8');
+  const fdTplCss = fs.readFileSync(path.join(root, 'src/filodiretto/fd-templates.css'), 'utf8');
+  assert.match(indexHtml, /filo-template-upload\.css/);
   assert.match(modalBlock, /a2w-tpl-modal/);
   assert.match(modalBlock, /a2w-tpl-modal__header/);
   assert.match(modalBlock, /a2w-tpl-modal__body/);
@@ -28,8 +29,8 @@ test('STEP 4–5: template modal wired with sticky layout and front/back toggle'
   assert.match(modalBlock, /data-tpl-face="front"/);
   assert.match(modalBlock, /data-tpl-face="back"/);
   assert.doesNotMatch(modalBlock, /Passa il mouse per vedere il retro/);
-  assert.match(tplCss, /a2w-tpl-show-back/);
-  assert.match(tplEditor, /setPreviewFace/);
+  assert.match(fdTplCss, /a2w-tpl-show-back/);
+  assert.match(fdTemplates, /setPreviewFace/);
 });
 
 test('STEP 5: pass preview DOM has strip wrap and no overlapping absolute header', () => {

@@ -70,7 +70,10 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
   });
 
   const headerField = employeePass.headerHint || null;
-  const lockScreenBody = updatePass && announcement ? APPLE_WALLET_UPDATE_HINT : '';
+  const alertAux = (employeePass.front.auxiliary || []).find((f) => f.key === 'announcement');
+  const lockScreenBody = updatePass && alertAux?.changeMessage
+    ? String(alertAux.changeMessage)
+    : '';
 
   let stripPreview = null;
   if (updatePass) {
