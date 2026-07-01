@@ -112,11 +112,11 @@ function buildEmployeeBrandMarkHtml(brandName, brandLogo, brandTheme) {
   const safeName = escapeHtml(brandName || 'la tua azienda');
   const initials = escapeHtml(brandInitialsFromName(brandName));
   const theme = employeeEmailTheme(brandTheme);
-  const imgStyle = 'display:block;width:112px;height:112px;border-radius:14px;object-fit:contain;background:#FFFFFF;border:1px solid #E2E8F0;';
+  const imgStyle = 'display:block;width:72px;height:72px;border-radius:14px;object-fit:cover;background:#FFFFFF;border:1px solid #E2E8F0;';
   const mark = brandLogo?.cid
-    ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="112" height="112" style="${imgStyle}" />`
+    ? `<img src="cid:${escapeHtml(brandLogo.cid)}" alt="${safeName}" width="72" height="72" style="${imgStyle}" />`
     : brandLogo?.url
-    ? `<img src="${escapeHtml(brandLogo.url)}" alt="${safeName}" width="112" height="112" style="${imgStyle}" />`
+    ? `<img src="${escapeHtml(brandLogo.url)}" alt="${safeName}" width="72" height="72" style="${imgStyle}" />`
     : `<span style="display:inline-block;width:56px;height:56px;border-radius:14px;background:${theme.accent};color:${theme.textOnAccent};font-size:18px;font-weight:700;line-height:56px;text-align:center;">${initials}</span>`;
   return `
     <div style="display:flex;align-items:center;gap:14px;margin:0 0 22px;">

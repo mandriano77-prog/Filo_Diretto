@@ -86,12 +86,13 @@ test('W.AI and wallet dispatcher default to all available wallet channels', () =
   assert.match(dispatch, /return \[\.\.\.allowed\]/);
 });
 
-test('Apple HR pass applies Wallet lock-screen copy on front wallet_push_alert field', () => {
+test('Apple HR pass applies Wallet lock-screen copy on changed header field', () => {
   const employeePass = fs.readFileSync(path.join(__dirname, '../src/engine/employee-pass.js'), 'utf8');
   assert.match(employeePass, /function buildPushLockScreenBackSection/);
-  assert.match(employeePass, /function buildPushAnnouncementAuxField/);
+  assert.match(employeePass, /function buildPushHeaderAlertField/);
   assert.match(employeePass, /changeMessage/);
-  assert.match(employeePass, /key: 'wallet_push_alert'/);
+  assert.match(employeePass, /key: 'info_hint'/);
+  assert.doesNotMatch(employeePass, /key: 'wallet_push_alert'/);
   assert.doesNotMatch(employeePass, /key: 'screen_alert'/);
   assert.match(employeePass, /key: 'push_back_details'/);
   assert.doesNotMatch(employeePass, /push_back_details[\s\S]{0,120}changeMessage: buildPushChangeMessage/);

@@ -866,7 +866,8 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   assert.match(privacy, /cfg\.brand_theme/);
   assert.match(mailer, /function buildEmployeeWalletEmailHtml/);
   assert.match(mailer, /brandLogo\?\.cid/);
-  assert.match(mailer, /width:112px;height:112px/);
+  assert.match(mailer, /width:72px;height:72px/);
+  assert.match(mailer, /object-fit:cover/);
   assert.match(hrActivation, /function publicBrandLogoUrl/);
   assert.match(hrActivation, /absolutePublicBrandMarkUrl/);
   assert.match(routes, /function buildPublicBrandLogoUrl/);
@@ -905,7 +906,7 @@ test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () =
   assert.match(hubApp, /resolveAssetUrl/);
   assert.match(hubApp, /applyBrandedIcons/);
   assert.match(hubApp, /state\.brand\?\.mark_url \|\| state\.settings\?\.logo_url \|\| state\.brand\?\.logo_url/);
-  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*#fff;/);
+  assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*60px;[\s\S]*height:\s*60px;[\s\S]*object-fit:\s*cover;[\s\S]*background:\s*#fff;/);
   assert.match(hubCss, /\.hub-subtitle\s*\{[\s\S]*display:\s*none !important/);
   assert.match(hubSw, /filodiretto-hub-v6/);
 });

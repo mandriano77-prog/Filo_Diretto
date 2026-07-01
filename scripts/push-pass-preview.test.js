@@ -26,7 +26,7 @@ test('buildPushPassPreview returns lock screen and front fields', async () => {
 
   assert.match(preview.lock_screen.body, /2X1 OCCHIALI/);
   assert.match(preview.lock_screen.body, /Solo fino a domenica/);
-  assert.equal(preview.header, null);
+  assert.deepEqual(preview.header, { label: 'INFO PUSH', value: 'Clicca qui' });
   assert.ok(preview.secondary.some((f) => f.label === 'NOME'));
   assert.ok(preview.back.some((r) => r.key === 'dynamic_push_link'));
   assert.ok(preview.back.some((r) => r.key === 'push_back_details'));

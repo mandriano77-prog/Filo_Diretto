@@ -38,6 +38,7 @@ function buildPreviewAnnouncement(body) {
 }
 
 function resolveWalletAlertChangeMessage(employeePass) {
+  if (employeePass.headerHint?.changeMessage) return String(employeePass.headerHint.changeMessage).trim();
   const frontAlert = (employeePass.front?.auxiliary || []).find((s) => s.key === 'wallet_push_alert');
   if (frontAlert?.changeMessage) return String(frontAlert.changeMessage).trim();
   return '';

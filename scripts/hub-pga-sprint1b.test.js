@@ -11,6 +11,10 @@ function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }
 
+function visiblePassValue(value) {
+  return String(value || '').replace(/[\u200b\u200c\u200d\u2060]/g, '');
+}
+
 test('AC-017: enabling PGA seeds default experiences via upsertPgaSettings', () => {
   const db = read('src/db/index.js');
   const seed = read('src/engine/pga-seed.js');
@@ -122,11 +126,11 @@ test('HR push promo: strip overlay only — frozen template header and secondary
     coinBalance: 25
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.headerFields || []).length, 0);
-  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert');
+  const alertField = (apple.passStructure.headerFields || []).find((f) => f.key === 'info_hint');
   assert.ok(alertField);
   assert.equal(alertField.changeMessage, 'FRATELLI LA PIZZA: Dal lunedì al venerdì, con il pass hai lo sconto del 20%');
-  assert.match(alertField.value, /^\d+$/);
+  assert.equal(visiblePassValue(alertField.value), 'Clicca qui');
+  assert.equal((apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
   const coinField = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
   assert.ok(coinField);
@@ -172,11 +176,11 @@ test('HR push default copy uses back details for Apple alert and no INFO PASS ba
     coinBalance: 0
   });
   const apple = toApplePass(employeePass);
-  assert.equal((apple.passStructure.headerFields || []).length, 0);
-  const alertField = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert');
+  const alertField = (apple.passStructure.headerFields || []).find((f) => f.key === 'info_hint');
   assert.ok(alertField);
   assert.equal(alertField.changeMessage, 'Lorem Ipsum tutti i brand aderenti, sconti fino al 50%');
-  assert.match(alertField.value, /^\d+$/);
+  assert.equal(visiblePassValue(alertField.value), 'Clicca qui');
+  assert.equal((apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
   const promoBack = (apple.passStructure.backFields || []).find((f) => f.key === 'push_back_details');
   assert.equal(promoBack, undefined);
@@ -280,7 +284,7 @@ test('HR back: push back_details after dynamic link', () => {
   assert.match(detailsField.value, /Non cumulabile/);
 });
 
-test('HR push: lock-screen alert on front wallet_push_alert field', () => {
+test('HR push: lock-screen alert on changed header field, without front numeric column', () => {
   const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
   const ep = buildEmployeePass({
     brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
@@ -302,20 +306,20 @@ test('HR push: lock-screen alert on front wallet_push_alert field', () => {
     member: { full_name: 'Test', department: 'HR' },
     brandConfig: {},
   });
-  const alertField = ep.front.auxiliary.find((s) => s.key === 'wallet_push_alert');
-  assert.ok(alertField);
-  assert.equal(alertField.changeMessage, '2X1 OCCHIALI: Solo questa settimana');
-  assert.match(alertField.value, /^\d+$/);
+  assert.equal(ep.front.auxiliary.find((s) => s.key === 'wallet_push_alert'), undefined);
+  assert.ok(ep.headerHint);
+  assert.equal(ep.headerHint.changeMessage, '2X1 OCCHIALI: Solo questa settimana');
+  assert.equal(visiblePassValue(ep.headerHint.value), 'Per altre informazioni');
   assert.equal(ep.backSections.find((s) => s.key === 'wallet_push_alert'), undefined);
   const coin = ep.front.secondary.find((f) => f.key === 'coin_balance');
   assert.ok(coin);
   assert.equal(coin.changeMessage, 'Hai %@ coin');
-  assert.ok(ep.headerHint);
   const apple = toApplePass(ep);
-  const appleAlert = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert');
+  const appleAlert = (apple.passStructure.headerFields || []).find((f) => f.key === 'info_hint');
   assert.ok(appleAlert);
   assert.equal(appleAlert.changeMessage, '2X1 OCCHIALI: Solo questa settimana');
-  assert.match(appleAlert.value, /^\d+$/);
+  assert.equal(visiblePassValue(appleAlert.value), 'Per altre informazioni');
+  assert.equal((apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
   assert.equal((apple.passStructure.backFields || []).find((f) => f.key === 'wallet_push_alert'), undefined);
 });
 
