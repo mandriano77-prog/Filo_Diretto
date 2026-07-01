@@ -45,6 +45,8 @@ function brandConfigForHrPass(brand, instance) {
   else delete base.pushAnnouncement;
   if (stripBase64) base.stripOverride = stripBase64;
   else delete base.stripOverride;
+  // relevantDate triggers generic "Carta punto vendita modificata" on storeCard — never on HR push passes.
+  delete base.relevantDate;
   return base;
 }
 

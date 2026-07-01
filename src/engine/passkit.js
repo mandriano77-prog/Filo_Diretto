@@ -688,9 +688,9 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.locations = normalizedLocs;
   }
 
-  // Push update — lock-screen copy comes from auxiliary `announcement` changeMessage only.
-  // relevantDate here triggers Apple's generic "store card modified" notification in Italian.
-  if (brandConfig.relevantDate) {
+  // HR lock-screen copy: back field wallet_push_alert with changeMessage "%@" (see employee-pass.js).
+  // relevantDate triggers Apple's generic "store card modified" notification in Italian.
+  if (brandConfig.relevantDate && !useHrBack) {
     passJson.relevantDate = brandConfig.relevantDate;
   }
 

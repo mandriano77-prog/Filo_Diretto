@@ -184,21 +184,23 @@ function buildPushChangeMessage(pushAnn) {
   return alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
 }
 
-/** Dedicated Wallet lock-screen field — requires explicit screen_alert text from dashboard. */
-function buildPushScreenAlertAuxField(pushAnn) {
+/** Back-field lock-screen alert — iOS requires changeMessage "%@" (value = notification copy). */
+function buildPushLockScreenBackSection(pushAnn) {
   const text = String(pushAnn?.screen_alert || pushAnn?.screenAlert || '').trim();
   if (!text) return null;
   const pushTs = Number(pushAnn.ts || Date.now());
-  // iOS needs a real value change; keep the pass face minimal (bullet cycles) while
-  // changeMessage carries the full ad-hoc notification copy the user typed.
-  const markers = ['·', '•', '●'];
-  const marker = markers[pushTs % markers.length];
   return {
-    key: 'screen_alert',
+    kind: 'alert',
+    key: 'wallet_push_alert',
     label: ' ',
-    value: marker + invisibleChangeToken(pushTs),
-    changeMessage: text.slice(0, PUSH_SCREEN_ALERT_MAX),
+    body: text.slice(0, PUSH_SCREEN_ALERT_MAX) + invisibleChangeToken(pushTs),
+    changeMessage: '%@',
   };
+}
+
+/** @deprecated — front auxiliary column removed; use buildPushLockScreenBackSection. */
+function buildPushScreenAlertAuxField() {
+  return null;
 }
 
 /** @deprecated HR passes no longer add a visible auxiliary column for push alerts. */
@@ -299,10 +301,11 @@ function makeHrLinkField(key, label, url, linkText) {
   if (!title || !url) return null;
   const safeUrl = escapeHtml(url);
   const safeTitle = escapeHtml(title);
+  // Title lives only in attributedValue — avoid duplicating link text in value row.
   return {
     key,
     label: '',
-    value: title.slice(0, 64),
+    value: '\u200b',
     attributedValue: `<a href="${safeUrl}">${safeTitle}</a>`
   };
 }
@@ -349,11 +352,24 @@ function buildSupportBackLink(hrBack) {
   };
 }
 
+function backTextDuplicatesPushCopy(text, pushAnn, dynamicLink) {
+  const normalized = String(text || '').trim();
+  if (!normalized) return true;
+  const screen = String(pushAnn?.screen_alert || pushAnn?.screenAlert || '').trim();
+  if (screen && normalized === screen) return true;
+  const linkLabel = String(dynamicLink?.label || '').trim();
+  if (linkLabel && normalized.toLowerCase() === linkLabel.toLowerCase()) return true;
+  const msg = String(pushAnn?.message || '').trim();
+  if (msg && normalized === msg) return true;
+  return false;
+}
+
 function buildBackSections({ brand, template, instance, member, brandConfig = {}, portalUrl = null, hubUrl = null }) {
   const sections = [];
   const hrBack = resolveHrBackSource(template, brand);
+  const pushAnn = resolvePushAnnouncement(brandConfig, instance);
 
-  // Promo copy lives on strip image — dynamic push link (if any) precedes optional dettagli / HUB / SUPPORT / AREA PRIVATA.
+  // Promo copy lives on strip — link CTA first, then lock-screen alert on back (never a 4th front column).
   const dynamicLink = resolveVariableLink(instance, template, brandConfig);
   if (dynamicLink?.url) {
     sections.push({
@@ -364,22 +380,19 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
     });
   }
 
-  const pushAnn = resolvePushAnnouncement(brandConfig, instance);
+  const lockScreen = buildPushLockScreenBackSection(pushAnn);
+  if (lockScreen) sections.push(lockScreen);
 
   if (pushAnn?.back_details) {
-    sections.push({
-      kind: 'alert',
-      key: 'push_back_details',
-      label: pushBackDetailsLabel(pushAnn),
-      body: pushAnn.back_details,
-    });
-  } else if (pushAnn?.message) {
-    sections.push({
-      kind: 'alert',
-      key: 'push_wallet_alert',
-      label: pushBackDetailsLabel(pushAnn),
-      body: pushAnn.message,
-    });
+    const details = String(pushAnn.back_details).trim();
+    if (!backTextDuplicatesPushCopy(details, pushAnn, dynamicLink)) {
+      sections.push({
+        kind: 'alert',
+        key: 'push_back_details',
+        label: ' ',
+        body: details,
+      });
+    }
   }
 
   if (hubUrl) {
@@ -504,9 +517,7 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template, instance });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip promo + secondary NOME/AREA/COIN frozen.
-  // Apple Wallet lock-screen copy: dedicated auxiliary (screen_alert) when user compiles it.
-  const pushAnn = resolvePushAnnouncement(cfg, instance);
+  // Front layout: strip promo + secondary NOME/AREA/COIN frozen — no push auxiliary column.
   const headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
@@ -518,8 +529,6 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
-  const screenAux = buildPushScreenAlertAuxField(pushAnn);
-  if (screenAux) auxiliary.push(screenAux);
 
   const backSections = buildBackSections({
     brand,
@@ -670,7 +679,7 @@ function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}
     });
   });
   (employeePass.front.auxiliary || []).forEach((f, i) => {
-    if (f.key === 'push_notice' || f.key === 'announcement' || f.key === 'screen_alert') return;
+    if (f.key === 'push_notice' || f.key === 'announcement') return;
     modules.push({
       id: `front_aux_${i}`,
       header: f.label,
@@ -853,7 +862,8 @@ module.exports = {
   resolveMemberProfile,
   resolveVariableLink,
   resolvePushAnnouncement,
-  applyPushWalletAlertField: buildPushScreenAlertAuxField,
+  applyPushWalletAlertField: buildPushLockScreenBackSection,
+  buildPushLockScreenBackSection,
   buildPushScreenAlertAuxField,
   buildPushHeaderField,
   buildPushWalletAlertField,

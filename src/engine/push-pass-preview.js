@@ -38,12 +38,10 @@ function buildPreviewAnnouncement(body) {
 }
 
 function resolveWalletAlertChangeMessage(employeePass) {
-  const screenAux = (employeePass.front?.auxiliary || []).find((f) => f.key === 'screen_alert');
-  if (screenAux?.changeMessage) return String(screenAux.changeMessage);
-  const header = employeePass.headerHint;
-  if (header?.changeMessage) return String(header.changeMessage);
-  const coin = (employeePass.front?.secondary || []).find((f) => f.key === 'coin_balance');
-  if (coin?.changeMessage && coin.changeMessage !== 'Hai %@ coin') return String(coin.changeMessage);
+  const backAlert = (employeePass.backSections || []).find((s) => s.key === 'wallet_push_alert');
+  if (backAlert?.body) {
+    return String(backAlert.body).replace(/[\u200b-\u200c\u200d\u2060]/g, '').trim();
+  }
   return '';
 }
 
