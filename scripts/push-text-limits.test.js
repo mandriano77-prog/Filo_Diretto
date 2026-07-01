@@ -46,3 +46,14 @@ test('agent rules mention limits', () => {
   assert.match(PUSH_TEXT_AGENT_RULES, /66/);
   assert.match(PUSH_TEXT_AGENT_RULES, /3 righe/);
 });
+
+test('validatePushScreenAlert requires text and enforces max length', () => {
+  const { validatePushScreenAlert, PUSH_SCREEN_ALERT_MAX } = require('../src/engine/push-text-limits');
+  assert.equal(PUSH_SCREEN_ALERT_MAX, 178);
+  const empty = validatePushScreenAlert('');
+  assert.equal(empty.length, 1);
+  assert.equal(empty[0].field, 'pushScreenAlert');
+  const over = validatePushScreenAlert('x'.repeat(PUSH_SCREEN_ALERT_MAX + 1));
+  assert.equal(over.length, 1);
+  assert.equal(validatePushScreenAlert('SALDI ESTIVI: -50% su tutto').length, 0);
+});

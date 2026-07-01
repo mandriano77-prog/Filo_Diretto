@@ -113,7 +113,10 @@ async function executeScheduledPush(schedule, baseUrl) {
     return;
   }
 
-  const result = await executeWalletPush(schedule, {
+  // Legacy rows have no screen_alert — derive from title/message so HR dispatch does not reject.
+  const screenAlert = String(schedule.screen_alert || '').trim()
+    || [String(schedule.title || '').trim(), String(schedule.message || '').trim()].filter(Boolean).join(': ');
+  const result = await executeWalletPush({ ...schedule, screen_alert: screenAlert.slice(0, 178) }, {
     hrDeploy: true,
     resolvedStripBase64: schedule.strip_base64 || null,
   });

@@ -2920,6 +2920,16 @@ router.post('/push/scheduled', async (req, res) => {
         limits: { title_max: PUSH_TITLE_MAX, message_max: PUSH_MESSAGE_MAX },
       });
     }
+    if (req.body.update_pass !== false) {
+      const screenErrors = validatePushScreenAlert(req.body.screen_alert);
+      if (screenErrors.length) {
+        return res.status(400).json({
+          error: screenErrors[0].message,
+          field: screenErrors[0].field,
+          limits: { screen_alert_max: PUSH_SCREEN_ALERT_MAX },
+        });
+      }
+    }
     const backDetailsErrors = validatePushBackDetails(req.body.back_details);
     if (backDetailsErrors.length) {
       return res.status(400).json({
@@ -2929,6 +2939,7 @@ router.post('/push/scheduled', async (req, res) => {
     }
     const body = { ...req.body };
     body.back_details = normalizePushBackDetails(body.back_details);
+    body.screen_alert = String(body.screen_alert || '').trim().slice(0, PUSH_SCREEN_ALERT_MAX) || null;
     if (body.pass_link_url) {
       parsePassLinkFromPushBody(body, body.title);
       body.include_pass_link = true;
@@ -2979,6 +2990,17 @@ router.put('/push/scheduled/:id', async (req, res) => {
     const patch = { ...req.body };
     if (patch.back_details !== undefined) {
       patch.back_details = normalizePushBackDetails(patch.back_details);
+    }
+    if (patch.screen_alert !== undefined) {
+      const screenErrors = validatePushScreenAlert(patch.screen_alert);
+      if (screenErrors.length) {
+        return res.status(400).json({
+          error: screenErrors[0].message,
+          field: screenErrors[0].field,
+          limits: { screen_alert_max: PUSH_SCREEN_ALERT_MAX },
+        });
+      }
+      patch.screen_alert = String(patch.screen_alert || '').trim().slice(0, PUSH_SCREEN_ALERT_MAX) || null;
     }
     const item = await updateScheduledPush(req.params.id, patch);
     res.json(item);

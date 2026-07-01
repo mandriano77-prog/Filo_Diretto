@@ -1850,6 +1850,12 @@
                                 <option value="">Tutti i pass (tutte le campagne)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label" for="schedScreenAlert">Testo notifica Wallet</label>
+                            <input type="text" id="schedScreenAlert" maxlength="178" placeholder="es. SALDI ESTIVI: -50% su tutto il catalogo" aria-describedby="schedScreenAlertHint schedScreenAlertError">
+                            <p class="form-hint" id="schedScreenAlertHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Obbligatorio · max 178 caratteri — è il testo esatto della notifica iPhone (lock screen) a ogni invio programmato.</p>
+                            <p class="push-field-error" id="schedScreenAlertError" role="alert"></p>
+                        </div>
                         <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
                             <label class="form-label">Titolo</label>
                             <input type="text" id="schedTitle" placeholder="es. Reminder settimanale">
@@ -8210,7 +8216,7 @@ function setPushFieldError(fieldId, message) {
 }
 
 function clearPushFieldErrors() {
-    ['pushTitle', 'pushMessage', 'pushBackDetails'].forEach((id) => setPushFieldError(id, ''));
+    ['pushTitle', 'pushMessage', 'pushBackDetails', 'pushScreenAlert', 'schedScreenAlert'].forEach((id) => setPushFieldError(id, ''));
     const banner = document.getElementById('pushSendError');
     if (banner) {
         banner.textContent = '';
@@ -8351,9 +8357,19 @@ async function createScheduledPush() {
     const time = document.getElementById('schedTime').value || '09:00';
 
     if (!brandId) return alert('Seleziona un brand');
-    if (!applyPushTextValidation(title, message, (document.getElementById('schedBackDetails')?.value || '').trim())) return;
+    const schedScreenAlert = (document.getElementById('schedScreenAlert')?.value || '').trim();
+    if (!schedScreenAlert) {
+        setPushFieldError('schedScreenAlert', 'Inserisci il testo della notifica Wallet (lock screen)');
+        return;
+    }
+    if (schedScreenAlert.length > 178) {
+        setPushFieldError('schedScreenAlert', 'Notifica lock screen max 178 caratteri');
+        return;
+    }
+    setPushFieldError('schedScreenAlert', '');
+    if (!applyPushTextValidation(title, message, (document.getElementById('schedBackDetails')?.value || '').trim(), schedScreenAlert)) return;
 
-    const body = { brand_id: brandId, title, message, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
+    const body = { brand_id: brandId, title, message, screen_alert: schedScreenAlert, update_pass: updatePass, channel, schedule_type: schedType, schedule_time: time };
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId && isLegacyCampaignsUiEnabled()) body.campaign_id = campaignId;
     if (schedType === 'once') {
@@ -8384,6 +8400,8 @@ async function createScheduledPush() {
     toast('Notifica programmata!');
     document.getElementById('schedTitle').value = '';
     document.getElementById('schedMessage').value = '';
+    const schedScreenAlertEl = document.getElementById('schedScreenAlert');
+    if (schedScreenAlertEl) schedScreenAlertEl.value = '';
     const schedBackDetailsEl = document.getElementById('schedBackDetails');
     if (schedBackDetailsEl) schedBackDetailsEl.value = '';
     ['schedPassLinkUrl', 'schedPassLinkLabel', 'schedPassLinkExpires'].forEach((id) => {

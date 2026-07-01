@@ -876,6 +876,7 @@ async function getDb() {
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS pass_link_expires_at TIMESTAMPTZ`).catch(() => {});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS back_details TEXT`).catch(() => {});
     await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS strip_base64 TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE scheduled_push ADD COLUMN IF NOT EXISTS screen_alert VARCHAR(178)`).catch(() => {});
 
     await pool.query(`UPDATE pass_instances SET activated_at = created_at WHERE activated_at IS NULL`).catch(() => {});
 
@@ -2254,21 +2255,22 @@ async function createScheduledPush(data) {
     brand_id, title, message, campaign_id = null, audience_id = null, channel = 'apple',
     schedule_type = 'once', schedule_time = '09:00', schedule_days = '', update_pass = true, next_run_at,
     include_pass_link = false, pass_link_url = null, pass_link_label = null, pass_link_expires_at = null,
-    back_details = null, strip_base64 = null
+    back_details = null, strip_base64 = null, screen_alert = null
   } = data;
   if (!brand_id || !title || !message) throw new Error('brand_id, title, and message are required');
+  const screenAlert = String(screen_alert || '').trim().slice(0, 178) || null;
   await pool.query(
     `INSERT INTO scheduled_push (
        id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time,
        schedule_days, update_pass, next_run_at, include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
-       back_details, strip_base64
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-    [id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, !!include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_details || null, strip_base64 || null]
+       back_details, strip_base64, screen_alert
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+    [id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time, schedule_days, update_pass, next_run_at, !!include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_details || null, strip_base64 || null, screenAlert]
   );
   return {
     id, brand_id, title, message, campaign_id, audience_id, channel, schedule_type, schedule_time,
     schedule_days, update_pass, next_run_at, include_pass_link: !!include_pass_link,
-    pass_link_url, pass_link_label, pass_link_expires_at, back_details: back_details || null, strip_base64: strip_base64 || null, active: true
+    pass_link_url, pass_link_label, pass_link_expires_at, back_details: back_details || null, strip_base64: strip_base64 || null, screen_alert: screenAlert, active: true
   };
 }
 
@@ -2286,7 +2288,7 @@ async function updateScheduledPush(id, data) {
   const fields = [];
   const values = [id];
   let idx = 2;
-  for (const key of ['title', 'message', 'campaign_id', 'audience_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at', 'include_pass_link', 'pass_link_url', 'pass_link_label', 'pass_link_expires_at', 'back_details', 'strip_base64']) {
+  for (const key of ['title', 'message', 'campaign_id', 'audience_id', 'channel', 'schedule_type', 'schedule_time', 'schedule_days', 'active', 'update_pass', 'next_run_at', 'last_run_at', 'include_pass_link', 'pass_link_url', 'pass_link_label', 'pass_link_expires_at', 'back_details', 'strip_base64', 'screen_alert']) {
     if (data[key] !== undefined) { fields.push(`${key} = $${idx}`); values.push(data[key]); idx++; }
   }
   if (fields.length === 0) return getScheduledPush(id);

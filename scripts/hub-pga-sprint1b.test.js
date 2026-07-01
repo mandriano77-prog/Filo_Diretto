@@ -366,10 +366,25 @@ test('strip preview API route registered', () => {
 test('scheduled push: back_details stored and applied on execute', () => {
   assert.match(read('src/db/index.js'), /scheduled_push ADD COLUMN IF NOT EXISTS back_details/);
   assert.match(read('src/db/index.js'), /back_details/);
-  assert.match(read('src/engine/scheduler.js'), /executeWalletPush\(schedule/);
+  assert.match(read('src/engine/scheduler.js'), /executeWalletPush\(\{ \.\.\.schedule/);
   assert.match(read('src/engine/push-dispatch.js'), /attachBackDetailsToAnnouncement/);
   assert.match(read('src/api/routes.js'), /validatePushBackDetails\(req\.body\.back_details\)/);
   assert.match(read('src/dashboard/index.html'), /schedBackDetails/);
+});
+
+test('scheduled push: screen_alert stored, validated, and derived on execute', () => {
+  const db = read('src/db/index.js');
+  assert.match(db, /scheduled_push ADD COLUMN IF NOT EXISTS screen_alert/);
+  assert.match(db, /screen_alert(?:.|\n){0,600}INSERT INTO scheduled_push/);
+  assert.match(db, /'screen_alert'\]/);
+  const scheduler = read('src/engine/scheduler.js');
+  assert.match(scheduler, /schedule\.screen_alert/);
+  assert.match(scheduler, /screen_alert: screenAlert\.slice\(0, 178\)/);
+  const routes = read('src/api/routes.js');
+  assert.match(routes, /validatePushScreenAlert\(req\.body\.screen_alert\)/);
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /schedScreenAlert/);
+  assert.match(dashboard, /screen_alert: schedScreenAlert/);
 });
 
 test('pass preview API route registered', () => {

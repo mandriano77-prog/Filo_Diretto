@@ -672,7 +672,7 @@ test('Scheduled push uses the same wallet dispatch surface as immediate push', (
   const db = read('src/db/index.js');
   const routes = read('src/api/routes.js');
   const dashboard = read('src/dashboard/index.html');
-  assert.match(scheduler, /executeWalletPush\(schedule/);
+  assert.match(scheduler, /executeWalletPush\(\{ \.\.\.schedule, screen_alert/);
   assert.match(scheduler, /resolvedStripBase64:\s*schedule\.strip_base64 \|\| null/);
   assert.match(db, /scheduled_push ADD COLUMN IF NOT EXISTS strip_base64 TEXT/);
   assert.match(db, /INSERT INTO scheduled_push[\s\S]*strip_base64/);

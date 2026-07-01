@@ -55,6 +55,30 @@ test('W.AI push uses HR push limits and passes generated strip to wallet update'
   assert.match(routes, /no badges, no stickers, no circles/);
 });
 
+test('W.AI push derives screen_alert from title and message when omitted', () => {
+  const out = validateWaiResponse({
+    intent: 'push.send',
+    type: 'create',
+    payload: { title: '2X1 OCCHIALI', message: 'Solo questa settimana' },
+    preview: { summary: '', details: {}, warnings: [] }
+  }, 'brand-1', 'manda una push a tutti');
+  assert.equal(out.payload.screen_alert, '2X1 OCCHIALI: Solo questa settimana');
+
+  const explicit = validateWaiResponse({
+    intent: 'push.schedule',
+    type: 'create',
+    payload: {
+      title: 'PROMO',
+      message: 'Dettagli sul pass',
+      screen_alert: 'PROMO WEEKEND: sconti fino al 50% in tutti i punti vendita',
+      schedule_type: 'once',
+      date: '2099-01-01'
+    },
+    preview: { summary: '', details: {}, warnings: [] }
+  }, 'brand-1', 'programma una push');
+  assert.equal(explicit.payload.screen_alert, 'PROMO WEEKEND: sconti fino al 50% in tutti i punti vendita');
+});
+
 test('W.AI push preserves back details and pass link like manual push', () => {
   const out = validateWaiResponse({
     intent: 'push.send',

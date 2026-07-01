@@ -729,6 +729,10 @@ function validateWaiResponse(raw, brandId, userPrompt) {
     }
     const textErrors = validatePushText(payload.title, payload.message);
     if (textErrors.length) throw new Error(textErrors[0].message);
+    // HR dispatch rejects Wallet updates without screen_alert — derive from copy when the model omits it.
+    payload.screen_alert = String(
+      payload.screen_alert || preview.details?.screen_alert || ''
+    ).trim().slice(0, 178) || `${payload.title}: ${payload.message}`.slice(0, 178);
     payload.back_details = normalizePushBackDetails(
       payload.back_details || preview.details?.back_details || preview.details?.details || ''
     );
