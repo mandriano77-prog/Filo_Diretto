@@ -86,6 +86,12 @@ function buildInviteInlineLogoAttachment(brandLogoAttachment) {
   return att;
 }
 
+function resolveEmployeeEmailLogo(brandLogo, inlineLogoAttachment) {
+  if (brandLogo?.url) return brandLogo;
+  if (inlineLogoAttachment?.content_id) return { cid: inlineLogoAttachment.content_id };
+  return brandLogo || null;
+}
+
 function normalizeEmailThemeHex(value) {
   const raw = String(value || '').trim();
   const m = raw.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -795,9 +801,7 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment
-    ? { cid: inlineLogoAttachment.content_id }
-    : (brandLogo?.url ? brandLogo : brandLogo);
+  const logoForEmail = resolveEmployeeEmailLogo(brandLogo, inlineLogoAttachment);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -826,9 +830,7 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment
-    ? { cid: inlineLogoAttachment.content_id }
-    : (brandLogo?.url ? brandLogo : brandLogo);
+  const logoForEmail = resolveEmployeeEmailLogo(brandLogo, inlineLogoAttachment);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,
@@ -856,9 +858,7 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
   const fromEmail = getHrFromEmail();
   const fromName = getHrFromName();
   const inlineLogoAttachment = buildInviteInlineLogoAttachment(brandLogoAttachment);
-  const logoForEmail = inlineLogoAttachment
-    ? { cid: inlineLogoAttachment.content_id }
-    : (brandLogo?.url ? brandLogo : brandLogo);
+  const logoForEmail = resolveEmployeeEmailLogo(brandLogo, inlineLogoAttachment);
   const html = buildEmployeeWalletEmailHtml({
     firstName,
     brandName: brand,

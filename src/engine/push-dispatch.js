@@ -155,6 +155,7 @@ async function executeWalletPush(body, ctx = {}) {
     pass_link_label,
     pass_link_expires_at,
     back_details,
+    screen_alert,
     test_pass_id,
   } = body;
 
@@ -240,8 +241,13 @@ async function executeWalletPush(body, ctx = {}) {
 
     const config = { ...(brand.config || {}) };
     const announcement = attachBackDetailsToAnnouncement(
-      normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
-        || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() },
+      {
+        ...(normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
+          || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() }),
+        ...(String(screen_alert || '').trim()
+          ? { screen_alert: String(screen_alert).trim().slice(0, 178) }
+          : {}),
+      },
       back_details
     );
 

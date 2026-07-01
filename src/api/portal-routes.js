@@ -22,6 +22,8 @@ const { readPassPortalToken, savePassPortalToken } = require('../engine/portal-p
 const { createPkpass } = require('../engine/passkit');
 const { resolveBaseUrl } = require('../engine/base-url');
 const { resolveBrandPrivacyUrl } = require('../engine/brand-privacy-url');
+const { publicBrandTheme } = require('../engine/public-brand-theme');
+const { publicPassLogoUrl } = require('../engine/brand-wallet-logo');
 const { syncGoogleWalletObjectsForPasses } = require('../engine/google-wallet-sync');
 
 const router = express.Router();
@@ -109,12 +111,17 @@ function formatProfileRow(row) {
     fv.full_name ||
     null;
 
+  const brandForAssets = { slug: row.brand_slug, config: cfg };
+  const passForAssets = { id: row.id, template_id: row.template_id, updated_at: row.updated_at };
+
   return {
     pass_id: row.id,
     brand: {
       id: row.brand_id,
       name: row.brand_name,
-      slug: row.brand_slug
+      slug: row.brand_slug,
+      brand_theme: publicBrandTheme({ config: cfg }),
+      logo_url: publicPassLogoUrl(brandForAssets, passForAssets)
     },
     template: {
       id: row.template_id,

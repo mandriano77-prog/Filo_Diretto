@@ -209,10 +209,47 @@
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
+  function validHex(value) {
+    const raw = String(value || '').trim();
+    return /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw) ? (raw[0] === '#' ? raw : '#' + raw) : '';
+  }
+
+  function applyBrandTheme() {
+    const theme = profile?.brand?.brand_theme;
+    if (!theme) return;
+    const accent = validHex(theme.accent);
+    const hover = validHex(theme.accentHover || theme.accent);
+    const onAccent = validHex(theme.textOnAccent) || '#FFFFFF';
+    const root = document.documentElement.style;
+    if (accent) {
+      root.setProperty('--accent', accent);
+      root.setProperty('--border-focus', accent);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', accent);
+    }
+    if (hover) root.setProperty('--accent-hover', hover);
+    if (onAccent) root.setProperty('--text-on-accent', onAccent);
+    if (accent && typeof CSS !== 'undefined' && CSS.supports('color', 'color-mix(in srgb, red 50%, white)')) {
+      root.setProperty('--accent-subtle', `color-mix(in srgb, ${accent} 10%, white)`);
+      root.setProperty('--bg-active', `color-mix(in srgb, ${accent} 14%, white)`);
+    }
+  }
+
   function renderHeader() {
     const name = profile.display_name || 'Dipendente';
     const dept = fv('reparto', 'department');
     $('#brand-name').textContent = profile.brand?.name || 'Filodiretto';
+    const dot = document.querySelector('.topbar .brand .dot');
+    let logoUrl = profile.brand?.logo_url;
+    if (logoUrl && logoUrl.startsWith('/')) logoUrl = `${window.location.origin}${logoUrl}`;
+    if (dot) {
+      if (logoUrl) {
+        dot.classList.add('has-logo');
+        dot.innerHTML = '<img src="' + esc(logoUrl) + '" alt="">';
+      } else {
+        dot.classList.remove('has-logo');
+        dot.innerHTML = '';
+      }
+    }
     $('#user-avatar').textContent = initials(name);
     $('#user-display-name').textContent = name;
     $('#user-subtitle').textContent = dept || '—';
@@ -704,6 +741,7 @@
   }
 
   function renderAll() {
+    applyBrandTheme();
     renderHeader();
     renderCard();
     renderConsents();

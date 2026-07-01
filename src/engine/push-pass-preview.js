@@ -32,7 +32,17 @@ function buildPreviewAnnouncement(body) {
   if (!message) return null;
   const base = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
     || { title, message, ts: Date.now() };
+  const screen = String(body.screen_alert || '').trim();
+  if (screen) base.screen_alert = screen.slice(0, 178);
   return attachBackDetailsToAnnouncement(base, body.back_details);
+}
+
+function resolveWalletAlertChangeMessage(employeePass) {
+  const header = employeePass.headerHint;
+  if (header?.changeMessage) return String(header.changeMessage);
+  const coin = (employeePass.front?.secondary || []).find((f) => f.key === 'coin_balance');
+  if (coin?.changeMessage && coin.changeMessage !== 'Hai %@ coin') return String(coin.changeMessage);
+  return '';
 }
 
 async function buildPushPassPreview({ brand, template, body = {} }) {
@@ -70,10 +80,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
   });
 
   const headerField = employeePass.headerHint || null;
-  const alertAux = (employeePass.front.auxiliary || []).find((f) => f.key === 'announcement');
-  const lockScreenBody = updatePass && alertAux?.changeMessage
-    ? String(alertAux.changeMessage)
-    : '';
+  const lockScreenBody = updatePass ? resolveWalletAlertChangeMessage(employeePass) : '';
 
   let stripPreview = null;
   if (updatePass) {

@@ -17,7 +17,7 @@
     purpose: 'Purpose'
   };
 
-  const STORAGE_KEY = 'hub_bootstrap_v3';
+  const STORAGE_KEY = 'hub_bootstrap_v4';
   const TOKEN_KEY = 'hub_token';
   const GEO_CONSENT_KEY = 'hub_geo_consent_v1';
 
@@ -149,17 +149,37 @@
     return { ok: res.ok, status: res.status, data };
   }
 
+  function resolveAssetUrl(url) {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${window.location.origin}${path}`;
+  }
+
+  function bustAssetUrl(url) {
+    if (!url) return null;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}_hub=${Date.now()}`;
+  }
+
   function applyWhiteLabel() {
-    const accent = state.settings?.accent_color || '#8B5CF6';
+    const accent = state.settings?.accent_color || state.brand?.brand_theme?.accent || '#8B5CF6';
     document.documentElement.style.setProperty('--hub-accent', accent);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', accent);
 
     const logoEl = $('#hub-logo');
-    const logoUrl = state.brand?.logo_url;
+    const rawLogo = state.brand?.logo_url || state.settings?.logo_url;
+    const logoUrl = rawLogo ? bustAssetUrl(resolveAssetUrl(rawLogo)) : null;
     if (logoEl && logoUrl) {
       logoEl.src = logoUrl;
+      logoEl.alt = state.brand?.name || 'Logo';
       logoEl.onerror = () => {
+        const markUrl = state.brand?.mark_url;
+        if (markUrl && logoEl.src !== bustAssetUrl(resolveAssetUrl(markUrl))) {
+          logoEl.src = bustAssetUrl(resolveAssetUrl(markUrl));
+          return;
+        }
         logoEl.removeAttribute('src');
         logoEl.classList.add('hidden');
       };
@@ -168,11 +188,6 @@
       logoEl.classList.add('hidden');
     }
 
-    const subtitle = $('#hub-subtitle');
-    if (subtitle) {
-      subtitle.textContent = '';
-      subtitle.classList.add('hidden');
-    }
     updateCoinWidget();
   }
 

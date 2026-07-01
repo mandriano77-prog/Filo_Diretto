@@ -9,6 +9,20 @@ const PUSH_MESSAGE_LINE_MAX = 22;
 const PUSH_MESSAGE_LINES = 3;
 /** Retro pass only — clausole/dettagli promo (non strip, non lock screen). */
 const PUSH_BACK_DETAILS_MAX = 500;
+/** Lock screen / Wallet notification body (changeMessage). */
+const PUSH_SCREEN_ALERT_MAX = 178;
+
+function validatePushScreenAlert(screenAlert) {
+  const s = String(screenAlert ?? '').trim();
+  if (!s) return [];
+  if (s.length > PUSH_SCREEN_ALERT_MAX) {
+    return [{
+      field: 'pushScreenAlert',
+      message: `Notifica lock screen max ${PUSH_SCREEN_ALERT_MAX} caratteri`,
+    }];
+  }
+  return [];
+}
 
 function validatePushText(title, message) {
   const t = String(title ?? '').trim();
@@ -16,20 +30,20 @@ function validatePushText(title, message) {
   const errors = [];
 
   if (!t) {
-    errors.push({ field: 'pushTitle', message: 'Inserisci un titolo per la notifica' });
+    errors.push({ field: 'pushTitle', message: 'Inserisci il titolo per la strip' });
   } else if (t.length > PUSH_TITLE_MAX) {
     errors.push({
       field: 'pushTitle',
-      message: `Titolo max ${PUSH_TITLE_MAX} caratteri (compare in maiuscolo sulla strip)`,
+      message: `Titolo strip max ${PUSH_TITLE_MAX} caratteri`,
     });
   }
 
   if (!m) {
-    errors.push({ field: 'pushMessage', message: 'Inserisci il testo del messaggio' });
+    errors.push({ field: 'pushMessage', message: 'Inserisci il messaggio per la strip' });
   } else if (m.length > PUSH_MESSAGE_MAX) {
     errors.push({
       field: 'pushMessage',
-      message: `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (${PUSH_MESSAGE_LINES} righe da ${PUSH_MESSAGE_LINE_MAX} sulla strip)`,
+      message: `Messaggio strip max ${PUSH_MESSAGE_MAX} caratteri (${PUSH_MESSAGE_LINES} righe)`,
     });
   }
 
@@ -91,7 +105,9 @@ module.exports = {
   PUSH_MESSAGE_LINE_MAX,
   PUSH_MESSAGE_LINES,
   PUSH_BACK_DETAILS_MAX,
+  PUSH_SCREEN_ALERT_MAX,
   validatePushText,
+  validatePushScreenAlert,
   validatePushBackDetails,
   normalizePushBackDetails,
   attachBackDetailsToAnnouncement,

@@ -95,9 +95,7 @@ input {
 }
 
 .hub-subtitle {
-  margin: 2px 0 0;
-  font-size: 0.82rem;
-  color: var(--hub-muted);
+  display: none !important;
 }
 
 .hub-main {

@@ -683,12 +683,17 @@ test('Scheduled push uses the same wallet dispatch surface as immediate push', (
   assert.match(dashboard, /DEFAULT_PUSH_MESSAGE/);
 });
 
-test('Push immediate hides legacy title/message copy fields', () => {
+test('Push immediate exposes screen, strip and back copy fields', () => {
   const dashboard = read('src/dashboard/index.html');
   const fdPush = readFd('fd-push.js');
-  assert.match(dashboard, /fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;"/);
-  assert.match(fdPush, /DEFAULT_PUSH_TITLE = 'INFO PASS'/);
-  assert.match(fdPush, /DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli'/);
+  assert.match(dashboard, /id="pushScreenAlert"/);
+  assert.match(dashboard, /Notifica su lock screen/);
+  assert.match(dashboard, /Frase su fronte \(strip\)/);
+  assert.match(dashboard, /Retro pass/);
+  assert.match(dashboard, /id="pushTitle" maxlength="22"/);
+  assert.match(dashboard, /id="pushMessage"/);
+  assert.match(fdPush, /SCREEN_ALERT_MAX = 178/);
+  assert.match(fdPush, /function getPushScreenAlertValue/);
   assert.match(fdPush, /function getPushTitleValue/);
   assert.match(fdPush, /function getPushMessageValue/);
   assert.doesNotMatch(fdPush, /<li><strong>Titolo<\/strong>/);
@@ -871,9 +876,13 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   assert.match(hubPwa, /public-brand-theme/);
   assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
   assert.match(hubPwa, /publicPassLogoUrl/);
-  assert.match(hubPwa, /logo_url:\s*publicPassLogoUrl\(brand, pass\)/);
+  assert.match(hubPwa, /absolutePublicAsset\(publicPassLogoUrl\(brand, pass\)\)/);
+  assert.match(hubPwa, /publicBrandMarkUrl/);
   assert.match(brandWalletLogo, /function publicPassLogoUrl/);
+  assert.match(brandWalletLogo, /function publicBrandMarkUrl/);
   assert.match(brandWalletLogo, /\/logo\?/);
+  assert.match(mailer, /resolveEmployeeEmailLogo/);
+  assert.match(hrActivation, /context\.brandLogo = \{ url: logoUrl \}/);
 });
 
 test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () => {
@@ -888,8 +897,11 @@ test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () =
   assert.doesNotMatch(hubApp, /PGA Marketplace/);
   assert.doesNotMatch(hubApp, />PROFILO<\/a>/);
   assert.doesNotMatch(hubApp, /subtitle\.textContent = state\.brand\.name/);
+  assert.match(hubApp, /hub_bootstrap_v4/);
+  assert.match(hubApp, /resolveAssetUrl/);
   assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*#fff;/);
-  assert.match(hubSw, /filodiretto-hub-v5/);
+  assert.match(hubCss, /\.hub-subtitle\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(hubSw, /filodiretto-hub-v6/);
 });
 
 test('Employee portal hides legacy level field from personal profile', () => {
@@ -899,6 +911,10 @@ test('Employee portal hides legacy level field from personal profile', () => {
   assert.doesNotMatch(portalJs, /fv\('livello', 'level'/);
   assert.doesNotMatch(portalApi, /'livello'/);
   assert.doesNotMatch(portalApi, /'level'/);
+  assert.match(portalApi, /brand_theme:\s*publicBrandTheme/);
+  assert.match(portalApi, /logo_url:\s*publicPassLogoUrl/);
+  assert.match(portalJs, /function applyBrandTheme/);
+  assert.match(portalJs, /setProperty\('--accent', accent\)/);
 });
 
 test('push dispatch keeps overlayStrip in function scope for final logging', () => {

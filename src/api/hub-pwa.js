@@ -76,14 +76,23 @@ async function loadHubContext(claims) {
 }
 
 const { publicBrandTheme } = require('../engine/public-brand-theme');
-const { publicPassLogoUrl } = require('../engine/brand-wallet-logo');
+const { publicPassLogoUrl, publicBrandMarkUrl } = require('../engine/brand-wallet-logo');
+const { resolveBaseUrlFromEnv } = require('../engine/base-url');
+
+function absolutePublicAsset(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = resolveBaseUrlFromEnv().replace(/\/+$/, '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
 function publicBrand(brand, pass) {
   return {
     id: brand.id,
     name: brand.name,
     slug: brand.slug,
-    logo_url: publicPassLogoUrl(brand, pass),
+    logo_url: absolutePublicAsset(publicPassLogoUrl(brand, pass)),
+    mark_url: absolutePublicAsset(publicBrandMarkUrl(brand)),
     brand_theme: publicBrandTheme(brand)
   };
 }
@@ -96,7 +105,7 @@ function publicSettings(settings, brand, pass) {
   if (!Array.isArray(categories)) categories = [];
   const theme = publicBrandTheme(brand);
   return {
-    logo_url: publicPassLogoUrl(brand, pass),
+    logo_url: absolutePublicAsset(publicPassLogoUrl(brand, pass)),
     accent_color: theme?.accent || settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,
@@ -544,7 +553,7 @@ function registerHubPwaRoutes(router) {
 
       res.json({
         profile: ctx.profile,
-        brand: publicBrand(ctx.brand),
+        brand: publicBrand(ctx.brand, ctx.pass),
         pga_settings: publicPgaSettings(pgaSettings),
         coin_balance: Number(bal.balance || 0),
         ledger,

@@ -75,6 +75,14 @@ function publicPassLogoUrl(brand, pass) {
   return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?${q.toString()}`;
 }
 
+/** Square brand mark (wallet icon / mark endpoint). */
+function publicBrandMarkUrl(brand) {
+  if (!brand?.slug) return null;
+  const q = new URLSearchParams();
+  q.set('v', publicBrandMarkVersion(brand));
+  return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?${q.toString()}`;
+}
+
 /** PNG inline attachment for dashboard invite emails (Resend CID). */
 async function buildInviteEmailLogoAttachment(rawBuffer) {
   if (!rawBuffer?.length) return null;
@@ -515,6 +523,7 @@ module.exports = {
   publicBrandMarkVersion,
   publicPassLogoVersion,
   publicPassLogoUrl,
+  publicBrandMarkUrl,
   buildInviteEmailLogoAttachment,
   buildEmployeeEmailLogoAttachment,
   INVITE_EMAIL_LOGO_CID,

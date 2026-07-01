@@ -22,6 +22,8 @@ function parsePushAnnouncementRecord(raw) {
     message,
     ts: Number.isFinite(ts) ? ts : Date.now(),
   };
+  const screen = String(ann.screen_alert ?? ann.screenAlert ?? '').trim();
+  if (screen) out.screen_alert = screen.slice(0, 178);
   if (backRaw) out.back_details = backRaw.slice(0, 500);
   return out;
 }

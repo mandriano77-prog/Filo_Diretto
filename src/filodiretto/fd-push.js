@@ -7,9 +7,9 @@
   var TITLE_MAX = 22; // sync: src/engine/push-text-limits.js PUSH_TITLE_MAX
   var MESSAGE_MAX = 66; // sync: src/engine/push-text-limits.js PUSH_MESSAGE_MAX
   var BACK_DETAILS_MAX = 500; // sync: src/engine/push-text-limits.js PUSH_BACK_DETAILS_MAX
-  var DEFAULT_PUSH_TITLE = 'INFO PASS';
-  var DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli';
-  var APPLE_WALLET_UPDATE_HINT = "Apri l'aggiornamento";
+  var SCREEN_ALERT_MAX = 178; // sync: src/engine/push-text-limits.js PUSH_SCREEN_ALERT_MAX
+  var DEFAULT_PUSH_TITLE = '';
+  var DEFAULT_PUSH_MESSAGE = '';
   var TEST_PASS_KEY = 'fd:pushTestPassId';
   var STRIP_PREVIEW_DEBOUNCE_MS = 400;
   var HR_HUB_BACK_TITLE = 'HUB PERSONALE';
@@ -127,19 +127,26 @@
     return n.slice(0, Math.max(1, max - 1)) + '…';
   }
 
-  function buildLockScreenPreviewText(titleRaw, messageRaw) {
-    if (String(messageRaw || '').trim() || String(titleRaw || '').trim()) return APPLE_WALLET_UPDATE_HINT;
-    return '';
+  function buildLockScreenPreviewText(titleRaw, messageRaw, screenRaw) {
+    var screen = String(screenRaw || '').trim();
+    if (screen) return screen.slice(0, SCREEN_ALERT_MAX);
+    var title = String(titleRaw || '').trim();
+    var message = String(messageRaw || '').trim();
+    if (!title && !message) return '';
+    if (title && message) return (title.toUpperCase() + ': ' + message).slice(0, SCREEN_ALERT_MAX);
+    return (message || title).slice(0, SCREEN_ALERT_MAX);
+  }
+
+  function getPushScreenAlertValue() {
+    return (document.getElementById('pushScreenAlert')?.value || '').trim();
   }
 
   function getPushTitleValue() {
-    var raw = (document.getElementById('pushTitle')?.value || '').trim();
-    return raw || DEFAULT_PUSH_TITLE;
+    return (document.getElementById('pushTitle')?.value || '').trim();
   }
 
   function getPushMessageValue() {
-    var raw = (document.getElementById('pushMessage')?.value || '').trim();
-    return raw || DEFAULT_PUSH_MESSAGE;
+    return (document.getElementById('pushMessage')?.value || '').trim();
   }
 
   function syncPreview() {
@@ -147,10 +154,10 @@
     var messageEl = document.getElementById('pushMessage');
     var titleRaw = titleEl ? titleEl.value : '';
     var messageRaw = messageEl ? messageEl.value : '';
+    var screenRaw = document.getElementById('pushScreenAlert') ? document.getElementById('pushScreenAlert').value : '';
     var brand = getBrandLabel();
     var lockBody = passPreviewCache?.lock_screen?.body
-      || buildLockScreenPreviewText(titleRaw, messageRaw)
-      || buildLockScreenPreviewText(DEFAULT_PUSH_TITLE, DEFAULT_PUSH_MESSAGE);
+      || buildLockScreenPreviewText(titleRaw, messageRaw, screenRaw);
     document.querySelectorAll('[data-fd-push-preview-brand]').forEach(function (el) {
       var isLock = el.closest('.fd-push-preview__notif-banner');
       el.textContent = isLock ? truncateBrandName(brand, 18) : brand;
@@ -269,10 +276,11 @@
   function buildPassPreviewRequestBody() {
     var linkUrl = (document.getElementById('pushPassLinkUrl')?.value || '').trim();
     var body = {
-      title: getPushTitleValue(),
-      message: getPushMessageValue(),
+      title: title,
+      message: message,
       update_pass: true,
       back_details: (document.getElementById('pushBackDetails')?.value || '').trim() || undefined,
+      screen_alert: getPushScreenAlertValue() || undefined,
       include_pass_link: !!linkUrl,
       pass_link_url: linkUrl || undefined,
       pass_link_label: (document.getElementById('pushPassLinkLabel')?.value || '').trim() || undefined,
@@ -389,7 +397,7 @@
 
   function wirePassPreviewListeners() {
     var ids = [
-      'pushTitle', 'pushMessage',
+      'pushScreenAlert', 'pushTitle', 'pushMessage',
       'pushPassLinkUrl', 'pushPassLinkLabel', 'pushBackDetails'
     ];
     ids.forEach(function (id) {
@@ -606,6 +614,8 @@
       update_pass: true,
       channel: channel
     };
+    var screenAlert = getPushScreenAlertValue();
+    if (screenAlert) body.screen_alert = screenAlert;
     if (audienceId) body.audience_id = audienceId;
     else if (campaignId) body.campaign_id = campaignId;
 
@@ -808,6 +818,7 @@
   }
 
   function charCounterIdForInput(inputId) {
+    if (inputId === 'pushScreenAlert') return 'fdPushScreenAlertCount';
     if (inputId === 'pushTitle') return 'fdPushTitleCount';
     if (inputId === 'pushMessage') return 'fdPushMessageCount';
     if (inputId === 'pushBackDetails') return 'fdPushBackDetailsCount';
@@ -940,7 +951,7 @@
       '<span class="fd-push-preview__notif-now">adesso</span></div>' +
       '<div class="fd-push-preview__notif-body" data-fd-push-preview-lock-body>Titolo: messaggio…</div>' +
       '</div></div></div>' +
-      '<p class="fd-push-preview__note">Su iPhone Wallet l&apos;aggiornamento usa una frase fissa corta; il testo completo resta sul retro del pass.</p>' +
+      '<p class="fd-push-preview__note">Il testo della notifica Wallet è quello del campo &quot;Notifica su lock screen&quot; (o titolo + messaggio strip se lasci vuoto).</p>' +
       '</div>' +
       '<div class="fd-push-preview__panel" data-preview-panel="front" role="tabpanel" hidden>' +
       '<div class="fd-wallet-pass" data-fd-push-preview-pass-card>' +
@@ -1519,6 +1530,7 @@
 
     buildChannelSegmented();
     buildTestBlock();
+    wrapCharField('pushScreenAlert', SCREEN_ALERT_MAX);
     wrapCharField('pushTitle', TITLE_MAX);
     wrapCharField('pushMessage', MESSAGE_MAX);
     wrapCharField('pushBackDetails', BACK_DETAILS_MAX);
@@ -1532,7 +1544,7 @@
       brandSel.dataset.fdPushPreviewBound = '1';
       brandSel.addEventListener('change', syncPreview);
     }
-    ['pushTitle', 'pushMessage'].forEach(function (id) {
+    ['pushScreenAlert', 'pushTitle', 'pushMessage'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.dataset.fdPreviewBound !== '1') {
         el.dataset.fdPreviewBound = '1';

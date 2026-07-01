@@ -1741,17 +1741,29 @@
                                 <option value="all" selected>Tutti i canali</option>
                             </select>
                         </div>
-                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
-                            <label class="form-label" for="pushTitle">Titolo</label>
-                            <input type="text" id="pushTitle" maxlength="22" placeholder="es. Offerta weekend!" aria-describedby="pushTitleError pushTitleHint">
+                        <div class="fd-push-copy-block" style="margin-top:4px;">
+                            <div class="sec-title" style="font-size:14px;margin-bottom:10px;">Notifica su lock screen</div>
+                            <div class="form-group">
+                                <label class="form-label" for="pushScreenAlert">Testo notifica Wallet</label>
+                                <input type="text" id="pushScreenAlert" maxlength="178" placeholder="es. SALDI ESTIVI: -50% su tutto il catalogo" aria-describedby="pushScreenAlertHint pushScreenAlertError">
+                                <p class="form-hint" id="pushScreenAlertHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 178 caratteri — compare nella notifica iPhone quando il pass si aggiorna. Se vuoto, usa titolo + messaggio strip.</p>
+                                <p class="push-field-error" id="pushScreenAlertError" role="alert"></p>
+                            </div>
+                        </div>
+                        <div class="fd-push-copy-block" style="margin-top:16px;">
+                            <div class="sec-title" style="font-size:14px;margin-bottom:10px;">Frase su fronte (strip)</div>
+                        <div class="form-group">
+                            <label class="form-label" for="pushTitle">Titolo strip</label>
+                            <input type="text" id="pushTitle" maxlength="22" placeholder="es. SALDI ESTIVI -50%" aria-describedby="pushTitleError pushTitleHint">
                             <p class="form-hint" id="pushTitleHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 22 caratteri — compare in maiuscolo sulla strip del pass.</p>
                             <p class="push-field-error" id="pushTitleError" role="alert"></p>
                         </div>
-                        <div class="form-group fd-push-legacy-copy-fields" hidden aria-hidden="true" style="display:none;">
-                            <label class="form-label" for="pushMessage">Messaggio</label>
-                            <textarea id="pushMessage" rows="3" maxlength="66" placeholder="es. Scopri la promozione esclusiva!" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
-                            <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 66 caratteri (3 righe sulla strip). Testo e colore si adattano all'immagine.</p>
+                        <div class="form-group">
+                            <label class="form-label" for="pushMessage">Messaggio strip</label>
+                            <textarea id="pushMessage" rows="3" maxlength="66" placeholder="es. Solo questa settimana su tutto il catalogo" style="resize:vertical;" aria-describedby="pushMessageError pushMessageHint"></textarea>
+                            <p class="form-hint" id="pushMessageHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 66 caratteri (3 righe sulla strip).</p>
                             <p class="push-field-error" id="pushMessageError" role="alert"></p>
+                        </div>
                         </div>
                         <div id="pushStripBlock" class="form-group" style="margin-top:8px;">
                             <label class="form-label">Strip per questa push (opzionale)</label>
@@ -1764,13 +1776,14 @@
                                 <button type="button" class="btn small danger" id="pushStripClearBtn" onclick="pushClearStrip()" style="display:none;">Rimuovi strip</button>
                             </div>
                         </div>
-                        <div id="pushPassLinkFields" style="display:block;margin-top:8px;">
+                        <div id="pushPassLinkFields" style="display:block;margin-top:16px;">
+                            <div class="sec-title" style="font-size:14px;margin-bottom:10px;">Retro pass</div>
                             <div class="form-group">
-                                <label class="form-label">URL link (https://)</label>
+                                <label class="form-label" for="pushPassLinkUrl">Link (https://)</label>
                                 <input type="url" id="pushPassLinkUrl" placeholder="https://..." oninput="syncPushPassLinkLabel()">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Label del link (max 64)</label>
+                                <label class="form-label" for="pushPassLinkLabel">CTA link (etichetta)</label>
                                 <input type="text" id="pushPassLinkLabel" maxlength="64" placeholder="es. Compila il questionario">
                             </div>
                             <div class="form-group">
@@ -1780,7 +1793,7 @@
                             <p style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4;">Se compili URL + etichetta, il link compare in cima al retro del pass (prima di HUB / SUPPORT / AREA PRIVATA) fino alla scadenza.</p>
                         </div>
                         <div class="form-group" style="margin-top:8px;">
-                            <label class="form-label" for="pushBackDetails">Dettagli retro pass (opzionale)</label>
+                            <label class="form-label" for="pushBackDetails">Messaggio retro</label>
                             <textarea id="pushBackDetails" rows="4" maxlength="500" placeholder="es. Offerta valida fino al 31/12. Non cumulabile con altre promozioni." style="resize:vertical;" aria-describedby="pushBackDetailsHint pushBackDetailsError"></textarea>
                             <p class="form-hint" id="pushBackDetailsHint" style="margin:4px 0 0;font-size:11px;color:var(--text2);">Max 500 caratteri — clausole e condizioni sul retro del pass (non sulla strip né nella notifica).</p>
                             <p class="push-field-error" id="pushBackDetailsError" role="alert"></p>
@@ -8013,15 +8026,19 @@ let pushHistoryCache = [];
 const PUSH_TITLE_MAX = 22;
 const PUSH_MESSAGE_MAX = 66;
 const PUSH_BACK_DETAILS_MAX = 500;
-const DEFAULT_PUSH_TITLE = 'INFO PASS';
-const DEFAULT_PUSH_MESSAGE = 'Apri il pass per i dettagli';
+const DEFAULT_PUSH_TITLE = '';
+const DEFAULT_PUSH_MESSAGE = '';
 
 function getImmediatePushTitle() {
-    return (document.getElementById('pushTitle')?.value || '').trim() || DEFAULT_PUSH_TITLE;
+    return (document.getElementById('pushTitle')?.value || '').trim();
 }
 
 function getImmediatePushMessage() {
-    return (document.getElementById('pushMessage')?.value || '').trim() || DEFAULT_PUSH_MESSAGE;
+    return (document.getElementById('pushMessage')?.value || '').trim();
+}
+
+function getImmediatePushScreenAlert() {
+    return (document.getElementById('pushScreenAlert')?.value || '').trim();
 }
 
 function applyPushTextValidation(title, message, backDetails) {
@@ -8072,7 +8089,7 @@ function buildPushDeliveryMessage(data, intro = 'Invio completato.') {
         msg += `\n\nDiagnostica APNs: invio senza consegne.`;
         msg += `\nControlla certificati APNs e token registrati nel debug push.`;
     } else if (apnsSent > 0) {
-        msg += `\n\nSu iPhone: dovresti ricevere un avviso Wallet con il testo della promo (campo in basso sul pass).`;
+        msg += `\n\nSu iPhone: la notifica Wallet mostra il testo del campo «Notifica su lock screen» (o titolo + messaggio strip se vuoto).`;
         msg += `\nSe non compare: Impostazioni → Notifiche → Wallet → Consenti avvisi, poi riapri il pass.`;
     }
     return msg;
@@ -8242,6 +8259,8 @@ function buildImmediatePushBody() {
     }
     const backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
     if (backDetails) body.back_details = backDetails;
+    const screenAlert = getImmediatePushScreenAlert();
+    if (screenAlert) body.screen_alert = screenAlert;
     applyPushLinkedContentToBody(body, document.getElementById('pushLinkedContent')?.value);
     if (!isHrDashboard()) {
         const backLinkUrl = (document.getElementById('pushBackLinkUrl')?.value || '').trim();

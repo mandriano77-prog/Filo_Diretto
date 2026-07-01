@@ -35,20 +35,17 @@ function publicBrandLogoUrl(brand) {
 async function activationEmailBrandContext(brand) {
   const context = { brandTheme: brand?.config?.brand_theme || null, brandLogo: null, brandLogoAttachment: null };
   if (!brand) return context;
+  const logoUrl = publicBrandLogoUrl(brand);
+  if (logoUrl) context.brandLogo = { url: logoUrl };
   try {
     const resolved = await resolveBrandMarkRawBuffer(brand);
     if (resolved?.buffer) {
       const attachment = await buildEmployeeEmailLogoAttachment(resolved.buffer);
-      if (attachment) {
-        context.brandLogoAttachment = attachment;
-        return context;
-      }
+      if (attachment) context.brandLogoAttachment = attachment;
     }
   } catch (err) {
     console.warn('[activation-email] brand mark resolve failed:', err.message);
   }
-  const logoUrl = publicBrandLogoUrl(brand);
-  if (logoUrl) context.brandLogo = { url: logoUrl };
   return context;
 }
 

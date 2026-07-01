@@ -163,35 +163,42 @@ function isDefaultPushCopy(pushAnn) {
   return title === 'INFO PASS' && message === 'apri il pass per i dettagli';
 }
 
+const PUSH_SCREEN_ALERT_MAX = 178;
+
 function buildPushAlertText(pushAnn) {
+  const screen = String(pushAnn?.screen_alert || pushAnn?.screenAlert || '').trim();
+  if (screen) return screen.slice(0, PUSH_SCREEN_ALERT_MAX);
   if (!pushAnn?.message && !pushAnn?.back_details) return '';
   const details = String(pushAnn.back_details || '').trim();
-  if (details && isDefaultPushCopy(pushAnn)) return details.slice(0, 180);
+  if (details && isDefaultPushCopy(pushAnn)) return details.slice(0, PUSH_SCREEN_ALERT_MAX);
 
   const promoTitle = String(pushAnn.title || '').trim().toUpperCase().slice(0, PUSH_TITLE_MAX);
   const body = String(pushAnn.message || details || '').trim().slice(0, PUSH_MESSAGE_MAX);
-  if (promoTitle && body) return `${promoTitle}: ${body}`.slice(0, 180);
-  return (body || details).slice(0, 180);
+  if (promoTitle && body) return `${promoTitle}: ${body}`.slice(0, PUSH_SCREEN_ALERT_MAX);
+  return (body || details).slice(0, PUSH_SCREEN_ALERT_MAX);
 }
 
 function buildPushChangeMessage(pushAnn) {
   const alertText = buildPushAlertText(pushAnn);
   if (!alertText) return null;
-  return alertText.slice(0, 178);
+  return alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
 }
 
-function buildPushAnnouncementAuxField(pushAnn) {
+/** Stamp lock-screen alert on an existing front field without adding a 4th column. */
+function applyPushWalletAlertField(field, pushAnn) {
+  if (!field || !pushAnn) return field;
   const alertText = buildPushAlertText(pushAnn);
-  if (!alertText) return null;
+  if (!alertText) return field;
   const pushTs = Number(pushAnn.ts || Date.now());
-  // iOS needs a real, changing ASCII value on a front field — zero-width-only tokens
-  // often yield the generic "store card modified" notification when strip/images also change.
-  return {
-    key: 'announcement',
-    label: ' ',
-    value: String(pushTs),
-    changeMessage: alertText.slice(0, 178),
-  };
+  const visible = String(field.value ?? '').replace(/[\u200b\u200c\u200d\u2060]/g, '');
+  field.value = visible + invisibleChangeToken(pushTs);
+  field.changeMessage = alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
+  return field;
+}
+
+/** @deprecated HR passes no longer add a visible auxiliary column for push alerts. */
+function buildPushAnnouncementAuxField(pushAnn) {
+  return null;
 }
 
 /**
@@ -222,6 +229,8 @@ function resolvePushAnnouncement(brandConfig, instance) {
     message,
     ts: Number(ann.ts || Date.now()),
   };
+  const screen = String(ann.screen_alert ?? ann.screenAlert ?? '').trim();
+  if (screen) out.screen_alert = screen.slice(0, PUSH_SCREEN_ALERT_MAX);
   const backRaw = String(ann.back_details ?? ann.backDetails ?? '').trim();
   if (backRaw) out.back_details = backRaw;
   return out;
@@ -491,9 +500,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const tplImages = template?.style?.images || {};
 
   // Front layout: strip promo + secondary NOME/AREA/COIN frozen.
-  // Apple Wallet alert rides on a short non-empty auxiliary field; back fields update silently.
+  // Apple Wallet alert rides on header hint or COIN — never a 4th auxiliary column.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
-  const headerHint = resolvePassHeaderHint(template, cfg);
+  let headerHint = resolvePassHeaderHint(template, cfg);
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -503,9 +512,16 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   }
   secondary.push(buildCoinFieldValue(coinBalance));
 
+  if (pushAnn) {
+    if (headerHint) {
+      headerHint = applyPushWalletAlertField({ ...headerHint }, pushAnn);
+    } else {
+      const coinField = secondary.find((f) => f.key === 'coin_balance');
+      if (coinField) applyPushWalletAlertField(coinField, pushAnn);
+    }
+  }
+
   const auxiliary = [];
-  const pushAux = buildPushAnnouncementAuxField(pushAnn);
-  if (pushAux) auxiliary.push(pushAux);
 
   const backSections = buildBackSections({
     brand,
@@ -839,6 +855,7 @@ module.exports = {
   resolveMemberProfile,
   resolveVariableLink,
   resolvePushAnnouncement,
+  applyPushWalletAlertField,
   buildPushHeaderField,
   buildPushWalletAlertField,
   escapeHtml

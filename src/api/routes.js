@@ -78,7 +78,9 @@ const { getHolderBehaviorInsights, listRecentHolderEvents, exportHolderEvents } 
 const { createPkpass, STRIP_OVERLAY_TITLE_MAX_1X, STRIP_OVERLAY_MSG_MAX_1X } = require('../engine/passkit');
 const {
   validatePushText,
+  validatePushScreenAlert,
   validatePushBackDetails,
+  PUSH_SCREEN_ALERT_MAX,
   normalizePushBackDetails,
   PUSH_TITLE_MAX,
   PUSH_MESSAGE_MAX,
@@ -2777,6 +2779,7 @@ router.post('/push/send', async (req, res) => {
       include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at,
       strip_media_id, strip_base64,
       back_details,
+      screen_alert,
       test_pass_id,
     } = req.body;
     if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
@@ -2787,6 +2790,14 @@ router.post('/push/send', async (req, res) => {
         error: textErrors[0].message,
         field: textErrors[0].field,
         limits: { title_max: PUSH_TITLE_MAX, message_max: PUSH_MESSAGE_MAX },
+      });
+    }
+    const screenErrors = validatePushScreenAlert(screen_alert);
+    if (screenErrors.length) {
+      return res.status(400).json({
+        error: screenErrors[0].message,
+        field: screenErrors[0].field,
+        limits: { screen_alert_max: PUSH_SCREEN_ALERT_MAX },
       });
     }
     const backDetailsErrors = validatePushBackDetails(back_details);
