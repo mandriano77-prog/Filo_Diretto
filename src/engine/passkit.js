@@ -688,7 +688,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.locations = normalizedLocs;
   }
 
-  // HR lock-screen copy: changed header hint with changeMessage (see employee-pass.js).
+  // HR lock-screen copy: changed front announcement field with changeMessage (see employee-pass.js).
   // relevantDate triggers Apple's generic "store card modified" notification in Italian.
   if (brandConfig.relevantDate && !useHrBack) {
     passJson.relevantDate = brandConfig.relevantDate;

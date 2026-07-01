@@ -562,6 +562,7 @@ test('Google Wallet HR object includes current push back details', () => {
   });
   const { objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
   assert.equal(objectPatch.textModulesData.find((m) => m.id === 'wallet_push_alert'), undefined);
+  assert.equal(objectPatch.textModulesData.find((m) => m.id === 'announcement'), undefined);
   const details = objectPatch.textModulesData.find((m) => m.id === 'push_back_details');
   assert.ok(details);
   assert.equal(details.header, ' ');

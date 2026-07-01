@@ -193,49 +193,39 @@ function buildPushLockScreenBackSection() {
   return null;
 }
 
-/** @deprecated use buildPushHeaderAlertField. */
+/** @deprecated use buildPushAnnouncementAuxField. */
 function buildPushScreenAlertAuxField(pushAnn) {
-  return buildPushHeaderAlertField(null, pushAnn);
+  return buildPushAnnouncementAuxField(pushAnn);
 }
 
 /**
  * Apple Wallet update banners are driven by changeMessage on a changed pass
- * field. This used to be a visible auxiliary column; keep the old helper name
- * inert so no numeric technical value can leak onto the pass front.
+ * front field. Back fields update silently, and header fields have proven
+ * unreliable on device for custom lock-screen copy.
  */
-function buildPushAnnouncementAuxField() {
-  return null;
-}
-
-function buildPushHeaderAlertField(headerHint, pushAnn) {
+function buildPushAnnouncementAuxField(pushAnn) {
   const changeMessage = buildPushChangeMessage(pushAnn);
-  if (!changeMessage) return headerHint || null;
+  if (!changeMessage) return null;
   const pushTs = Number(pushAnn?.ts || Date.now());
-  const base = headerHint || {
-    key: 'info_hint',
-    label: 'INFO PUSH',
-    value: 'Clicca qui',
-    textAlignment: 'PKTextAlignmentRight'
-  };
-  const visibleValue = (stripInvisibleChangeTokens(base.value) || 'Clicca qui').trim().slice(0, 54);
   const token = invisibleChangeToken(pushTs).slice(0, 10);
   return {
-    ...base,
-    key: 'info_hint',
-    label: String(base.label || 'INFO PUSH').toUpperCase().slice(0, 64),
-    value: `${visibleValue}${token}`,
-    textAlignment: base.textAlignment || 'PKTextAlignmentRight',
-    changeMessage,
+    key: 'announcement',
+    label: 'AGGIORNAMENTO',
+    value: `${changeMessage}${token}`,
+    changeMessage: '%@'
   };
+}
+
+function buildPushHeaderAlertField(headerHint) {
+  return headerHint || null;
 }
 
 /**
  * Deprecated name kept for old tests/importers. The Wallet alert rides on a
- * changed header field so the update copy can trigger without adding a visible
- * fourth column to the pass front.
+ * changed front announcement field.
  */
 function buildPushHeaderField(pushAnn) {
-  return buildPushHeaderAlertField(null, pushAnn);
+  return buildPushAnnouncementAuxField(pushAnn);
 }
 
 /** @deprecated use buildPushHeaderField */
@@ -536,9 +526,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   const images = walletImageUrls({ apiBase, brand, template, instance });
   const tplImages = template?.style?.images || {};
 
-  // Front layout: strip promo + secondary NOME/AREA/COIN frozen — no push auxiliary column.
+  // Front layout: strip promo + secondary NOME/AREA/COIN + Apple alert auxiliary field.
   const pushAnn = resolvePushAnnouncement(cfg, instance);
-  const headerHint = buildPushHeaderAlertField(resolvePassHeaderHint(template, cfg), pushAnn);
+  const headerHint = buildPushHeaderAlertField(resolvePassHeaderHint(template, cfg));
   const secondary = [];
   if (profile.full_name) {
     secondary.push({ key: 'name', label: 'NOME', value: profile.full_name });
@@ -549,6 +539,8 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
+  const pushAnnouncementField = buildPushAnnouncementAuxField(pushAnn);
+  if (pushAnnouncementField) auxiliary.push(pushAnnouncementField);
 
   const backSections = buildBackSections({
     brand,
@@ -632,10 +624,18 @@ function resolvePassHeaderHint(template, brandConfig) {
   const value = String(tplH?.value ?? brandH?.value ?? '').trim();
   const key = String(tplH?.key ?? brandH?.key ?? '').trim();
   if (isCoinPassField(label, key)) return null;
+  const normalizedLabel = label.toUpperCase();
+  const normalizedValue = value.toLowerCase();
+  if (
+    normalizedLabel === 'INFO PUSH'
+    || normalizedLabel.startsWith('CLICCA')
+    || normalizedValue.startsWith('per altre informazioni')
+    || normalizedValue.startsWith('clicca')
+  ) return null;
   if (!label && !value) return null;
   return {
     key: 'info_hint',
-    label: label.toUpperCase().slice(0, 64),
+    label: normalizedLabel.slice(0, 64),
     value: value.slice(0, 64),
     textAlignment: 'PKTextAlignmentRight'
   };
@@ -837,7 +837,7 @@ function toSamsungPass(employeePass) {
     frontContents.push({ title: f.label, content: f.value });
   });
   (employeePass.front.auxiliary || []).forEach((f) => {
-    if (f.key === 'wallet_push_alert') return;
+    if (f.key === 'wallet_push_alert' || f.key === 'announcement') return;
     frontContents.push({ title: f.label, content: f.value });
   });
 
@@ -886,6 +886,7 @@ module.exports = {
   applyPushWalletAlertField: buildPushLockScreenBackSection,
   buildPushLockScreenBackSection,
   buildPushScreenAlertAuxField,
+  buildPushAnnouncementAuxField,
   buildPushHeaderAlertField,
   buildPushHeaderField,
   buildPushWalletAlertField,

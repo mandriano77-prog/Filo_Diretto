@@ -38,9 +38,15 @@ function buildPreviewAnnouncement(body) {
 }
 
 function resolveWalletAlertChangeMessage(employeePass) {
+  const frontAlert = (employeePass.front?.auxiliary || []).find((s) => s.key === 'announcement' || s.key === 'wallet_push_alert');
+  if (frontAlert) {
+    const value = String(frontAlert.value || '').replace(/[\u200b\u200c\u200d\u2060]/g, '').trim();
+    const changeMessage = String(frontAlert.changeMessage || '').trim();
+    if (changeMessage === '%@') return value;
+    if (changeMessage) return changeMessage;
+    return value;
+  }
   if (employeePass.headerHint?.changeMessage) return String(employeePass.headerHint.changeMessage).trim();
-  const frontAlert = (employeePass.front?.auxiliary || []).find((s) => s.key === 'wallet_push_alert');
-  if (frontAlert?.changeMessage) return String(frontAlert.changeMessage).trim();
   return '';
 }
 
@@ -134,6 +140,12 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
     value: f.value,
   }));
 
+  const auxiliary = (employeePass.front?.auxiliary || []).map((f) => ({
+    key: f.key,
+    label: f.label,
+    value: String(f.value || '').replace(/[\u200b\u200c\u200d\u2060]/g, ''),
+  }));
+
   return {
     brand_name: brand?.name || '',
     update_pass: updatePass,
@@ -150,6 +162,7 @@ async function buildPushPassPreview({ brand, template, body = {} }) {
       ? { label: headerField.label, value: String(headerField.value || '').replace(/[\u200b\u200c\u200d\u2060]/g, '') }
       : null,
     secondary,
+    auxiliary,
     back,
     strip_preview: stripPreview,
     logo_data_url: logoDataUrl,
