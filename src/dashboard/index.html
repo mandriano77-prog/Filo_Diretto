@@ -6339,12 +6339,6 @@ async function loadPasses(resetPage = false) {
 
     // Stats bar
     const installed = filteredPasses.filter(p => !!(p.device_id || passGoogleSaved(p) || passSamsungSaved(p))).length;
-    const desktopPasses = filteredPasses.filter((p) => {
-        const ua = String(p.user_agent || '').toLowerCase();
-        if (!ua) return false;
-        return !/(iphone|ipad|ipod|android)/i.test(ua);
-    }).length;
-    const reachableWallet = filteredPasses.filter(p => !!p.push_token || passGoogleSaved(p) || passGooglePending(p) || passSamsungSaved(p) || passSamsungPending(p)).length;
     const pushSent = filteredPasses.filter(p => p.push_count > 0 || p.google_update_count > 0).length;
     const pageFrom = passes.length ? offset + 1 : 0;
     const pageTo = offset + passes.length;
@@ -6353,8 +6347,6 @@ async function loadPasses(resetPage = false) {
         <div class="stat-card"><div class="stat-label">Pass totali (brand)</div><div class="stat-value">${totalLabel}</div></div>
         <div class="stat-card"><div class="stat-label">In questa pagina</div><div class="stat-value">${filteredPasses.length}</div></div>
         <div class="stat-card"><div class="stat-label">Installazioni wallet confermate</div><div class="stat-value">${installed}</div></div>
-        <div class="stat-card"><div class="stat-label">Download da desktop (info)</div><div class="stat-value">${desktopPasses}</div></div>
-        <div class="stat-card"><div class="stat-label">Raggiungibili (Apple / Google / Samsung)</div><div class="stat-value">${reachableWallet}</div></div>
         <div class="stat-card"><div class="stat-label">Push inviate (APNs)</div><div class="stat-value">${pushSent}</div></div>
     </div>`;
 
@@ -11826,11 +11818,6 @@ async function loadAnalytics() {
 
         const totalDL = campaigns.reduce((s,c) => s + (c.total_downloads||0), 0);
         const totalIN = campaigns.reduce((s,c) => s + (c.total_installs||0), 0);
-        const desktopDownloads = allPasses.filter((p) => {
-            const ua = String(p.user_agent || '').toLowerCase();
-            if (!ua) return false;
-            return !/(iphone|ipad|ipod|android)/i.test(ua);
-        }).length;
         const appleDv = analytics.appleDeviceCount ?? analytics.deviceCount ?? 0;
         const gwSaved = analytics.googleWalletSavedCount ?? 0;
         const gwObj = analytics.googleWalletObjectCount ?? 0;
@@ -11845,7 +11832,6 @@ async function loadAnalytics() {
         statsEl.innerHTML = [
             renderAnalyticsKpiCard('Pass totali', analytics.totalPasses || 0),
             renderAnalyticsKpiCard('Pass attivi (installati)', appleDv + gwSaved + swSaved, 'Apple + Google + Samsung Wallet'),
-            renderAnalyticsKpiCard('Download da desktop', desktopDownloads, 'Separati dai KPI wallet confermati'),
             renderAnalyticsKpiCard('Apple · dispositivi PassKit', appleDv, 'iPhone/iPad con pass in Wallet'),
             renderAnalyticsKpiCard('Google Wallet · pass salvati', gwSaved, gwHint),
             renderAnalyticsKpiCard('Samsung Wallet · pass salvati', swSaved, 'Confermati da Samsung Wallet'),
