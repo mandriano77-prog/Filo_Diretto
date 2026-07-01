@@ -142,11 +142,15 @@
   }
 
   function getPushTitleValue() {
-    return (document.getElementById('pushTitle')?.value || '').trim();
+    var explicit = (document.getElementById('pushTitle')?.value || '').trim();
+    var screen = getPushScreenAlertValue();
+    return (explicit || screen || 'Aggiornamento').slice(0, TITLE_MAX);
   }
 
   function getPushMessageValue() {
-    return (document.getElementById('pushMessage')?.value || '').trim();
+    var explicit = (document.getElementById('pushMessage')?.value || '').trim();
+    var screen = getPushScreenAlertValue();
+    return (explicit || screen || 'Apri il pass per i dettagli').slice(0, MESSAGE_MAX);
   }
 
   function syncPreview() {
@@ -727,8 +731,6 @@
       if (typeof toast === 'function') toast('Seleziona un dispositivo di prova');
       return;
     }
-    var title = getPushTitleValue();
-    var message = getPushMessageValue();
     if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
     var screenAlert = getPushScreenAlertValue();
     if (!screenAlert) {
@@ -740,31 +742,6 @@
     if (screenAlert.length > SCREEN_ALERT_MAX) {
       if (typeof window.setPushFieldError === 'function') {
         window.setPushFieldError('pushScreenAlert', 'Notifica lock screen max ' + SCREEN_ALERT_MAX + ' caratteri');
-      }
-      return;
-    }
-    if (!title) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
-      } else if (typeof alert === 'function') alert('Compila titolo e messaggio');
-      return;
-    }
-    if (!message) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
-      } else if (typeof alert === 'function') alert('Compila titolo e messaggio');
-      return;
-    }
-    if (title.length > TITLE_MAX || message.length > MESSAGE_MAX) {
-      if (typeof window.setPushFieldError === 'function') {
-        if (title.length > TITLE_MAX) {
-          window.setPushFieldError('pushTitle', 'Titolo max ' + TITLE_MAX + ' caratteri (leggibilità strip)');
-        }
-        if (message.length > MESSAGE_MAX) {
-          window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (3 righe sulla strip)');
-        }
-      } else if (typeof alert === 'function') {
-        alert('Titolo max ' + TITLE_MAX + ' caratteri, messaggio max ' + MESSAGE_MAX);
       }
       return;
     }
@@ -1321,8 +1298,6 @@
 
   async function openPushSendConfirm(trigger) {
     if (typeof window.clearPushFieldErrors === 'function') window.clearPushFieldErrors();
-    var title = getPushTitleValue();
-    var message = getPushMessageValue();
     var invalid = false;
     var screenAlert = getPushScreenAlertValue();
     if (!screenAlert) {
@@ -1336,35 +1311,11 @@
       }
       invalid = true;
     }
-    if (!title) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushTitle', 'Inserisci un titolo per la notifica');
-      }
-      invalid = true;
-    }
-    if (!message) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
-      }
-      invalid = true;
-    }
     if (!syncBrandIdForPush()) {
       if (typeof toast === 'function') toast('Seleziona un brand');
       return;
     }
     if (invalid) return;
-    if (title.length > TITLE_MAX) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushTitle', 'Titolo max ' + TITLE_MAX + ' caratteri (leggibilità strip)');
-      }
-      invalid = true;
-    }
-    if (message.length > MESSAGE_MAX) {
-      if (typeof window.setPushFieldError === 'function') {
-        window.setPushFieldError('pushMessage', 'Messaggio max ' + MESSAGE_MAX + ' caratteri (3 righe sulla strip)');
-      }
-      invalid = true;
-    }
     var backDetails = (document.getElementById('pushBackDetails')?.value || '').trim();
     if (backDetails.length > BACK_DETAILS_MAX) {
       if (typeof window.setPushFieldError === 'function') {

@@ -2783,16 +2783,8 @@ router.post('/push/send', async (req, res) => {
       screen_alert,
       test_pass_id,
     } = req.body;
-    if (!brand_id || !title || !message) return res.status(400).json({ error: 'brand_id, title, message richiesti' });
+    if (!brand_id) return res.status(400).json({ error: 'brand_id richiesto' });
     if (!requireBrandId(req, res, brand_id)) return;
-    const textErrors = validatePushText(title, message);
-    if (textErrors.length) {
-      return res.status(400).json({
-        error: textErrors[0].message,
-        field: textErrors[0].field,
-        limits: { title_max: PUSH_TITLE_MAX, message_max: PUSH_MESSAGE_MAX },
-      });
-    }
     const screenErrors = validatePushScreenAlert(screen_alert);
     if (update_pass !== false && screenErrors.length) {
       return res.status(400).json({
@@ -2827,7 +2819,13 @@ router.post('/push/send', async (req, res) => {
       hrDeploy: isHrBrand(brand, req),
       resolvedStripBase64,
     };
-    const payload = { ...req.body, field_values };
+    const screenText = String(screen_alert || '').trim();
+    const payload = {
+      ...req.body,
+      title: String(title || screenText || 'Aggiornamento').trim().slice(0, PUSH_TITLE_MAX),
+      message: String(message || screenText || 'Apri il pass per i dettagli').trim().slice(0, PUSH_MESSAGE_MAX),
+      field_values,
+    };
 
     if (test_pass_id) {
       const result = await executeWalletPush(payload, pushCtx);

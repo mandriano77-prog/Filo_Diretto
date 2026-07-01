@@ -688,7 +688,7 @@ function generatePassJson(template, instance, brand, options = {}) {
     passJson.locations = normalizedLocs;
   }
 
-  // HR lock-screen copy: back field wallet_push_alert with changeMessage "%@" (see employee-pass.js).
+  // HR lock-screen copy: front technical field wallet_push_alert with changeMessage (see employee-pass.js).
   // relevantDate triggers Apple's generic "store card modified" notification in Italian.
   if (brandConfig.relevantDate && !useHrBack) {
     passJson.relevantDate = brandConfig.relevantDate;

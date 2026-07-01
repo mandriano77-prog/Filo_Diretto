@@ -184,28 +184,31 @@ function buildPushChangeMessage(pushAnn) {
   return alertText.slice(0, PUSH_SCREEN_ALERT_MAX);
 }
 
-/** Back-field lock-screen alert — iOS requires changeMessage "%@" (value = notification copy). */
-function buildPushLockScreenBackSection(pushAnn) {
-  const text = String(pushAnn?.screen_alert || pushAnn?.screenAlert || '').trim();
-  if (!text) return null;
-  const pushTs = Number(pushAnn.ts || Date.now());
+/** @deprecated back-field alerts are ignored by Wallet for lock-screen copy. */
+function buildPushLockScreenBackSection() {
+  return null;
+}
+
+/** @deprecated use buildPushAnnouncementAuxField. */
+function buildPushScreenAlertAuxField(pushAnn) {
+  return buildPushAnnouncementAuxField(pushAnn);
+}
+
+/**
+ * Apple Wallet update banners are driven by changeMessage on a changed pass
+ * field. Back fields are not reliable for HR passes, so this tiny front field
+ * is the single source for lock-screen copy.
+ */
+function buildPushAnnouncementAuxField(pushAnn) {
+  const changeMessage = buildPushChangeMessage(pushAnn);
+  if (!changeMessage) return null;
+  const pushTs = Number(pushAnn?.ts || Date.now());
   return {
-    kind: 'alert',
     key: 'wallet_push_alert',
     label: ' ',
-    body: text.slice(0, PUSH_SCREEN_ALERT_MAX) + invisibleChangeToken(pushTs),
-    changeMessage: '%@',
+    value: String(pushTs),
+    changeMessage,
   };
-}
-
-/** @deprecated — front auxiliary column removed; use buildPushLockScreenBackSection. */
-function buildPushScreenAlertAuxField() {
-  return null;
-}
-
-/** @deprecated HR passes no longer add a visible auxiliary column for push alerts. */
-function buildPushAnnouncementAuxField(pushAnn) {
-  return null;
 }
 
 /**
@@ -369,7 +372,8 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
   const hrBack = resolveHrBackSource(template, brand);
   const pushAnn = resolvePushAnnouncement(brandConfig, instance);
 
-  // Promo copy lives on strip — link CTA first, then lock-screen alert on back (never a 4th front column).
+  // Link CTA first. Notification copy is handled by the front technical field,
+  // not mirrored on the back.
   const dynamicLink = resolveVariableLink(instance, template, brandConfig);
   if (dynamicLink?.url) {
     sections.push({
@@ -379,9 +383,6 @@ function buildBackSections({ brand, template, instance, member, brandConfig = {}
       url: dynamicLink.url
     });
   }
-
-  const lockScreen = buildPushLockScreenBackSection(pushAnn);
-  if (lockScreen) sections.push(lockScreen);
 
   if (pushAnn?.back_details) {
     const details = String(pushAnn.back_details).trim();
@@ -529,6 +530,9 @@ function buildEmployeePass({ brand, template, instance, member, brandConfig, api
   secondary.push(buildCoinFieldValue(coinBalance));
 
   const auxiliary = [];
+  const pushAnn = resolvePushAnnouncement(cfg, instance);
+  const walletAlert = buildPushAnnouncementAuxField(pushAnn);
+  if (walletAlert) auxiliary.push(walletAlert);
 
   const backSections = buildBackSections({
     brand,
@@ -679,7 +683,7 @@ function buildGoogleFrontTextModules(employeePass, { passKind = 'generic' } = {}
     });
   });
   (employeePass.front.auxiliary || []).forEach((f, i) => {
-    if (f.key === 'push_notice' || f.key === 'announcement') return;
+    if (f.key === 'push_notice' || f.key === 'announcement' || f.key === 'wallet_push_alert') return;
     modules.push({
       id: `front_aux_${i}`,
       header: f.label,
@@ -817,6 +821,7 @@ function toSamsungPass(employeePass) {
     frontContents.push({ title: f.label, content: f.value });
   });
   (employeePass.front.auxiliary || []).forEach((f) => {
+    if (f.key === 'wallet_push_alert') return;
     frontContents.push({ title: f.label, content: f.value });
   });
 

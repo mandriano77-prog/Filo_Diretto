@@ -561,9 +561,10 @@ test('Google Wallet HR object includes current push back details', () => {
     apiBase: 'https://studio.example.com/api/v1',
   });
   const { objectPatch } = toGooglePass(employeePass, { passKind: 'generic' });
+  assert.equal(objectPatch.textModulesData.find((m) => m.id === 'wallet_push_alert'), undefined);
   const details = objectPatch.textModulesData.find((m) => m.id === 'push_back_details');
   assert.ok(details);
-  assert.equal(details.header, 'TEST');
+  assert.equal(details.header, ' ');
   assert.match(details.body, /Offerta valida/);
 });
 
@@ -683,15 +684,15 @@ test('Scheduled push uses the same wallet dispatch surface as immediate push', (
   assert.match(dashboard, /DEFAULT_PUSH_MESSAGE/);
 });
 
-test('Push immediate exposes screen, strip and back copy fields', () => {
+test('Push immediate exposes screen alert, strip image and back copy fields', () => {
   const dashboard = read('src/dashboard/index.html');
   const fdPush = readFd('fd-push.js');
   assert.match(dashboard, /id="pushScreenAlert"/);
   assert.match(dashboard, /Notifica su lock screen/);
-  assert.match(dashboard, /Frase su fronte \(strip\)/);
   assert.match(dashboard, /Retro pass/);
   assert.match(dashboard, /id="pushTitle" maxlength="22"/);
   assert.match(dashboard, /id="pushMessage"/);
+  assert.match(dashboard, /fd-push-copy-block" style="margin-top:16px;display:none;"/);
   assert.match(fdPush, /SCREEN_ALERT_MAX = 178/);
   assert.match(fdPush, /function getPushScreenAlertValue/);
   assert.match(fdPush, /function getPushTitleValue/);

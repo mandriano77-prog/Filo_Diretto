@@ -28,20 +28,18 @@ function toDataUrl(buffer, mime = 'image/png') {
 
 function buildPreviewAnnouncement(body) {
   const title = String(body.title || '').trim();
-  const message = String(body.message || '').trim();
-  if (!message) return null;
+  const screen = String(body.screen_alert || '').trim();
+  const message = String(body.message || screen).trim();
+  if (!message && !screen) return null;
   const base = normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
     || { title, message, ts: Date.now() };
-  const screen = String(body.screen_alert || '').trim();
   if (screen) base.screen_alert = screen.slice(0, 178);
   return attachBackDetailsToAnnouncement(base, body.back_details);
 }
 
 function resolveWalletAlertChangeMessage(employeePass) {
-  const backAlert = (employeePass.backSections || []).find((s) => s.key === 'wallet_push_alert');
-  if (backAlert?.body) {
-    return String(backAlert.body).replace(/[\u200b-\u200c\u200d\u2060]/g, '').trim();
-  }
+  const frontAlert = (employeePass.front?.auxiliary || []).find((s) => s.key === 'wallet_push_alert');
+  if (frontAlert?.changeMessage) return String(frontAlert.changeMessage).trim();
   return '';
 }
 

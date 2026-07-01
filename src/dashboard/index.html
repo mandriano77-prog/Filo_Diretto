@@ -1750,7 +1750,7 @@
                                 <p class="push-field-error" id="pushScreenAlertError" role="alert"></p>
                             </div>
                         </div>
-                        <div class="fd-push-copy-block" style="margin-top:16px;">
+                        <div class="fd-push-copy-block" style="margin-top:16px;display:none;" hidden aria-hidden="true">
                             <div class="sec-title" style="font-size:14px;margin-bottom:10px;">Frase su fronte (strip)</div>
                         <div class="form-group">
                             <label class="form-label" for="pushTitle">Titolo strip</label>
@@ -8030,11 +8030,15 @@ const DEFAULT_PUSH_TITLE = '';
 const DEFAULT_PUSH_MESSAGE = '';
 
 function getImmediatePushTitle() {
-    return (document.getElementById('pushTitle')?.value || '').trim();
+    const explicit = (document.getElementById('pushTitle')?.value || '').trim();
+    const screen = getImmediatePushScreenAlert();
+    return (explicit || screen || 'Aggiornamento').slice(0, PUSH_TITLE_MAX);
 }
 
 function getImmediatePushMessage() {
-    return (document.getElementById('pushMessage')?.value || '').trim();
+    const explicit = (document.getElementById('pushMessage')?.value || '').trim();
+    const screen = getImmediatePushScreenAlert();
+    return (explicit || screen || 'Apri il pass per i dettagli').slice(0, PUSH_MESSAGE_MAX);
 }
 
 function getImmediatePushScreenAlert() {
@@ -8049,20 +8053,6 @@ function applyPushTextValidation(title, message, backDetails, screenAlert) {
         invalid = true;
     } else if (screen.length > 178) {
         setPushFieldError('pushScreenAlert', 'Notifica lock screen max 178 caratteri');
-        invalid = true;
-    }
-    if (!title) {
-        setPushFieldError('pushTitle', 'Inserisci il titolo per la strip');
-        invalid = true;
-    } else if (title.length > PUSH_TITLE_MAX) {
-        setPushFieldError('pushTitle', `Titolo max ${PUSH_TITLE_MAX} caratteri (leggibilità strip)`);
-        invalid = true;
-    }
-    if (!message) {
-        setPushFieldError('pushMessage', 'Inserisci il testo del messaggio');
-        invalid = true;
-    } else if (message.length > PUSH_MESSAGE_MAX) {
-        setPushFieldError('pushMessage', `Messaggio max ${PUSH_MESSAGE_MAX} caratteri (3 righe sulla strip)`);
         invalid = true;
     }
     const details = String(backDetails ?? '').trim();

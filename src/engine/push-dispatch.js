@@ -23,7 +23,6 @@ const { sendPushBatch, closeApnsSession, shouldPruneApnsRegistration } = require
 const { syncGoogleWalletObjectsForPasses } = require('./google-wallet-sync');
 const googleWallet = require('./google-wallet');
 const samsungWallet = require('./samsung-wallet');
-const { normalizePushAnnouncementForStrip } = require('./passkit');
 const { attachBackDetailsToAnnouncement } = require('./push-text-limits');
 const { activePushChannelKeys } = require('./wallet-channels');
 
@@ -159,9 +158,12 @@ async function executeWalletPush(body, ctx = {}) {
     test_pass_id,
   } = body;
 
-  if (!brand_id || !title || !message) {
-    throw new Error('brand_id, title, message richiesti');
+  if (!brand_id) {
+    throw new Error('brand_id richiesto');
   }
+  const screenTextInput = String(screen_alert || '').trim();
+  const effectiveTitle = String(title || screenTextInput || 'Aggiornamento').trim().slice(0, 22);
+  const effectiveMessage = String(message || screenTextInput || 'Apri il pass per i dettagli').trim().slice(0, 66);
 
   const { sendApple, sendGoogle, sendSamsung } = parseWalletPushFlags(channel);
   const pushTargetOpts = { campaign_id, audience_id };
@@ -240,14 +242,15 @@ async function executeWalletPush(body, ctx = {}) {
     }
 
     const config = { ...(brand.config || {}) };
-    const screenText = String(screen_alert || '').trim();
+    const screenText = screenTextInput;
     if (ctx.hrDeploy && update_pass !== false && !screenText) {
       throw new Error('screen_alert richiesto per la notifica Wallet');
     }
     const announcement = attachBackDetailsToAnnouncement(
       {
-        ...(normalizePushAnnouncementForStrip({ title, message, ts: Date.now() })
-          || { title: String(title || '').trim(), message: String(message || '').trim(), ts: Date.now() }),
+        title: effectiveTitle,
+        message: effectiveMessage,
+        ts: Date.now(),
         ...(screenText ? { screen_alert: screenText.slice(0, 178) } : {}),
       },
       back_details
@@ -263,7 +266,7 @@ async function executeWalletPush(body, ctx = {}) {
 
     passLink = parsePassLinkFromPushBody(
       { include_pass_link, pass_link_url, pass_link_label, pass_link_expires_at, back_link_url, back_link_label },
-      title
+      effectiveTitle
     );
     if (!passLink) {
       const linkOutUrl = (back_link_url || pass_link_url || '').trim();
@@ -353,8 +356,8 @@ async function executeWalletPush(body, ctx = {}) {
     googleSync = await syncGoogleWalletObjectsForPasses({
       brand,
       passes: targetPasses,
-      title,
-      message,
+      title: effectiveTitle,
+      message: effectiveMessage,
       back_details,
       passLink,
       onProgress: ctx.onProgress

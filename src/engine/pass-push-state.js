@@ -1,5 +1,5 @@
 /**
- * Per-pass push overlay (strip text + optional strip image).
+ * Per-pass push update (Wallet alert + optional strip image).
  * HR passes never inherit brand.config.pushAnnouncement — only targeted instances.
  */
 
@@ -13,8 +13,9 @@ function parsePushAnnouncementRecord(raw) {
       return null;
     }
   }
-  const message = String(ann?.message || '').trim();
-  if (!message) return null;
+  const screen = String(ann.screen_alert ?? ann.screenAlert ?? '').trim();
+  const message = String(ann?.message || screen || '').trim();
+  if (!message && !screen) return null;
   const ts = Number(ann.ts ?? ann.timestamp);
   const backRaw = String(ann?.back_details ?? ann?.backDetails ?? '').trim();
   const out = {
@@ -22,7 +23,6 @@ function parsePushAnnouncementRecord(raw) {
     message,
     ts: Number.isFinite(ts) ? ts : Date.now(),
   };
-  const screen = String(ann.screen_alert ?? ann.screenAlert ?? '').trim();
   if (screen) out.screen_alert = screen.slice(0, 178);
   if (backRaw) out.back_details = backRaw.slice(0, 500);
   return out;
