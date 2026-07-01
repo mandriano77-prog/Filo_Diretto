@@ -104,12 +104,25 @@ Le push **non partono** se si superano i limiti (`POST /push/send` → 400). Fon
 
 | Campo | Max | Note |
 |-------|-----|------|
-| **Titolo** | **22** | Maiuscolo sulla strip + notifica Wallet |
-| **Messaggio** | **52** | 2 righe × 26 caratteri sulla strip |
+| **Titolo** | **22** | Maiuscolo sulla strip |
+| **Messaggio** | **66** | 3 righe × 22 caratteri sulla strip |
+| **Testo notifica Wallet (`screen_alert`)** | **178** | Lock screen iPhone — **obbligatorio** |
 
 Copy breve; emoji e punteggiatura contano. URL lunghi → **Includi link nel pass**, non nel messaggio. Anteprima in `fd-push.js` usa gli stessi limiti.
 
 **Assistente bozza:** `POST /brands/:id/push/draft-copy` con `{ brief }` — l’AI compila titolo/messaggio (e opzionalmente link); il manager rivede l’anteprima e invia con `POST /push/send`. UI: blocco «Assistente copy» nel pannello push immediata (`fd-push.js`).
+
+## 🔒 Push Wallet HR — invarianti bloccate (NON MODIFICARE)
+
+Meccanismo validato su iPhone reale (luglio 2026) dopo numerosi tentativi falliti. Blindato da `scripts/push-wallet-lock.test.js`: **se un test LOCK fallisce, la modifica è vietata** salvo approvazione esplicita del proprietario del repo.
+
+1. **Notifica lock screen** = campo FRONT `announcement` (auxiliary) con `changeMessage: '%@'` e `value` = testo `screen_alert` + token invisibile legato al `ts`. iOS **ignora** `changeMessage` senza `%@`; i back field aggiornano **in silenzio**; l'header è inaffidabile. NON tornare a: aux `screen_alert` col puntino, back `wallet_push_alert`, header hint con changeMessage.
+2. **`screen_alert` obbligatorio** (max 178): validato su `POST /push/send` e `POST /push/scheduled`; `executeWalletPush` lo esige su deploy HR; persiste su `scheduled_push.screen_alert`; lo scheduler e W.AI lo derivano da `titolo: messaggio` quando assente.
+3. **`relevantDate` mai sui pass HR** (`passkit.js`: `!useHrBack`; `pass-push-state.js`: `delete base.relevantDate`) — causa la notifica generica "Carta punto vendita modificata".
+4. **Icona notifica quadrata** (`wallet_icon`) come unico brand mark per email/portal/hub (`/mark`); mai il logo pass rettangolare; email senza allegato logo quando esiste URL HTTPS.
+5. **Link retro senza titolo duplicato**: titolo solo in `attributedValue`, `value` = `\u200b`.
+
+Prima di toccare `employee-pass.js`, `passkit.js`, `push-dispatch.js`, `pass-push-state.js`, `scheduler.js`, `push-text-limits.js` o i pannelli push della dashboard: eseguire `node scripts/push-wallet-lock.test.js`.
 
 ## Testing
 

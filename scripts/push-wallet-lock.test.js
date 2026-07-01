@@ -1,0 +1,182 @@
+'use strict';
+
+/**
+ * ⚠️ LOCK TEST — NON MODIFICARE QUESTI CONTRATTI SENZA APPROVAZIONE ESPLICITA.
+ *
+ * Blinda il meccanismo di notifica push Apple Wallet HR validato su device
+ * (luglio 2026). Se un test qui fallisce, la modifica sta rompendo un
+ * comportamento verificato su iPhone reale:
+ *
+ * 1. La notifica lock screen funziona SOLO con un campo FRONT che cambia
+ *    valore e ha changeMessage '%@' (iOS ignora changeMessage senza %@ e i
+ *    back fields aggiornano in silenzio).
+ * 2. screen_alert è la fonte unica del testo notifica: obbligatorio su
+ *    /push/send, /push/scheduled, e derivato per W.AI e righe legacy.
+ * 3. relevantDate non va mai sui pass HR (genera la notifica generica
+ *    "Carta punto vendita modificata").
+ *
+ * Vedi CLAUDE.md sezione "Push Wallet HR — invarianti bloccate".
+ */
+
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+}
+
+function visiblePassValue(value) {
+  return String(value || '').replace(/[\u200b\u200c\u200d\u2060]/g, '');
+}
+
+// ── 1. Meccanismo notifica lock screen (front announcement + changeMessage %@) ──
+
+test('LOCK: alert Wallet su campo front announcement con changeMessage %@', () => {
+  const src = read('src/engine/employee-pass.js');
+  assert.match(src, /function buildPushAnnouncementAuxField/);
+  assert.match(src, /key: 'announcement'/);
+  assert.match(src, /changeMessage: '%@'/);
+  // Vietato tornare agli approcci falliti: aux screen_alert / back wallet_push_alert.
+  assert.doesNotMatch(src, /key: 'screen_alert'/);
+  assert.doesNotMatch(src, /key: 'wallet_push_alert'/);
+});
+
+test('LOCK: buildEmployeePass mette il testo screen_alert sul campo announcement', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const ep = buildEmployeePass({
+    brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
+    template: { name: 'HR', style: {}, fields: {} },
+    instance: {
+      serial_number: 'SN1',
+      push_announcement: {
+        title: '2x1 OCCHIALI',
+        message: 'Solo questa settimana',
+        screen_alert: '2X1 OCCHIALI: Solo questa settimana',
+        ts: 1710000000001,
+      },
+    },
+    member: { full_name: 'Test', department: 'HR' },
+    brandConfig: {},
+  });
+  const apple = toApplePass(ep);
+  const alert = (apple.passStructure.auxiliaryFields || []).find((f) => f.key === 'announcement');
+  assert.ok(alert, 'campo announcement mancante: la notifica custom non parte');
+  assert.equal(alert.changeMessage, '%@');
+  assert.equal(visiblePassValue(alert.value), '2X1 OCCHIALI: Solo questa settimana');
+  // Il valore deve cambiare a ogni push (token invisibile legato al ts).
+  assert.notEqual(alert.value, visiblePassValue(alert.value));
+  // Il COIN mantiene il proprio changeMessage dedicato.
+  const coin = (apple.passStructure.secondaryFields || []).find((f) => f.key === 'coin_balance');
+  assert.equal(coin.changeMessage, 'Hai %@ coin');
+});
+
+test('LOCK: senza push attiva nessun campo announcement sul fronte', () => {
+  const { buildEmployeePass, toApplePass } = require('../src/engine/employee-pass');
+  const ep = buildEmployeePass({
+    brand: { id: 'b1', name: 'NTI', slug: 'nti', config: {} },
+    template: { name: 'HR', style: {}, fields: {} },
+    instance: { serial_number: 'SN1' },
+    member: { full_name: 'Test', department: 'HR' },
+    brandConfig: {},
+  });
+  const apple = toApplePass(ep);
+  assert.equal((apple.passStructure.auxiliaryFields || []).length, 0);
+  assert.deepEqual(
+    (apple.passStructure.secondaryFields || []).map((f) => f.key),
+    ['name', 'area', 'coin_balance']
+  );
+});
+
+// ── 2. relevantDate mai sui pass HR (causa notifica generica) ──
+
+test('LOCK: relevantDate escluso dai pass HR', () => {
+  assert.match(read('src/engine/passkit.js'), /brandConfig\.relevantDate && !useHrBack/);
+  assert.match(read('src/engine/pass-push-state.js'), /delete base\.relevantDate/);
+});
+
+// ── 3. screen_alert obbligatorio e limiti testo ──
+
+test('LOCK: screen_alert obbligatorio con max 178 caratteri', () => {
+  const { validatePushScreenAlert, PUSH_SCREEN_ALERT_MAX } = require('../src/engine/push-text-limits');
+  assert.equal(PUSH_SCREEN_ALERT_MAX, 178);
+  assert.equal(validatePushScreenAlert('').length, 1);
+  assert.equal(validatePushScreenAlert('x'.repeat(179)).length, 1);
+  assert.equal(validatePushScreenAlert('SALDI ESTIVI: -50%').length, 0);
+});
+
+test('LOCK: API push valida screen_alert su send e scheduled', () => {
+  const routes = read('src/api/routes.js');
+  assert.match(routes, /validatePushScreenAlert\(screen_alert\)/);
+  assert.match(routes, /validatePushScreenAlert\(req\.body\.screen_alert\)/);
+  assert.match(read('src/engine/push-dispatch.js'), /screen_alert richiesto per la notifica Wallet/);
+});
+
+// ── 4. Push programmata: persistenza + fallback legacy ──
+
+test('LOCK: scheduled_push persiste screen_alert e lo scheduler ha il fallback', () => {
+  const db = read('src/db/index.js');
+  assert.match(db, /scheduled_push ADD COLUMN IF NOT EXISTS screen_alert/);
+  assert.match(db, /INSERT INTO scheduled_push[\s\S]{0,400}screen_alert/);
+  assert.match(db, /'screen_alert'\]/);
+  const scheduler = read('src/engine/scheduler.js');
+  assert.match(scheduler, /executeWalletPush\(\{ \.\.\.schedule, screen_alert/);
+  assert.match(scheduler, /schedule\.screen_alert/);
+});
+
+// ── 5. W.AI deriva screen_alert (mai push bloccate dall'assistente) ──
+
+test('LOCK: W.AI deriva screen_alert da titolo e messaggio', () => {
+  const { validateWaiResponse } = require('../src/engine/wai');
+  const out = validateWaiResponse({
+    intent: 'push.send',
+    type: 'create',
+    payload: { title: 'PROMO', message: 'Dettagli sul pass' },
+    preview: { summary: '', details: {}, warnings: [] },
+  }, 'brand-1', 'manda una push');
+  assert.equal(out.payload.screen_alert, 'PROMO: Dettagli sul pass');
+});
+
+// ── 6. Dashboard: campo obbligatorio su push immediata e programmata ──
+
+test('LOCK: dashboard richiede il testo notifica Wallet su entrambi i pannelli', () => {
+  const dashboard = read('src/dashboard/index.html');
+  assert.match(dashboard, /id="pushScreenAlert"/);
+  assert.match(dashboard, /id="schedScreenAlert"/);
+  assert.match(dashboard, /body\.screen_alert = screenAlert/);
+  assert.match(dashboard, /screen_alert: schedScreenAlert/);
+  const fdPush = read('src/filodiretto/fd-push.js');
+  assert.match(fdPush, /body\.screen_alert = screenAlert/);
+});
+
+// ── 7. Icona notifica quadrata (mai il logo pass rettangolare) ──
+
+test('LOCK: brand mark usa solo icona notifica quadrata, email senza allegato logo', () => {
+  const logo = read('src/engine/brand-wallet-logo.js');
+  assert.match(logo, /Square notification icon only/);
+  assert.doesNotMatch(logo, /resolveBrandMarkRawBuffer[\s\S]{0,220}resolveBrandLogoRawBuffer/);
+  const mailer = read('src/engine/mailer.js');
+  assert.match(mailer, /inlineLogoAttachment && !brandLogo\?\.url/);
+});
+
+// ── 8. Retro pass: link senza titolo duplicato ──
+
+test('LOCK: link retro senza riga di testo duplicata', () => {
+  const { buildBackSections, sectionsToAppleBackFields } = require('../src/engine/employee-pass');
+  const sections = buildBackSections({
+    brand: {},
+    template: {},
+    instance: {},
+    member: {},
+    hubUrl: 'https://studio.example.com/hub/conv?token=t',
+  });
+  const fields = sectionsToAppleBackFields(sections.filter((s) => s.kind === 'link'));
+  assert.ok(fields.length >= 1);
+  fields.forEach((f) => {
+    assert.equal(f.value, '\u200b', 'il titolo del link deve vivere solo in attributedValue');
+    assert.match(f.attributedValue, /<a href=/);
+  });
+});
