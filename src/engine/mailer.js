@@ -821,7 +821,7 @@ async function sendActivationEmail({ to, firstName, brandName, activateUrl, dpoE
     subject: `FiloDiretto.App | Attiva il tuo accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation email' });
 }
 
@@ -849,7 +849,7 @@ async function sendActivationReminderEmail({ to, firstName, brandName, activateU
     subject: `FiloDiretto.App | Promemoria attivazione accesso ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'activation reminder' });
 }
 
@@ -878,7 +878,7 @@ async function sendPassAccessEmail({ to, firstName, brandName, accessUrl, dpoEma
     subject: `FiloDiretto.App | Accedi al tuo pass ${brand}`,
     html
   };
-  if (inlineLogoAttachment) payload.attachments = [inlineLogoAttachment];
+  if (inlineLogoAttachment && !brandLogo?.url) payload.attachments = [inlineLogoAttachment];
   return sendViaResend(payload, { logLabel: 'pass access email' });
 }
 

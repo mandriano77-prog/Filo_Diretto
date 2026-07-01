@@ -38,18 +38,23 @@ async function resolveBrandLogoRawBuffer(brand) {
 const INVITE_EMAIL_LOGO_CID = 'brand-invite-logo';
 const EMPLOYEE_EMAIL_LOGO_CID = 'brand-employee-logo';
 
-/** Square brand mark for Hub, activation, and HR emails — wallet_icon first, then wide logo. */
+/** Square notification icon only (Brand Identity → Icona notifiche). Never the wide pass logo. */
 async function resolveBrandMarkRawBuffer(brand) {
-  const fromIcon = await resolveNotificationIconRawBuffer(brand);
-  if (fromIcon?.buffer) return fromIcon;
-  return resolveBrandLogoRawBuffer(brand);
+  const fromMedia = await resolveNotificationIconRawBuffer(brand);
+  if (fromMedia?.buffer) return fromMedia;
+
+  const cfg = brand?.config || {};
+  const synced = readIconPackFromConfig(cfg.logos);
+  if (synced?.icon2x && (Number(cfg.wallet_icon_rev) > 0 || cfg.wallet_icon_synced_at)) {
+    return { buffer: synced.icon2x, source: 'config_logos_synced' };
+  }
+  return null;
 }
 
 function publicBrandMarkVersion(brand) {
   const cfg = brand?.config || {};
   return [
     cfg.brand_identity_assets?.wallet_icon,
-    cfg.brand_identity_assets?.logo,
     cfg.wallet_icon_rev,
     brand?.updated_at
   ].filter(Boolean).join('-') || 'current';
@@ -75,12 +80,21 @@ function publicPassLogoUrl(brand, pass) {
   return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/logo?${q.toString()}`;
 }
 
-/** Square brand mark (wallet icon / mark endpoint). */
+/** Square brand mark (notification icon / mark endpoint). */
 function publicBrandMarkUrl(brand) {
   if (!brand?.slug) return null;
   const q = new URLSearchParams();
   q.set('v', publicBrandMarkVersion(brand));
   return `/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?${q.toString()}`;
+}
+
+/** Absolute HTTPS URL for the square notification icon (emails, portal, hub header). */
+function absolutePublicBrandMarkUrl(brand) {
+  const path = publicBrandMarkUrl(brand);
+  if (!path) return null;
+  const { resolveBaseUrlFromEnv } = require('./base-url');
+  const base = resolveBaseUrlFromEnv().replace(/\/+$/, '');
+  return `${base}${path}`;
 }
 
 /** PNG inline attachment for dashboard invite emails (Resend CID). */
@@ -524,6 +538,7 @@ module.exports = {
   publicPassLogoVersion,
   publicPassLogoUrl,
   publicBrandMarkUrl,
+  absolutePublicBrandMarkUrl,
   buildInviteEmailLogoAttachment,
   buildEmployeeEmailLogoAttachment,
   INVITE_EMAIL_LOGO_CID,

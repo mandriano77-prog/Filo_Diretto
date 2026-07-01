@@ -162,6 +162,12 @@
     return `${url}${sep}_hub=${Date.now()}`;
   }
 
+  function applyBrandedIcons(logoUrl) {
+    if (!logoUrl) return;
+    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', logoUrl);
+    document.querySelector('link[rel="icon"]')?.setAttribute('href', logoUrl);
+  }
+
   function applyWhiteLabel() {
     const accent = state.settings?.accent_color || state.brand?.brand_theme?.accent || '#8B5CF6';
     document.documentElement.style.setProperty('--hub-accent', accent);
@@ -169,21 +175,17 @@
     if (meta) meta.setAttribute('content', accent);
 
     const logoEl = $('#hub-logo');
-    const rawLogo = state.brand?.logo_url || state.settings?.logo_url;
+    const rawLogo = state.brand?.mark_url || state.settings?.logo_url || state.brand?.logo_url;
     const logoUrl = rawLogo ? bustAssetUrl(resolveAssetUrl(rawLogo)) : null;
     if (logoEl && logoUrl) {
       logoEl.src = logoUrl;
       logoEl.alt = state.brand?.name || 'Logo';
       logoEl.onerror = () => {
-        const markUrl = state.brand?.mark_url;
-        if (markUrl && logoEl.src !== bustAssetUrl(resolveAssetUrl(markUrl))) {
-          logoEl.src = bustAssetUrl(resolveAssetUrl(markUrl));
-          return;
-        }
         logoEl.removeAttribute('src');
         logoEl.classList.add('hidden');
       };
       logoEl.classList.remove('hidden');
+      applyBrandedIcons(logoUrl);
     } else if (logoEl) {
       logoEl.classList.add('hidden');
     }

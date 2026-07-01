@@ -7,11 +7,7 @@ const {
   sendActivationReminderEmail,
   sendPassAccessEmail
 } = require('./mailer');
-const {
-  resolveBrandMarkRawBuffer,
-  buildEmployeeEmailLogoAttachment,
-  publicBrandMarkVersion
-} = require('./brand-wallet-logo');
+const { absolutePublicBrandMarkUrl } = require('./brand-wallet-logo');
 const { upsertPassConsent, PORTAL_CONSENT_TYPES } = require('../db/portal');
 
 function publicBaseUrl() {
@@ -27,25 +23,14 @@ function joinUrl(slug) {
 }
 
 function publicBrandLogoUrl(brand) {
-  if (!brand?.slug) return null;
-  const version = publicBrandMarkVersion(brand);
-  return `${publicBaseUrl()}/api/v1/brands/by-slug/${encodeURIComponent(brand.slug)}/mark?v=${encodeURIComponent(version)}`;
+  return absolutePublicBrandMarkUrl(brand);
 }
 
 async function activationEmailBrandContext(brand) {
   const context = { brandTheme: brand?.config?.brand_theme || null, brandLogo: null, brandLogoAttachment: null };
   if (!brand) return context;
-  const logoUrl = publicBrandLogoUrl(brand);
+  const logoUrl = absolutePublicBrandMarkUrl(brand);
   if (logoUrl) context.brandLogo = { url: logoUrl };
-  try {
-    const resolved = await resolveBrandMarkRawBuffer(brand);
-    if (resolved?.buffer) {
-      const attachment = await buildEmployeeEmailLogoAttachment(resolved.buffer);
-      if (attachment) context.brandLogoAttachment = attachment;
-    }
-  } catch (err) {
-    console.warn('[activation-email] brand mark resolve failed:', err.message);
-  }
   return context;
 }
 

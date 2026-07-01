@@ -18,6 +18,35 @@ async function tinyPng() {
     .toBuffer();
 }
 
+test('resolveBrandMarkRawBuffer uses notification icon only, not wide pass logo', async () => {
+  const iconBuf = await tinyPng();
+  const wideLogo = await sharp({
+    create: { width: 320, height: 80, channels: 3, background: { r: 10, g: 20, b: 30 } },
+  }).png().toBuffer();
+  const { resolveBrandMarkRawBuffer, buildNotificationIconFromRaw } = require('../src/engine/brand-wallet-logo');
+  const pack = await buildNotificationIconFromRaw(iconBuf);
+
+  const synced = await resolveBrandMarkRawBuffer({
+    config: {
+      wallet_icon_rev: 1,
+      logos: {
+        icon: pack.icon.toString('base64'),
+        'icon@2x': pack.icon2x.toString('base64'),
+        logo: wideLogo.toString('base64'),
+      },
+    },
+  });
+  assert.equal(synced.source, 'config_logos_synced');
+
+  const logoOnly = await resolveBrandMarkRawBuffer({
+    config: {
+      brand_identity_assets: { logo: 'media-2' },
+      logos: { logo: wideLogo.toString('base64') },
+    },
+  });
+  assert.equal(logoOnly, null);
+});
+
 test('resolvePassIconBuffers uses synced config.logos without wallet_icon media id', async () => {
   const iconBuf = await tinyPng();
   const pack = await require('../src/engine/brand-wallet-logo').buildNotificationIconFromRaw(iconBuf);

@@ -867,21 +867,24 @@ test('Public HR activation surfaces inherit brand theme and logo', () => {
   assert.match(mailer, /brandLogo\?\.cid/);
   assert.match(mailer, /width:112px;height:112px/);
   assert.match(hrActivation, /function publicBrandLogoUrl/);
-  assert.match(hrActivation, /brands\/by-slug\/\$\{encodeURIComponent\(brand\.slug\)\}\/mark\?v=/);
-  assert.match(hrActivation, /buildEmployeeEmailLogoAttachment/);
+  assert.match(hrActivation, /absolutePublicBrandMarkUrl/);
   assert.match(routes, /function buildPublicBrandLogoUrl/);
   assert.match(routes, /const logoUrl = buildPublicBrandLogoUrl\(brand\)/);
   assert.match(routes, /brandLogo:\s*logoUrl \? \{ url: logoUrl \} : null/);
   assert.match(hrActivation, /activationEmailBrandContext/);
   assert.match(hubPwa, /public-brand-theme/);
   assert.match(hubPwa, /accent_color:\s*theme\?\.accent \|\| settings\?\.accent_color \|\| '#8B5CF6'/);
-  assert.match(hubPwa, /publicPassLogoUrl/);
-  assert.match(hubPwa, /absolutePublicAsset\(publicPassLogoUrl\(brand, pass\)\)/);
   assert.match(hubPwa, /publicBrandMarkUrl/);
+  assert.match(hubPwa, /absolutePublicAsset\(publicBrandMarkUrl\(brand\)\)/);
+  assert.match(hubPwa, /mark_url: markUrl/);
   assert.match(brandWalletLogo, /function publicPassLogoUrl/);
   assert.match(brandWalletLogo, /function publicBrandMarkUrl/);
+  assert.match(brandWalletLogo, /function absolutePublicBrandMarkUrl/);
+  assert.match(brandWalletLogo, /Square notification icon only/);
+  assert.doesNotMatch(brandWalletLogo, /resolveBrandMarkRawBuffer[\s\S]{0,220}resolveBrandLogoRawBuffer/);
   assert.match(brandWalletLogo, /\/logo\?/);
   assert.match(mailer, /resolveEmployeeEmailLogo/);
+  assert.match(mailer, /inlineLogoAttachment && !brandLogo\?\.url/);
   assert.match(hrActivation, /context\.brandLogo = \{ url: logoUrl \}/);
 });
 
@@ -899,6 +902,8 @@ test('Hub mobile uses DEAL PGA COIN labels and current brand logo surface', () =
   assert.doesNotMatch(hubApp, /subtitle\.textContent = state\.brand\.name/);
   assert.match(hubApp, /hub_bootstrap_v4/);
   assert.match(hubApp, /resolveAssetUrl/);
+  assert.match(hubApp, /applyBrandedIcons/);
+  assert.match(hubApp, /state\.brand\?\.mark_url \|\| state\.settings\?\.logo_url \|\| state\.brand\?\.logo_url/);
   assert.match(hubCss, /\.hub-logo\s*\{[\s\S]*width:\s*74px;[\s\S]*background:\s*#fff;/);
   assert.match(hubCss, /\.hub-subtitle\s*\{[\s\S]*display:\s*none !important/);
   assert.match(hubSw, /filodiretto-hub-v6/);
@@ -912,8 +917,10 @@ test('Employee portal hides legacy level field from personal profile', () => {
   assert.doesNotMatch(portalApi, /'livello'/);
   assert.doesNotMatch(portalApi, /'level'/);
   assert.match(portalApi, /brand_theme:\s*publicBrandTheme/);
-  assert.match(portalApi, /logo_url:\s*publicPassLogoUrl/);
+  assert.match(portalApi, /logo_url:\s*absolutePublicAsset\(publicBrandMarkUrl/);
   assert.match(portalJs, /function applyBrandTheme/);
+  assert.match(portalJs, /function resolveAssetUrl/);
+  assert.match(portalJs, /function applyBrandedIcons/);
   assert.match(portalJs, /setProperty\('--accent', accent\)/);
 });
 

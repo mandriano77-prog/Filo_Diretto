@@ -608,12 +608,13 @@ router.get('/brands/by-slug/:slug/mark', async (req, res) => {
     const brand = await getBrandBySlug(req.params.slug);
     if (!brand) return res.status(404).json({ error: 'Brand non trovato' });
     const sharp = require('sharp');
-    const { resolveBrandMarkRawBuffer } = require('../engine/brand-wallet-logo');
+    const { resolveBrandMarkRawBuffer, buildNotificationIconFromRaw } = require('../engine/brand-wallet-logo');
     const resolved = await resolveBrandMarkRawBuffer(brand);
-    if (!resolved?.buffer) return res.status(404).json({ error: 'Nessun logo' });
-    const png = await sharp(resolved.buffer)
+    if (!resolved?.buffer) return res.status(404).json({ error: 'Nessuna icona notifiche' });
+    const iconPack = await buildNotificationIconFromRaw(resolved.buffer);
+    const png = await sharp(iconPack.icon2x)
+      .resize(256, 256, { fit: 'cover', position: 'centre' })
       .png()
-      .resize(256, 256, { fit: 'inside', withoutEnlargement: false })
       .toBuffer();
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');

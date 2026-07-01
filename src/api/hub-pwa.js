@@ -76,7 +76,7 @@ async function loadHubContext(claims) {
 }
 
 const { publicBrandTheme } = require('../engine/public-brand-theme');
-const { publicPassLogoUrl, publicBrandMarkUrl } = require('../engine/brand-wallet-logo');
+const { publicBrandMarkUrl } = require('../engine/brand-wallet-logo');
 const { resolveBaseUrlFromEnv } = require('../engine/base-url');
 
 function absolutePublicAsset(path) {
@@ -87,12 +87,13 @@ function absolutePublicAsset(path) {
 }
 
 function publicBrand(brand, pass) {
+  const markUrl = absolutePublicAsset(publicBrandMarkUrl(brand));
   return {
     id: brand.id,
     name: brand.name,
     slug: brand.slug,
-    logo_url: absolutePublicAsset(publicPassLogoUrl(brand, pass)),
-    mark_url: absolutePublicAsset(publicBrandMarkUrl(brand)),
+    logo_url: markUrl,
+    mark_url: markUrl,
     brand_theme: publicBrandTheme(brand)
   };
 }
@@ -104,8 +105,9 @@ function publicSettings(settings, brand, pass) {
   }
   if (!Array.isArray(categories)) categories = [];
   const theme = publicBrandTheme(brand);
+  const markUrl = absolutePublicAsset(publicBrandMarkUrl(brand));
   return {
-    logo_url: absolutePublicAsset(publicPassLogoUrl(brand, pass)),
+    logo_url: markUrl,
     accent_color: theme?.accent || settings?.accent_color || '#8B5CF6',
     welcome_message: settings?.welcome_message || null,
     categories_enabled: categories,

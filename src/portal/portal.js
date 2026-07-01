@@ -214,6 +214,19 @@
     return /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(raw) ? (raw[0] === '#' ? raw : '#' + raw) : '';
   }
 
+  function resolveAssetUrl(url) {
+    if (!url) return null;
+    if (/^https?:\/\//i.test(url)) return url;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${window.location.origin}${path}`;
+  }
+
+  function applyBrandedIcons(logoUrl) {
+    if (!logoUrl) return;
+    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', logoUrl);
+    document.querySelector('link[rel="icon"]')?.setAttribute('href', logoUrl);
+  }
+
   function applyBrandTheme() {
     const theme = profile?.brand?.brand_theme;
     if (!theme) return;
@@ -239,8 +252,7 @@
     const dept = fv('reparto', 'department');
     $('#brand-name').textContent = profile.brand?.name || 'Filodiretto';
     const dot = document.querySelector('.topbar .brand .dot');
-    let logoUrl = profile.brand?.logo_url;
-    if (logoUrl && logoUrl.startsWith('/')) logoUrl = `${window.location.origin}${logoUrl}`;
+    const logoUrl = resolveAssetUrl(profile.brand?.logo_url);
     if (dot) {
       if (logoUrl) {
         dot.classList.add('has-logo');
@@ -250,6 +262,7 @@
         dot.innerHTML = '';
       }
     }
+    applyBrandedIcons(logoUrl);
     $('#user-avatar').textContent = initials(name);
     $('#user-display-name').textContent = name;
     $('#user-subtitle').textContent = dept || '—';
